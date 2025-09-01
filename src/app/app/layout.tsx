@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Header } from "./components/header";
 import { AppSidebar} from "./components/sidebar";
 import { useRouter } from "next/navigation";
-import { LoaderCircle } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 interface User {
