@@ -23,7 +23,6 @@ export default function RootLayout({
 
 
   
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isLoading, setIsloading] = useState(false);
   const [user, setUser] = useState<User | undefined>(undefined);
