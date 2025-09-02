@@ -1,5 +1,5 @@
 export default function Home() {
     return (
-        <div>home para redirecionar</div>
+        <div>Redirecionar para dashboard se cair aqui</div>
     )
 }
