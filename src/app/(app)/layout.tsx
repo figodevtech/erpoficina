@@ -126,7 +126,14 @@ export default function RootLayout({
           </span>
           <ModeToggle />
         </header>
+<<<<<<< HEAD:src/app/(app)/layout.tsx
         <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
+=======
+        <div className="flex flex-1 flex-col gap-4 p-4 bg-muted-foreground/5">
+          
+        {children}
+        </div>
+>>>>>>> 2bf97629f2517745023c7231fb13526341de27b9:src/app/app/layout.tsx
       </SidebarInset>
 
       {/* </;div> */}

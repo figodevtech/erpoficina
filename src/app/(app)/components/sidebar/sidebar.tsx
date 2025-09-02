@@ -3,10 +3,17 @@
 import * as React from "react"
 import {
   GalleryVerticalEnd,
+<<<<<<< HEAD:src/app/(app)/components/sidebar/sidebar.tsx
   LayoutDashboard,
   NotepadText,
   Tv,
   Package,
+=======
+  Settings2,
+  LayoutDashboard, 
+  NotepadText,
+  Tv,
+>>>>>>> 2bf97629f2517745023c7231fb13526341de27b9:src/app/app/components/sidebar/sidebar.tsx
   ClipboardList,
   Settings2,
   Users,
@@ -30,6 +37,10 @@ import { NavSettings } from "./components/nav-settings"
 
 import { useSession } from "next-auth/react"
 
+<<<<<<< HEAD:src/app/(app)/components/sidebar/sidebar.tsx
+=======
+
+>>>>>>> 2bf97629f2517745023c7231fb13526341de27b9:src/app/app/components/sidebar/sidebar.tsx
 const data = {
   teams: [
     {
@@ -41,24 +52,24 @@ const data = {
   navOptions: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/app/dashboard",
       icon: LayoutDashboard,
       isActive: true,
     },
     {
       title: "Ordens de Serviço",
-      url: "#",
+      url: "/app/ordens",
       icon: NotepadText,
       isActive: true,
     },
     {
       title: "Estoque",
-      url: "#",
+      url: "/app/estoque",
       icon: Package,
     },
     {
       title: "Acompanhamento",
-      url: "#",
+      url: "/app/acompanhamento",
       icon: Tv,
     },
     {
@@ -99,7 +110,11 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+<<<<<<< HEAD:src/app/(app)/components/sidebar/sidebar.tsx
   const { data: session } = useSession()
+=======
+
+>>>>>>> 2bf97629f2517745023c7231fb13526341de27b9:src/app/app/components/sidebar/sidebar.tsx
 
   return (
     <Sidebar collapsible="icon" {...props}>
