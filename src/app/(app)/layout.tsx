@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Header } from "./components/header";
 import { AppSidebar } from "./components/sidebar/sidebar";
 import { useRouter } from "next/navigation";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -77,9 +76,6 @@ export default function RootLayout({
           </span>
           <ModeToggle />
         </header>
-
-        <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
-
         <div className="flex flex-1 flex-col gap-4 p-4 bg-muted-foreground/5">{children}</div>
       </SidebarInset>
     </SidebarProvider>

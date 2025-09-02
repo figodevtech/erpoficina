@@ -48,7 +48,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
           setError("Ocorreu um erro ao fazer login. Tente novamente.");
       }
     } else {
-      router.push("/app/dashboard");
+      router.push("/dashboard");
     }
   };
 
