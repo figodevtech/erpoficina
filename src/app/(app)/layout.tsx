@@ -37,27 +37,6 @@ export default function RootLayout({
     console.log(user);
   }, [user]);
 
-  //   useEffect(() => {
-  //     const getUser = async () => {
-  //       setIsloading(true);
-  //       try {
-  //         const response = await axios.post("/api/getActiveUser", {
-  //           id: session?.user?.id
-  //         })
-
-  //         if(response) {
-  //           setUser(response.data);
-  //           setIsloading(false);
-  //         }
-  //       } catch (error) {
-  //         setIsloading(false);
-  //         console.log(error)
-  //       }
-  //     }
-
-  //     getUser();
-  //   }, [session?.user?.id]);
-
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -69,37 +48,9 @@ export default function RootLayout({
     return () => window.removeEventListener("resize", checkIsMobile);
   }, []);
 
-  //   useEffect(() => {
-  //     if (status !== "loading") {
-  //       if (!session?.user) {
-  //         router.push("/login");
-  //       }
-  //     }
-  //   }, [session, status, router]); // Dependências para evitar loops infinitos
-
-  // if(status === "loading") {
-  //   return (
-  //     <div className="flex flex-col w-screen h-screen items-center justify-center gap-4">
-  //       <span className="text-sm">Carregando...</span>
-  //       <LoaderCircle className="animate-spin"/>
-  //     </div>
-  //   );
-  // }
-
-  // if(isLoading){
-  //   return (
-  //     <div className="flex flex-col w-screen h-screen items-center justify-center gap-4">
-  //       <span className="text-sm">Lendo predefinições de usuário</span>
-  //       <LoaderCircle className="animate-spin"/>
-  //     </div>
-  //   )
-  // }
-
   return (
-    // <div className="flex h-screen bg-black">
     <SidebarProvider>
       <AppSidebar />
-      {/* <div className="flex flex-col flex-1 overflow-hidden"> */}
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
@@ -126,18 +77,11 @@ export default function RootLayout({
           </span>
           <ModeToggle />
         </header>
-<<<<<<< HEAD:src/app/(app)/layout.tsx
-        <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
-=======
-        <div className="flex flex-1 flex-col gap-4 p-4 bg-muted-foreground/5">
-          
-        {children}
-        </div>
->>>>>>> 2bf97629f2517745023c7231fb13526341de27b9:src/app/app/layout.tsx
-      </SidebarInset>
 
-      {/* </;div> */}
+        <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
+
+        <div className="flex flex-1 flex-col gap-4 p-4 bg-muted-foreground/5">{children}</div>
+      </SidebarInset>
     </SidebarProvider>
-    // </d;iv>
   );
 }
