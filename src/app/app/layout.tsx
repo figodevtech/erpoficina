@@ -13,7 +13,7 @@ interface User {
   name: string,
   email: string,
   profileType: string,
-  
+   
 }
 
 export default function RootLayout({
