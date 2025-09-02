@@ -121,7 +121,7 @@ export default function RootLayout({
           <div className="w-full"></div>
           <span className="hidden md:block text-sm text-gray-500 text-nowrap">
 
-          {new Date().toLocaleDateString('pt-BR', {
+          {new Date().toLocaleDateString('pt-BR', { 
             year: 'numeric',
             weekday: 'long',
             month: 'long',
