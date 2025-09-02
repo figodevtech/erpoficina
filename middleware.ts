@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth";
+import { auth as middleware } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-export default auth((req) => {
+export default middleware((req) => {
   const isAuthenticated = !!req.auth;
   const protectedPaths = ["/dashboard", "/os", "/estoque", "/financeiro", "/clientes", "/usuarios"];
 

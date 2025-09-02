@@ -1,44 +1,36 @@
-"use client";
+"use client"
 
-import * as React from "react";
+import * as React from "react"
 import {
-  
-  BookOpen,
-  Bot,
   GalleryVerticalEnd,
-  Settings2,
-  SquareTerminal,
-  LayoutDashboard, 
+  LayoutDashboard,
   NotepadText,
   Tv,
-  Boxes,
+  Package,
   ClipboardList,
+  Settings2,
   Users,
   PanelsTopLeft,
-  Package,
   Type,
-  Settings
-} from "lucide-react";
+  Settings,
+  UserPlus,
+} from "lucide-react"
 
-import { NavMain } from "./components/nav-main";
-import { NavUser } from "./components/nav-user";
-import { TeamSwitcher } from "./components/team-switcher";
+import { NavMain } from "./components/nav-main"
+import { NavUser } from "./components/nav-user"
+import { TeamSwitcher } from "./components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar";
-import { NavSettings } from "./components/nav-settings";
+} from "@/components/ui/sidebar"
+import { NavSettings } from "./components/nav-settings"
 
-// This is sample data.
+import { useSession } from "next-auth/react"
+
 const data = {
-  user: {
-    name: "Nome Usuário",
-    email: "usuário@email.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   teams: [
     {
       name: "EmpresaNome",
@@ -46,22 +38,18 @@ const data = {
       plan: "Plano Premium",
     },
   ],
-
-
   navOptions: [
     {
       title: "Dashboard",
       url: "#",
       icon: LayoutDashboard,
       isActive: true,
-      
     },
     {
       title: "Ordens de Serviço",
       url: "#",
       icon: NotepadText,
       isActive: true,
-      
     },
     {
       title: "Estoque",
@@ -79,7 +67,6 @@ const data = {
       icon: ClipboardList,
     },
   ],
-  
   navSettings: [
     {
       title: "Configurações",
@@ -98,7 +85,7 @@ const data = {
         },
         {
           title: "Usuários",
-          url: "#",
+          url: "/app/usuarios",
           icon: Users,
         },
         {
@@ -108,11 +95,12 @@ const data = {
         },
       ],
     },
-  ]
-
-};
+  ],
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession()
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -123,9 +111,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSettings items={data.navSettings} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {session?.user && (
+          <NavUser
+            user={{
+              nome: session.user.nome || "Usuário",
+              email: session.user.email || "",
+              avatar: session.user.image || "/avatars/default.png",
+            }}
+          />
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  );
+  )
 }

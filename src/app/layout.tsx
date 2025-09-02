@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider"
+import { Providers } from "@/components/theme-provider";
+import NProgressHandler from "@/components/NProgressHandler";
 
 export const metadata: Metadata = {
   title: "ERP",
@@ -18,26 +19,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="pt-BR" >
-      <body
-      className={`${geistSans.variable} ${geistMono.variable}`}
-      >
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            
-        {children}
-          </ThemeProvider>
+    <html lang="pt-BR">
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        {/* Providers inclui SessionProvider + ThemeProvider */}
+        <Providers attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <NProgressHandler />
+          {children}
+        </Providers>
       </body>
     </html>
   );

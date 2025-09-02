@@ -19,6 +19,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // components/LoginForm.tsx
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -33,7 +34,19 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     setLoading(false);
 
     if (res?.error) {
-      setError(res.error === "CredentialsSignin" ? "E-mail ou senha inválidos" : res.error);
+      switch (res.error) {
+        case "Por favor, forneça e-mail e senha.":
+          setError("Por favor, preencha todos os campos.");
+          break;
+        case "E-mail ou senha inválidos":
+          setError("E-mail ou senha inválidos.");
+          break;
+        case "Usuário não encontrado no sistema.":
+          setError("Usuário não encontrado. Solicite um cadastro.");
+          break;
+        default:
+          setError("Ocorreu um erro ao fazer login. Tente novamente.");
+      }
     } else {
       router.push("/app/dashboard");
     }

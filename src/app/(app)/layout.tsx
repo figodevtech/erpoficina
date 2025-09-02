@@ -1,19 +1,25 @@
-"use client"
+"use client";
 import { useEffect, useState } from "react";
 import { Header } from "./components/header";
-import { AppSidebar} from "./components/sidebar/sidebar";
+import { AppSidebar } from "./components/sidebar/sidebar";
 import { useRouter } from "next/navigation";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { ModeToggle } from "./components/mode-toggle";
 
 interface User {
-  id: string,
-  name: string,
-  email: string,
-  profileType: string,
-   
+  id: string;
+  name: string;
+  email: string;
+  profileType: string;
 }
 
 export default function RootLayout({
@@ -21,59 +27,55 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
-
-  
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsloading] = useState(false);
   const [user, setUser] = useState<User | undefined>(undefined);
   const router = useRouter();
-  const [pageTitle, setPageTitle] = useState("Dashboard")
+  const [pageTitle, setPageTitle] = useState("Dashboard");
 
   useEffect(() => {
-    console.log(user)
+    console.log(user);
   }, [user]);
 
-//   useEffect(() => {
-//     const getUser = async () => {
-//       setIsloading(true);
-//       try {
-//         const response = await axios.post("/api/getActiveUser", {
-//           id: session?.user?.id
-//         })
-        
-//         if(response) {
-//           setUser(response.data);
-//           setIsloading(false);
-//         }
-//       } catch (error) {
-//         setIsloading(false);
-//         console.log(error)
-//       }
-//     }
+  //   useEffect(() => {
+  //     const getUser = async () => {
+  //       setIsloading(true);
+  //       try {
+  //         const response = await axios.post("/api/getActiveUser", {
+  //           id: session?.user?.id
+  //         })
 
-//     getUser();
-//   }, [session?.user?.id]);
+  //         if(response) {
+  //           setUser(response.data);
+  //           setIsloading(false);
+  //         }
+  //       } catch (error) {
+  //         setIsloading(false);
+  //         console.log(error)
+  //       }
+  //     }
+
+  //     getUser();
+  //   }, [session?.user?.id]);
 
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
+      setIsMobile(window.innerWidth < 768);
+    };
 
-    checkIsMobile()
-    window.addEventListener("resize", checkIsMobile)
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
 
-    return () => window.removeEventListener("resize", checkIsMobile)
-  }, [])
+    return () => window.removeEventListener("resize", checkIsMobile);
+  }, []);
 
-//   useEffect(() => {
-//     if (status !== "loading") {
-//       if (!session?.user) {
-//         router.push("/login");
-//       } 
-//     }
-//   }, [session, status, router]); // Dependências para evitar loops infinitos
-
+  //   useEffect(() => {
+  //     if (status !== "loading") {
+  //       if (!session?.user) {
+  //         router.push("/login");
+  //       }
+  //     }
+  //   }, [session, status, router]); // Dependências para evitar loops infinitos
 
   // if(status === "loading") {
   //   return (
@@ -83,7 +85,6 @@ export default function RootLayout({
   //     </div>
   //   );
   // }
-
 
   // if(isLoading){
   //   return (
@@ -96,22 +97,17 @@ export default function RootLayout({
 
   return (
     // <div className="flex h-screen bg-black">
-      <SidebarProvider>
-        <AppSidebar/>
+    <SidebarProvider>
+      <AppSidebar />
       {/* <div className="flex flex-col flex-1 overflow-hidden"> */}
-        <SidebarInset>
+      <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
+          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
           <Breadcrumb>
             <BreadcrumbList className=" flex-nowrap text-nowrap">
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Building Your Application
-                </BreadcrumbLink>
+                <BreadcrumbLink href="#">Building Your Application</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
@@ -121,26 +117,20 @@ export default function RootLayout({
           </Breadcrumb>
           <div className="w-full"></div>
           <span className="hidden md:block text-sm text-gray-500 text-nowrap">
-
-          {new Date().toLocaleDateString('pt-BR', { 
-            year: 'numeric',
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            
+            {new Date().toLocaleDateString("pt-BR", {
+              year: "numeric",
+              weekday: "long",
+              month: "long",
+              day: "numeric",
             })}
           </span>
           <ModeToggle />
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          
-        {children}
-        </div>
+        <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
       </SidebarInset>
-       
-    
+
       {/* </;div> */}
-        </SidebarProvider>
+    </SidebarProvider>
     // </d;iv>
   );
 }

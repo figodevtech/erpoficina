@@ -1,3 +1,4 @@
+// auth.d.ts
 import { DefaultSession } from 'next-auth';
 
 declare module 'next-auth' {
@@ -7,6 +8,7 @@ declare module 'next-auth' {
       nome: string;
       role: string;
       setorId?: number;
+      permissoes?: Record<string, string>; // Alterado de string[] para Record<string, string>
     } & DefaultSession['user'];
   }
 
@@ -15,6 +17,7 @@ declare module 'next-auth' {
     nome: string;
     role: string;
     setorId?: number;
+    permissoes?: Record<string, string>; // Alterado de string[] para Record<string, string>
   }
 
   interface JWT {
@@ -22,5 +25,6 @@ declare module 'next-auth' {
     nome: string;
     role: string;
     setorId?: number;
+    permissoes?: Record<string, string>; // Alterado de string[] para Record<string, string>
   }
 }
