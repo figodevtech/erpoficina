@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
 
 } from "@/components/ui/sidebar";
+import { useRouter } from "next/navigation";
 
 export function NavMain({
   items,
@@ -25,12 +26,14 @@ export function NavMain({
     }[];
   }[];
 }) {
+
+  const router = useRouter();
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Módulos</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
-          <SidebarMenuItem  key={item.title}>
+          <SidebarMenuItem onClick={()=>router.push(item.url)}  key={item.title}>
             <SidebarMenuButton className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary" tooltip={item.title}>
               {item.icon && <item.icon />}
               <span>{item.title}</span>

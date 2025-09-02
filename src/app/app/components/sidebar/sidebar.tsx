@@ -2,16 +2,11 @@
 
 import * as React from "react";
 import {
-  
-  BookOpen,
-  Bot,
   GalleryVerticalEnd,
   Settings2,
-  SquareTerminal,
   LayoutDashboard, 
   NotepadText,
   Tv,
-  Boxes,
   ClipboardList,
   Users,
   PanelsTopLeft,
@@ -32,7 +27,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NavSettings } from "./components/nav-settings";
 
-// This is sample data.
+
 const data = {
   user: {
     name: "Nome Usuário",
@@ -51,26 +46,26 @@ const data = {
   navOptions: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/app/dashboard",
       icon: LayoutDashboard,
       isActive: true,
       
     },
     {
       title: "Ordens de Serviço",
-      url: "#",
+      url: "/app/ordens",
       icon: NotepadText,
       isActive: true,
       
     },
     {
       title: "Estoque",
-      url: "#",
+      url: "/app/estoque",
       icon: Package,
     },
     {
       title: "Acompanhamento",
-      url: "#",
+      url: "/app/acompanhamento",
       icon: Tv,
     },
     {
@@ -113,6 +108,8 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
