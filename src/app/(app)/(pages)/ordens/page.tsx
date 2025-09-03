@@ -31,6 +31,7 @@ import {
   AlertCircle,
   Car,
   DollarSign,
+  PlusIcon,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -130,37 +131,6 @@ const mockOrdens: OrdemServico[] = [
     mecanico: "Carlos Santos",
     observacoes: "Cliente solicitou revisão completa",
   },
-//   {
-//     id: "2",
-//     numero: "OS-002",
-//     clienteId: "2",
-//     clienteNome: "Maria Santos",
-//     veiculo: {
-//       marca: "Toyota",
-//       modelo: "Corolla",
-//       ano: "2019",
-//       placa: "DEF-5678",
-//       cor: "Branco",
-//       km: "62000",
-//     },
-//     servicos: [
-//       {
-//         id: "4",
-//         descricao: "Revisão dos 60.000 km",
-//         valor: 350,
-//         status: "pendente",
-//       },
-//       { id: "5", descricao: "Alinhamento", valor: 80, status: "pendente" },
-//     ],
-//     pecas: [],
-//     status: "aguardando_pecas",
-//     prioridade: "alta",
-//     dataAbertura: "2024-01-14",
-//     dataPrevisao: "2024-01-18",
-//     valorTotal: 430,
-//     mecanico: "Roberto Lima",
-//     observacoes: "Aguardando chegada das peças para revisão",
-//   },
 ];
 
 export default function Ordens() {
@@ -253,9 +223,10 @@ export default function Ordens() {
             Gerencie as ordens de serviço da sua oficina
           </p>
         </div>
+        <Button className="hover:cursor-pointer"><PlusIcon/>Nova OS</Button>
       </div>
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de OS</CardTitle>
@@ -307,19 +278,19 @@ export default function Ordens() {
       {/* Search */}
       <Card>
         <CardContent className="pt-6">
-            <div className="flex gap-6">
+            <div className="flex gap-6 flex-col md:flex-row">
 
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por número da OS, cliente ou placa..."
+              placeholder="Busca inteligente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
           <Select>
-            <SelectTrigger>
+            <SelectTrigger className="w-full md:w-2/6">
                 <SelectValue placeholder="Todas"></SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -338,11 +309,11 @@ export default function Ordens() {
 
       {/* Status Tabs */}
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-        <TabsList className="grid items-center w-full grid-cols-4">
-          <TabsTrigger value="todas" className="hover:cursor-pointer col-start-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+        <TabsList className="grid items-center w-full grid-cols-2 md:grid-cols-4">
+          <TabsTrigger value="todas" className="hover:cursor-pointer md:col-start-2 dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Abertas (0)
           </TabsTrigger>
-          <TabsTrigger value="orcamento" className="hover:cursor-pointer col-start-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="orcamento" className="hover:cursor-pointer md:col-start-3 dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Finalizadas (0)
           </TabsTrigger>
         </TabsList>
@@ -365,7 +336,7 @@ export default function Ordens() {
                 {ordens.map((ordem) => (
                   <div
                     key={ordem.id}
-                    className="hover:cursor-pointer hover:bg-primary/10 flex items-center justify-between p-4 border border-border rounded-lg"
+                    className="hover:cursor-pointer group hover:bg-primary/10 flex items-center justify-between p-4 border border-border rounded-lg relative"
                   >
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center gap-3">
@@ -424,17 +395,17 @@ export default function Ordens() {
                     </div>
 
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger asChild className="absolute top-2 right-2 hover:cursor-pointer">
                         <Button variant="ghost" size="sm">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem className="hover:cursor-pointer">
                           <Eye className="mr-2 h-4 w-4" />
                           Ver detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem className="hover:cursor-pointer">
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
