@@ -51,7 +51,7 @@ export default function TabsOptions() {
             </TabsTrigger>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Usuários</TooltipContent>
+        <TooltipContent>Financeiro</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

@@ -4,14 +4,6 @@ import { AppSidebar } from "./components/sidebar/sidebar";
 import { useRouter } from "next/navigation";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { ModeToggle } from "./components/mode-toggle";
 import Clock from "@/app/(app)/components/clock"
 
@@ -27,32 +19,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isLoading, setIsloading] = useState(false);
-  const [user, setUser] = useState<User | undefined>(undefined);
-  const router = useRouter();
-  const [pageTitle, setPageTitle] = useState("Dashboard");
-
-  useEffect(() => {
-    console.log(user);
-  }, [user]);
-
-  useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkIsMobile();
-    window.addEventListener("resize", checkIsMobile);
-
-    return () => window.removeEventListener("resize", checkIsMobile);
-  }, []);
 
   return (
     <SidebarProvider>
   <AppSidebar />
 
-  {/* deixe o inset ocupar e distribuir o espaço */}
   <SidebarInset className="flex min-h-screen">
     <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
       <SidebarTrigger className="-ml-1" />
@@ -82,7 +53,7 @@ export default function RootLayout({
     </header>
 
     <main className="flex-1 p-4 md:p-6 bg-muted-foreground/5 overflow-x-hidden">
-      <div className="mx-auto w-full max-w-7xl">
+      <div className="mx-auto w-full">
         {children}
       </div>
     </main>

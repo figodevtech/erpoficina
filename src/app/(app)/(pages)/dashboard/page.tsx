@@ -7,7 +7,7 @@ import FinancialContent from "./components/financialContent";
 
 export default function Dashboard() {
   return (
-    <div className="">
+    <div className="w-full">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
       </div>
