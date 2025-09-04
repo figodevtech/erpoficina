@@ -140,6 +140,101 @@ const inventoryItems = [
     supplier: "Monroe",
     location: "C2-D1",
     status: "ok",
+  },{
+    id: 9,
+    name: "Óleo Motor 5W30",
+    category: "Lubrificantes",
+    stock: 45,
+    minStock: 20,
+    maxStock: 100,
+    price: 35.9,
+    supplier: "Castrol",
+    location: "A1-B2",
+    status: "ok",
+  },
+  {
+    id: 10,
+    name: "Filtro de Ar",
+    category: "Filtros",
+    stock: 12,
+    minStock: 15,
+    maxStock: 50,
+    price: 28.5,
+    supplier: "Mann Filter",
+    location: "B2-C1",
+    status: "low",
+  },
+  {
+    id: 11,
+    name: "Pastilhas de Freio Dianteira",
+    category: "Freios",
+    stock: 8,
+    minStock: 10,
+    maxStock: 30,
+    price: 89.9,
+    supplier: "Bosch",
+    location: "C1-D2",
+    status: "critical",
+  },
+  {
+    id: 12,
+    name: "Pneu 185/65 R15",
+    category: "Pneus",
+    stock: 25,
+    minStock: 12,
+    maxStock: 48,
+    price: 245.0,
+    supplier: "Michelin",
+    location: "D1-E1",
+    status: "ok",
+  },
+  {
+    id: 13,
+    name: "Bateria 60Ah",
+    category: "Elétrica",
+    stock: 18,
+    minStock: 8,
+    maxStock: 25,
+    price: 189.9,
+    supplier: "Moura",
+    location: "E1-F1",
+    status: "ok",
+  },
+  {
+    id: 14,
+    name: "Vela de Ignição",
+    category: "Motor",
+    stock: 35,
+    minStock: 25,
+    maxStock: 80,
+    price: 12.9,
+    supplier: "NGK",
+    location: "A2-B1",
+    status: "ok",
+  },
+  {
+    id: 15,
+    name: "Correia Dentada",
+    category: "Motor",
+    stock: 6,
+    minStock: 8,
+    maxStock: 20,
+    price: 65.5,
+    supplier: "Gates",
+    location: "B1-C2",
+    status: "critical",
+  },
+  {
+    id: 16,
+    name: "Amortecedor Traseiro",
+    category: "Suspensão",
+    stock: 14,
+    minStock: 6,
+    maxStock: 24,
+    price: 156.0,
+    supplier: "Monroe",
+    location: "C2-D1",
+    status: "ok",
   },
 ];
 
@@ -202,7 +297,7 @@ export default function EstoquePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button>
+          <Button className="hover:cursor-pointer ">
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Item
           </Button>
@@ -283,17 +378,14 @@ export default function EstoquePage() {
               />
             </div>
             <Select>
-              <SelectTrigger className="w-full md:w-2/6">
-                <SelectValue placeholder="Todas"></SelectValue>
+              <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer" >
+                <SelectValue placeholder="Todos"></SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todas">Todas</SelectItem>
-                <SelectItem value="em_andamento">Em Andamento</SelectItem>
-                <SelectItem value="orcamento">Orçamento</SelectItem>
-                <SelectItem value="aprovado">Aprovado</SelectItem>
-                <SelectItem value="aguardando_pecas">Pendência</SelectItem>
-                <SelectItem value="concluido">Concluído</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="ok">Ok</SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="low">Estoque Baixo</SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="critical">Crítico</SelectItem>
+                
               </SelectContent>
             </Select>
           </div>
@@ -320,12 +412,12 @@ export default function EstoquePage() {
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Localização</TableHead>
                 <TableHead>Valor Total</TableHead>
-                <TableHead>Option</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {inventoryItems.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} className="hover:cursor-pointer">
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-muted-foreground" />
@@ -404,7 +496,7 @@ export default function EstoquePage() {
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent>
+                      <DropdownMenuContent className="space-y-1">
                         <DropdownMenuItem className="hover:cursor-pointer">
                             <Pen className="h-4 w-4 mr-2" />
                             Editar
@@ -413,7 +505,7 @@ export default function EstoquePage() {
                             <Plus className="h-4 w-4 mr-2" />
                             Registrar entrada
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="hover:cursor-pointer bg-red-500/20 data-[highlighted]:bg-red-500 group data-[highlighted]:text-white">
+                        <DropdownMenuItem className="hover:cursor-pointer bg-red-500/20 data-[highlighted]:bg-red-500 group data-[highlighted]:text-white transition-all">
                             <Trash2Icon className="h-4 w-4 mr-2 group-hover:text-white" />
                             Excluir
                         </DropdownMenuItem>
