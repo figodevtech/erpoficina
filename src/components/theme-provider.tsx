@@ -12,11 +12,6 @@ export function ThemeProvider(props: NextThemesProps) {
   return <NextThemesProvider {...props} />;
 }
 
-/**
- * Providers: componente que engloba SessionProvider + ThemeProvider.
- * - session?: opcional (caso queira passar initialSession no futuro).
- * - props são repassados para next-themes ThemeProvider.
- */
 export function Providers({
   children,
   session,

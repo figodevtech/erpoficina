@@ -31,11 +31,7 @@ export default function RootLayout({
   const [user, setUser] = useState<User | undefined>(undefined);
   const router = useRouter();
   const [pageTitle, setPageTitle] = useState("Dashboard");
-
-  useEffect(() => {
-    console.log(user);
-  }, [user]);
-
+  
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
