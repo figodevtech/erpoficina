@@ -247,6 +247,7 @@ const getStatusBadge = (status: string, stock: number, minStock: number) => {
       </Badge>
     );
   }
+  
   if (status === "low") {
     return (
       <Badge variant="secondary" className="text-xs">

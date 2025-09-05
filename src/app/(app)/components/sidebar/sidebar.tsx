@@ -14,6 +14,7 @@ import {
   Type,
   Settings,
   UserPlus,
+  UsersRound,
 } from "lucide-react"
 
 import { NavMain } from "./components/nav-main"
@@ -43,6 +44,12 @@ const data = {
       title: "Dashboard",
       url: "/dashboard",
       icon: LayoutDashboard,
+      isActive: true,
+    },
+    {
+      title: "Clientes",
+      url: "/clientes",
+      icon: UsersRound,
       isActive: true,
     },
     {
