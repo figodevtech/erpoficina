@@ -6,29 +6,34 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ensureAccess } from "../_authz";
 
+function isOpen() {
+  const v = (process.env.OPEN_PERMISSIONS ?? "").toString().trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
 export async function GET() {
-  const isOpen = process.env.OPEN_PERMISSIONS === "true";
   try {
-    const session = isOpen ? null : await auth();
+    const session = isOpen() ? null : await auth();
     await ensureAccess(session);
 
-    const [
-      { data: setores, error: sErr },
-      { data: permissoes, error: pErr },
-      { data: perfis, error: pfErr },
-    ] = await Promise.all([
+    const [s, p, pf] = await Promise.all([
       supabaseAdmin.from("setor").select("id, nome").order("nome"),
       supabaseAdmin.from("permissao").select("id, nome, descricao").order("nome"),
       supabaseAdmin.from("perfil").select("id, nome").order("nome"),
     ]);
 
-    if (sErr) throw sErr;
-    if (pErr) throw pErr;
-    if (pfErr) throw pfErr;
+    if (s.error) throw s.error;
+    if (p.error) throw p.error;
+    if (pf.error) throw pf.error;
 
-    return NextResponse.json({ setores, permissoes, perfis });
+    return NextResponse.json({
+      setores: s.data ?? [],
+      permissoes: p.data ?? [],
+      perfis: pf.data ?? [],
+    });
   } catch (e: any) {
     console.error("[/api/users/lookup] error:", e);
-    return NextResponse.json({ error: e.message ?? "Erro ao carregar listas auxiliares" }, { status: 401 });
+    const status = /não autenticado|unauth|auth/i.test(String(e?.message)) ? 401 : 500;
+    return NextResponse.json({ error: e?.message ?? "Erro ao carregar listas" }, { status });
   }
 }

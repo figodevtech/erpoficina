@@ -1,13 +1,11 @@
 // lib/auth.ts
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { supabase } from "@/lib/supabase";           // anon: usado só para signInWithPassword
-import { supabaseAdmin } from "@/lib/supabaseAdmin"; // service role: para ler public.usuario
+import { supabase } from "@/lib/supabase";           // anon: login
+import { supabaseAdmin } from "@/lib/supabaseAdmin"; // service role: ler public.usuario
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // Importante quando roda em dev/localhost e proxies:
   trustHost: true,
-
   providers: [
     CredentialsProvider({
       name: "Credenciais",
@@ -19,76 +17,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Credenciais ausentes");
         }
-
-        // 1) Login no Supabase Auth (com anon key)
         const { data, error } = await supabase.auth.signInWithPassword({
           email: String(credentials.email),
           password: String(credentials.password),
         });
-        if (error || !data?.user) {
-          throw new Error(error?.message || "E-mail ou senha inválidos");
-        }
+        if (error || !data?.user) throw new Error(error?.message || "E-mail ou senha inválidos");
 
         const { user } = data;
-
-        // 2) Buscar dados extras na tabela public.usuario (com service role)
-        //    Evita RLS/401 no server.
         let perfilid: number | null = null;
         let setorid: number | null = null;
         let nome = user.user_metadata?.nome ?? user.email ?? "Usuário";
 
         try {
-          // Primeiro por id (FK = auth.users.id)
-          const { data: rowById, error: rowErr } = await supabaseAdmin
+          const { data: row } = await supabaseAdmin
             .from("usuario")
             .select("id, email, nome, perfilid, setorid")
             .eq("id", user.id)
             .maybeSingle();
 
-          if (rowErr) throw rowErr;
-
-          if (rowById) {
-            nome = rowById.nome ?? nome;
-            perfilid = (rowById.perfilid as number | null) ?? null;
-            setorid  = (rowById.setorid  as number | null) ?? null;
+          if (row) {
+            nome = row.nome ?? nome;
+            perfilid = (row.perfilid as number | null) ?? null;
+            setorid  = (row.setorid  as number | null) ?? null;
           } else {
-            // Fallback por e-mail (se por algum motivo o registro ainda não existe por id)
-            const { data: rowByEmail, error: rowEmailErr } = await supabaseAdmin
+            const { data: byEmail } = await supabaseAdmin
               .from("usuario")
               .select("id, email, nome, perfilid, setorid")
               .eq("email", user.email)
               .maybeSingle();
-            if (!rowEmailErr && rowByEmail) {
-              nome = rowByEmail.nome ?? nome;
-              perfilid = (rowByEmail.perfilid as number | null) ?? null;
-              setorid  = (rowByEmail.setorid  as number | null) ?? null;
+            if (byEmail) {
+              nome = byEmail.nome ?? nome;
+              perfilid = (byEmail.perfilid as number | null) ?? null;
+              setorid  = (byEmail.setorid  as number | null) ?? null;
             }
           }
-        } catch {
-          // Mantém login mesmo que a leitura falhe; dados mínimos vêm do Auth.
-        }
+        } catch {}
 
-        // 3) Retorna o "user" que o NextAuth usará para popular o JWT
-        return {
-          id: user.id,
-          email: user.email!,
-          nome,
-          perfilId: perfilid,   // camelCase na sessão
-          setorId: setorid,
-        } as any;
+        return { id: user.id, email: user.email!, nome, perfilId: perfilid, setorId: setorid } as any;
       },
     }),
   ],
-
-  // Callbacks para colocar os campos extras no token e na sessão
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
         token.email = (user as any).email;
-        token.nome = (user as any).nome;
-        token.perfilId = (user as any).perfilId ?? null;
-        token.setorId = (user as any).setorId ?? null;
+        (token as any).nome = (user as any).nome;
+        (token as any).perfilId = (user as any).perfilId ?? null;
+        (token as any).setorId = (user as any).setorId ?? null;
       }
       return token;
     },
@@ -103,17 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-
-  // Páginas custom
-  pages: {
-    signIn: "/login",
-  },
-
-  // Sessão por JWT
-  session: {
-    strategy: "jwt",
-  },
-
-  // Obrigatório no .env.local
+  pages: { signIn: "/login" },
+  session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,
 });

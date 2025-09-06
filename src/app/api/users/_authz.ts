@@ -1,9 +1,13 @@
 // app/api/users/_authz.ts
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+function isOpen() {
+  const v = (process.env.OPEN_PERMISSIONS ?? "").toString().trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
 export async function ensureAccess(session?: any) {
-  // MODO LIVRE: não valida nada.
-  if (process.env.OPEN_PERMISSIONS === "true") return;
+  if (isOpen()) return; // DEV/LIVRE: não valida nada
 
   if (!session?.user) throw new Error("Não autenticado");
 
@@ -12,21 +16,13 @@ export async function ensureAccess(session?: any) {
   let uid = directId;
 
   if (!uid && email) {
-    const { data, error } = await supabaseAdmin
-      .from("usuario")
-      .select("id")
-      .eq("email", email)
-      .single();
+    const { data, error } = await supabaseAdmin.from("usuario").select("id").eq("email", email).single();
     if (error || !data) throw new Error("Usuário não encontrado");
     uid = data.id as string;
   }
   if (!uid) throw new Error("Usuário sem identificador");
 
-  const { data: me, error: meErr } = await supabaseAdmin
-    .from("usuario")
-    .select("perfilid")
-    .eq("id", uid)
-    .single();
+  const { data: me, error: meErr } = await supabaseAdmin.from("usuario").select("perfilid").eq("id", uid).single();
   if (meErr || !me) throw new Error("Perfil não encontrado");
 
   const { data: perm, error: pErr } = await supabaseAdmin
