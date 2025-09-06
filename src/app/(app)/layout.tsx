@@ -4,15 +4,8 @@ import { AppSidebar } from "./components/sidebar/sidebar";
 import { useRouter } from "next/navigation";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { ModeToggle } from "./components/mode-toggle";
+import Clock from "@/app/(app)/components/clock"
 
 interface User {
   id: string;
@@ -45,35 +38,43 @@ export default function RootLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-          <Breadcrumb>
-            <BreadcrumbList className=" flex-nowrap text-nowrap">
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">Building Your Application</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <div className="w-full"></div>
-          <span className="hidden md:block text-sm text-gray-500 text-nowrap">
-            {new Date().toLocaleDateString("pt-BR", {
-              year: "numeric",
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
-          <ModeToggle />
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 bg-muted-foreground/5">{children}</div>
-      </SidebarInset>
-    </SidebarProvider>
+  <AppSidebar />
+
+  <SidebarInset className="flex min-h-screen">
+    <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
+      <SidebarTrigger className="-ml-1" />
+      <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+      {/* <Breadcrumb>
+        <BreadcrumbList className="hidden md:flex overflow-x-auto whitespace-nowrap">
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink href="#">Building Your Application</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb> */}
+      <Clock/>
+      <div className="flex-1" />
+      <span className="hidden md:block text-sm text-gray-500">
+        {new Date().toLocaleDateString("pt-BR", {
+          year: "numeric",
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+        })}
+      </span>
+      <ModeToggle />
+    </header>
+
+    <main className="flex-1 p-4 md:p-6 bg-muted-foreground/5 overflow-x-hidden">
+      <div className="mx-auto w-full">
+        {children}
+      </div>
+    </main>
+  </SidebarInset>
+</SidebarProvider>
+
   );
 }
