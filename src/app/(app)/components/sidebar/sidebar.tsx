@@ -13,7 +13,6 @@ import {
   PanelsTopLeft,
   Type,
   Settings,
-  UserPlus,
   UsersRound,
 } from "lucide-react"
 
@@ -123,9 +122,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {session?.user && (
           <NavUser
             user={{
-              nome: session.user.nome || "Usuário",
+              nome: session.user.name || "Usuário",
               email: session.user.email || "",
-              avatar: session.user.image || undefined,
+              avatar: session.user.image || "",
             }}
           />
         )}

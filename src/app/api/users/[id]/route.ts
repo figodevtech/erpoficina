@@ -1,7 +1,7 @@
 // app/api/users/[id]/route.ts
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ensureAccess } from "../_authz";
@@ -11,15 +11,20 @@ function isOpen() {
   return v === "true" || v === "1" || v === "yes";
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const session = isOpen() ? null : await auth();
     await ensureAccess(session);
 
+    const { id: userId } = await context.params;
+
     const body = await req.json();
-    const { nome, email, perfilId, perfilNome, setorId, permissoes }:
-      { nome?: string; email?: string; perfilId?: number; perfilNome?: string; setorId?: number; permissoes?: string[] } = body ?? {};
-    const userId = params.id;
+    const {
+      nome, email, perfilId, perfilNome, setorId, permissoes,
+    }: { nome?: string; email?: string; perfilId?: number; perfilNome?: string; setorId?: number; permissoes?: string[] } = body ?? {};
 
     if (email) {
       const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(userId, { email });
@@ -28,7 +33,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     let newPerfilId = perfilId;
     if (!newPerfilId && perfilNome) {
-      const { data: p, error: perr } = await supabaseAdmin.from("perfil").select("id").eq("nome", perfilNome).maybeSingle();
+      const { data: p, error: perr } = await supabaseAdmin
+        .from("perfil").select("id").eq("nome", perfilNome).maybeSingle();
       if (perr) throw perr;
       if (!p?.id) throw new Error("Perfil não encontrado");
       newPerfilId = p.id as number;
@@ -36,7 +42,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     let currentPerfilId: number | null = null;
     if (!newPerfilId || Array.isArray(permissoes)) {
-      const { data: u, error: uerr } = await supabaseAdmin.from("usuario").select("perfilid").eq("id", userId).maybeSingle();
+      const { data: u, error: uerr } = await supabaseAdmin
+        .from("usuario").select("perfilid").eq("id", userId).maybeSingle();
       if (uerr) throw uerr;
       currentPerfilId = (u?.perfilid as number | null) ?? null;
     }
@@ -59,7 +66,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       const targetPerfilId = typeof newPerfilId !== "undefined" ? newPerfilId : currentPerfilId;
       if (!targetPerfilId) throw new Error("Sem perfil para aplicar permissões");
 
-      const { data: allPerms, error: allErr } = await supabaseAdmin.from("permissao").select("id, nome");
+      const { data: allPerms, error: allErr } = await supabaseAdmin
+        .from("permissao").select("id, nome");
       if (allErr) throw allErr;
 
       const byName = new Map<string, number>((allPerms ?? []).map((p) => [String(p.nome), Number(p.id)]));
@@ -77,7 +85,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         if (pid) desejadas.add(pid);
       }
 
-      const toInsert = [...desejadas].filter((id) => !atuais.has(id)).map((id) => ({ perfilid: targetPerfilId, permissaoid: id }));
+      const toInsert = [...desejadas]
+        .filter((id) => !atuais.has(id))
+        .map((id) => ({ perfilid: targetPerfilId, permissaoid: id }));
       if (toInsert.length) {
         const { error: insErr } = await supabaseAdmin.from("perfilpermissao").insert(toInsert);
         if (insErr) throw insErr;
@@ -94,8 +104,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
     }
 
-    const list = await import("../route");
-    return list.GET();
+    // Reaproveita a listagem para devolver o estado atualizado
+    const { GET: listUsers } = await import("../route");
+    return listUsers(); // passe o mesmo request
   } catch (e: any) {
     console.error("[/api/users/:id PUT] error:", e);
     const status = /não autenticado|unauth|auth/i.test(String(e?.message)) ? 401 : 500;
@@ -103,19 +114,23 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const session = isOpen() ? null : await auth();
     await ensureAccess(session);
 
-    const userId = params.id;
+    const { id: userId } = await context.params;
+
     const { error: dErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (dErr) throw dErr;
 
     await supabaseAdmin.from("usuario").delete().eq("id", userId);
 
-    const list = await import("../route");
-    return list.GET();
+    const { GET: listUsers } = await import("../route");
+    return listUsers(); // mantém a mesma resposta da rota de listagem
   } catch (e: any) {
     console.error("[/api/users/:id DELETE] error:", e);
     const status = /não autenticado|unauth|auth/i.test(String(e?.message)) ? 401 : 500;

@@ -1,40 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
 import { AppSidebar } from "./components/sidebar/sidebar";
-import { useRouter } from "next/navigation";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "./components/mode-toggle";
 import Clock from "@/app/(app)/components/clock"
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  profileType: string;
-}
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isLoading, setIsloading] = useState(false);
-  const [user, setUser] = useState<User | undefined>(undefined);
-  const router = useRouter();
-  const [pageTitle, setPageTitle] = useState("Dashboard");
-  
-  useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
 
-    checkIsMobile();
-    window.addEventListener("resize", checkIsMobile);
-
-    return () => window.removeEventListener("resize", checkIsMobile);
-  }, []);
 
   return (
     <SidebarProvider>
