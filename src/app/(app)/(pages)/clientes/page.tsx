@@ -1,95 +1,91 @@
-"use client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Users, Search, Plus, UserCheck, UserX, MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
-import { Timestamp } from "next/dist/server/lib/cache-handlers/types"
-import { useEffect, useState } from "react"
-import { set } from "nprogress"
-
-enum TipoPessoa {
-  FISICA = "FISICA",
-  JURIDICA = "JURIDICA",
-}
-
-enum ClientStatus {
-  ATIVO = "ATIVO",
-  INATIVO = "INATIVO",
-  PENDENTE = "PENDENTE",
-}
-
-interface CustomerItem {
-  id: number
-  tipopessoa: TipoPessoa
-  cpfcnpj: string
-  nomerazaosocial: string
-  email: string
-  telefone: string
-  endereco: string
-  cidade: string
-  estado: string
-  cep: string
-  inscricaoestadual: string
-  inscricaomunicipal: string
-  codigomunicipio: string
-  createdat: string
-  updatedat: Timestamp
-  status: ClientStatus
-}
-
-// Apenas para mock local — geramos um Timestamp compatível
-const nowTs = Date.now() as unknown as Timestamp
+"use client";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Users,
+  Search,
+  Plus,
+  UserCheck,
+  UserX,
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash2,
+  Send,
+  Trash2Icon,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Customer, ClientStatus } from "./types";
+import { getStatusBadge } from "./utils";
+import FormatarTelefone from "@/utils/formatarTelefone";
+import Link from "next/link";
+import useStatusCounter from "./hooks/status-counter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ClientesPage() {
-  const [customerItems, setCustomerItems] = useState<CustomerItem[]>([])
-  const totalCustomers = customerItems.length
-  const activeCustomers = customerItems.filter((c) => c.status === ClientStatus.ATIVO).length
-  const inactiveCustomers = customerItems.filter((c) => c.status === ClientStatus.INATIVO).length
-  const pendingCustomers = customerItems.filter((c) => c.status === ClientStatus.PENDENTE).length
-  
+  const [customerItems, setCustomerItems] = useState<Customer[]>([]);
+  const {
+    statusCounts,
+    loadingStatusCounter,
+    totalCustomers,
+    error,
+    fetchStatusCounts,
+  } = useStatusCounter();
 
   const getCustomers = async () => {
     try {
-      const response = await fetch('/api/customers');
+      const response = await fetch("/api/customers");
       if (response.status === 200) {
         const json = await response.json();
         setCustomerItems(json.data);
-        console.log('Clientes carregados:', json.data);
+        // console.log("Clientes carregados:", json.data);
       }
     } catch (error) {
-      console.log('Erro ao buscar clientes:', error);
+      console.log("Erro ao buscar clientes:", error);
     } finally {
-      
     }
   };
 
-  useEffect(()=> {
-    getCustomers()
-  },[])
+  useEffect(() => {
+    getCustomers();
+  }, []);
 
-  const getStatusBadge = (status: ClientStatus) => {
-    switch (status) {
-      case ClientStatus.ATIVO:
-        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Ativo</Badge>
-      case ClientStatus.INATIVO:
-        return <Badge variant="secondary" className="bg-gray-100 text-gray-800">Inativo</Badge>
-      case ClientStatus.PENDENTE:
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">Pendente</Badge>
-      default:
-        return <Badge variant="secondary">Desconhecido</Badge>
-    }
-  }
+  useEffect(() => {
+    console.log("Status Counts updated:", loadingStatusCounter);
+  }, [loadingStatusCounter]);
 
   return (
     <div className="mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">Gestão de Clientes</h1>
-          <p className="text-muted-foreground text-pretty">Controle completo da base de clientes da oficina</p>
+          <h1 className="text-3xl font-bold tracking-tight text-balance">
+            Gestão de Clientes
+          </h1>
+          <p className="text-muted-foreground text-pretty">
+            Controle completo da base de clientes da oficina
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button>
@@ -103,34 +99,63 @@ export default function ClientesPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total de Clientes
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCustomers}</div>
-            <p className="text-xs text-muted-foreground">Clientes cadastrados</p>
+            {loadingStatusCounter ? (
+              <Skeleton className="h-8 w-8" />
+            ) : (
+              <div className="text-2xl font-bold">{totalCustomers || 0}</div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Clientes cadastrados
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Clientes Ativos
+            </CardTitle>
             <UserCheck className="h-4 w-4 text-chart-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-chart-4">{activeCustomers}</div>
-            <p className="text-xs text-muted-foreground">Status {ClientStatus.ATIVO}</p>
+            {loadingStatusCounter ? (
+              <Skeleton className="h-8 w-8" />
+            ) : (
+              <div className="text-2xl font-bold text-chart-4">
+                {statusCounts.ATIVO || 0}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Status {ClientStatus.ATIVO}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Inativos</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Clientes Inativos
+            </CardTitle>
             <UserX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">{inactiveCustomers}</div>
-            <p className="text-xs text-muted-foreground">Status {ClientStatus.INATIVO} • Pendentes: {pendingCustomers}</p>
+            {loadingStatusCounter ? (
+              <Skeleton className="h-8 w-8" />
+            ) : (
+              <div className="text-2xl font-bold text-muted-foreground">
+                {statusCounts.INATIVO || 0}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Status {ClientStatus.INATIVO || 0} • Pendentes:{" "}
+              {statusCounts.PENDENTE || 0}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -139,13 +164,18 @@ export default function ClientesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Buscar Clientes</CardTitle>
-          <CardDescription>Encontre rapidamente os clientes da sua oficina</CardDescription>
+          <CardDescription>
+            Encontre rapidamente os clientes da sua oficina
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por nome, email ou telefone..." className="pl-10" />
+              <Input
+                placeholder="Buscar por nome, email ou telefone..."
+                className="pl-10"
+              />
             </div>
             <div className="flex gap-2">
               <Button variant="outline">Todos</Button>
@@ -161,9 +191,11 @@ export default function ClientesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Lista de Clientes</CardTitle>
-          <CardDescription>Visualização detalhada da base de clientes</CardDescription>
+          <CardDescription>
+            Visualização detalhada da base de clientes
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-[300px]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -180,17 +212,35 @@ export default function ClientesPage() {
                 <TableRow key={customer.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{customer.nomerazaosocial}</div>
-                      <div className="text-sm text-muted-foreground">{customer.tipopessoa}</div>
+                      <div className="font-medium">
+                        {customer.nomerazaosocial}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {customer.tipopessoa === "FISICA" ? "PF" : "PJ"}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
                       <div className="text-sm">{customer.email}</div>
-                      <div className="text-sm text-muted-foreground">{customer.telefone}</div>
+                      <div className="text-sm text-muted-foreground flex items-center">
+                        {FormatarTelefone(customer.telefone)}
+                        {customer.telefone && (
+                          <Link
+                            target="_blank"
+                            className="ml-2 group flex flex-row w-max gap-2 px-2 py-0.5 rounded-md items-center justify-center bg-primary text-accent text-center text-[10px] dark:text-white"
+                            href={"http://wa.me/55" + customer.telefone}
+                          >
+                            Whatsapp
+                            <Send className="" size={10} />
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{customer.cpfcnpj}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {customer.cpfcnpj}
+                  </TableCell>
                   <TableCell className="text-sm">
                     {customer.cidade}/{customer.estado}
                   </TableCell>
@@ -202,17 +252,13 @@ export default function ClientesPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Visualizar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
+                      <DropdownMenuContent className="space-y-1" align="end">
+                        <DropdownMenuItem className="hover:cursor-pointer">
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />
+                        <DropdownMenuItem className="hover:cursor-pointer bg-red-500/20 data-[highlighted]:bg-red-500 group data-[highlighted]:text-white transition-all">
+                          <Trash2Icon className="h-4 w-4 mr-2 group-hover:text-white" />
                           Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -225,5 +271,5 @@ export default function ClientesPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
