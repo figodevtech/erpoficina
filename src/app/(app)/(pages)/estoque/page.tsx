@@ -368,8 +368,8 @@ export default function EstoquePage() {
       {/* Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-6 flex-col md:flex-row">
-            <div className="relative w-full">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Busca inteligente..."
@@ -379,14 +379,19 @@ export default function EstoquePage() {
               />
             </div>
             <Select>
-              <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer" >
+              <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer">
                 <SelectValue placeholder="Todos"></SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem className="hover:cursor-pointer" value="ok">Ok</SelectItem>
-                <SelectItem className="hover:cursor-pointer" value="low">Estoque Baixo</SelectItem>
-                <SelectItem className="hover:cursor-pointer" value="critical">Crítico</SelectItem>
-                
+                <SelectItem className="hover:cursor-pointer" value="ok">
+                  Ok
+                </SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="low">
+                  Estoque Baixo
+                </SelectItem>
+                <SelectItem className="hover:cursor-pointer" value="critical">
+                  Crítico
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -499,16 +504,16 @@ export default function EstoquePage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
                         <DropdownMenuItem className="hover:cursor-pointer">
-                            <Pen className="h-4 w-4 mr-2" />
-                            Editar
+                          <Pen className="h-4 w-4 mr-2" />
+                          Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem className="hover:cursor-pointer">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Registrar entrada
+                          <Plus className="h-4 w-4 mr-2" />
+                          Registrar entrada
                         </DropdownMenuItem>
                         <DropdownMenuItem className="hover:cursor-pointer bg-red-500/20 data-[highlighted]:bg-red-500 group data-[highlighted]:text-white transition-all">
-                            <Trash2Icon className="h-4 w-4 mr-2 group-hover:text-white" />
-                            Excluir
+                          <Trash2Icon className="h-4 w-4 mr-2 group-hover:text-white" />
+                          Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

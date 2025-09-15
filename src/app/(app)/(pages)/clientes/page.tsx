@@ -29,11 +29,10 @@ import {
   UserCheck,
   UserX,
   MoreHorizontal,
-  Eye,
   Edit,
-  Trash2,
   Send,
   Trash2Icon,
+  Loader2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Customer, ClientStatus } from "./types";
@@ -42,6 +41,13 @@ import FormatarTelefone from "@/utils/formatarTelefone";
 import Link from "next/link";
 import useStatusCounter from "./hooks/status-counter";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 
 export default function ClientesPage() {
   const [customerItems, setCustomerItems] = useState<Customer[]>([]);
@@ -52,8 +58,10 @@ export default function ClientesPage() {
     error,
     fetchStatusCounts,
   } = useStatusCounter();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const getCustomers = async () => {
+  const handleGetCustomers = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch("/api/customers");
       if (response.status === 200) {
@@ -64,11 +72,12 @@ export default function ClientesPage() {
     } catch (error) {
       console.log("Erro ao buscar clientes:", error);
     } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    getCustomers();
+    handleGetCustomers();
   }, []);
 
   useEffect(() => {
@@ -177,12 +186,25 @@ export default function ClientesPage() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline">Todos</Button>
-              <Button variant="outline">Ativos</Button>
-              <Button variant="outline">Inativos</Button>
-              <Button variant="outline">Pendentes</Button>
-            </div>
+            <Select>
+              <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer">
+                <SelectValue placeholder="Todos"></SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos" className="hover:cursor-pointer">
+                  Todos
+                </SelectItem>
+                <SelectItem value="ativos" className="hover:cursor-pointer">
+                  Ativos
+                </SelectItem>
+                <SelectItem value="inativos" className="hover:cursor-pointer">
+                  Inativos
+                </SelectItem>
+                <SelectItem value="pendented" className="hover:cursor-pointer">
+                  Pendentes
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -190,12 +212,26 @@ export default function ClientesPage() {
       {/* Customers Table (colunas compatíveis com a interface) */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Clientes</CardTitle>
+          <CardTitle>Lista de Clientes </CardTitle>
           <CardDescription>
-            Visualização detalhada da base de clientes
+            <div
+              onClick={handleGetCustomers}
+              className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70"
+            >
+              <span>recarregar</span>
+              <Loader2 width={12} />
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[300px]">
+          <div
+            className={`${
+              isLoading && " opacity-100"
+            } transition-all opacity-0 h-1 bg-slate-400 w-full overflow-hidden relative rounded-full`}
+          >
+            <div className="w-1/2 bg-primary h-full animate-slideIn absolute left-0 rounded-lg"></div>
+          </div>
+
           <Table>
             <TableHeader>
               <TableRow>

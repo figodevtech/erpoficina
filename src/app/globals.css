@@ -121,4 +121,19 @@
   }
 }
 
+@theme {
+  --animate-slideIn: slideIn 1500ms ease-out infinite ;
 
+  @keyframes slideIn {
+    0% {
+      transform: translateX(-100%);
+    }
+
+    100% {
+      transform: translateX(200%);
+    }
+
+  }
+
+
+}
