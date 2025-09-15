@@ -17,22 +17,20 @@ export async function GET(req: Request) {
 
     // base query
     let query = supabaseAdmin
-      .from('cliente')
+      .from('produto')
       .select(
         `
-        id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
-        cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-        createdat, updatedat, status
+        id, codigo, titulo, descricao, precounitario, estoque, estoqueminimo, unidade, origem, referencia
         `,
         { count: 'exact' } // pede o total
       )
-      .order('id', { ascending: false })
+      .order('createdat', { ascending: false })
       .range(from, to);
 
     // filtro de busca (OR ilike em vários campos)
     if (q) {
       query = query.or(
-        `nomerazaosocial.ilike.%${q}%,cpfcnpj.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`
+        `codigo.ilike.%${q}%,descricao.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`
       );
     }
 

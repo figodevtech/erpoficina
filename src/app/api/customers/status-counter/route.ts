@@ -4,38 +4,40 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-type Row = { status: string | null; count: number };
+type ClienteRow = { status: 'ATIVO' | 'INATIVO' | 'PENDENTE' | null };
 
 export async function GET() {
   try {
-    const groupPromise = supabaseAdmin
+    const listPromise = supabaseAdmin
       .from('cliente')
-      .select('status, count:id')
-      .order('status', { ascending: true })
-      .returns<Row[]>();
+      .select('status')
+      .returns<ClienteRow[]>();
 
-    // head:true -> não traz linhas, só o cabeçalho com o count
     const totalPromise = supabaseAdmin
       .from('cliente')
-      .select('id', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true });
 
     const [{ data, error }, { count, error: countError }] = await Promise.all([
-      groupPromise,
+      listPromise,
       totalPromise,
     ]);
 
     if (error) throw error;
     if (countError) throw countError;
 
-    const countsByStatus = Object.fromEntries(
-      (data ?? []).map((r) => [String(r.status ?? 'NULL'), Number(r.count ?? 0)])
+    const countsByStatus = (data ?? []).reduce<Record<string, number>>(
+      (acc, row) => {
+        const key = String(row.status ?? 'NULL');
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      },
+      { ATIVO: 0, INATIVO: 0, PENDENTE: 0 }
     );
 
     return NextResponse.json(
       {
-        countsByStatus,            // ex.: { ATIVO: 12, INATIVO: 3, NULL: 1 }
-        totalClients: count ?? 0,  // ✅ total da tabela inteira
-        raw: data ?? [],
+        countsByStatus,
+        totalClients: count ?? 0,
       },
       { headers: { 'Cache-Control': 'no-store' } }
     );

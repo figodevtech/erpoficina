@@ -215,7 +215,10 @@ export default function ClientesPage() {
           <CardTitle>Lista de Clientes </CardTitle>
           <CardDescription>
             <div
-              onClick={handleGetCustomers}
+              onClick={() => {
+                handleGetCustomers();
+                fetchStatusCounts();
+              }}
               className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70"
             >
               <span>recarregar</span>
@@ -231,10 +234,10 @@ export default function ClientesPage() {
           >
             <div className="w-1/2 bg-primary h-full animate-slideIn absolute left-0 rounded-lg"></div>
           </div>
-
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>CPF/CNPJ</TableHead>
@@ -246,6 +249,7 @@ export default function ClientesPage() {
             <TableBody>
               {customerItems.map((customer) => (
                 <TableRow key={customer.id}>
+                  <TableCell>{customer.id}</TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">
@@ -304,6 +308,7 @@ export default function ClientesPage() {
               ))}
             </TableBody>
           </Table>
+          
         </CardContent>
       </Card>
     </div>
