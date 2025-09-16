@@ -4,13 +4,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { LoginForm } from "./components/login-form";
-import { TabsTrigger } from "@/components/ui/tabs";
+import { getQuoteOfTheDay } from "@/lib/quotes";
 
 export default async function LoginPage() {
-  const r = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/quote`, {
-    next: { revalidate: 60 * 60 * 24 }, // 24h
-  });
-  const { text, author, obs } = await r.json();
+  const { text, author, obs } = getQuoteOfTheDay();
 
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">

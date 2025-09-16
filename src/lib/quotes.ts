@@ -122,3 +122,33 @@ export const QUOTES: Quote[] = [
   { text: "A música pode mudar o mundo porque pode mudar as pessoas.", author: "Bono", obs: "Cantor do U2" },
   { text: "O talento vence jogos, mas o trabalho em equipe vence campeonatos.", author: "Michael Jordan", obs: "Jogador de basquete" },
 ];
+
+export const TZ = "America/Fortaleza";
+
+export function getYYYYMMDDInTZ(date = new Date(), timeZone = TZ) {
+  const parts = new Intl.DateTimeFormat("pt-BR", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .formatToParts(date)
+    .reduce<Record<string, string>>((acc, p) => {
+      if (p.type !== "literal") acc[p.type] = p.value;
+      return acc;
+    }, {});
+  return `${parts.year}-${parts.month}-${parts.day}`; // YYYY-MM-DD
+}
+
+export function indexForDate(dateStr: string, len: number) {
+  let h = 0;
+  for (let i = 0; i < dateStr.length; i++) h = (h * 31 + dateStr.charCodeAt(i)) >>> 0;
+  return h % len;
+}
+
+export function getQuoteOfTheDay(date = new Date(), timeZone = TZ) {
+  const dateStr = getYYYYMMDDInTZ(date, timeZone);
+  const idx = indexForDate(dateStr, QUOTES.length);
+  const q = QUOTES[idx];
+  return { date: dateStr, ...q };
+}
