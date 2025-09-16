@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,9 +34,13 @@ import {
   Send,
   Trash2Icon,
   Loader2,
+  ChevronsLeft,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Customer, ClientStatus } from "./types";
+import { Customer, ClientStatus, Pagination, Status } from "./types";
 import { getStatusBadge } from "./utils";
 import FormatarTelefone from "@/utils/formatarTelefone";
 import Link from "next/link";
@@ -59,15 +64,37 @@ export default function ClientesPage() {
     fetchStatusCounts,
   } = useStatusCounter();
   const [isLoading, setIsLoading] = useState(false);
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  });
+  const [status, setStatus] = useState<Status>(Status.TODOS);
+  const [search, setSearch] = useState("");
 
-  const handleGetCustomers = async () => {
+  const handleGetCustomers = async (
+    pageNumber?: number,
+    limit?: number,
+    search?: string,
+    status?: Status
+  ) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/customers");
+      const response = await axios.get("/api/customers", {
+        params: {
+          page: pageNumber || 1,
+          limit: 20,
+          search: search || undefined,
+          status: status || "TODOS",
+        },
+      });
       if (response.status === 200) {
-        const json = await response.json();
-        setCustomerItems(json.data);
-        // console.log("Clientes carregados:", json.data);
+        // console.log(response)
+        const { data } = response;
+        setCustomerItems(data.data);
+        setPagination(data.pagination);
+        console.log("Clientes carregados:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar clientes:", error);
@@ -79,6 +106,11 @@ export default function ClientesPage() {
   useEffect(() => {
     handleGetCustomers();
   }, []);
+
+  useEffect(() => {
+    handleGetCustomers(1, pagination.limit, search, status);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, search]);
 
   useEffect(() => {
     console.log("Status Counts updated:", loadingStatusCounter);
@@ -182,25 +214,43 @@ export default function ClientesPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                onChange={(e) =>
+                  setSearch(e.target.value)
+                }
                 placeholder="Buscar por nome, email ou telefone..."
                 className="pl-10"
               />
             </div>
-            <Select>
+            <Select
+              value={status}
+              onValueChange={(value) => setStatus(value as Status)}
+            >
               <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer">
                 <SelectValue placeholder="Todos"></SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos" className="hover:cursor-pointer">
+                <SelectItem
+                  value={Status.TODOS}
+                  className="hover:cursor-pointer"
+                >
                   Todos
                 </SelectItem>
-                <SelectItem value="ativos" className="hover:cursor-pointer">
+                <SelectItem
+                  value={Status.ATIVO}
+                  className="hover:cursor-pointer"
+                >
                   Ativos
                 </SelectItem>
-                <SelectItem value="inativos" className="hover:cursor-pointer">
+                <SelectItem
+                  value={Status.INATIVO}
+                  className="hover:cursor-pointer"
+                >
                   Inativos
                 </SelectItem>
-                <SelectItem value="pendented" className="hover:cursor-pointer">
+                <SelectItem
+                  value={Status.PENDENTE}
+                  className="hover:cursor-pointer"
+                >
                   Pendentes
                 </SelectItem>
               </SelectContent>
@@ -216,7 +266,7 @@ export default function ClientesPage() {
           <CardDescription>
             <div
               onClick={() => {
-                handleGetCustomers();
+                handleGetCustomers(pagination.page, pagination.limit, search, status);
                 fetchStatusCounts();
               }}
               className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70"
@@ -232,7 +282,7 @@ export default function ClientesPage() {
               isLoading && " opacity-100"
             } transition-all opacity-0 h-1 bg-slate-400 w-full overflow-hidden relative rounded-full`}
           >
-            <div className="w-1/2 bg-primary h-full animate-slideIn absolute left-0 rounded-lg"></div>
+            <div className={`w-1/2 bg-primary h-full animate-slideIn absolute left-0 rounded-lg`}></div>
           </div>
           <Table>
             <TableHeader>
@@ -308,7 +358,70 @@ export default function ClientesPage() {
               ))}
             </TableBody>
           </Table>
-          
+          <div className="flex items-center mt-4 justify-between">
+            <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
+              <span>{pagination.limit*(pagination.page-1)+1}</span> - <span>{pagination.limit*(pagination.page-1)+(pagination.pageCount || 0)}</span>
+
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="hover:cursor-pointer"
+              onClick={() => handleGetCustomers(1, pagination.limit, search, status)}
+              disabled={pagination.page === 1}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="hover:cursor-pointer"
+              onClick={() => handleGetCustomers(pagination.page - 1, pagination.limit, search, status)}
+              disabled={pagination.page === 1}
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </Button>
+            <span className="text-xs font-medium text-nowrap">
+              Página {pagination.page} de {pagination.totalPages || 1}
+            </span>
+            <Button
+              className="hover:cursor-pointer"
+              variant="outline"
+              size="icon"
+              onClick={() => handleGetCustomers(pagination.page + 1, pagination.limit, search, status)}
+              disabled={
+                pagination.page === pagination.totalPages ||
+                pagination.totalPages === 0
+              }
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              className="hover:cursor-pointer"
+              variant="outline"
+              size="icon"
+              onClick={() => handleGetCustomers(pagination.totalPages, pagination.limit, search, status)}
+              disabled={
+                pagination.page === pagination.totalPages ||
+                pagination.totalPages === 0
+              }
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+            </div>
+            <div>
+              <Select>
+                <SelectTrigger className="hover:cursor-pointer ml-2">
+                  <SelectValue placeholder={pagination.limit}></SelectValue>
+                </SelectTrigger>
+                <SelectContent className="">
+                  <SelectItem className="hover:cursor-pointer" value="20">{pagination.limit}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

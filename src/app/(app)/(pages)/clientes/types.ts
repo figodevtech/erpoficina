@@ -30,3 +30,18 @@ export interface Customer {
   updatedat: Timestamp
   status: ClientStatus
 }
+
+export interface Pagination {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  pageCount?: number
+}
+
+export enum Status {
+  TODOS = "TODOS",
+  ATIVO = "ATIVO",
+  INATIVO = "INATIVO",
+  PENDENTE = "PENDENTE",
+}
