@@ -84,7 +84,7 @@ export default function ClientesPage() {
       const response = await axios.get("/api/customers", {
         params: {
           page: pageNumber || 1,
-          limit: 20,
+          limit: pagination.limit,
           search: search || undefined,
           status: status || "TODOS",
         },

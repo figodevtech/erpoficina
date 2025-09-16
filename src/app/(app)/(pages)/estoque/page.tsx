@@ -28,6 +28,11 @@ import {
   ChevronDown,
   Pen,
   Trash2Icon,
+  ChevronsRight,
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  ChevronsLeft,
+  Loader2,
 } from "lucide-react";
 import {
   Select,
@@ -36,209 +41,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Produto, Pagination } from "./types";
+import axios from "axios";
 
-const inventoryItems = [
-  {
-    id: 1,
-    name: "Óleo Motor 5W30",
-    category: "Lubrificantes",
-    stock: 45,
-    minStock: 20,
-    maxStock: 100,
-    price: 35.9,
-    supplier: "Castrol",
-    location: "A1-B2",
-    status: "ok",
-  },
-  {
-    id: 2,
-    name: "Filtro de Ar",
-    category: "Filtros",
-    stock: 12,
-    minStock: 15,
-    maxStock: 50,
-    price: 28.5,
-    supplier: "Mann Filter",
-    location: "B2-C1",
-    status: "low",
-  },
-  {
-    id: 3,
-    name: "Pastilhas de Freio Dianteira",
-    category: "Freios",
-    stock: 8,
-    minStock: 10,
-    maxStock: 30,
-    price: 89.9,
-    supplier: "Bosch",
-    location: "C1-D2",
-    status: "critical",
-  },
-  {
-    id: 4,
-    name: "Pneu 185/65 R15",
-    category: "Pneus",
-    stock: 25,
-    minStock: 12,
-    maxStock: 48,
-    price: 245.0,
-    supplier: "Michelin",
-    location: "D1-E1",
-    status: "ok",
-  },
-  {
-    id: 5,
-    name: "Bateria 60Ah",
-    category: "Elétrica",
-    stock: 18,
-    minStock: 8,
-    maxStock: 25,
-    price: 189.9,
-    supplier: "Moura",
-    location: "E1-F1",
-    status: "ok",
-  },
-  {
-    id: 6,
-    name: "Vela de Ignição",
-    category: "Motor",
-    stock: 35,
-    minStock: 25,
-    maxStock: 80,
-    price: 12.9,
-    supplier: "NGK",
-    location: "A2-B1",
-    status: "ok",
-  },
-  {
-    id: 7,
-    name: "Correia Dentada",
-    category: "Motor",
-    stock: 6,
-    minStock: 8,
-    maxStock: 20,
-    price: 65.5,
-    supplier: "Gates",
-    location: "B1-C2",
-    status: "critical",
-  },
-  {
-    id: 8,
-    name: "Amortecedor Traseiro",
-    category: "Suspensão",
-    stock: 14,
-    minStock: 6,
-    maxStock: 24,
-    price: 156.0,
-    supplier: "Monroe",
-    location: "C2-D1",
-    status: "ok",
-  },{
-    id: 9,
-    name: "Óleo Motor 5W30",
-    category: "Lubrificantes",
-    stock: 45,
-    minStock: 20,
-    maxStock: 100,
-    price: 35.9,
-    supplier: "Castrol",
-    location: "A1-B2",
-    status: "ok",
-  },
-  {
-    id: 10,
-    name: "Filtro de Ar",
-    category: "Filtros",
-    stock: 12,
-    minStock: 15,
-    maxStock: 50,
-    price: 28.5,
-    supplier: "Mann Filter",
-    location: "B2-C1",
-    status: "low",
-  },
-  {
-    id: 11,
-    name: "Pastilhas de Freio Dianteira",
-    category: "Freios",
-    stock: 8,
-    minStock: 10,
-    maxStock: 30,
-    price: 89.9,
-    supplier: "Bosch",
-    location: "C1-D2",
-    status: "critical",
-  },
-  {
-    id: 12,
-    name: "Pneu 185/65 R15",
-    category: "Pneus",
-    stock: 25,
-    minStock: 12,
-    maxStock: 48,
-    price: 245.0,
-    supplier: "Michelin",
-    location: "D1-E1",
-    status: "ok",
-  },
-  {
-    id: 13,
-    name: "Bateria 60Ah",
-    category: "Elétrica",
-    stock: 18,
-    minStock: 8,
-    maxStock: 25,
-    price: 189.9,
-    supplier: "Moura",
-    location: "E1-F1",
-    status: "ok",
-  },
-  {
-    id: 14,
-    name: "Vela de Ignição",
-    category: "Motor",
-    stock: 35,
-    minStock: 25,
-    maxStock: 80,
-    price: 12.9,
-    supplier: "NGK",
-    location: "A2-B1",
-    status: "ok",
-  },
-  {
-    id: 15,
-    name: "Correia Dentada",
-    category: "Motor",
-    stock: 6,
-    minStock: 8,
-    maxStock: 20,
-    price: 65.5,
-    supplier: "Gates",
-    location: "B1-C2",
-    status: "critical",
-  },
-  {
-    id: 16,
-    name: "Amortecedor Traseiro",
-    category: "Suspensão",
-    stock: 14,
-    minStock: 6,
-    maxStock: 24,
-    price: 156.0,
-    supplier: "Monroe",
-    location: "C2-D1",
-    status: "ok",
-  },
-];
+// 🔎 Deriva status a partir de estoque x estoque mínimo
+type Status = "critical" | "low" | "ok";
+const getStatus = (estoque = 0, estoqueminimo = 0): Status => {
+  if (estoqueminimo == null) return "ok";
+  if ((estoque ?? 0) <= (estoqueminimo ?? 0)) return "critical";
+  if ((estoque ?? 0) <= Math.ceil((estoqueminimo ?? 0) * 1.5)) return "low";
+  return "ok";
+};
 
-const getStatusBadge = (status: string, stock: number, minStock: number) => {
+const getStatusBadge = (status: Status) => {
   if (status === "critical") {
     return (
       <Badge variant="destructive" className="text-xs">
@@ -247,7 +69,6 @@ const getStatusBadge = (status: string, stock: number, minStock: number) => {
       </Badge>
     );
   }
-  
   if (status === "low") {
     return (
       <Badge variant="secondary" className="text-xs">
@@ -263,27 +84,52 @@ const getStatusBadge = (status: string, stock: number, minStock: number) => {
   );
 };
 
-const getStockPercentage = (
-  stock: number,
-  minStock: number,
-  maxStock: number
-) => {
-  return ((stock - minStock) / (maxStock - minStock)) * 100;
-};
-
 export default function EstoquePage() {
-  const totalItems = inventoryItems.length;
-  const criticalItems = inventoryItems.filter(
-    (item) => item.status === "critical"
-  ).length;
-  const lowStockItems = inventoryItems.filter(
-    (item) => item.status === "low"
-  ).length;
-  const totalValue = inventoryItems.reduce(
-    (sum, item) => sum + item.stock * item.price,
-    0
-  );
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [products, setProducts] = useState<Produto[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  });
+  const [search, setSearch] = useState("");
+
+  const handleGetProducts = async (
+    pageNumber?: number,
+    limit?: number,
+    search?: string,
+    status?: Status
+  ) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get("/api/products", {
+        params: {
+          page: pageNumber || 1,
+          limit: pagination.limit,
+          search: search || undefined,
+        },
+      });
+      if (response.status === 200) {
+        // console.log(response)
+        const { data } = response;
+        setProducts(data.data);
+        setPagination(data.pagination);
+        console.log("Clientes carregados:", data.data);
+      }
+    } catch (error) {
+      console.log("Erro ao buscar clientes:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    handleGetProducts(1, pagination.limit, search);
+  }, []);
 
   return (
     <div className="mx-auto space-y-6">
@@ -300,7 +146,7 @@ export default function EstoquePage() {
         <div className="flex items-center gap-2">
           <Button className="hover:cursor-pointer ">
             <Plus className="h-4 w-4 mr-2" />
-            Adicionar Item
+            Adicionar Produto
           </Button>
         </div>
       </div>
@@ -315,10 +161,8 @@ export default function EstoquePage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
-            <p className="text-xs text-muted-foreground">
-              Produtos cadastrados
-            </p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Produtos listados</p>
           </CardContent>
         </Card>
 
@@ -330,9 +174,7 @@ export default function EstoquePage() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {criticalItems}
-            </div>
+            <div className="text-2xl font-bold text-destructive">0</div>
             <p className="text-xs text-muted-foreground">Reposição urgente</p>
           </CardContent>
         </Card>
@@ -343,9 +185,7 @@ export default function EstoquePage() {
             <TrendingDown className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-500">
-              {lowStockItems}
-            </div>
+            <div className="text-2xl font-bold text-orange-500">0</div>
             <p className="text-xs text-muted-foreground">Atenção necessária</p>
           </CardContent>
         </Card>
@@ -357,32 +197,40 @@ export default function EstoquePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R${" "}
+              {/* R{"$ "}
               {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+               */}
+              0
             </div>
             <p className="text-xs text-muted-foreground">Valor do inventário</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search */}
+      {/* Search / Filtros */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Busca inteligente..."
+                placeholder="Busque por código, descrição, NCM, CFOP, EAN..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Select>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as Status | "all")}
+            >
               <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer">
-                <SelectValue placeholder="Todos"></SelectValue>
+                <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem className="hover:cursor-pointer" value="all">
+                  Todos
+                </SelectItem>
                 <SelectItem className="hover:cursor-pointer" value="ok">
                   Ok
                 </SelectItem>
@@ -398,130 +246,223 @@ export default function EstoquePage() {
         </CardContent>
       </Card>
 
-      {/* Inventory Table */}
+      {/* Tabela de Produtos */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Produtos</CardTitle>
           <CardDescription>
-            Visualização detalhada do inventário atual
+            <div
+              onClick={() => {
+                handleGetProducts(pagination.page, pagination.limit, search);
+                // fetchStatusCounts();
+              }}
+              className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70"
+            >
+              <span>recarregar</span>
+              <Loader2 width={12} />
+            </div>
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-[300px]">
+          <div
+            className={`${
+              isLoading && " opacity-100"
+            } transition-all opacity-0 h-1 bg-slate-400 w-full overflow-hidden relative rounded-full`}
+          >
+            <div
+              className={`w-1/2 bg-primary h-full animate-slideIn absolute left-0 rounded-lg`}
+            ></div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Produto</TableHead>
-                <TableHead>Categoria</TableHead>
+                <TableHead>Código</TableHead>
+                <TableHead>Origem</TableHead>
                 <TableHead>Estoque</TableHead>
+                <TableHead>Mín.</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Preço Unit.</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>Localização</TableHead>
                 <TableHead>Valor Total</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventoryItems.map((item) => (
-                <TableRow key={item.id} className="hover:cursor-pointer">
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          ID: {item.id}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {item.category}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
+              {products.map((p) => {
+                const status = getStatus(p.estoque ?? 0, p.estoqueminimo ?? 0);
+                const valorTotal = (p.estoque ?? 0) * p.precounitario;
+
+                return (
+                  <TableRow key={p.id} className="hover:cursor-pointer">
+                    <TableCell>{p.id}</TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{item.stock}</span>
-                        <span className="text-xs text-muted-foreground">
-                          / {item.maxStock}
-                        </span>
+                        <div>
+                          <p className="font-medium">{p.descricao}</p>
+                          <p className="text-xs text-muted-foreground">
+                            ID: {p.id}
+                            {p.titulo ? ` • ${p.titulo}` : ""}
+                          </p>
+                          {p.ean && (
+                            <p className="text-xs text-muted-foreground">
+                              EAN: {p.ean}
+                            </p>
+                          )}
+                          {p.referencia && (
+                            <p className="text-xs text-muted-foreground">
+                              Ref.: {p.referencia}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${
-                            item.status === "critical"
-                              ? "bg-destructive"
-                              : item.status === "low"
-                              ? "bg-orange-500"
-                              : "bg-chart-4"
-                          }`}
-                          style={{
-                            width: `${Math.max(
-                              10,
-                              getStockPercentage(
-                                item.stock,
-                                item.minStock,
-                                item.maxStock
-                              )
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(item.status, item.stock, item.minStock)}
-                  </TableCell>
-                  <TableCell>
-                    R${" "}
-                    {item.price.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                  <TableCell className="text-sm">{item.supplier}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs font-mono">
-                      {item.location}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    R${" "}
-                    {(item.stock * item.price).toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 cursor-pointer"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="space-y-1">
-                        <DropdownMenuItem className="hover:cursor-pointer">
-                          <Pen className="h-4 w-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="hover:cursor-pointer">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Registrar entrada
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="hover:cursor-pointer bg-red-500/20 data-[highlighted]:bg-red-500 group data-[highlighted]:text-white transition-all">
-                          <Trash2Icon className="h-4 w-4 mr-2 group-hover:text-white" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+
+                    <TableCell className="font-mono text-xs">
+                      {p.codigo}
+                    </TableCell>
+                    <TableCell>{p.origem}</TableCell>
+
+                    <TableCell className="font-medium">
+                      {p.estoque ?? 0}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {p.estoqueminimo ?? 0}
+                    </TableCell>
+
+                    <TableCell>{getStatusBadge(status)}</TableCell>
+
+                    <TableCell>
+                      R{"$ "}
+                      {p.precounitario.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </TableCell>
+
+                    <TableCell>
+                      R{"$ "}
+                      {valorTotal.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </TableCell>
+
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 p-0 cursor-pointer"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="space-y-1">
+                          <DropdownMenuItem className="hover:cursor-pointer">
+                            <Pen className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="hover:cursor-pointer">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Registrar entrada
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="hover:cursor-pointer bg-red-500/20 data-[highlighted]:bg-red-500 group data-[highlighted]:text-white transition-all">
+                            <Trash2Icon className="h-4 w-4 mr-2 group-hover:text-white" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
+          <div className="flex items-center mt-4 justify-between">
+            <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
+              <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
+              <span>
+                {pagination.limit * (pagination.page - 1) +
+                  (pagination.pageCount || 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() => handleGetProducts(1, pagination.limit, search)}
+                disabled={pagination.page === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() =>
+                  handleGetProducts(
+                    pagination.page - 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={pagination.page === 1}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <span className="text-xs font-medium text-nowrap">
+                Página {pagination.page} de {pagination.totalPages || 1}
+              </span>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetProducts(
+                    pagination.page + 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetProducts(
+                    pagination.totalPages,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div>
+              <Select>
+                <SelectTrigger className="hover:cursor-pointer ml-2">
+                  <SelectValue placeholder={pagination.limit}></SelectValue>
+                </SelectTrigger>
+                <SelectContent className="">
+                  <SelectItem className="hover:cursor-pointer" value="20">
+                    {pagination.limit}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

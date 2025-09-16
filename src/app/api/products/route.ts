@@ -2,103 +2,75 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin'; // usa a SERVICE_ROLE_KEY
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-// GET /api/v1/clientes?page=1&pageSize=20&q=ana
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+
     const page = Math.max(Number(searchParams.get('page') ?? 1), 1);
-    const pageSize = Math.min(Math.max(Number(searchParams.get('pageSize') ?? 20), 1), 100);
-    const q = (searchParams.get('q') ?? '').trim();
+    const limitRaw = searchParams.get('limit') ?? searchParams.get('pageSize') ?? '20';
+    const limit = Math.min(Math.max(Number(limitRaw), 1), 100);
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
+    const q = (searchParams.get('search') ?? searchParams.get('q') ?? '').trim();
 
-    // base query
+    // const statusParam = (searchParams.get('status') ?? 'TODOS').toUpperCase();
+    // const statusFilter = STATUS_SET.has(statusParam as Status) ? (statusParam as Status) : null;
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
     let query = supabaseAdmin
       .from('produto')
       .select(
         `
-        id, codigo, titulo, descricao, precounitario, estoque, estoqueminimo, unidade, origem, referencia
+        id, codigo, descricao, precounitario, estoque, estoqueminimo, unidade,origem, referencia, titulo
         `,
-        { count: 'exact' } // pede o total
+        { count: 'exact' }
       )
-      .order('createdat', { ascending: false })
+      .order('id', { ascending: false })
       .range(from, to);
 
-    // filtro de busca (OR ilike em vários campos)
     if (q) {
       query = query.or(
-        `codigo.ilike.%${q}%,descricao.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`
+        `codigo.ilike.%${q}%,descricao.ilike.%${q}%,referencia.ilike.%${q}%,titulo.ilike.%${q}%`
       );
     }
+
+    // if (statusFilter) {
+    //   query = query.eq('status', statusFilter);
+    // }
 
     const { data, error, count } = await query;
     if (error) throw error;
 
+    const items = data ?? [];
+    const total = count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    // 🔹 novos campos úteis
+    const pageCount = items.length;                   // quantos itens vieram nesta página
+    const hasPrevPage = page > 1;
+    const hasNextPage = page * limit < total;
+
     return NextResponse.json({
-      data: data ?? [],
-      meta: {
-        page,
-        pageSize,
-        total: count ?? 0,
+      data: items,
+      pagination: {
+        total,         // total de registros considerando os filtros
+        page,          // página atual
+        limit,         // limite solicitado
+        totalPages,    // total de páginas
+        pageCount,     // 🔹 quantidade de itens na página atual
+        hasPrevPage,   // 🔹 boolean de navegação
+        hasNextPage,   // 🔹 boolean de navegação
       },
+      filters: { search: q },
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Erro ao listar clientes' }, { status: 500 });
-  }
-}
-
-// POST /api/v1/clientes
-export async function POST(req: Request) {
-  try {
-    const b = await req.json();
-
-    if (!b?.tipopessoa || !['FISICA', 'JURIDICA'].includes(b.tipopessoa)) {
-      return NextResponse.json({ error: 'tipopessoa deve ser FISICA ou JURIDICA' }, { status: 400 });
-    }
-    if (!b?.cpfcnpj || !b?.nomerazaosocial) {
-      return NextResponse.json({ error: 'cpfcnpj e nomerazaosocial são obrigatórios' }, { status: 400 });
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('cliente')
-      .insert([
-        {
-          tipopessoa: b.tipopessoa,
-          cpfcnpj: b.cpfcnpj,
-          nomerazaosocial: b.nomerazaosocial,
-          email: b.email ?? null,
-          telefone: b.telefone ?? null,
-          endereco: b.endereco ?? null,
-          cidade: b.cidade ?? null,
-          estado: b.estado ?? null,
-          cep: b.cep ?? null,
-          inscricaoestadual: b.inscricaoestadual ?? null,
-          inscricaomunicipal: b.inscricaomunicipal ?? null,
-          codigomunicipio: b.codigomunicipio ?? null,
-        },
-      ])
-      .select(
-        `
-        id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
-        cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-        createdat, updatedat
-        `
-      )
-      .single();
-
-    if (error) {
-      // unique_violation (cpfcnpj) vem do Postgres; Supabase repassa em error.message
-      if (String(error.message).toLowerCase().includes('duplicate key')) {
-        return NextResponse.json({ error: 'cpfcnpj já cadastrado' }, { status: 409 });
-      }
-      throw error;
-    }
-
-    return NextResponse.json(data, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Erro ao criar cliente' }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message || 'Erro ao listar produtos' },
+      { status: 500 }
+    );
   }
 }
