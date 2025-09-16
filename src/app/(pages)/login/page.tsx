@@ -16,7 +16,7 @@ export default async function LoginPage() {
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
       <span className="mb-4 text-xs text-muted-foreground">
         <blockquote className="hover:cursor-default">
-          "{text}" - 
+        {`"${text}" - `}
           <Tooltip>
             <TooltipTrigger asChild>
               <span> {author}</span>
