@@ -45,3 +45,9 @@ export enum Status {
   INATIVO = "INATIVO",
   PENDENTE = "PENDENTE",
 }
+
+export interface CardsProps {
+    loadingStatusCounter: boolean
+    totalCustomers: number
+    statusCounts: Record<string, number>
+}
