@@ -1,3 +1,9 @@
+export enum Estoque_status{
+  CRITICO = "CRITICO",
+  OK = "OK",
+  BAIXO = "BAIXO",
+  TODOS = "TODOS"
+}
 export interface Produto {
   id: number;
   codigo?: string;
@@ -17,7 +23,9 @@ export interface Produto {
   updatedat?: string; // timestamp no banco, pode ser null
   referencia?: string;
   titulo?: string;
+  status_estoque: Estoque_status
 }
+
 
 export interface Pagination {
   total: number

@@ -48,20 +48,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Produto, Pagination } from "./types";
+import { Produto, Pagination, Estoque_status } from "./types";
 import axios from "axios";
+import useStatusCounter from "./hooks/status-counter";
 
 // 🔎 Deriva status a partir de estoque x estoque mínimo
-type Status = "critical" | "low" | "ok";
-const getStatus = (estoque = 0, estoqueminimo = 0): Status => {
-  if (estoqueminimo == null) return "ok";
-  if ((estoque ?? 0) <= (estoqueminimo ?? 0)) return "critical";
-  if ((estoque ?? 0) <= Math.ceil((estoqueminimo ?? 0) * 1.5)) return "low";
-  return "ok";
-};
 
-const getStatusBadge = (status: Status) => {
-  if (status === "critical") {
+
+const getStatusBadge = (status: Estoque_status) => {
+  if (status === "CRITICO") {
     return (
       <Badge variant="destructive" className="text-xs">
         <AlertTriangle className="h-3 w-3 mr-1" />
@@ -69,7 +64,7 @@ const getStatusBadge = (status: Status) => {
       </Badge>
     );
   }
-  if (status === "low") {
+  if (status === "BAIXO") {
     return (
       <Badge variant="secondary" className="text-xs">
         <Clock className="h-3 w-3 mr-1" />
@@ -86,10 +81,16 @@ const getStatusBadge = (status: Status) => {
 
 export default function EstoquePage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [status, setStatus] = useState<Estoque_status>(Estoque_status.TODOS);
   const [products, setProducts] = useState<Produto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
+const {
+    statusCounts,
+    loadingStatusCounter,
+    totalProducts,
+    error,
+    fetchStatusCounts,
+  } = useStatusCounter();
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     page: 1,
@@ -102,7 +103,7 @@ export default function EstoquePage() {
     pageNumber?: number,
     limit?: number,
     search?: string,
-    status?: Status
+    status?: Estoque_status
   ) => {
     setIsLoading(true);
     try {
@@ -161,7 +162,7 @@ export default function EstoquePage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{totalProducts}</div>
             <p className="text-xs text-muted-foreground">Produtos listados</p>
           </CardContent>
         </Card>
@@ -174,7 +175,7 @@ export default function EstoquePage() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">0</div>
+            <div className="text-2xl font-bold text-destructive">{statusCounts.CRITICO}</div>
             <p className="text-xs text-muted-foreground">Reposição urgente</p>
           </CardContent>
         </Card>
@@ -185,14 +186,14 @@ export default function EstoquePage() {
             <TrendingDown className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-500">0</div>
+            <div className="text-2xl font-bold text-orange-500">{statusCounts.BAIXO}</div>
             <p className="text-xs text-muted-foreground">Atenção necessária</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Estoque Bom</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -200,7 +201,7 @@ export default function EstoquePage() {
               {/* R{"$ "}
               {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                */}
-              0
+              {statusCounts.OK}
             </div>
             <p className="text-xs text-muted-foreground">Valor do inventário</p>
           </CardContent>
@@ -221,23 +222,23 @@ export default function EstoquePage() {
               />
             </div>
             <Select
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as Status | "all")}
+              value={status}
+              onValueChange={(v) => setStatus(v as Estoque_status)}
             >
               <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem className="hover:cursor-pointer" value="all">
+                <SelectItem className="hover:cursor-pointer" value={Estoque_status.TODOS}>
                   Todos
                 </SelectItem>
-                <SelectItem className="hover:cursor-pointer" value="ok">
+                <SelectItem className="hover:cursor-pointer" value={Estoque_status.OK}>
                   Ok
                 </SelectItem>
-                <SelectItem className="hover:cursor-pointer" value="low">
+                <SelectItem className="hover:cursor-pointer" value={Estoque_status.BAIXO}>
                   Estoque Baixo
                 </SelectItem>
-                <SelectItem className="hover:cursor-pointer" value="critical">
+                <SelectItem className="hover:cursor-pointer" value={Estoque_status.CRITICO}>
                   Crítico
                 </SelectItem>
               </SelectContent>
@@ -290,7 +291,6 @@ export default function EstoquePage() {
             </TableHeader>
             <TableBody>
               {products.map((p) => {
-                const status = getStatus(p.estoque ?? 0, p.estoqueminimo ?? 0);
                 const valorTotal = (p.estoque ?? 0) * p.precounitario;
 
                 return (
@@ -330,7 +330,7 @@ export default function EstoquePage() {
                       {p.estoqueminimo ?? 0}
                     </TableCell>
 
-                    <TableCell>{getStatusBadge(status)}</TableCell>
+                    <TableCell>{getStatusBadge(p.status_estoque)}</TableCell>
 
                     <TableCell>
                       R{"$ "}

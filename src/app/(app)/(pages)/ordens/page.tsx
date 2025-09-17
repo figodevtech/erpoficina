@@ -288,7 +288,7 @@ export default function Ordens() {
             />
           </div>
           <Select>
-            <SelectTrigger className="w-full md:w-2/6">
+            <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer">
                 <SelectValue placeholder="Todas"></SelectValue>
             </SelectTrigger>
             <SelectContent>

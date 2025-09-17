@@ -117,9 +117,9 @@ export default function ClientesPage() {
   }, [loadingStatusCounter]);
 
   return (
-    <div className="mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-balance">
             Gestão de Clientes
@@ -137,7 +137,7 @@ export default function ClientesPage() {
       </div>
 
       {/* KPI Cards (ajustados para a interface) */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-3 lg:grid-cols-3 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -203,15 +203,10 @@ export default function ClientesPage() {
 
       {/* Search and Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>Buscar Clientes</CardTitle>
-          <CardDescription>
-            Encontre rapidamente os clientes da sua oficina
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1">
+        
+        <CardContent className="pt-6">
+          <div className="flex gap-6 flex-col md:flex-row">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 onChange={(e) =>

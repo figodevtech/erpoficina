@@ -25,7 +25,7 @@ export async function GET(req: Request) {
       .from('produto')
       .select(
         `
-        id, codigo, descricao, precounitario, estoque, estoqueminimo, unidade,origem, referencia, titulo
+        id, codigo, descricao, precounitario, estoque, estoqueminimo, unidade,origem, referencia, titulo, status_estoque
         `,
         { count: 'exact' }
       )
