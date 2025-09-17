@@ -51,10 +51,9 @@ import {
 import { Produto, Pagination, Estoque_status } from "./types";
 import axios from "axios";
 import useStatusCounter from "./hooks/status-counter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // 🔎 Deriva status a partir de estoque x estoque mínimo
-
-
 const getStatusBadge = (status: Estoque_status) => {
   if (status === "CRITICO") {
     return (
@@ -64,9 +63,10 @@ const getStatusBadge = (status: Estoque_status) => {
       </Badge>
     );
   }
+
   if (status === "BAIXO") {
     return (
-      <Badge variant="secondary" className="text-xs">
+      <Badge variant="secondary" className="text-xs bg-yellow-600">
         <Clock className="h-3 w-3 mr-1" />
         Baixo
       </Badge>
@@ -80,17 +80,17 @@ const getStatusBadge = (status: Estoque_status) => {
 };
 
 export default function EstoquePage() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [status, setStatus] = useState<Estoque_status>(Estoque_status.TODOS);
   const [products, setProducts] = useState<Produto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-const {
+  const {
     statusCounts,
     loadingStatusCounter,
     totalProducts,
     error,
     fetchStatusCounts,
   } = useStatusCounter();
+
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     page: 1,
@@ -112,6 +112,7 @@ const {
           page: pageNumber || 1,
           limit: pagination.limit,
           search: search || undefined,
+          status: status || "TODOS",
         },
       });
       if (response.status === 200) {
@@ -129,8 +130,12 @@ const {
   };
 
   useEffect(() => {
-    handleGetProducts(1, pagination.limit, search);
+    handleGetProducts(1, pagination.limit, search, status);
   }, []);
+
+  useEffect(()=>{
+    handleGetProducts(1, pagination.limit, search, status)
+  },[search, status])
 
   return (
     <div className="mx-auto space-y-6">
@@ -162,7 +167,11 @@ const {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
+            {loadingStatusCounter ? (
+              <Skeleton className="h-8 w-8"></Skeleton>
+            ) : (
+              <div className="text-2xl font-bold">{totalProducts}</div>
+            )}
             <p className="text-xs text-muted-foreground">Produtos listados</p>
           </CardContent>
         </Card>
@@ -175,7 +184,13 @@ const {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{statusCounts.CRITICO}</div>
+            {loadingStatusCounter ? (
+              <Skeleton className="w-8 h-8"></Skeleton>
+            ) : (
+              <div className="text-2xl font-bold text-destructive">
+                {statusCounts.CRITICO}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Reposição urgente</p>
           </CardContent>
         </Card>
@@ -186,7 +201,13 @@ const {
             <TrendingDown className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-500">{statusCounts.BAIXO}</div>
+            {loadingStatusCounter ? (
+              <Skeleton className="w-8 h-8"></Skeleton>
+            ) : (
+              <div className="text-2xl font-bold text-orange-500">
+                {statusCounts.BAIXO}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Atenção necessária</p>
           </CardContent>
         </Card>
@@ -197,12 +218,11 @@ const {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {/* R{"$ "}
-              {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-               */}
-              {statusCounts.OK}
-            </div>
+            {loadingStatusCounter ? (
+              <Skeleton className="w-8 h-8"></Skeleton>
+            ) : (
+              <div className="text-2xl font-bold">{statusCounts.OK}</div>
+            )}
             <p className="text-xs text-muted-foreground">Valor do inventário</p>
           </CardContent>
         </Card>
@@ -215,9 +235,9 @@ const {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Busque por código, descrição, NCM, CFOP, EAN..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Busque por código, descrição, referência, título..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -229,16 +249,28 @@ const {
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem className="hover:cursor-pointer" value={Estoque_status.TODOS}>
+                <SelectItem
+                  className="hover:cursor-pointer"
+                  value={Estoque_status.TODOS}
+                >
                   Todos
                 </SelectItem>
-                <SelectItem className="hover:cursor-pointer" value={Estoque_status.OK}>
+                <SelectItem
+                  className="hover:cursor-pointer"
+                  value={Estoque_status.OK}
+                >
                   Ok
                 </SelectItem>
-                <SelectItem className="hover:cursor-pointer" value={Estoque_status.BAIXO}>
+                <SelectItem
+                  className="hover:cursor-pointer"
+                  value={Estoque_status.BAIXO}
+                >
                   Estoque Baixo
                 </SelectItem>
-                <SelectItem className="hover:cursor-pointer" value={Estoque_status.CRITICO}>
+                <SelectItem
+                  className="hover:cursor-pointer"
+                  value={Estoque_status.CRITICO}
+                >
                   Crítico
                 </SelectItem>
               </SelectContent>
@@ -254,8 +286,8 @@ const {
           <CardDescription>
             <div
               onClick={() => {
-                handleGetProducts(pagination.page, pagination.limit, search);
-                // fetchStatusCounts();
+                handleGetProducts(pagination.page, pagination.limit, search, status);
+                fetchStatusCounts();
               }}
               className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70"
             >
@@ -390,7 +422,7 @@ const {
                 variant="outline"
                 size="icon"
                 className="hover:cursor-pointer"
-                onClick={() => handleGetProducts(1, pagination.limit, search)}
+                onClick={() => handleGetProducts(1, pagination.limit, search, status)}
                 disabled={pagination.page === 1}
               >
                 <ChevronsLeft className="h-4 w-4" />
@@ -421,7 +453,8 @@ const {
                   handleGetProducts(
                     pagination.page + 1,
                     pagination.limit,
-                    search
+                    search,
+                    status
                   )
                 }
                 disabled={
@@ -439,7 +472,8 @@ const {
                   handleGetProducts(
                     pagination.totalPages,
                     pagination.limit,
-                    search
+                    search,
+                    status
                   )
                 }
                 disabled={

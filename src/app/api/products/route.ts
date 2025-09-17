@@ -4,6 +4,9 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
+type Status = 'OK' | 'CRITICO' | 'BAIXO';
+const STATUS_SET = new Set<Status>(['OK', 'CRITICO', 'BAIXO']);
+
 
 export async function GET(req: Request) {
   try {
@@ -15,8 +18,8 @@ export async function GET(req: Request) {
 
     const q = (searchParams.get('search') ?? searchParams.get('q') ?? '').trim();
 
-    // const statusParam = (searchParams.get('status') ?? 'TODOS').toUpperCase();
-    // const statusFilter = STATUS_SET.has(statusParam as Status) ? (statusParam as Status) : null;
+    const statusParam = (searchParams.get('status') ?? 'TODOS').toUpperCase();
+    const statusFilter = STATUS_SET.has(statusParam as Status) ? (statusParam as Status) : null;
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -38,9 +41,9 @@ export async function GET(req: Request) {
       );
     }
 
-    // if (statusFilter) {
-    //   query = query.eq('status', statusFilter);
-    // }
+    if (statusFilter) {
+      query = query.eq('status_estoque', statusFilter);
+    }
 
     const { data, error, count } = await query;
     if (error) throw error;
