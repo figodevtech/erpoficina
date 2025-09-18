@@ -22,7 +22,6 @@ import {
   Building2,
   Mail,
   Phone,
-  MapPin,
   FileText,
   Camera,
   Plus,
@@ -36,6 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type TipoPessoa = "FISICA" | "JURIDICA";
 type StatusCliente = "ATIVO" | "INATIVO" | "SUSPENSO";
@@ -112,23 +112,6 @@ export function CustomerDialog() {
 
   const handleInputChange = (field: keyof ClienteData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleFotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setFotoPreview(result);
-        setFormData((prev) => ({ ...prev, foto: result }));
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const formatCpfCnpj = (value: string) => {
@@ -231,7 +214,6 @@ export function CustomerDialog() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={handleFotoUpload}
                       />
                     </Label>
                   </div>
@@ -561,8 +543,27 @@ export function CustomerDialog() {
               value="Veículos"
               className="h-full min-h-0 overflow-hidden p-0"
             >
-              <div className="h-full min-h-0 overflow-auto">
-                {/* conteúdo de veículos */}
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Título</TableHead>
+                      <TableHead>Placa</TableHead>
+                      <TableHead>Cor</TableHead>
+                      <TableHead>Fab/Mod</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>1</TableCell>
+                      <TableCell>Celta</TableCell>
+                      <TableCell>MNX4B27</TableCell>
+                      <TableCell>Preto</TableCell>
+                      <TableCell>2007/2008</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </div>
             </TabsContent>
 
@@ -570,8 +571,23 @@ export function CustomerDialog() {
               value="Ordens"
               className="h-full min-h-0 overflow-hidden p-0"
             >
-              <div className="h-full min-h-0 overflow-auto">
-                {/* conteúdo de OS */}
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Descrição</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>1</TableCell>
+                      <TableCell>Os tal</TableCell>
+
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </div>
             </TabsContent>
           </Tabs>
