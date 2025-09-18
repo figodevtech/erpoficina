@@ -52,6 +52,7 @@ import { Produto, Pagination, Estoque_status } from "./types";
 import axios from "axios";
 import useStatusCounter from "./hooks/status-counter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProductDialog } from "./productDialog/productDialog";
 
 // 🔎 Deriva status a partir de estoque x estoque mínimo
 const getStatusBadge = (status: Estoque_status) => {
@@ -150,10 +151,11 @@ export default function EstoquePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button className="hover:cursor-pointer ">
+          {/* <Button className="hover:cursor-pointer ">
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Produto
-          </Button>
+          </Button> */}
+          <ProductDialog/>
         </div>
       </div>
 

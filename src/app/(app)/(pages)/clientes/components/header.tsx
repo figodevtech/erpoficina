@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { CustomerDialog } from "./customerDialog/customerDialog";
 
 export default function Header () {
     return(
@@ -13,10 +14,7 @@ export default function Header () {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Cliente
-          </Button>
+          <CustomerDialog/>
         </div>
       </div>
     )
