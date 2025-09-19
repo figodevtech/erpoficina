@@ -66,33 +66,10 @@ export default function RegisterContent () {
           </DialogHeader>
 
           {/* Área principal com abas */}
-          <Tabs className="flex-1 min-h-0 overflow-hidden px-6 pb-0">
-            <TabsList className="shrink-0 sticky top-0 z-10 bg-background">
-              <TabsTrigger
-                value="Geral"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Geral
-              </TabsTrigger>
-              <TabsTrigger
-                value="Veículos"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Veículos
-              </TabsTrigger>
-              <TabsTrigger
-                value="Ordens"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Ordens de Serviço
-              </TabsTrigger>
-            </TabsList>
+           
 
             {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
-            <TabsContent
-              value="Geral"
-              className="h-full min-h-0 overflow-hidden p-0"
-            >
+            
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
                 {/* Foto do Cliente */}
                 <div className="flex flex-col items-center space-y-3 sm:space-y-4">
@@ -439,62 +416,6 @@ export default function RegisterContent () {
 
                 {/* Botões */}
               </div>
-            </TabsContent>
-
-            {/* Exemplos para as outras abas (mantêm a mesma estrutura) */}
-            <TabsContent
-              value="Veículos"
-              className="h-full min-h-0 overflow-hidden p-0"
-            >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Placa</TableHead>
-                      <TableHead>Cor</TableHead>
-                      <TableHead>Fab/Mod</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>1</TableCell>
-                      <TableCell>Celta</TableCell>
-                      <TableCell>MNX4B27</TableCell>
-                      <TableCell>Preto</TableCell>
-                      <TableCell>2007/2008</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            <TabsContent
-              value="Ordens"
-              className="h-full min-h-0 overflow-hidden p-0"
-            >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
-                
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Descrição</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>1</TableCell>
-                      <TableCell>Os tal</TableCell>
-
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </Tabs>
-
           <DialogFooter className="px-6 py-4">
             <div className="flex sm:flex-row gap-3 sm:gap-4">
               <Button
