@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,134 +23,43 @@ import {
   Phone,
   FileText,
   Camera,
-  Plus,
 } from "lucide-react";
 import {
-  Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { NewCustomer, StatusCliente, TipoPessoa, ESTADOS_BRASIL, tabTheme} from "./types";
+import { formatCep, formatCpfCnpj, formatTelefone } from "./utils";
 
-type TipoPessoa = "FISICA" | "JURIDICA";
-type StatusCliente = "ATIVO" | "INATIVO" | "SUSPENSO";
 
-interface ClienteData {
-  tipopessoa: TipoPessoa;
-  cpfcnpj: string;
-  nomerazaosocial: string;
-  email: string;
-  telefone: string;
-  endereco: string;
-  cidade: string;
-  estado: string;
-  cep: string;
-  inscricaoestadual: string;
-  inscricaomunicipal: string;
-  codigomunicipio: string;
-  status: StatusCliente;
-  foto?: string;
-}
-
-const ESTADOS_BRASIL = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
-];
-
-export function CustomerDialog() {
-  const [formData, setFormData] = useState<ClienteData>({
-    tipopessoa: "FISICA",
-    cpfcnpj: "",
-    nomerazaosocial: "",
-    email: "",
-    telefone: "",
-    endereco: "",
-    cidade: "",
-    estado: "",
-    cep: "",
-    inscricaoestadual: "",
-    inscricaomunicipal: "",
-    codigomunicipio: "",
-    status: "ATIVO",
-    foto: "",
-  });
-
-  const [fotoPreview, setFotoPreview] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const tabTheme =
-    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
-
-  const handleInputChange = (field: keyof ClienteData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const formatCpfCnpj = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-
-    if (formData.tipopessoa === "FISICA") {
-      // CPF: 000.000.000-00
-      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    } else {
-      // CNPJ: 00.000.000/0000-00
-      return numbers.replace(
-        /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
-        "$1.$2.$3/$4-$5"
-      );
-    }
-  };
-
-  const formatCep = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    return numbers.replace(/(\d{5})(\d{3})/, "$1-$2");
-  };
-
-  const formatTelefone = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
-    } else {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-    }
-  };
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Cliente
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
+export default function RegisterContent () {
+      const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const [newCustomer, setNewCustomer] = useState<NewCustomer>({
+        tipopessoa: "FISICA",
+        cpfcnpj: "",
+        nomerazaosocial: "",
+        email: "",
+        telefone: "",
+        endereco: "",
+        cidade: "",
+        estado: "",
+        cep: "",
+        inscricaoestadual: "",
+        inscricaomunicipal: "",
+        codigomunicipio: "",
+        status: "ATIVO",
+        foto: "",
+      });
+    const handleInputChange = (field: keyof NewCustomer, value: string) => {
+        setNewCustomer((prev) => ({ ...prev, [field]: value }));
+      };
+    return(
+        <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4">
             <DialogTitle>Cadastro de Cliente</DialogTitle>
@@ -191,11 +99,11 @@ export function CustomerDialog() {
                   <div className="relative">
                     <Avatar className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24">
                       <AvatarImage
-                        src={fotoPreview || "/placeholder.svg"}
+                        // src={fotoPreview || "/placeholder.svg"}
                         alt="Foto do cliente"
                       />
                       <AvatarFallback className="text-sm sm:text-lg">
-                        {formData.tipopessoa === "FISICA" ? (
+                        {newCustomer.tipopessoa === "FISICA" ? (
                           <User className="h-6 w-6 sm:h-8 sm:w-8" />
                         ) : (
                           <Building2 className="h-6 w-6 sm:h-8 sm:w-8" />
@@ -217,19 +125,14 @@ export function CustomerDialog() {
                       />
                     </Label>
                   </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground text-center px-2">
-                    Clique no ícone da câmera para adicionar uma foto (máx. 5MB)
-                  </p>
+                
                 </div>
-
-                <Separator />
-                {/* Status */}
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-sm sm:text-base">
                     Status
                   </Label>
                   <Select
-                    value={formData.status}
+                    value={newCustomer.status}
                     onValueChange={(value: StatusCliente) =>
                       handleInputChange("status", value)
                     }
@@ -258,7 +161,7 @@ export function CustomerDialog() {
                     Tipo de Pessoa *
                   </Label>
                   <Select
-                    value={formData.tipopessoa}
+                    value={newCustomer.tipopessoa}
                     onValueChange={(value: TipoPessoa) =>
                       handleInputChange("tipopessoa", value)
                     }
@@ -291,21 +194,21 @@ export function CustomerDialog() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="cpfcnpj" className="text-sm sm:text-base">
-                      {formData.tipopessoa === "FISICA" ? "CPF" : "CNPJ"} *
+                      {newCustomer.tipopessoa === "FISICA" ? "CPF" : "CNPJ"} *
                     </Label>
                     <Input
                       id="cpfcnpj"
                       className="text-sm sm:text-base"
-                      value={formatCpfCnpj(formData.cpfcnpj)}
+                      value={formatCpfCnpj(newCustomer.cpfcnpj, newCustomer.tipopessoa)}
                       onChange={(e) =>
                         handleInputChange("cpfcnpj", e.target.value)
                       }
                       placeholder={
-                        formData.tipopessoa === "FISICA"
+                        newCustomer.tipopessoa === "FISICA"
                           ? "000.000.000-00"
                           : "00.000.000/0000-00"
                       }
-                      maxLength={formData.tipopessoa === "FISICA" ? 14 : 18}
+                      maxLength={newCustomer.tipopessoa === "FISICA" ? 14 : 18}
                     />
                   </div>
 
@@ -314,7 +217,7 @@ export function CustomerDialog() {
                       htmlFor="nomerazaosocial"
                       className="text-sm sm:text-base"
                     >
-                      {formData.tipopessoa === "FISICA"
+                      {newCustomer.tipopessoa === "FISICA"
                         ? "Nome Completo"
                         : "Razão Social"}{" "}
                       *
@@ -322,12 +225,12 @@ export function CustomerDialog() {
                     <Input
                       id="nomerazaosocial"
                       className="text-sm sm:text-base"
-                      value={formData.nomerazaosocial}
+                      value={newCustomer.nomerazaosocial}
                       onChange={(e) =>
                         handleInputChange("nomerazaosocial", e.target.value)
                       }
                       placeholder={
-                        formData.tipopessoa === "FISICA"
+                        newCustomer.tipopessoa === "FISICA"
                           ? "João da Silva"
                           : "Empresa LTDA"
                       }
@@ -349,7 +252,7 @@ export function CustomerDialog() {
                       id="email"
                       type="email"
                       className="text-sm sm:text-base"
-                      value={formData.email}
+                      value={newCustomer.email}
                       onChange={(e) =>
                         handleInputChange("email", e.target.value)
                       }
@@ -368,7 +271,7 @@ export function CustomerDialog() {
                     <Input
                       id="telefone"
                       className="text-sm sm:text-base"
-                      value={formatTelefone(formData.telefone)}
+                      value={formatTelefone(newCustomer.telefone)}
                       onChange={(e) =>
                         handleInputChange("telefone", e.target.value)
                       }
@@ -392,7 +295,7 @@ export function CustomerDialog() {
                     <Input
                       id="endereco"
                       className="text-sm sm:text-base resize-none"
-                      value={formData.endereco}
+                      value={newCustomer.endereco}
                       onChange={(e) =>
                         handleInputChange("endereco", e.target.value)
                       }
@@ -408,7 +311,7 @@ export function CustomerDialog() {
                       <Input
                         id="cidade"
                         className="text-sm sm:text-base"
-                        value={formData.cidade}
+                        value={newCustomer.cidade}
                         onChange={(e) =>
                           handleInputChange("cidade", e.target.value)
                         }
@@ -421,7 +324,7 @@ export function CustomerDialog() {
                         Estado
                       </Label>
                       <Select
-                        value={formData.estado}
+                        value={newCustomer.estado}
                         onValueChange={(value) =>
                           handleInputChange("estado", value)
                         }
@@ -446,7 +349,7 @@ export function CustomerDialog() {
                       <Input
                         id="cep"
                         className="text-sm sm:text-base"
-                        value={formatCep(formData.cep)}
+                        value={formatCep(newCustomer.cep)}
                         onChange={(e) =>
                           handleInputChange("cep", e.target.value)
                         }
@@ -458,7 +361,7 @@ export function CustomerDialog() {
                 </div>
 
                 {/* Dados Fiscais - Apenas para Pessoa Jurídica */}
-                {formData.tipopessoa === "JURIDICA" && (
+                {newCustomer.tipopessoa === "JURIDICA" && (
                   <>
                     <Separator />
                     <div className="space-y-3 sm:space-y-4">
@@ -480,7 +383,7 @@ export function CustomerDialog() {
                           <Input
                             id="inscricaoestadual"
                             className="text-sm sm:text-base"
-                            value={formData.inscricaoestadual}
+                            value={newCustomer.inscricaoestadual}
                             onChange={(e) =>
                               handleInputChange(
                                 "inscricaoestadual",
@@ -501,7 +404,7 @@ export function CustomerDialog() {
                           <Input
                             id="inscricaomunicipal"
                             className="text-sm sm:text-base"
-                            value={formData.inscricaomunicipal}
+                            value={newCustomer.inscricaomunicipal}
                             onChange={(e) =>
                               handleInputChange(
                                 "inscricaomunicipal",
@@ -523,7 +426,7 @@ export function CustomerDialog() {
                         <Input
                           id="codigomunicipio"
                           className="text-sm sm:text-base"
-                          value={formData.codigomunicipio}
+                          value={newCustomer.codigomunicipio}
                           onChange={(e) =>
                             handleInputChange("codigomunicipio", e.target.value)
                           }
@@ -616,6 +519,5 @@ export function CustomerDialog() {
           </DialogFooter>
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    )
 }

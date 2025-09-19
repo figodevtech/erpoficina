@@ -1,6 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { CustomerDialog } from "./customerDialog/customerDialog";
+import { CustomerDialog } from "./customerDialogRegister/customerDialog";
 
 export default function Header () {
     return(
