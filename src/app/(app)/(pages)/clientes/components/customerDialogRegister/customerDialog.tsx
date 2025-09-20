@@ -7,24 +7,27 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import EditContent from "./editContent";
 import { Customer } from "../../types";
 import RegisterContent from "./registerContent";
-import { useState } from "react";
+import { Children, PropsWithChildren, ReactNode, useEffect, useState } from "react";
 
 interface CustomerDialogProps{
 customerId?: number
+children?: ReactNode
 }
 
 
-export function CustomerDialog({customerId}: CustomerDialogProps) {
+export function CustomerDialog({customerId, children}: CustomerDialogProps ) {
   const [selectedCustomer, setselectedCustomer] = useState<Customer | undefined>(undefined)
 
 
+  useEffect(()=> {
+    if(customerId){
+      console.log(customerId)
+    }
+  },[customerId])
   return (
     <Dialog>
       <DialogTrigger  asChild>
-        <Button className="hover:cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Cliente
-        </Button>
+        {children}
       </DialogTrigger>
         {selectedCustomer ? (
           <EditContent 
