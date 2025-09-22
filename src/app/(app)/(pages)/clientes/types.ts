@@ -12,6 +12,19 @@ export enum ClientStatus {
   PENDENTE = "PENDENTE",
 }
 
+export interface Vehicle {
+  id: number,
+  clientId: number,
+  placa: string,
+  modelo: string,
+  marca: string
+  ano: number,
+  cor: string,
+  kmatual: number,
+  
+}
+
+
 export interface Customer {
   id: number
   tipopessoa: TipoPessoa
@@ -29,6 +42,7 @@ export interface Customer {
   createdat: string
   updatedat: Timestamp
   status: ClientStatus
+  veiculos: Vehicle[]
 }
 
 export interface Pagination {
