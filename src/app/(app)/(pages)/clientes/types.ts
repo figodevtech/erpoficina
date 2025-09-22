@@ -19,7 +19,7 @@ export interface Vehicle {
   modelo: string,
   marca: string
   ano: number,
-  cor: string,
+  cor: string, 
   kmatual: number,
   
 }

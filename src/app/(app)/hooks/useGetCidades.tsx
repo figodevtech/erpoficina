@@ -5,16 +5,19 @@ type Cidade = {
   nome: string;
 };
 
-export function useGetCidades(uf: string | undefined) {
-    if(uf === undefined ){
-        return {cidades :[]}
-    }
+export function useGetCidades(uf?: string) {
   const [cidades, setCidades] = useState<Cidade[]>([]);
+    
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<null | string>(null);
 
   useEffect(() => {
-    if (!uf) return;
+     if (!uf) {
+      setCidades([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
     const fetchCidades = async () => {
       try {

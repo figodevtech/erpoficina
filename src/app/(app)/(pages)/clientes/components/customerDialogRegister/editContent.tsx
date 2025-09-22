@@ -23,6 +23,7 @@ import {
   Phone,
   FileText,
   Camera,
+  Loader,
 } from "lucide-react";
 import {
   DialogContent,
@@ -43,6 +44,7 @@ import { StatusCliente, TipoPessoa, ESTADOS_BRASIL, tabTheme } from "./types";
 import { formatCep, formatCpfCnpj, formatTelefone } from "./utils";
 import { Customer } from "../../types";
 import axios from "axios";
+import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
 
 interface EditContentProps {
   customerId: number;
@@ -53,6 +55,9 @@ export default function EditContent({ customerId }: EditContentProps) {
     Customer | undefined
   >(undefined);
   const [isLoading, setIsLoading] = useState(true);
+
+  const {cidades, loading} = useGetCidades(selectedCustomer?.estado);
+
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -356,15 +361,21 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <Label htmlFor="cidade" className="text-sm sm:text-base">
                         Cidade
                       </Label>
-                      <Input
-                        id="cidade"
-                        className="text-sm sm:text-base"
-                        value={selectedCustomer.cidade}
-                        onChange={(e) =>
-                          handleInputChange("cidade", e.target.value)
-                        }
-                        placeholder="São Paulo"
-                      />
+                      
+
+                      <Select
+                      value={selectedCustomer.cidade}
+                      onValueChange={(value)=>setselectedCustomer({...selectedCustomer, cidade: value})}
+                      >
+                        <SelectTrigger className="min-w-[150px]">
+                          <SelectValue placeholder={`${loading ? ("Carregando..."):("Selecione")}`}></SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cidades.map((cidade)=>(
+                            <SelectItem className="hover:cursor-pointer" key={cidade.id} value={cidade.nome}>{cidade.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">
@@ -374,7 +385,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <Select
                         value={selectedCustomer.estado}
                         onValueChange={(value) =>
-                          handleInputChange("estado", value)
+                          setselectedCustomer({...selectedCustomer, estado: value, cidade: ""})
                         }
                       >
                         <SelectTrigger className="h-10 sm:h-11">
@@ -382,7 +393,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {ESTADOS_BRASIL.map((estado) => (
-                            <SelectItem key={estado} value={estado}>
+                            <SelectItem key={estado} value={estado} className="hover:cursor-pointer">
                               {estado}
                             </SelectItem>
                           ))}
