@@ -9,6 +9,7 @@ import { Customer } from "../../types";
 import RegisterContent from "./registerContent";
 import { Children, PropsWithChildren, ReactNode, useEffect, useState } from "react";
 import axios from "axios";
+import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
 
 interface CustomerDialogProps{
 customerId?: number
