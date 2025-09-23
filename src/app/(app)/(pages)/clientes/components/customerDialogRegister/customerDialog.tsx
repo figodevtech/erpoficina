@@ -1,74 +1,81 @@
 "use client";
 
 import type React from "react";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { ReactNode, useEffect, useState } from "react";
+import axios from "axios";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import EditContent from "./editContent";
-import { Customer } from "../../types";
 import RegisterContent from "./registerContent";
-import { Children, PropsWithChildren, ReactNode, useEffect, useState } from "react";
-import axios from "axios";
-import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
+import { Customer } from "../../types";
 
-interface CustomerDialogProps{
-customerId?: number
-children?: ReactNode
+interface CustomerDialogProps {
+  customerId?: number;
+  children?: ReactNode;
+  isOpen?: boolean;
+  setIsOpen?: (value: boolean) => void;
+  setSelectedCustomerId?: (value: number | undefined) => void;
 }
 
+export function CustomerDialog({
+  customerId,
+  children,
+  isOpen,
+  setIsOpen,
+  setSelectedCustomerId,
+}: CustomerDialogProps) {
+  // estado interno caso o componente não seja controlado por props
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isOpen ?? internalOpen;
+  const setOpen = setIsOpen ?? setInternalOpen;
 
-export function CustomerDialog({customerId, children}: CustomerDialogProps ) {
-  const [selectedCustomer, setselectedCustomer] = useState<Customer | undefined>(undefined)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
 
-
-  useEffect(()=> {
-    if(customerId){
-      console.log(customerId)
-    }
-  },[customerId])
-
-
-  const handleGetCustomer = async (
-    customerId: number
-  ) => {
+  const handleGetCustomer = async (id: number) => {
     setIsLoading(true);
     try {
-      const response = await axios.get("/api/customers/" + customerId);
-      
+      const response = await axios.get(`/api/customers/${id}`);
       if (response.status === 200) {
-        // console.log(response)
         const { data } = response;
-        setselectedCustomer(data.data);
-        console.log("Cliente carregados:", data.data);
+        setSelectedCustomer(data.data);
+        // console.log("Cliente carregado:", data.data);
       }
     } catch (error) {
-      console.log("Erro ao buscar clientes:", error);
+      console.log("Erro ao buscar cliente:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(()=> {
-    if(customerId){
-
+  // Busca o cliente sempre que o dialog abrir e existir um customerId
+  useEffect(() => {
+    if (open && customerId) {
       handleGetCustomer(customerId);
     }
-  },[])
+  }, [open, customerId]);
 
   return (
-    <Dialog>
-      <DialogTrigger  asChild>
-        {children}
-      </DialogTrigger>
+    <Dialog
     
-        {customerId ? (
-          <EditContent 
-          customerId={customerId}
-          />
+      open={open}
+      onOpenChange={(nextOpen) => {
+        // sempre sincroniza o estado (controlado ou interno)
+        setOpen(nextOpen);
 
-        ): (
-          <RegisterContent/>
+        if (!nextOpen) {
+          setSelectedCustomerId?.(undefined);
+          setSelectedCustomer(undefined);
+        }
+      }}
+    >
+      <DialogTrigger
+      autoFocus={false}
+      asChild>{children}</DialogTrigger>
+
+        {customerId ? (
+          <EditContent customerId={customerId}  />
+        ) : (
+          <RegisterContent />
         )}
     </Dialog>
   );

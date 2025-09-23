@@ -56,8 +56,9 @@ interface CustomerDataTableProps{
     fetchStatusCounts: ()=> void
     isLoading: boolean
     customerItems: Customer[]
+    setSeletedCustomerId: (value: number) => void
 }   
-export default function CustomersDataTable ({handleGetCustomers, pagination, search,status, fetchStatusCounts, isLoading, customerItems}: CustomerDataTableProps) {
+export default function CustomersDataTable ({handleGetCustomers, pagination, search,status, fetchStatusCounts, isLoading, customerItems, setSeletedCustomerId}: CustomerDataTableProps) {
     return (
         <Card>
         <CardHeader>
@@ -104,7 +105,7 @@ export default function CustomersDataTable ({handleGetCustomers, pagination, sea
             </TableHeader>
             <TableBody>
               {customerItems.map((customer) => (
-                <TableRow key={customer.id}>
+                <TableRow key={customer.id} onDoubleClick={()=>setSeletedCustomerId(customer.id)} className="hover:cursor-pointer">
                   <TableCell>{customer.id}</TableCell>
                   <TableCell>
                     <div>
@@ -175,19 +176,20 @@ export default function CustomersDataTable ({handleGetCustomers, pagination, sea
             </TableBody>
           </Table>
           <div className="flex items-center mt-4 justify-between">
-            <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
+            <div className="text-xs text-muted-foreground flex flex-nowrap">
               <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
               <span>
                 {pagination.limit * (pagination.page - 1) +
                   (pagination.pageCount || 0)}
               </span>
+              <span className="ml-1 hidden sm:block">de {pagination.total}</span>
               
 
              <Loader className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`}/>
               
             </div>
             
-            <div className="flex items-center justify-center space-x-2">
+            <div className="flex items-center justify-center space-x-1 sm:space-x-3">
               <Button
                 variant="outline"
                 size="icon"
@@ -216,8 +218,9 @@ export default function CustomersDataTable ({handleGetCustomers, pagination, sea
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
               <span className="text-xs font-medium text-nowrap">
-                Página {pagination.page} de {pagination.totalPages || 1}
+                Pg. {pagination.page} de {pagination.totalPages || 1}
               </span>
+              
               <Button
                 className="hover:cursor-pointer"
                 variant="outline"
@@ -257,7 +260,7 @@ export default function CustomersDataTable ({handleGetCustomers, pagination, sea
                 <ChevronsRight className="h-4 w-4" />
               </Button>
             </div>
-            <div>
+            <div className="">
               <Select>
                 <SelectTrigger className="hover:cursor-pointer ml-2">
                   <SelectValue placeholder={pagination.limit}></SelectValue>

@@ -26,6 +26,7 @@ export default function ClientesPage() {
   });
   const [status, setStatus] = useState<Status>(Status.TODOS);
   const [search, setSearch] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState <number | undefined>(undefined);
 
   const handleGetCustomers = async (
     pageNumber?: number,
@@ -68,7 +69,10 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-6">
-      <Header />
+      <Header
+      selectedCustomerId={selectedCustomerId}
+      setSelectedCustomerId={setSelectedCustomerId}
+      />
 
       <Cards 
       statusCounts={statusCounts}
@@ -86,6 +90,7 @@ export default function ClientesPage() {
       {/* Customers Table (colunas compatíveis com a interface) */}
       
       <CustomersDataTable
+      setSeletedCustomerId={setSelectedCustomerId}
       customerItems={customerItems}
       fetchStatusCounts={fetchStatusCounts}
       handleGetCustomers={handleGetCustomers}

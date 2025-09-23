@@ -25,6 +25,7 @@ import {
   Camera,
 } from "lucide-react";
 import {
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -436,6 +437,10 @@ export default function RegisterContent () {
                   </>
                 )}
               </Button>
+              <DialogClose asChild>
+
+              <Button className="hover:cursor-pointer" variant={"outline"}>Cancelar</Button>
+              </DialogClose>
             </div>
           </DialogFooter>
         </div>

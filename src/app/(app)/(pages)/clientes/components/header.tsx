@@ -1,7 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { CustomerDialog } from "./customerDialogRegister/customerDialog";
+import { useEffect, useState } from "react";
 
-export default function Header() {
+interface HeaderProps {
+  selectedCustomerId: number | undefined
+  setSelectedCustomerId: (value: number | undefined)=> void
+}
+export default function Header({selectedCustomerId, setSelectedCustomerId} : HeaderProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
+
+
+  useEffect(()=>{
+    if(selectedCustomerId){
+      setIsOpen(true)
+    }
+  },[selectedCustomerId])
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -13,7 +27,12 @@ export default function Header() {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <CustomerDialog>
+        <CustomerDialog
+        setSelectedCustomerId={setSelectedCustomerId}
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+        customerId={selectedCustomerId}
+        >
           <Button>Novo Cliente</Button>
         </CustomerDialog>
       </div>
