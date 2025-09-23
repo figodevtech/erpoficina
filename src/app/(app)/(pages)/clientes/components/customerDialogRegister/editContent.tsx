@@ -400,7 +400,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                         <PopoverContent className="w-[200px] p-0">
                           <Command>
                             <CommandInput
-                              placeholder="Search framework..."
+                              placeholder="Buscar cidade..."
                               className="h-9"
                             />
                             <CommandList>
