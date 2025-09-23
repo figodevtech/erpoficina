@@ -31,6 +31,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsRight,
+  Loader,
 } from "lucide-react";
 
 import {
@@ -180,7 +181,12 @@ export default function CustomersDataTable ({handleGetCustomers, pagination, sea
                 {pagination.limit * (pagination.page - 1) +
                   (pagination.pageCount || 0)}
               </span>
+              
+
+             <Loader className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`}/>
+              
             </div>
+            
             <div className="flex items-center justify-center space-x-2">
               <Button
                 variant="outline"
@@ -264,6 +270,7 @@ export default function CustomersDataTable ({handleGetCustomers, pagination, sea
               </Select>
             </div>
           </div>
+          
         </CardContent>
       </Card>
     )

@@ -24,6 +24,9 @@ import {
   FileText,
   Camera,
   Loader,
+  ChevronsUpDown,
+  Check,
+  MapPin,
 } from "lucide-react";
 import {
   DialogContent,
@@ -45,6 +48,20 @@ import { formatCep, formatCpfCnpj, formatTelefone } from "./utils";
 import { Customer } from "../../types";
 import axios from "axios";
 import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 interface EditContentProps {
   customerId: number;
@@ -56,8 +73,8 @@ export default function EditContent({ customerId }: EditContentProps) {
   >(undefined);
   const [isLoading, setIsLoading] = useState(true);
 
-  const {cidades, loading} = useGetCidades(selectedCustomer?.estado);
-
+  const { cidades, loading } = useGetCidades(selectedCustomer?.estado);
+  const [open, setOpen] = useState(false);
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -89,6 +106,7 @@ export default function EditContent({ customerId }: EditContentProps) {
     }
   }, []);
 
+  useEffect(()=>{console.log(selectedCustomer)},[selectedCustomer])
   if (isLoading) {
     return (
       <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden ">
@@ -325,8 +343,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                       id="telefone"
                       className="text-sm sm:text-base"
                       value={formatTelefone(selectedCustomer.telefone)}
-                      onChange={(e) =>
-                        handleInputChange("telefone", e.target.value)
+                      onChange={(e) =>{
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                        handleInputChange("telefone", raw)
+
+                      }
                       }
                       placeholder="(11) 99999-9999"
                       maxLength={15}
@@ -336,14 +357,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                 <Separator className="mt-4" />
                 {/* Endereço */}
                 <div className="space-y-3 sm:space-y-4">
-                  {/* <div className="flex items-center gap-2">
-                <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
-                <h3 className="text-base sm:text-lg font-semibold">Endereço</h3>
-              </div> */}
+                  
 
                   <div className="space-y-2">
                     <Label htmlFor="endereco" className="text-sm sm:text-base">
-                      Endereço Completo
+                      <MapPin className="h-4.5"/>Endereço Completo 
                     </Label>
                     <Input
                       id="endereco"
@@ -361,21 +379,64 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <Label htmlFor="cidade" className="text-sm sm:text-base">
                         Cidade
                       </Label>
-                      
 
-                      <Select
-                      value={selectedCustomer.cidade}
-                      onValueChange={(value)=>setselectedCustomer({...selectedCustomer, cidade: value})}
-                      >
-                        <SelectTrigger className="min-w-[150px]">
-                          <SelectValue placeholder={`${loading ? ("Carregando..."):("Selecione")}`}></SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cidades.map((cidade)=>(
-                            <SelectItem className="hover:cursor-pointer" key={cidade.id} value={cidade.nome}>{cidade.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-[200px] justify-between"
+                          >
+                            {selectedCustomer.cidade
+                              ? cidades.find(
+                                  (cidade) =>
+                                    cidade.nome === selectedCustomer.cidade
+                                )?.nome
+                              : `${loading ? "Carregando..." : "Selecione..."}`}
+                            <ChevronsUpDown className="opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0">
+                          <Command>
+                            <CommandInput
+                              placeholder="Search framework..."
+                              className="h-9"
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                Nenhuma cidade encontrada.
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {cidades.map((cidade) => (
+                                  <CommandItem
+                                    className="hover:cursor-pointer"
+                                    key={cidade.id}
+                                    value={cidade.nome}
+                                    onSelect={(currentValue) => {
+                                      setselectedCustomer({
+                                        ...selectedCustomer,
+                                        cidade: currentValue,
+                                      });
+                                      setOpen(false);
+                                    }}
+                                  >
+                                    {cidade.nome}
+                                    <Check
+                                      className={cn(
+                                        "ml-auto",
+                                        selectedCustomer.cidade === cidade.nome
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="space-y-2">
@@ -385,7 +446,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <Select
                         value={selectedCustomer.estado}
                         onValueChange={(value) =>
-                          setselectedCustomer({...selectedCustomer, estado: value, cidade: ""})
+                          setselectedCustomer({
+                            ...selectedCustomer,
+                            estado: value,
+                            cidade: "",
+                          })
                         }
                       >
                         <SelectTrigger className="h-10 sm:h-11">
@@ -393,7 +458,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {ESTADOS_BRASIL.map((estado) => (
-                            <SelectItem key={estado} value={estado} className="hover:cursor-pointer">
+                            <SelectItem
+                              key={estado}
+                              value={estado}
+                              className="hover:cursor-pointer"
+                            >
                               {estado}
                             </SelectItem>
                           ))}
@@ -517,15 +586,17 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedCustomer.veiculos.map((vehicle)=>(
-
-                    <TableRow key={vehicle.id} className="hover: cursor-pointer">
-                      <TableCell>{vehicle.id}</TableCell>
-                      <TableCell>{vehicle.modelo}</TableCell>
-                      <TableCell>{vehicle.placa}</TableCell>
-                      <TableCell>{vehicle.cor}</TableCell>
-                      <TableCell>{vehicle.ano}</TableCell>
-                    </TableRow>
+                    {selectedCustomer.veiculos.map((vehicle) => (
+                      <TableRow
+                        key={vehicle.id}
+                        className="hover: cursor-pointer"
+                      >
+                        <TableCell>{vehicle.id}</TableCell>
+                        <TableCell>{vehicle.modelo}</TableCell>
+                        <TableCell>{vehicle.placa}</TableCell>
+                        <TableCell>{vehicle.cor}</TableCell>
+                        <TableCell>{vehicle.ano}</TableCell>
+                      </TableRow>
                     ))}
                   </TableBody>
                 </Table>
