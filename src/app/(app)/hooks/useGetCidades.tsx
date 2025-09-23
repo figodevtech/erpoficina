@@ -7,12 +7,14 @@ type Cidade = {
 
 export function useGetCidades(uf?: string) {
   const [cidades, setCidades] = useState<Cidade[]>([]);
-    
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<null | string>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-     if (!uf) {
+    let cancelled = false;
+
+    if (!uf) {
+      // Reseta quando não há UF selecionada
       setCidades([]);
       setLoading(false);
       setError(null);
@@ -24,24 +26,25 @@ export function useGetCidades(uf?: string) {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
+        const resp = await fetch(
           `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`
         );
 
-        if (!response.ok) {
-          throw new Error("Erro ao buscar cidades");
-        }
+        if (!resp.ok) throw new Error("Erro ao buscar cidades");
 
-        const data: Cidade[] = await response.json();
-        setCidades(data);
-      } catch (err) {
-        setError((err as Error).message);
+        const data: Cidade[] = await resp.json();
+        if (!cancelled) setCidades(data);
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchCidades();
+    return () => {
+      cancelled = true;
+    };
   }, [uf]);
 
   return { cidades, loading, error };
