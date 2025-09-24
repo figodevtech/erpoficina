@@ -1,14 +1,20 @@
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireOSAccess } from "../../_authz/perms";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+type Params = { id: string };
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<Params> }
+) {
   try {
     await requireOSAccess();
 
-    const osId = Number(params.id);
+    const { id } = await params;        // 👈 agora precisa de await
+    const osId = Number(id);
 
     const { data: os, error: osErr } = await supabaseAdmin
       .from("ordemservico")

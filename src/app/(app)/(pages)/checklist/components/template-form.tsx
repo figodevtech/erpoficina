@@ -30,7 +30,6 @@ export function TemplateForm({ value, categorias, editando, onSave, onCancel }: 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   if (value.id !== tpl.id || value.criadoEm !== tpl.criadoEm) {
     // Reidrata
-    // @ts-ignore simples, para evitar dependência de useEffect aqui
     setTpl(value);
   }
 

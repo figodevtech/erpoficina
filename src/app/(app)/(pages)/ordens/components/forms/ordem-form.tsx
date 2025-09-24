@@ -1,4 +1,3 @@
-// src/app/(app)/(pages)/ordens/forms/ordem-form.tsx
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
@@ -8,52 +7,75 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Search, CarFront, User2, ClipboardList, Building2 } from "lucide-react";
 
-/** Tipos mínimos */
-type Cliente = { id: number; nome: string; telefone?: string | null; email?: string | null; documento?: string | null };
-type Veiculo = { id: number; clienteid: number; placa: string; modelo: string; ano?: number | null };
+type Cliente = {
+  id: number;
+  nomerazaosocial: string;
+  email?: string | null;
+  telefone?: string | null;
+  cpfcnpj: string;
+};
+
+type Veiculo = {
+  id: number;
+  placa: string;
+  modelo: string;
+  marca: string;
+  ano?: number | null;
+  cor?: string | null;
+  kmatual?: number | null;
+};
+
 type ChecklistTemplateModel = {
   id: string;
   nome: string;
   itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
 };
-type Marcacao = "OK" | "NOK" | "NA" | "";
 
-/** Props */
+// ⚠️ Ajuste estes valores se o seu ENUM do banco for diferente
+const CHECK_STATUS = ["OK", "NOK", "NA"] as const;
+type Marcacao = typeof CHECK_STATUS[number] | "";
+
 export type FormularioNovaOSProps = {
   onSubmit?: (payload: any) => void;
-  mode?: "create";
   exposeSubmit?: (fn: () => void) => void;
+  
 };
 
-/** Sentinela para Select */
 const NONE = "__none__";
 
 export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSProps) {
-  // campos
-  const [tipoOS, setTipoOS] = useState<string>("");
+  // Setores
+  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
+  const [loadingSetores, setLoadingSetores] = useState(false);
+  const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
-  const [descricao, setDescricao] = useState<string>("");
-  const [observacoes, setObservacoes] = useState<string>("");
 
+  // Atendimento
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
 
-  const [cpfBusca, setCpfBusca] = useState("");
+  // Cliente/Veículo
+  const [docBusca, setDocBusca] = useState(""); // CPF/CNPJ
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<Veiculo[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState<string | null>(null);
 
+  // Avulso
   const [avulsoNome, setAvulsoNome] = useState<string>("");
   const [avulsoDoc, setAvulsoDoc] = useState<string>("");
   const [avulsoTelefone, setAvulsoTelefone] = useState<string>("");
   const [avulsoEmail, setAvulsoEmail] = useState<string>("");
 
-  // modelos de checklist
+  // Texto
+  const [descricao, setDescricao] = useState<string>("");
+  const [observacoes, setObservacoes] = useState<string>("");
+
+  // Checklist
   const [templates, setTemplates] = useState<ChecklistTemplateModel[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -61,12 +83,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateModel["itens"]>([]);
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
 
-  // setores (dinâmico)
-  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
-  const [loadingSetores, setLoadingSetores] = useState(false);
-  const [setoresError, setSetoresError] = useState<string | null>(null);
-
-  /** Carregar setores do backend */
+  // Carrega Setores
   useEffect(() => {
     (async () => {
       try {
@@ -77,7 +94,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         const items: Array<{ id: number; nome: string }> = Array.isArray(j) ? j : j?.items ?? [];
         setSetores(items);
       } catch (e: any) {
-        setSetoresError(e?.message ?? "Falha ao carregar setores.");
+        setSetoresError(e?.message ?? "Não foi possível carregar os setores.");
         setSetores([]);
       } finally {
         setLoadingSetores(false);
@@ -85,9 +102,9 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     })();
   }, []);
 
-  /** Carregar modelos de checklist */
+  // Carrega Modelos de Checklist
   useEffect(() => {
-    const load = async () => {
+    (async () => {
       try {
         setLoadingTemplates(true);
         setTemplatesError(null);
@@ -98,12 +115,11 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         const items: ChecklistTemplateModel[] = Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : [];
         setTemplates(items);
       } catch (e: any) {
-        setTemplatesError(e?.message ?? "Falha ao carregar modelos de checklist.");
+        setTemplatesError(e?.message ?? "Não foi possível carregar os modelos de checklist.");
       } finally {
         setLoadingTemplates(false);
       }
-    };
-    load();
+    })();
   }, []);
 
   const applyTemplate = useCallback(
@@ -133,70 +149,48 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     setChecklist(novo);
   }, [templateId, templates]);
 
-  const toggleChecklist = (itemTitulo: string, valor: Marcacao) => {
-    setChecklist((prev) => {
-      const atual = prev[itemTitulo] ?? "";
-      const novo = atual === valor ? "" : valor;
-      return { ...prev, [itemTitulo]: novo as Marcacao };
-    });
-  };
-
-  // busca cliente
+  // Veículos
   const veiculoOptions = useMemo(
     () =>
       veiculosDoCliente.map((v) => ({
         value: String(v.id),
-        label: `${v.modelo} - ${v.placa}${v.ano ? ` (${v.ano})` : ""}`,
+        label: `${v.modelo} • ${v.placa}${v.ano ? ` (${v.ano})` : ""}`,
       })),
     [veiculosDoCliente]
   );
 
-  const buscarClientePorCPF = async () => {
-    const cpf = cpfBusca.replace(/\D/g, "");
-    if (!cpf || cpf.length < 11) {
-      setErroCliente("Informe um CPF válido (11 dígitos).");
+  // Buscar Cliente por Documento
+  const buscarClientePorDocumento = async () => {
+    const raw = docBusca.trim();
+    if (!raw) {
+      setErroCliente("Informe um CPF/CNPJ para buscar.");
       return;
     }
-
     setErroCliente(null);
     setBuscandoCliente(true);
     setCliente(null);
     setVeiculosDoCliente([]);
     setVeiculoSelecionadoId(null);
-
     try {
-      const url = new URL("/api/clientes/by-cpf", window.location.origin);
-      url.searchParams.set("cpf", cpf);
+      const url = new URL("/api/clientes/buscar-documento", window.location.origin);
+      url.searchParams.set("doc", raw);
       const r = await fetch(url.toString(), { cache: "no-store" });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || "Não foi possível buscar o cliente.");
-
-      const c: Cliente | null = j?.cliente ?? null;
-      setCliente(c);
-
-      if (c) {
-        const vUrl = new URL("/api/veiculos/by-cliente", window.location.origin);
-        vUrl.searchParams.set("clienteid", String(c.id));
-        const rV = await fetch(vUrl.toString(), { cache: "no-store" });
-        const jV = await rV.json();
-        if (!rV.ok) throw new Error(jV?.error || "Falha ao buscar veículos.");
-        setVeiculosDoCliente(jV?.veiculos ?? []);
-      } else {
-        setErroCliente("Cliente não encontrado.");
-      }
+      setCliente(j?.cliente ?? null);
+      setVeiculosDoCliente(j?.veiculos ?? []);
     } catch (e: any) {
-      setErroCliente(e?.message ?? "Erro na consulta.");
+      setErroCliente(e?.message ?? "Erro ao consultar o cliente.");
     } finally {
       setBuscandoCliente(false);
     }
   };
 
-  // expose submit
+  // Expor submit ao Dialog
   useEffect(() => {
     exposeSubmit?.(salvar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    tipoOS,
     setor,
     descricao,
     observacoes,
@@ -213,26 +207,31 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     avulsoEmail,
   ]);
 
+  // Salvar
   const salvar = () => {
-    if (!tipoOS || !setor) {
-      alert("Selecione Tipo de OS e Setor responsável.");
+    if (!setor) {
+      alert("Selecione o Setor responsável.");
       return;
     }
     if (modoAtendimento === "cadastrado") {
       if (!cliente) {
-        alert("Busque o cliente e selecione um veículo (se houver).");
+        alert("Busque o cliente pelo CPF/CNPJ e selecione um veículo (se houver).");
         return;
       }
     } else {
       if (!avulsoNome || !avulsoDoc) {
-        alert("Preencha Nome e CPF/CNPJ para atendimento avulso.");
+        alert("Preencha Nome/Razão Social e CPF/CNPJ para atendimento avulso.");
         return;
       }
     }
 
-    const checklistArray = Object.entries(checklist).map(([item, status]) => ({ item, status }));
+    const checklistArray = Object.entries(checklist).map(([item, status]) => ({
+      item,
+      status: (status || null) as string | null, // "OK" | "NOK" | "NA" | null
+    }));
+
     const base = {
-      tipoos: tipoOS,
+      // tipoos fica como DEFAULT no banco
       setorid: setor ? Number(setor) : null,
       descricao: descricao || null,
       observacoes: observacoes || null,
@@ -240,7 +239,12 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
       cliente:
         modoAtendimento === "cadastrado"
           ? { id: cliente!.id }
-          : { nome: avulsoNome, documento: avulsoDoc, telefone: avulsoTelefone || null, email: avulsoEmail || null },
+          : {
+              nome: avulsoNome,
+              documento: avulsoDoc,
+              telefone: avulsoTelefone || null,
+              email: avulsoEmail || null,
+            },
       veiculoid: veiculoSelecionadoId, // number | null
       checklist: checklistArray,
     };
@@ -250,50 +254,51 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
   return (
     <div className="space-y-6">
-      {/* Cliente */}
+      {/* DADOS DO CLIENTE */}
       <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
-          <CardDescription>Busque por CPF ou cadastre como avulso.</CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <User2 className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
+          </div>
+          <CardDescription>Busque pelo CPF/CNPJ ou informe os dados para atendimento avulso.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+
+        <CardContent className="space-y-5">
+          {/* Tipo de atendimento */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Tipo de Atendimento</Label>
+            <Label className="text-sm font-medium">Tipo de atendimento</Label>
             <RadioGroup
               value={modoAtendimento}
               onValueChange={(v: "cadastrado" | "avulso") => setModoAtendimento(v)}
-              className="flex gap-6"
+              className="flex flex-wrap gap-4"
             >
-              <div className="flex items-center space-x-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <RadioGroupItem value="cadastrado" id="r-cadastrado" />
-                <Label htmlFor="r-cadastrado" className="cursor-pointer">
-                  Cliente Cadastrado
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
+                <span>Cliente cadastrado</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
                 <RadioGroupItem value="avulso" id="r-avulso" />
-                <Label htmlFor="r-avulso" className="cursor-pointer">
-                  Atendimento Avulso
-                </Label>
-              </div>
+                <span>Atendimento avulso</span>
+              </label>
             </RadioGroup>
           </div>
 
           {modoAtendimento === "cadastrado" ? (
             <>
+              {/* Busca por CPF/CNPJ */}
               <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
                 <div className="space-y-2">
-                  <Label>CPF do cliente</Label>
+                  <Label>CPF/CNPJ</Label>
                   <Input
-                    inputMode="numeric"
-                    placeholder="Somente números"
-                    value={cpfBusca}
-                    onChange={(e) => setCpfBusca(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && buscarClientePorCPF()}
+                    placeholder="Digite com ou sem máscara"
+                    value={docBusca}
+                    onChange={(e) => setDocBusca(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && buscarClientePorDocumento()}
                   />
                 </div>
                 <div className="flex items-end">
-                  <Button className="w-full md:w-auto" onClick={buscarClientePorCPF} disabled={buscandoCliente}>
+                  <Button className="w-full md:w-auto" onClick={buscarClientePorDocumento} disabled={buscandoCliente}>
                     {buscandoCliente ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -311,29 +316,38 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
               {erroCliente && <div className="text-sm text-red-600">{erroCliente}</div>}
 
+              {/* Resumo do cliente */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label>Nome</Label>
-                  <Input value={cliente?.nome ?? ""} readOnly placeholder="—" />
+                <div className="space-y-1.5">
+                  <Label>Nome/Razão Social</Label>
+                  <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Telefone</Label>
                   <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>E-mail</Label>
                   <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Veículo do cliente</Label>
+              {/* Veículo */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Veículo do cliente</Label>
+                  {cliente && (
+                    <Badge variant="outline" className="font-normal">
+                      {veiculoOptions.length} veículo(s)
+                    </Badge>
+                  )}
+                </div>
                 <Select
                   value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
                   onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
                   disabled={!cliente || veiculoOptions.length === 0}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                     <SelectValue
                       placeholder={
                         !cliente
@@ -357,15 +371,15 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             </>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Nome do Cliente</Label>
+              <div className="space-y-1.5">
+                <Label>Nome/Razão Social</Label>
                 <Input value={avulsoNome} onChange={(e) => setAvulsoNome(e.target.value)} placeholder="Nome completo" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>CPF/CNPJ</Label>
                 <Input value={avulsoDoc} onChange={(e) => setAvulsoDoc(e.target.value)} placeholder="000.000.000-00" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Telefone</Label>
                 <Input
                   value={avulsoTelefone}
@@ -373,7 +387,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                   placeholder="(99) 99999-9999"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>E-mail</Label>
                 <Input
                   value={avulsoEmail}
@@ -386,14 +400,62 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         </CardContent>
       </Card>
 
-      {/* Descrição */}
+      {/* DEFINIÇÃO DA OS */}
       <Card className="border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Descrição do Problema</CardTitle>
+          <div className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
+          </div>
+          <CardDescription>Selecione o setor responsável. O técnico irá assumir mais tarde.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-3">
+              <Label>Setor responsável</Label>
+              <Select
+                value={setor}
+                onValueChange={setSetor}
+                disabled={loadingSetores || (!!setoresError && setores.length === 0)}
+              >
+                <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                  <SelectValue
+                    placeholder={
+                      loadingSetores
+                        ? "Carregando setores…"
+                        : setores.length
+                        ? "Selecione o setor"
+                        : "Nenhum setor disponível"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {setores.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
+            </div>
+            <div />
+            <div />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* DESCRIÇÃO */}
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Descrição do Problema</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <Textarea
-            placeholder="Descreva o problema…"
+            placeholder="Descreva o problema do veículo…"
             className="min-h-[100px] resize-y"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
@@ -401,15 +463,20 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         </CardContent>
       </Card>
 
-      {/* Checklist */}
+      {/* CHECKLIST */}
       <Card className="border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base sm:text-lg">Checklist de Inspeção</CardTitle>
-          <CardDescription>Selecione um modelo e marque os itens.</CardDescription>
+          <div className="flex items-center gap-2">
+            <CarFront className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Checklist de Inspeção</CardTitle>
+          </div>
+          <CardDescription>Escolha um modelo e marque cada item como OK, NOK ou N/A.</CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Modelo de Checklist</Label>
+          {/* Modelo */}
+          <div className="space-y-3">
+            <Label>Modelo de checklist</Label>
             <div className="flex items-center gap-2">
               <Select
                 value={templateId}
@@ -425,10 +492,13 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                         ? "Selecione um modelo"
                         : "Nenhum modelo disponível"
                     }
-                    className="truncate"
                   />
                 </SelectTrigger>
-                <SelectContent position="popper" sideOffset={6} className="w-[var(--radix-select-trigger-width)]">
+                <SelectContent
+                  position="popper"
+                  sideOffset={6}
+                  className="w-[var(--radix-select-trigger-width)]"
+                >
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id} className="truncate">
                       {t.nome}
@@ -436,6 +506,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                   ))}
                 </SelectContent>
               </Select>
+
               {templateId && (
                 <Button
                   variant="outline"
@@ -453,49 +524,61 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             {templatesError && <p className="text-sm text-red-500">{templatesError}</p>}
           </div>
 
+          {/* Itens */}
           {templateItems.length > 0 ? (
             <div className="grid grid-cols-1 gap-3">
               {templateItems.map((it) => {
                 const key = it.titulo ?? "";
                 const marcado = checklist[key] ?? "";
+
                 return (
-                  <div key={key} className="p-3 rounded-lg border border-border bg-muted text-foreground">
+                  <div
+                    key={key}
+                    className="p-3 rounded-lg border bg-muted/50 border-border text-foreground"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="text-sm font-medium">{it.titulo}</div>
-                        {it.descricao ? <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div> : null}
+                        {it.descricao ? (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {it.descricao}
+                          </div>
+                        ) : null}
                       </div>
                       {it.obrigatorio && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/20">
-                          Obrigatório
-                        </span>
+                        <Badge variant="secondary" className="text-[11px]">Obrigatório</Badge>
                       )}
                     </div>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <Checkbox
-                          checked={marcado === "OK"}
-                          onCheckedChange={() => toggleChecklist(key, "OK")}
-                          className="h-5 w-5 border-2 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
-                        />
-                        <span className="text-sm font-medium text-emerald-700">OK</span>
-                      </label>
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <Checkbox
-                          checked={marcado === "NOK"}
-                          onCheckedChange={() => toggleChecklist(key, "NOK")}
-                          className="h-5 w-5 border-2 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
-                        />
-                        <span className="text-sm font-medium text-red-700">NOK</span>
-                      </label>
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <Checkbox
-                          checked={marcado === "NA"}
-                          onCheckedChange={() => toggleChecklist(key, "NA")}
-                          className="h-5 w-5 border-2 data-[state=checked]:bg-zinc-700 data-[state=checked]:border-zinc-700"
-                        />
-                        <span className="text-sm font-medium text-zinc-700">N/A</span>
-                      </label>
+
+                    {/* Grupo de marcação – harmonizado com o enum (OK/NOK/NA) */}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {CHECK_STATUS.map((status) => {
+                        const selected = marcado === status;
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() =>
+                              setChecklist((prev) => ({
+                                ...prev,
+                                [key]: selected ? "" : status,
+                              }))
+                            }
+                            className={[
+                              "px-3 py-1.5 rounded-md text-sm border transition",
+                              selected
+                                ? status === "OK"
+                                  ? "bg-emerald-600 text-white border-emerald-600"
+                                  : status === "NOK"
+                                  ? "bg-red-600 text-white border-red-600"
+                                  : "bg-zinc-700 text-white border-zinc-700"
+                                : "bg-background hover:bg-muted border-border text-foreground",
+                            ].join(" ")}
+                          >
+                            {status}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -503,80 +586,28 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {templateId ? "Este modelo não possui itens." : "Selecione um modelo para exibir os itens do checklist."}
+              {templateId
+                ? "Este modelo não possui itens."
+                : "Selecione um modelo para exibir os itens do checklist."}
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Observações */}
+      {/* OBSERVAÇÕES */}
       <Card className="border-border">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base sm:text-lg">Observações</CardTitle>
         </CardHeader>
         <CardContent>
           <Textarea
-            placeholder="Observações adicionais…"
+            placeholder="Informações adicionais…"
             className="min-h-[80px] resize-y"
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
           />
         </CardContent>
       </Card>
-
-      {/* Definições */}
-      <div className="space-y-2 border rounded-lg p-3 md:p-4 bg-muted/40 border-border">
-        <p className="text-sm font-medium text-foreground">Definições da OS</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label>Tipo de OS</Label>
-            <Select value={tipoOS} onValueChange={setTipoOS}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" className="truncate" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ORCAMENTO">Orçamento</SelectItem>
-                <SelectItem value="SERVICO">Serviço</SelectItem>
-                <SelectItem value="GARANTIA">Garantia</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Setor responsável</Label>
-            <Select
-              value={setor}
-              onValueChange={setSetor}
-              disabled={loadingSetores || (!!setoresError && setores.length === 0)}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    loadingSetores
-                      ? "Carregando setores…"
-                      : setores.length
-                      ? "Selecione o setor"
-                      : "Nenhum setor disponível"
-                  }
-                  className="truncate"
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {setores.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
-          </div>
-
-          {/* Coluna 3 deixada livre para futuros campos (ex.: prioridade) */}
-          <div className="space-y-1.5">{/* espaço reservado */}</div>
-        </div>
-      </div>
-      {/* sem botões internos */}
     </div>
   );
 }
