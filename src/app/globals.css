@@ -137,3 +137,32 @@
 
 
 }
+
+/* Para Chrome, Edge e Safari */
+::-webkit-scrollbar {
+  width: 4px; /* largura da barra */
+  height: 4px; /* altura para rolagem horizontal */
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f100; /* cor do trilho */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8888883f; /* cor do "polegar" */
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555; /* cor quando passa o mouse */
+}
+
+::-webkit-scrollbar-button{
+
+  display: none;
+}
+
+/* Para Firefox */
+* {
+  scrollbar-color: #555;
+}

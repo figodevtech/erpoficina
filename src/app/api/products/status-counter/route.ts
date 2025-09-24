@@ -4,17 +4,17 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-type ClienteRow = { status: 'ATIVO' | 'INATIVO' | 'PENDENTE' | null };
+type ProductRow = { status_estoque: 'OK' | 'BAIXO' | 'CRITICO' | null };
 
 export async function GET() {
   try {
     const listPromise = supabaseAdmin
-      .from('cliente')
-      .select('status')
-      .returns<ClienteRow[]>();
+      .from('produto')
+      .select('status_estoque')
+      .returns<ProductRow[]>();
 
     const totalPromise = supabaseAdmin
-      .from('cliente')
+      .from('produto')
       .select('*', { count: 'exact', head: true });
 
     const [{ data, error }, { count, error: countError }] = await Promise.all([
@@ -27,23 +27,23 @@ export async function GET() {
 
     const countsByStatus = (data ?? []).reduce<Record<string, number>>(
       (acc, row) => {
-        const key = String(row.status ?? 'NULL');
+        const key = String(row.status_estoque ?? 'NULL');
         acc[key] = (acc[key] ?? 0) + 1;
         return acc;
       },
-      { ATIVO: 0, INATIVO: 0, PENDENTE: 0 }
+      { OK: 0, BAIXO: 0, CRITICO: 0 }
     );
 
     return NextResponse.json(
       {
         countsByStatus,
-        totalClients: count ?? 0,
+        totalProducts: count ?? 0,
       },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message || 'Erro ao contar clientes por status' },
+      { error: e?.message || 'Erro ao contar produtos por status' },
       { status: 500 }
     );
   }

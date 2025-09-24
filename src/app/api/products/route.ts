@@ -1,11 +1,12 @@
-// src/app/api/clientes/route.ts
+// src/app/api/v1/clientes/route.ts
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-type Status = 'ATIVO' | 'INATIVO' | 'PENDENTE';
-const STATUS_SET = new Set<Status>(['ATIVO', 'INATIVO', 'PENDENTE']);
+type Status = 'OK' | 'CRITICO' | 'BAIXO';
+const STATUS_SET = new Set<Status>(['OK', 'CRITICO', 'BAIXO']);
+
 
 export async function GET(req: Request) {
   try {
@@ -24,12 +25,10 @@ export async function GET(req: Request) {
     const to = from + limit - 1;
 
     let query = supabaseAdmin
-      .from('cliente')
+      .from('produto')
       .select(
         `
-        id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
-        cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-        createdat, updatedat, status
+        id, codigo, descricao, precounitario, estoque, estoqueminimo, unidade,origem, referencia, titulo, status_estoque
         `,
         { count: 'exact' }
       )
@@ -38,12 +37,12 @@ export async function GET(req: Request) {
 
     if (q) {
       query = query.or(
-        `nomerazaosocial.ilike.%${q}%,cpfcnpj.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`
+        `codigo.ilike.%${q}%,descricao.ilike.%${q}%,referencia.ilike.%${q}%,titulo.ilike.%${q}%`
       );
     }
 
     if (statusFilter) {
-      query = query.eq('status', statusFilter);
+      query = query.eq('status_estoque', statusFilter);
     }
 
     const { data, error, count } = await query;
@@ -69,11 +68,11 @@ export async function GET(req: Request) {
         hasPrevPage,   // 🔹 boolean de navegação
         hasNextPage,   // 🔹 boolean de navegação
       },
-      filters: { search: q, status: statusFilter ?? 'TODOS' },
+      filters: { search: q },
     });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message || 'Erro ao listar clientes' },
+      { error: e?.message || 'Erro ao listar produtos' },
       { status: 500 }
     );
   }
