@@ -48,6 +48,8 @@ import { getStatusBadge } from "../utils";
 import { CustomerDialog } from "./customerDialogRegister/customerDialog";
 import DeleteAlert from "./deleteAlert";
 import { useState } from "react";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
 
 interface CustomerDataTableProps {
   handleGetCustomers: (
@@ -81,8 +83,31 @@ export default function CustomersDataTable({
 
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleDeleteUser = (id: number) => {
-    console.log(id)
+  const handleDeleteUser = async (id: number) => {
+    setIsDeleting(true)
+    try {
+      const response = await axios.delete(`/api/customers/${id}`, {
+      })
+
+      if(response.status === 201){
+        console.log(response)
+        toast.success("Usuário deletado!")
+        handleGetCustomers(
+                pagination.page,
+                pagination.limit,
+                search,
+                status
+              );
+              fetchStatusCounts();
+      }
+    } catch (error) {
+      if(isAxiosError(error)){
+        console.log(error)
+        toast.error("Error", {
+          description: error.response?.data.error
+        })
+      }
+    }
   }
   return (
     <Card>
@@ -191,6 +216,9 @@ export default function CustomersDataTable({
                       </CustomerDialog>
 
                       <DeleteAlert
+                      idToDelete={customer.id}
+                      isAlertOpen={isAlertOpen}
+                      setIsAlertOpen={setIsAlertOpen}
                       handleDeleteUser={handleDeleteUser}
                       >
                         <Button

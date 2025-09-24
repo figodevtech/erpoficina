@@ -9,17 +9,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
 import { ReactNode } from "react";
 
 interface DeleteAlertProps{
     children?: ReactNode;
     handleDeleteUser: (value: number)=>void
+    isAlertOpen: boolean
+    setIsAlertOpen: (value: boolean)=>void
+    idToDelete: number
   
 }
-export default function DeleteAlert({children, handleDeleteUser}: DeleteAlertProps) {
+export default function DeleteAlert({children, handleDeleteUser, isAlertOpen, setIsAlertOpen, idToDelete}: DeleteAlertProps) {
   return (
-    <AlertDialog>
+    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
       <AlertDialogTrigger asChild>
         {children}
       </AlertDialogTrigger>
@@ -33,7 +35,7 @@ export default function DeleteAlert({children, handleDeleteUser}: DeleteAlertPro
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="hover:cursor-pointer">Cancelar</AlertDialogCancel>
-          <AlertDialogAction className="hover:cursor-pointer" onClick={()=>handleDeleteUser(1)}>Continuar</AlertDialogAction>
+          <AlertDialogAction className="hover:cursor-pointer" onClick={()=>handleDeleteUser(idToDelete)}>Continuar</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

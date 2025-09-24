@@ -77,7 +77,7 @@ export async function DELETE(_: Request, ctx: Params) {
 
     if (cliErr) throw cliErr;
 
-    return NextResponse.json({ success: true, message: 'Cliente deletado com sucesso.' });
+    return NextResponse.json({ success: true, message: 'Cliente deletado com sucesso.' },{status: 201});
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? 'Erro ao deletar cliente.' },
