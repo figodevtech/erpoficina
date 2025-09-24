@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 import type { UsuarioExpandido } from "@/types/usuario";
 import type { Setor } from "@/types/setor";
@@ -97,7 +97,7 @@ export default function PaginaGerenciamentoUsuarios() {
 
   const handleSaveUser = useCallback(
     async (updated: UsuarioExpandido & { permissoes?: EnumPermissoes[] }) => {
-      const setorId = updated.setor?.id ?? updated.setorId ?? updated.setorid ?? null;
+      const setorId = updated.setor?.id ?? (updated as any).setorId ?? (updated as any).setorid ?? null;
       const body: any = {
         nome: updated.nome,
         email: updated.email,
@@ -139,13 +139,17 @@ export default function PaginaGerenciamentoUsuarios() {
             <CardDescription>Gerencie usuários, perfis e permissões (herdadas do perfil).</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-3 mb-4">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, e-mail, perfil ou setor"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="h-4 w-4 text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2" />
+                <Input
+                  className="pl-8"
+                  placeholder="Buscar por nome, e-mail, perfil ou setor"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
               <DialogoCriarUsuario
                 setores={setores}
                 perfis={perfis}
@@ -155,12 +159,26 @@ export default function PaginaGerenciamentoUsuarios() {
                   return ok;
                 }}
               />
-              <Button variant="outline" onClick={reload} disabled={loading}>Atualizar</Button>
+
+              <Button variant="outline" onClick={reload} disabled={loading}>
+                {loading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Atualizando…
+                  </span>
+                ) : (
+                  "Atualizar"
+                )}
+              </Button>
             </div>
 
             {error && <div className="text-sm text-red-500 mb-2">{error}</div>}
+
             {loading ? (
-              <div className="text-sm text-muted-foreground">Carregando…</div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Carregando…
+              </div>
             ) : (
               <TabelaUsuarios
                 usuarios={filteredUsers}

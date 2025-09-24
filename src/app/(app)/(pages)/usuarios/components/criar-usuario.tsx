@@ -30,7 +30,7 @@ interface Props {
     nome: string;
     email: string;
     perfilId?: number;   // preferido
-    perfilNome?: string; // alternativa se quiser enviar por nome
+    perfilNome?: string; // alternativa
     setorId?: number;
   }) => Promise<boolean>;
 }
@@ -59,8 +59,6 @@ export function DialogoCriarUsuario({ setores, perfis, onCreateUser }: Props) {
       setError("Preencha nome, e-mail, perfil e setor.");
       return;
     }
-
-    // validação simples de e-mail
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError("E-mail inválido.");
       return;
@@ -82,7 +80,14 @@ export function DialogoCriarUsuario({ setores, perfis, onCreateUser }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && !saving) { setOpen(v); reset(); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (saving) return;     // evita fechar/abrir no meio do save
+        setOpen(v);             // <-- agora abre e fecha
+        if (!v) reset();        // limpa ao fechar
+      }}
+    >
       <DialogTrigger asChild>
         <Button>Novo Usuário</Button>
       </DialogTrigger>
