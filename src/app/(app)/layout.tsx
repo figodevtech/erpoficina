@@ -38,7 +38,7 @@ export default function RootLayout({
         </header>
 
         {/* ✅ min-w-0 permite o main encolher; container centralizado e paddings */}
-        <main className="flex-1 min-w-0 bg-muted-foreground/5">
+        <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
           <div className="mx-auto w-full px-4 md:px-6 py-4 md:py-6">
             {/* ⚠️ Se alguma página precisar rolar horizontalmente (ex.: tabelas),
                 faça o overflow-x no componente interno, não aqui no main */}
