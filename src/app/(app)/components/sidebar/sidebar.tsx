@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   GalleryVerticalEnd,
   LayoutDashboard,
@@ -14,21 +14,16 @@ import {
   Type,
   Settings,
   UsersRound,
-} from "lucide-react"
+  SquareCheckBig
+} from "lucide-react";
 
-import { NavMain } from "./components/nav-main"
-import { NavUser } from "./components/nav-user"
-import { TeamSwitcher } from "./components/team-switcher"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-} from "@/components/ui/sidebar"
-import { NavSettings } from "./components/nav-settings"
+import { NavMain } from "./components/nav-main";
+import { NavUser } from "./components/nav-user";
+import { TeamSwitcher } from "./components/team-switcher";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
+import { NavSettings } from "./components/nav-settings";
 
-import { useSession } from "next-auth/react"
+import { useSession } from "next-auth/react";
 
 const data = {
   teams: [
@@ -54,6 +49,12 @@ const data = {
     {
       title: "Ordens de Serviço",
       url: "/ordens",
+      icon: NotepadText,
+      isActive: true,
+    },
+    {
+      title: "Equipe",
+      url: "/equipe",
       icon: NotepadText,
       isActive: true,
     },
@@ -94,6 +95,11 @@ const data = {
           url: "/usuarios",
           icon: Users,
         },
+         {
+          title: "Checklist",
+          url: "/checklist",
+          icon: SquareCheckBig,
+        },
         {
           title: "Site",
           url: "#",
@@ -102,12 +108,10 @@ const data = {
       ],
     },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-
-  const { data: session } = useSession()
-
+  const { data: session } = useSession();
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -131,5 +135,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }
