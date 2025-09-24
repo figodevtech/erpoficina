@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
 import { Customer } from "../../types";
+import { NewCustomer } from "./types";
 
 interface CustomerDialogProps {
   customerId?: number;
@@ -30,6 +31,22 @@ export function CustomerDialog({
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
+  const [newCustomer, setNewCustomer] = useState<NewCustomer>({
+        tipopessoa: "FISICA",
+        cpfcnpj: "",
+        nomerazaosocial: "",
+        email: "",
+        telefone: "",
+        endereco: "",
+        cidade: "",
+        estado: "",
+        cep: "",
+        inscricaoestadual: "",
+        inscricaomunicipal: "",
+        codigomunicipio: "",
+        status: "ATIVO",
+        foto: "",
+      });
 
   const handleGetCustomer = async (id: number) => {
     setIsLoading(true);
@@ -65,6 +82,22 @@ export function CustomerDialog({
         if (!nextOpen) {
           setSelectedCustomerId?.(undefined);
           setSelectedCustomer(undefined);
+          setNewCustomer({
+        tipopessoa: "FISICA",
+        cpfcnpj: "",
+        nomerazaosocial: "",
+        email: "",
+        telefone: "",
+        endereco: "",
+        cidade: "",
+        estado: "",
+        cep: "",
+        inscricaoestadual: "",
+        inscricaomunicipal: "",
+        codigomunicipio: "",
+        status: "ATIVO",
+        foto: "",
+      });
         }
       }}
     >
@@ -75,7 +108,11 @@ export function CustomerDialog({
         {customerId ? (
           <EditContent customerId={customerId}  />
         ) : (
-          <RegisterContent />
+          <RegisterContent
+          setSelectedCustomerId={setSelectedCustomerId}
+          newCustomer={newCustomer}
+          setNewCustomer={setNewCustomer}
+          />
         )}
     </Dialog>
   );

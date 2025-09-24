@@ -1,5 +1,5 @@
 export type TipoPessoa = "FISICA" | "JURIDICA";
-export type StatusCliente = "ATIVO" | "INATIVO" | "SUSPENSO";
+export type StatusCliente = "ATIVO" | "INATIVO" | "PENDENTE";
 
 export interface NewCustomer {
   tipopessoa: TipoPessoa;

@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,8 @@ import {
   Phone,
   FileText,
   Camera,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import {
   DialogClose,
@@ -31,43 +33,69 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { NewCustomer, StatusCliente, TipoPessoa, ESTADOS_BRASIL, tabTheme} from "./types";
+import { NewCustomer, StatusCliente, TipoPessoa, ESTADOS_BRASIL} from "./types";
 import { formatCep, formatCpfCnpj, formatTelefone } from "./utils";
+import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
+interface RegisterContentProps {
+   newCustomer: NewCustomer,
+   setNewCustomer:( value: NewCustomer)=> void
+  setSelectedCustomerId?: (value: number | undefined) => void;
+}
 
-export default function RegisterContent () {
+export default function RegisterContent ({newCustomer, setNewCustomer, setSelectedCustomerId}:RegisterContentProps) {
       const [isSubmitting, setIsSubmitting] = useState(false);
+      const { cidades, loading } = useGetCidades(newCustomer?.estado);
+        const [open, setOpen] = useState(false);
+      
     
-    const [newCustomer, setNewCustomer] = useState<NewCustomer>({
-        tipopessoa: "FISICA",
-        cpfcnpj: "",
-        nomerazaosocial: "",
-        email: "",
-        telefone: "",
-        endereco: "",
-        cidade: "",
-        estado: "",
-        cep: "",
-        inscricaoestadual: "",
-        inscricaomunicipal: "",
-        codigomunicipio: "",
-        status: "ATIVO",
-        foto: "",
-      });
+    
     const handleInputChange = (field: keyof NewCustomer, value: string) => {
-        setNewCustomer((prev) => ({ ...prev, [field]: value }));
+        setNewCustomer({...newCustomer, [field]: value });
       };
+
+      useEffect(()=>{
+        console.log(newCustomer)
+      },[newCustomer])
+
+      const handleCreateCustomer = async ()=> {
+        setIsSubmitting(true)
+        try {
+          const response = await axios.post("/api/customers", {
+            newCustomer
+          })
+
+          if(response.status === 200){
+            console.log(response.data)
+          }
+
+        } catch (error) {
+          if(isAxiosError(error)){
+            toast.error("Erro", {
+              
+              description: error.response?.data.error
+            })
+
+            
+            console.log(error)
+          }
+        }finally{
+          setIsSubmitting(false)
+        }
+      }
     return(
-        <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
+        // <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
+        <DialogContent className="h-dvh min-w-screen p-2 overflow-hidden sm:max-w-[1100px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4">
             <DialogTitle>Cadastro de Cliente</DialogTitle>
-          </DialogHeader>
-
-          {/* Área principal com abas */}
-           
+          </DialogHeader>           
 
             {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
             
@@ -127,8 +155,8 @@ export default function RegisterContent () {
                       <SelectItem value="INATIVO">
                         <Badge variant="secondary">Inativo</Badge>
                       </SelectItem>
-                      <SelectItem value="SUSPENSO">
-                        <Badge variant="destructive">Suspenso</Badge>
+                      <SelectItem value="PENDENTE">
+                        <Badge variant="destructive">Pendente</Badge>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -175,8 +203,9 @@ export default function RegisterContent () {
                       {newCustomer.tipopessoa === "FISICA" ? "CPF" : "CNPJ"} *
                     </Label>
                     <Input
+                    inputMode="numeric"
                       id="cpfcnpj"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={formatCpfCnpj(newCustomer.cpfcnpj, newCustomer.tipopessoa)}
                       onChange={(e) =>
                         handleInputChange("cpfcnpj", e.target.value)
@@ -193,7 +222,7 @@ export default function RegisterContent () {
                   <div className="space-y-2">
                     <Label
                       htmlFor="nomerazaosocial"
-                      className="text-sm sm:text-base"
+                      className=""
                     >
                       {newCustomer.tipopessoa === "FISICA"
                         ? "Nome Completo"
@@ -202,7 +231,7 @@ export default function RegisterContent () {
                     </Label>
                     <Input
                       id="nomerazaosocial"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={newCustomer.nomerazaosocial}
                       onChange={(e) =>
                         handleInputChange("nomerazaosocial", e.target.value)
@@ -227,9 +256,10 @@ export default function RegisterContent () {
                       Email
                     </Label>
                     <Input
+                    inputMode="email"
                       id="email"
                       type="email"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={newCustomer.email}
                       onChange={(e) =>
                         handleInputChange("email", e.target.value)
@@ -242,13 +272,15 @@ export default function RegisterContent () {
                     <Label
                       htmlFor="telefone"
                       className="flex items-center gap-2 text-sm sm:text-base"
+                      
                     >
                       <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
                       Telefone
                     </Label>
                     <Input
+                    inputMode="tel"
                       id="telefone"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={formatTelefone(newCustomer.telefone)}
                       onChange={(e) =>
                         handleInputChange("telefone", e.target.value)
@@ -272,7 +304,7 @@ export default function RegisterContent () {
                     </Label>
                     <Input
                       id="endereco"
-                      className="text-sm sm:text-base resize-none"
+                      className=""
                       value={newCustomer.endereco}
                       onChange={(e) =>
                         handleInputChange("endereco", e.target.value)
@@ -286,15 +318,64 @@ export default function RegisterContent () {
                       <Label htmlFor="cidade" className="text-sm sm:text-base">
                         Cidade
                       </Label>
-                      <Input
-                        id="cidade"
-                        className="text-sm sm:text-base"
-                        value={newCustomer.cidade}
-                        onChange={(e) =>
-                          handleInputChange("cidade", e.target.value)
-                        }
-                        placeholder="São Paulo"
-                      />
+
+                      <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-[200px] justify-between"
+                          >
+                            {newCustomer.cidade
+                              ? cidades.find(
+                                  (cidade) =>
+                                    cidade.nome === newCustomer.cidade
+                                )?.nome
+                              : `${loading ? "Carregando..." : "Selecione..."}`}
+                            <ChevronsUpDown className="opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0">
+                          <Command>
+                            <CommandInput
+                              placeholder="Buscar cidade..."
+                              className="h-9"
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                Nenhuma cidade encontrada.
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {cidades.map((cidade) => (
+                                  <CommandItem
+                                    className="hover:cursor-pointer"
+                                    key={cidade.id}
+                                    value={cidade.nome}
+                                    onSelect={(currentValue) => {
+                                      setNewCustomer({
+                                        ...newCustomer,
+                                        cidade: currentValue,
+                                      });
+                                      setOpen(false);
+                                    }}
+                                  >
+                                    {cidade.nome}
+                                    <Check
+                                      className={cn(
+                                        "ml-auto",
+                                        newCustomer.cidade === cidade.nome
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="space-y-2">
@@ -326,7 +407,7 @@ export default function RegisterContent () {
                       </Label>
                       <Input
                         id="cep"
-                        className="text-sm sm:text-base"
+                        className=""
                         value={formatCep(newCustomer.cep)}
                         onChange={(e) =>
                           handleInputChange("cep", e.target.value)
@@ -360,7 +441,7 @@ export default function RegisterContent () {
                           </Label>
                           <Input
                             id="inscricaoestadual"
-                            className="text-sm sm:text-base"
+                            className=""
                             value={newCustomer.inscricaoestadual}
                             onChange={(e) =>
                               handleInputChange(
@@ -381,7 +462,7 @@ export default function RegisterContent () {
                           </Label>
                           <Input
                             id="inscricaomunicipal"
-                            className="text-sm sm:text-base"
+                            className=""
                             value={newCustomer.inscricaomunicipal}
                             onChange={(e) =>
                               handleInputChange(
@@ -403,7 +484,7 @@ export default function RegisterContent () {
                         </Label>
                         <Input
                           id="codigomunicipio"
-                          className="text-sm sm:text-base"
+                          className=""
                           value={newCustomer.codigomunicipio}
                           onChange={(e) =>
                             handleInputChange("codigomunicipio", e.target.value)
@@ -423,6 +504,7 @@ export default function RegisterContent () {
                 type="submit"
                 form="register-form"
                 disabled={isSubmitting}
+                onClick={handleCreateCustomer}
                 className="flex-1 text-sm sm:text-base hover:cursor-pointer"
               >
                 {isSubmitting ? (
@@ -444,6 +526,7 @@ export default function RegisterContent () {
             </div>
           </DialogFooter>
         </div>
+        <Toaster richColors  />
       </DialogContent>
     )
 }

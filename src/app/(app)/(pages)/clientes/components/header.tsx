@@ -33,7 +33,7 @@ export default function Header({selectedCustomerId, setSelectedCustomerId} : Hea
         setIsOpen={setIsOpen}
         customerId={selectedCustomerId}
         >
-          <Button>Novo Cliente</Button>
+          <Button className="hover:cursor-pointer">Novo Cliente</Button>
         </CustomerDialog>
       </div>
     </div>

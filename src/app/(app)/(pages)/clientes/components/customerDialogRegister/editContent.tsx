@@ -213,7 +213,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <SelectItem value="INATIVO">
                         <Badge variant="secondary">Inativo</Badge>
                       </SelectItem>
-                      <SelectItem value="SUSPENSO">
+                      <SelectItem value="PENDENTE">
                         <Badge variant="destructive">Suspenso</Badge>
                       </SelectItem>
                     </SelectContent>
@@ -265,7 +265,8 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </Label>
                     <Input
                       id="cpfcnpj"
-                      className="text-sm sm:text-base"
+                      inputMode="numeric"
+                      className=""
                       value={formatCpfCnpj(
                         selectedCustomer.cpfcnpj,
                         selectedCustomer.tipopessoa
@@ -296,7 +297,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </Label>
                     <Input
                       id="nomerazaosocial"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={selectedCustomer.nomerazaosocial}
                       onChange={(e) =>
                         handleInputChange("nomerazaosocial", e.target.value)
@@ -323,7 +324,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                     <Input
                       id="email"
                       type="email"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={selectedCustomer.email}
                       onChange={(e) =>
                         handleInputChange("email", e.target.value)
@@ -342,7 +343,8 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </Label>
                     <Input
                       id="telefone"
-                      className="text-sm sm:text-base"
+                      inputMode="tel"
+                      className=""
                       value={formatTelefone(selectedCustomer.telefone)}
                       onChange={(e) =>{
                         const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
@@ -366,7 +368,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </Label>
                     <Input
                       id="endereco"
-                      className="text-sm sm:text-base resize-none"
+                      className=""
                       value={selectedCustomer.endereco}
                       onChange={(e) =>
                         handleInputChange("endereco", e.target.value)
@@ -477,7 +479,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                       </Label>
                       <Input
                         id="cep"
-                        className="text-sm sm:text-base"
+                        className=""
                         value={formatCep(selectedCustomer.cep)}
                         onChange={(e) =>
                           handleInputChange("cep", e.target.value)
@@ -511,7 +513,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                           </Label>
                           <Input
                             id="inscricaoestadual"
-                            className="text-sm sm:text-base"
+                            className=""
                             value={selectedCustomer.inscricaoestadual}
                             onChange={(e) =>
                               handleInputChange(
@@ -532,7 +534,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                           </Label>
                           <Input
                             id="inscricaomunicipal"
-                            className="text-sm sm:text-base"
+                            className=""
                             value={selectedCustomer.inscricaomunicipal}
                             onChange={(e) =>
                               handleInputChange(
@@ -554,7 +556,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                         </Label>
                         <Input
                           id="codigomunicipio"
-                          className="text-sm sm:text-base"
+                          className=""
                           value={selectedCustomer.codigomunicipio}
                           onChange={(e) =>
                             handleInputChange("codigomunicipio", e.target.value)
