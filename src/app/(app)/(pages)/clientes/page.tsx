@@ -27,6 +27,8 @@ export default function ClientesPage() {
   const [status, setStatus] = useState<Status>(Status.TODOS);
   const [search, setSearch] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState <number | undefined>(undefined);
+  const [isOpen, setIsOpen] = useState(false)
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
 
   const handleGetCustomers = async (
     pageNumber?: number,
@@ -70,6 +72,8 @@ export default function ClientesPage() {
   return (
     <div className="space-y-6">
       <Header
+      isOpen={isOpen}
+      setIsOpen={setIsOpen}
       selectedCustomerId={selectedCustomerId}
       setSelectedCustomerId={setSelectedCustomerId}
       />
@@ -90,6 +94,8 @@ export default function ClientesPage() {
       {/* Customers Table (colunas compatíveis com a interface) */}
       
       <CustomersDataTable
+      isAlertOpen={isAlertOpen}
+      setIsAlertOpen={setIsAlertOpen}
       setSeletedCustomerId={setSelectedCustomerId}
       customerItems={customerItems}
       fetchStatusCounts={fetchStatusCounts}

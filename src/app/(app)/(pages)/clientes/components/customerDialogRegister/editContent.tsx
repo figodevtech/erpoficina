@@ -34,6 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -111,6 +112,9 @@ export default function EditContent({ customerId }: EditContentProps) {
   if (isLoading) {
     return (
       <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden ">
+        <DialogHeader className=" hidden ">
+          <DialogTitle></DialogTitle>
+        </DialogHeader>
         <div className="flex h-full min-h-0 flex-col justify-center items-center">
           <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
           <span className="text-primary">Carregando</span>
@@ -205,16 +209,16 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ATIVO">
+                      <SelectItem value="ATIVO" className="hover:cursor-pointer">
                         <Badge variant="default" className="bg-green-500">
                           Ativo
                         </Badge>
                       </SelectItem>
-                      <SelectItem value="INATIVO">
-                        <Badge variant="secondary">Inativo</Badge>
+                      <SelectItem value="INATIVO" className="hover:cursor-pointer">
+                        <Badge variant="destructive">Inativo</Badge>
                       </SelectItem>
-                      <SelectItem value="PENDENTE">
-                        <Badge variant="destructive">Suspenso</Badge>
+                      <SelectItem value="PENDENTE" className="hover:cursor-pointer">
+                        <Badge variant="default" className="bg-yellow-600">Pendente</Badge>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -234,7 +238,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FISICA">
+                      <SelectItem value="FISICA" className="hover:cursor-pointer">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4" />
                           <span className="text-sm sm:text-base">
@@ -242,7 +246,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                           </span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="JURIDICA">
+                      <SelectItem value="JURIDICA" className="hover:cursor-pointer">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4" />
                           <span className="text-sm sm:text-base">

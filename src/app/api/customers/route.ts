@@ -7,7 +7,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 type Status = 'ATIVO' | 'INATIVO' | 'PENDENTE';
 const STATUS_SET = new Set<Status>(['ATIVO', 'INATIVO', 'PENDENTE']);
 
-const REQUIRED_FIELDS = ['tipopessoa', 'cpfcnpj', 'nomerazaosocial'] as const;
+const REQUIRED_FIELDS = ['tipopessoa', 'cpfcnpj', 'nomerazaosocial', 'email', 'telefone', 'estado', 'cidade', 'cep', 'endereco'] as const;
 
 type Payload = {
   tipopessoa: 'FISICA' | 'JURIDICA' | string;
@@ -120,16 +120,22 @@ export async function GET(req: Request) {
 /* ============================
    POST /api/clientes  (criar)
    ============================ */
+// src/app/api/clientes/route.ts (apenas o POST, o resto do arquivo fica como está)
 export async function POST(req: Request) {
   try {
-    const json = (await req.json()) as Partial<Payload> | null;
+    const body = (await req.json()) as any;
+
+    // Suporta { newCustomer: {...} } ou {...} direto
+    const json = body?.newCustomer && typeof body.newCustomer === 'object'
+      ? body.newCustomer
+      : body;
 
     if (!json || typeof json !== 'object') {
       return NextResponse.json({ error: 'Corpo da requisição inválido.' }, { status: 400 });
     }
 
-    // valida obrigatórios
-    const missing = REQUIRED_FIELDS.filter((k) => !json[k] || String(json[k]).trim() === '');
+    const missing = ['tipopessoa', 'cpfcnpj', 'nomerazaosocial']
+      .filter((k) => !json[k] || String(json[k]).trim() === '');
     if (missing.length) {
       return NextResponse.json(
         { error: `Campos obrigatórios ausentes: ${missing.join(', ')}.` },
@@ -137,7 +143,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // normalizações
     const tipopessoa = normalizeTipopessoa(String(json.tipopessoa));
     if (!tipopessoa) {
       return NextResponse.json(
@@ -164,36 +169,64 @@ export async function POST(req: Request) {
       inscricaoestadual: normalizeString(json.inscricaoestadual ?? null),
       inscricaomunicipal: normalizeString(json.inscricaomunicipal ?? null),
       codigomunicipio: normalizeString(json.codigomunicipio ?? null),
-      status: (normalizeString(json.status ?? null) as Status | null) ?? null, // deixe o default do banco agir se null
+      status: (normalizeString(json.status ?? null) as Status | null) ?? null,
     };
 
     const { data, error } = await supabaseAdmin
       .from('cliente')
       .insert(payload)
-      .select(
-        `
-        id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
-        cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-        createdat, updatedat, status
-        `
-      )
+      .select('id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, createdat, status')
       .single();
 
     if (error) {
-      // 23505 = unique_violation (cpfcnpj)
+      // Trata violações de unicidade (cpfcnpj/email/telefone/nomerazaosocial)
       if ((error as any).code === '23505') {
+        // Tenta extrair o nome da constraint da mensagem/detalhes
+        const raw = `${(error as any).message ?? ''} ${(error as any).details ?? ''}`;
+        const constraint =
+          // padrão comum: Duplicate key value violates unique constraint "cliente_email_key"
+          raw.match(/unique constraint "([^"]+)"/i)?.[1] ||
+          // fallback: ... violates unique constraint cliente_email_key
+          raw.match(/unique constraint ([^\s"]+)/i)?.[1] ||
+          // outro padrão comum vindo do PostgREST
+          raw.match(/cliente_[a-zA-Z_]+_key/)?.[0] ||
+          '';
+
+        // Mapeamento nome-da-constraint -> campo legível
+        let field: 'cpfcnpj' | 'email' | 'telefone' | 'nomerazaosocial' | 'desconhecido' = 'desconhecido';
+        if (constraint.includes('cpfcnpj')) field = 'cpfcnpj';
+        else if (constraint.includes('email')) field = 'email';
+        else if (constraint.includes('telefone')) field = 'telefone';
+        else if (constraint.includes('nomerazaosocial') || constraint.includes('nome')) field = 'nomerazaosocial';
+
+        const fieldLabel = {
+          cpfcnpj: 'CPF/CNPJ',
+          email: 'E-mail',
+          telefone: 'Telefone',
+          nomerazaosocial: 'Nome/Razão Social',
+          desconhecido: 'Campo único',
+        }[field];
+
         return NextResponse.json(
-          { error: 'Já existe um cliente com esse CPF/CNPJ.' },
+          {
+            error: `${fieldLabel} já cadastrado para outro cliente.`,
+            field,                 // útil pro front marcar o input com erro
+            constraint,            // útil para debug/observabilidade
+          },
           { status: 409 }
         );
       }
+
       return NextResponse.json(
         { error: (error as any).message ?? 'Erro ao salvar cliente.' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json(
+      { message: 'Cliente criado com sucesso.', id: data.id, data },
+      { status: 201 }
+    );
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? 'Erro ao salvar cliente.' },

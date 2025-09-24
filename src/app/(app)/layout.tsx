@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "./components/mode-toggle";
 import Clock from "@/app/(app)/components/clock";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({
   children,
@@ -42,6 +43,8 @@ export default function RootLayout({
             {/* ⚠️ Se alguma página precisar rolar horizontalmente (ex.: tabelas),
                 faça o overflow-x no componente interno, não aqui no main */}
             {children}
+                  <Toaster richColors/>
+
           </div>
         </main>
       </SidebarInset>

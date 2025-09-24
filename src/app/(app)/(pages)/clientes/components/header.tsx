@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 interface HeaderProps {
   selectedCustomerId: number | undefined
   setSelectedCustomerId: (value: number | undefined)=> void
+  isOpen: boolean
+  setIsOpen: (value: boolean)=> void
 }
-export default function Header({selectedCustomerId, setSelectedCustomerId} : HeaderProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export default function Header({selectedCustomerId, setSelectedCustomerId, isOpen, setIsOpen} : HeaderProps) {
+  const [] = useState(false)
 
 
 
@@ -36,6 +38,7 @@ export default function Header({selectedCustomerId, setSelectedCustomerId} : Hea
           <Button className="hover:cursor-pointer">Novo Cliente</Button>
         </CustomerDialog>
       </div>
+
     </div>
   );
 }

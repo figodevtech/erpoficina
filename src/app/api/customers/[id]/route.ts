@@ -50,3 +50,38 @@ export async function GET(_: Request, ctx: Params) {
     );
   }
 }
+
+
+export async function DELETE(_: Request, ctx: Params) {
+  try {
+    const { id: idParam } = await ctx.params;
+    const id = Number((idParam ?? '').trim());
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
+    }
+
+    // Primeiro exclui os veículos do cliente (para respeitar o FK)
+    const { error: veicErr } = await supabaseAdmin
+      .from('veiculo')
+      .delete()
+      .eq('clienteid', id);
+
+    if (veicErr) throw veicErr;
+
+    // Agora exclui o cliente
+    const { error: cliErr } = await supabaseAdmin
+      .from('cliente')
+      .delete()
+      .eq('id', id);
+
+    if (cliErr) throw cliErr;
+
+    return NextResponse.json({ success: true, message: 'Cliente deletado com sucesso.' });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message ?? 'Erro ao deletar cliente.' },
+      { status: 500 }
+    );
+  }
+}

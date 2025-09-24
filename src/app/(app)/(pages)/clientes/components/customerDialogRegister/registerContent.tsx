@@ -29,6 +29,7 @@ import {
 import {
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -60,9 +61,9 @@ export default function RegisterContent ({newCustomer, setNewCustomer, setSelect
         setNewCustomer({...newCustomer, [field]: value });
       };
 
-      useEffect(()=>{
-        console.log(newCustomer)
-      },[newCustomer])
+      // useEffect(()=>{
+      //   console.log(newCustomer)
+      // },[newCustomer])
 
       const handleCreateCustomer = async ()=> {
         setIsSubmitting(true)
@@ -71,16 +72,25 @@ export default function RegisterContent ({newCustomer, setNewCustomer, setSelect
             newCustomer
           })
 
-          if(response.status === 200){
-            console.log(response.data)
+          if(response.status === 201 && setSelectedCustomerId){
+            console.log(response.data.data)
+            toast(
+              "Sucesso!", {
+                description: "Cliente cadastrado.",
+                duration: 2000
+              }
+            )
+            setSelectedCustomerId(response.data.id)
           }
 
         } catch (error) {
           if(isAxiosError(error)){
-            toast.error("Erro", {
+            toast("Erro", {
               
-              description: error.response?.data.error
+              description: error.response?.data.error,
+              duration: 2000
             })
+              
 
             
             console.log(error)
@@ -95,6 +105,7 @@ export default function RegisterContent ({newCustomer, setNewCustomer, setSelect
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4">
             <DialogTitle>Cadastro de Cliente</DialogTitle>
+
           </DialogHeader>           
 
             {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
@@ -253,7 +264,7 @@ export default function RegisterContent ({newCustomer, setNewCustomer, setSelect
                       className="flex items-center gap-2 text-sm sm:text-base"
                     >
                       <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
-                      Email
+                      Email *
                     </Label>
                     <Input
                     inputMode="email"
@@ -275,15 +286,18 @@ export default function RegisterContent ({newCustomer, setNewCustomer, setSelect
                       
                     >
                       <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
-                      Telefone
+                      Telefone *
                     </Label>
                     <Input
                     inputMode="tel"
                       id="telefone"
                       className=""
                       value={formatTelefone(newCustomer.telefone)}
-                      onChange={(e) =>
-                        handleInputChange("telefone", e.target.value)
+                      onChange={(e) =>{
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                        handleInputChange("telefone", raw)
+
+                      }
                       }
                       placeholder="(11) 99999-9999"
                       maxLength={15}
@@ -526,7 +540,6 @@ export default function RegisterContent ({newCustomer, setNewCustomer, setSelect
             </div>
           </DialogFooter>
         </div>
-        <Toaster richColors  />
       </DialogContent>
     )
 }
