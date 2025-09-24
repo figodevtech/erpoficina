@@ -1,5 +1,5 @@
 // app/api/checklist-modelos/[id]/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { auth } from "@/lib/auth";
@@ -22,38 +22,44 @@ const ModeloUpdateSchema = z.object({
   itens: z.array(ItemSchema).min(1),
 });
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+type Params = { id: string };
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<Params> }) {
   try {
     if (!OPEN) {
       const session = await auth();
       if (!session) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const id = Number(params.id);
+    const { id } = await params;
+    const modeloId = Number(id);
+
     const { data, error } = await supabaseAdmin
       .from("checklist_modelo")
       .select("id, nome, descricao, categoria, ativo, criado_em, atualizado_em, checklist_modelo_item(*)")
-      .eq("id", id)
+      .eq("id", modeloId)
       .single();
 
     if (error) throw error;
     if (!data) return NextResponse.json({ ok: false, error: "Não encontrado" }, { status: 404 });
 
-    const ret = { ...data, itens: data.checklist_modelo_item ?? [], checklist_modelo_item: undefined };
+    const ret = { ...data, itens: data.checklist_modelo_item ?? [], checklist_modelo_item: undefined as undefined };
     return NextResponse.json({ ok: true, data: ret });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message ?? "Erro ao carregar" }, { status: 500 });
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<Params> }) {
   try {
     if (!OPEN) {
       const session = await auth();
       if (!session) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const id = Number(params.id);
+    const { id } = await params;
+    const modeloId = Number(id);
+
     const body = await req.json();
     const parsed = ModeloUpdateSchema.parse(body);
 
@@ -67,15 +73,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         ativo: parsed.ativo,
         atualizado_em: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", modeloId);
     if (e1) throw e1;
 
     // Estratégia simples: substitui todos os itens
-    const { error: e2 } = await supabaseAdmin.from("checklist_modelo_item").delete().eq("modelo_id", id);
+    const { error: e2 } = await supabaseAdmin.from("checklist_modelo_item").delete().eq("modelo_id", modeloId);
     if (e2) throw e2;
 
     const itens = parsed.itens.map((it, idx) => ({
-      modelo_id: id,
+      modelo_id: modeloId,
       titulo: it.titulo,
       descricao: it.descricao ?? null,
       categoria: it.categoria ?? "",
@@ -90,11 +96,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const { data, error: e4 } = await supabaseAdmin
       .from("checklist_modelo")
       .select("id, nome, descricao, categoria, ativo, criado_em, atualizado_em, checklist_modelo_item(*)")
-      .eq("id", id)
+      .eq("id", modeloId)
       .single();
     if (e4) throw e4;
 
-    const ret = { ...data, itens: data.checklist_modelo_item ?? [], checklist_modelo_item: undefined };
+    const ret = { ...data, itens: data.checklist_modelo_item ?? [], checklist_modelo_item: undefined as undefined };
     return NextResponse.json({ ok: true, data: ret });
   } catch (e: any) {
     if (e?.name === "ZodError") {
@@ -104,16 +110,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
   try {
     if (!OPEN) {
       const session = await auth();
       if (!session) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const id = Number(params.id);
+    const { id } = await params;
+    const modeloId = Number(id);
+
     // ON DELETE CASCADE no FK cuida dos itens
-    const { error } = await supabaseAdmin.from("checklist_modelo").delete().eq("id", id);
+    const { error } = await supabaseAdmin.from("checklist_modelo").delete().eq("id", modeloId);
     if (error) throw error;
 
     return NextResponse.json({ ok: true });

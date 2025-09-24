@@ -42,6 +42,7 @@ type Marcacao = typeof CHECK_STATUS[number] | "";
 export type FormularioNovaOSProps = {
   onSubmit?: (payload: any) => void;
   exposeSubmit?: (fn: () => void) => void;
+  
 };
 
 const NONE = "__none__";

@@ -1,5 +1,5 @@
 // app/api/checklist-modelos/[id]/aplicar/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { auth } from "@/lib/auth";
@@ -10,15 +10,34 @@ const PayloadSchema = z.object({
   ordemservicoid: z.number().int().positive(),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+type Params = { id: string };
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<Params> }
+) {
   try {
     if (!OPEN) {
       const session = await auth();
-      if (!session) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      if (!session) {
+        return NextResponse.json(
+          { ok: false, error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
     }
 
-    const modeloId = Number(params.id);
-    const { ordemservicoid } = PayloadSchema.parse(await req.json());
+    const { id } = await params;            // 👈 mudou
+    const modeloId = Number(id);
+
+    const parsed = PayloadSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, error: parsed.error.flatten?.() ?? String(parsed.error) },
+        { status: 400 }
+      );
+    }
+    const { ordemservicoid } = parsed.data;
 
     // Carrega itens do modelo
     const { data: itens, error: e1 } = await supabaseAdmin
@@ -29,11 +48,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     if (e1) throw e1;
     if (!itens || itens.length === 0) {
-      return NextResponse.json({ ok: false, error: "Modelo sem itens" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Modelo sem itens" },
+        { status: 400 }
+      );
     }
 
-    // Insere na tabela existente `public.checklist`
-    // status inicial: 'PENDENTE' (enum_status_checklist)
+    // Monta linhas para `public.checklist`
     const rows = itens.map((i) => ({
       ordemservicoid,
       item: i.titulo,
@@ -46,9 +67,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     return NextResponse.json({ ok: true, inserted: rows.length });
   } catch (e: any) {
-    if (e?.name === "ZodError") {
-      return NextResponse.json({ ok: false, error: e.flatten?.() ?? String(e) }, { status: 400 });
-    }
-    return NextResponse.json({ ok: false, error: e?.message ?? "Erro ao aplicar modelo" }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          e?.name === "ZodError"
+            ? e.flatten?.() ?? String(e)
+            : e?.message ?? "Erro ao aplicar modelo",
+      },
+      { status: e?.name === "ZodError" ? 400 : 500 }
+    );
   }
 }

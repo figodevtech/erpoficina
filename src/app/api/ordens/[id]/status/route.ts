@@ -1,14 +1,21 @@
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireOSAccess } from "../../../_authz/perms";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+type Params = { id: string };
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<Params> }
+) {
   try {
     await requireOSAccess();
 
-    const osId = Number(params.id);
+    const { id } = await params; // 👈 agora precisa de await
+    const osId = Number(id);
+
     const { status: novoStatus } = await req.json();
 
     const { data: os } = await supabaseAdmin
@@ -17,7 +24,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .eq("id", osId)
       .maybeSingle();
 
-    if (!os) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
+    if (!os) {
+      return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
+    }
 
     const { error } = await supabaseAdmin
       .from("ordemservico")
@@ -28,7 +37,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    const status = e?.statusCode ?? (/não autenticado|unauth/i.test(e?.message) ? 401 : 500);
-    return NextResponse.json({ error: e?.message ?? "Erro ao alterar status" }, { status });
+    const status =
+      e?.statusCode ?? (/não autenticado|unauth/i.test(e?.message) ? 401 : 500);
+    return NextResponse.json(
+      { error: e?.message ?? "Erro ao alterar status" },
+      { status }
+    );
   }
 }

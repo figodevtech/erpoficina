@@ -30,7 +30,6 @@ export function NovaOSDialog({
       }
     >
       <FormularioNovaOS
-        mode="create"
         exposeSubmit={(fn) => (submitRef.current = fn)}
         onSubmit={async (payload) => {
           await onCreate?.(payload);
