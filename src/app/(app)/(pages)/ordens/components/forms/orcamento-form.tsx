@@ -1,613 +1,589 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Trash2, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Search, Plus, Trash2, ShoppingCart, Wrench, ClipboardList, Minus } from "lucide-react";
 
-// ===== Tipos de dados =====
-type Produto = {
+/* ----------------------------- Tipagens básicas ---------------------------- */
+
+type ProdutoBusca = {
   id: number;
   codigo: string;
   descricao: string;
   precounitario: number;
-  estoque?: number | null;
+  estoque: number;
 };
 
-type Servico = {
+type ServicoBusca = {
   id: number;
   codigo: string;
   descricao: string;
   precohora: number;
 };
 
-type LinhaProduto = {
-  id: string;          // uuid local da linha
-  produtoid?: number | null;
-  codigo?: string;
+type ItemProduto = {
+  produtoid: number;
   descricao: string;
   quantidade: number;
   precounitario: number;
+  subtotal: number;
 };
 
-type LinhaServico = {
-  id: string;          // uuid local da linha
-  servicoid?: number | null;
-  codigo?: string;
+type ItemServico = {
+  servicoid: number;
   descricao: string;
   quantidade: number;
-  precounitario: number;
+  precounitario: number; // preço unit. do serviço
+  subtotal: number;
 };
 
 export type OrcamentoFormProps = {
-  ordemServico: {
-    id: number;
-    numero: string;
-    cliente?: string;
-    veiculo?: string;
-  };
-  onGerarOrcamento: () => void;
-  onEnviarFinanceiro: () => void;
-
-  /** Novo: informa totais ao diálogo para exibir no footer fixo */
-  onTotaisChange?: (totais: {
-    totalProdutos: number;
-    totalServicos: number;
-    totalGeral: number;
-  }) => void;
+  ordemServico: { id: number; numero?: string; cliente?: string; veiculo?: string };
+  onTotaisChange?: (tot: { totalProdutos: number; totalServicos: number }) => void;
+   onGerarOrcamento?: () => void | Promise<void>;
+  onEnviarFinanceiro?: () => void | Promise<void>;
 };
 
-// ===== Helpers =====
-const money = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v) || 0);
+/* ---------------------------------- Utils --------------------------------- */
+function money(n: number | string | null | undefined) {
+  const v = typeof n === "number" ? n : Number(n ?? 0);
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+const toNum = (v: any) => (v === null || v === undefined || isNaN(+v) ? 0 : +v);
 
-const uid = () => Math.random().toString(36).substring(2, 9);
+/* --------------------------- Input de Quantidade --------------------------- */
+function QtyInput({
+  value,
+  onChange,
+  min = 0,
+  step = 1,
+  className = "",
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  step?: number;
+  className?: string;
+}) {
+  const dec = () => onChange(Math.max(min, toNum(value) - step));
+  const inc = () => onChange(toNum(value) + step);
 
-export function OrcamentoForm({
-  ordemServico,
-  onGerarOrcamento,
-  onEnviarFinanceiro,
-  onTotaisChange,
-}: OrcamentoFormProps) {
-  // Carrinho
-  const [produtos, setProdutos] = useState<LinhaProduto[]>([]);
-  const [servicos, setServicos] = useState<LinhaServico[]>([]);
+  return (
+    <div className={`flex items-center justify-center gap-1 ${className}`}>
+      <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={dec}>
+        <Minus className="h-3.5 w-3.5" />
+      </Button>
+      <Input
+        type="number"
+        inputMode="numeric"
+        className="h-8 w-20 text-center"
+        value={String(value)}
+        onChange={(e) => onChange(toNum(e.target.value || 0))}
+        min={min}
+        step={step}
+      />
+      <Button type="button" size="icon" variant="outline" className="h-8 w-8" onClick={inc}>
+        <Plus className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
 
-  // Busca Produtos
-  const [pTermo, setPTermo] = useState("");
+/* --------------------------------- Componente ------------------------------ */
+export function OrcamentoForm({ ordemServico, onTotaisChange }: OrcamentoFormProps) {
+  const osId = ordemServico?.id;
+
+  // Buscas
+  const [aba, setAba] = useState<"produtos" | "servicos">("produtos");
+
+  const [pQ, setPQ] = useState("");
   const [pCodigo, setPCodigo] = useState("");
   const [pLoading, setPLoading] = useState(false);
+  const [pResultados, setPResultados] = useState<ProdutoBusca[]>([]);
   const [pErro, setPErro] = useState<string | null>(null);
-  const [pResultados, setPResultados] = useState<Produto[]>([]);
 
-  // Busca Serviços
-  const [sTermo, setSTermo] = useState("");
+  const [sQ, setSQ] = useState("");
   const [sCodigo, setSCodigo] = useState("");
   const [sLoading, setSLoading] = useState(false);
+  const [sResultados, setSResultados] = useState<ServicoBusca[]>([]);
   const [sErro, setSErro] = useState<string | null>(null);
-  const [sResultados, setSResultados] = useState<Servico[]>([]);
 
-  // ===== Operações Carrinho (sem inserção manual direta) =====
-  const rmProduto = (id: string) => setProdutos((lst) => lst.filter((l) => l.id !== id));
-  const rmServico = (id: string) => setServicos((lst) => lst.filter((l) => l.id !== id));
-
-  const updateProduto = (id: string, patch: Partial<LinhaProduto>) =>
-    setProdutos((lst) => lst.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-
-  const updateServico = (id: string, patch: Partial<LinhaServico>) =>
-    setServicos((lst) => lst.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-
-  // Adicionar a partir do resultado de busca (mescla itens iguais)
-  const addProdutoFromResult = (p: Produto) => {
-    setProdutos((lst) => {
-      const idx = lst.findIndex((l) => l.produtoid === p.id);
-      if (idx >= 0) {
-        const novo = [...lst];
-        const item = { ...novo[idx] };
-        item.quantidade = Number(item.quantidade || 0) + 1;
-        novo[idx] = item;
-        return novo;
-      }
-      return [
-        ...lst,
-        {
-          id: uid(),
-          produtoid: p.id,
-          codigo: p.codigo,
-          descricao: p.descricao,
-          quantidade: 1,
-          precounitario: Number(p.precounitario) || 0,
-        },
-      ];
-    });
-  };
-
-  const addServicoFromResult = (s: Servico) => {
-    setServicos((lst) => {
-      const idx = lst.findIndex((l) => l.servicoid === s.id);
-      if (idx >= 0) {
-        const novo = [...lst];
-        const item = { ...novo[idx] };
-        item.quantidade = Number(item.quantidade || 0) + 1;
-        novo[idx] = item;
-        return novo;
-      }
-      return [
-        ...lst,
-        {
-          id: uid(),
-          servicoid: s.id,
-          codigo: s.codigo,
-          descricao: s.descricao,
-          quantidade: 1,
-          precounitario: Number(s.precohora) || 0,
-        },
-      ];
-    });
-  };
+  // Carrinhos
+  const [itensProduto, setItensProduto] = useState<ItemProduto[]>([]);
+  const [itensServico, setItensServico] = useState<ItemServico[]>([]);
 
   // Totais
-  const totalProdutos = useMemo(
-    () => produtos.reduce((acc, l) => acc + (Number(l.quantidade) || 0) * (Number(l.precounitario) || 0), 0),
-    [produtos]
-  );
-  const totalServicos = useMemo(
-    () => servicos.reduce((acc, l) => acc + (Number(l.quantidade) || 0) * (Number(l.precounitario) || 0), 0),
-    [servicos]
-  );
-  const totalGeral = totalProdutos + totalServicos;
+  const totalProdutos = useMemo(() => itensProduto.reduce((acc, it) => acc + toNum(it.subtotal), 0), [itensProduto]);
+  const totalServicos = useMemo(() => itensServico.reduce((acc, it) => acc + toNum(it.subtotal), 0), [itensServico]);
 
-  // Envia totais pro diálogo (footer fixo)
+  // Notifica o dialog-shell via onTotaisChange (o footer usa isso)
   useEffect(() => {
-    onTotaisChange?.({ totalProdutos, totalServicos, totalGeral });
-  }, [onTotaisChange, totalProdutos, totalServicos, totalGeral]);
+    onTotaisChange?.({ totalProdutos, totalServicos });
+  }, [totalProdutos, totalServicos, onTotaisChange]);
 
-  // ===== Buscas (AJUSTE as rotas conforme sua API) =====
-  async function buscarProdutos() {
-    setPLoading(true);
-    setPErro(null);
+  /* ------------------------------ Carregar OS ------------------------------ */
+  useEffect(() => {
+    if (!osId) return;
+    let cancel = false;
+    async function load() {
+      try {
+        const r = await fetch(`/api/ordens/${osId}/orcamento`, { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || "Falha ao carregar orçamento");
+        if (cancel) return;
+
+        const produtos: ItemProduto[] = (j?.produtos ?? []).map((p: any) => ({
+          produtoid: Number(p.produtoid),
+          descricao: String(p.descricao ?? ""),
+          quantidade: toNum(p.quantidade || 1),
+          precounitario: toNum(p.precounitario || 0),
+          subtotal: toNum(p.subtotal || (p.quantidade || 1) * (p.precounitario || 0)),
+        }));
+
+        const servicos: ItemServico[] = (j?.servicos ?? []).map((s: any) => ({
+          servicoid: Number(s.servicoid),
+          descricao: String(s.descricao ?? ""),
+          quantidade: toNum(s.quantidade || 1),
+          precounitario: toNum(s.precounitario || 0),
+          subtotal: toNum(s.subtotal || (s.quantidade || 1) * (s.precounitario || 0)),
+        }));
+
+        setItensProduto(produtos);
+        setItensServico(servicos);
+      } catch (e: any) {
+        console.error(e);
+      }
+    }
+    load();
+    return () => {
+      cancel = true;
+    };
+  }, [osId]);
+
+  /* --------------------------------- Buscar -------------------------------- */
+  const buscarProdutos = useCallback(async () => {
     try {
-      const url = new URL("/api/produtos/search", window.location.origin);
-      if (pTermo) url.searchParams.set("q", pTermo);
-      if (pCodigo) url.searchParams.set("codigo", pCodigo);
+      setPLoading(true);
+      setPErro(null);
+      const url = new URL("/api/produtos/buscar", window.location.origin);
+      if (pQ.trim()) url.searchParams.set("q", pQ.trim());
+      if (pCodigo.trim()) url.searchParams.set("codigo", pCodigo.trim());
       const r = await fetch(url.toString(), { cache: "no-store" });
       const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "Falha ao buscar produtos.");
-      setPResultados(j?.produtos ?? []);
+      if (!r.ok) throw new Error(j?.error || "Erro ao buscar produtos");
+      setPResultados(Array.isArray(j?.produtos) ? j.produtos : []);
     } catch (e: any) {
-      setPErro(e?.message ?? "Erro na consulta.");
+      setPErro(e?.message ?? "Erro ao buscar produtos");
       setPResultados([]);
     } finally {
       setPLoading(false);
     }
-  }
+  }, [pQ, pCodigo]);
 
-  async function buscarServicos() {
-    setSLoading(true);
-    setSErro(null);
+  const buscarServicos = useCallback(async () => {
     try {
-      const url = new URL("/api/servicos/search", window.location.origin);
-      if (sTermo) url.searchParams.set("q", sTermo);
-      if (sCodigo) url.searchParams.set("codigo", sCodigo);
+      setSLoading(true);
+      setSErro(null);
+      const url = new URL("/api/servicos/buscar", window.location.origin);
+      if (sQ.trim()) url.searchParams.set("q", sQ.trim());
+      if (sCodigo.trim()) url.searchParams.set("codigo", sCodigo.trim());
       const r = await fetch(url.toString(), { cache: "no-store" });
       const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "Falha ao buscar serviços.");
-      setSResultados(j?.servicos ?? []);
+      if (!r.ok) throw new Error(j?.error || "Erro ao buscar serviços");
+      setSResultados(Array.isArray(j?.servicos) ? j.servicos : []);
     } catch (e: any) {
-      setSErro(e?.message ?? "Erro na consulta.");
+      setSErro(e?.message ?? "Erro ao buscar serviços");
       setSResultados([]);
     } finally {
       setSLoading(false);
     }
-  }
+  }, [sQ, sCodigo]);
 
+  /* ------------------------------- Adicionar -------------------------------- */
+  const addProduto = (p: ProdutoBusca) => {
+    setItensProduto((prev) => {
+      const idx = prev.findIndex((x) => x.produtoid === p.id);
+      if (idx >= 0) {
+        const novo = [...prev];
+        const q = novo[idx].quantidade + 1;
+        const pu = novo[idx].precounitario || p.precounitario || 0;
+        novo[idx] = { ...novo[idx], quantidade: q, precounitario: pu, subtotal: q * pu };
+        return novo;
+      }
+      const pu = toNum(p.precounitario || 0);
+      return [...prev, { produtoid: p.id, descricao: p.descricao, quantidade: 1, precounitario: pu, subtotal: pu }];
+    });
+  };
+
+  const addServico = (s: ServicoBusca) => {
+    setItensServico((prev) => {
+      const idx = prev.findIndex((x) => x.servicoid === s.id);
+      if (idx >= 0) {
+        const novo = [...prev];
+        const q = novo[idx].quantidade + 1;
+        const pu = novo[idx].precounitario || s.precohora || 0;
+        novo[idx] = { ...novo[idx], quantidade: q, precounitario: pu, subtotal: q * pu };
+        return novo;
+      }
+      const pu = toNum(s.precohora || 0);
+      return [...prev, { servicoid: s.id, descricao: s.descricao, quantidade: 1, precounitario: pu, subtotal: pu }];
+    });
+  };
+
+  /* ----------------------------- Editar/Remover ----------------------------- */
+  const updateProduto = (i: number, patch: Partial<ItemProduto>) => {
+    setItensProduto((prev) => {
+      const novo = [...prev];
+      const base = { ...novo[i], ...patch };
+      const q = toNum(base.quantidade || 1);
+      const pu = toNum(base.precounitario || 0);
+      base.quantidade = q;
+      base.precounitario = pu;
+      base.subtotal = q * pu;
+      novo[i] = base;
+      return novo;
+    });
+  };
+
+  const updateServico = (i: number, patch: Partial<ItemServico>) => {
+    setItensServico((prev) => {
+      const novo = [...prev];
+      const base = { ...novo[i], ...patch };
+      const q = toNum(base.quantidade || 1);
+      const pu = toNum(base.precounitario || 0);
+      base.quantidade = q;
+      base.precounitario = pu;
+      base.subtotal = q * pu;
+      novo[i] = base;
+      return novo;
+    });
+  };
+
+  const removeProduto = (i: number) => setItensProduto((prev) => prev.filter((_, idx) => idx !== i));
+  const removeServico = (i: number) => setItensServico((prev) => prev.filter((_, idx) => idx !== i));
+
+  /* ----------------------------------- UI ---------------------------------- */
   return (
     <div className="space-y-6">
-      {/* CONTEXTO DA OS */}
+      {/* CAPA / CONTEXTO */}
       <Card className="border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base sm:text-lg">OS {ordemServico.numero}</CardTitle>
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base sm:text-lg">
+              Orçamento • OS {ordemServico?.numero ?? ordemServico?.id ?? "—"}
+            </CardTitle>
+          </div>
           <CardDescription className="text-sm">
-            {ordemServico.cliente ? `Cliente: ${ordemServico.cliente} • ` : ""}
-            {ordemServico.veiculo ? `Veículo: ${ordemServico.veiculo}` : ""}
+            {[ordemServico?.cliente, ordemServico?.veiculo].filter(Boolean).join(" • ") || "—"}
           </CardDescription>
         </CardHeader>
       </Card>
 
-      {/* BUSCA E ADIÇÃO */}
+      {/* BUSCA E RESULTADOS */}
       <Card className="border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Adicionar Itens</CardTitle>
-          <CardDescription>Pesquise e adicione produtos ou serviços à OS.</CardDescription>
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Adicionar itens</CardTitle>
+          </div>
+          <CardDescription>Pesquise e inclua produtos e serviços no orçamento.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <Tabs defaultValue="produtos" className="w-full">
-            <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="produtos" className="sm:min-w-[140px]">Produtos</TabsTrigger>
-              <TabsTrigger value="servicos" className="sm:min-w-[140px]">Serviços</TabsTrigger>
+          {/* Tabs centralizadas com espaçamento equilibrado */}
+          <Tabs value={aba} onValueChange={(v) => setAba(v as any)} className="w-full">
+            <TabsList className="flex w-auto gap-4 rounded-xl bg-muted/60">
+              <TabsTrigger
+                value="produtos"
+                className="min-w-[160px] h-9 text-[0.95rem] data-[state=active]:font-semibold"
+              >
+                Produtos
+              </TabsTrigger>
+              <TabsTrigger
+                value="servicos"
+                className="min-w-[160px] h-9 text-[0.95rem] data-[state=active]:font-semibold"
+              >
+                Serviços
+              </TabsTrigger>
             </TabsList>
 
-            {/* PRODUTOS */}
-            <TabsContent value="produtos" className="space-y-3">
-              {/* Filtros */}
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_280px_auto] gap-3">
-                <Input
-                  value={pTermo}
-                  onChange={(e) => setPTermo(e.target.value)}
-                  placeholder="Buscar por descrição, NCM, CFOP…"
-                  className="h-10"
-                  onKeyDown={(e) => e.key === "Enter" && buscarProdutos()}
-                />
-                <Input
-                  value={pCodigo}
-                  onChange={(e) => setPCodigo(e.target.value)}
-                  placeholder="Código / EAN"
-                  className="h-10"
-                  onKeyDown={(e) => e.key === "Enter" && buscarProdutos()}
-                />
-                <div className="flex gap-2">
-                  <Button className="h-10 w-full sm:w-auto" onClick={buscarProdutos} disabled={pLoading}>
+            <TabsContent value="produtos" className="space-y-4">
+              {/* Linha fluída, 100% de largura, responsiva */}
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex-1 min-w-[240px] space-y-1.5">
+                  <Label>Pesquisar por descrição / título / referência / EAN</Label>
+                  <Input
+                    value={pQ}
+                    onChange={(e) => setPQ(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && buscarProdutos()}
+                    placeholder="Ex.: filtro de óleo, 789..."
+                    className="h-10"
+                  />
+                </div>
+
+                <div className="w-full sm:w-56 space-y-1.5">
+                  <Label>Código</Label>
+                  <Input
+                    value={pCodigo}
+                    onChange={(e) => setPCodigo(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && buscarProdutos()}
+                    placeholder="Ex.: P-000123"
+                    className="h-10"
+                  />
+                </div>
+
+                <div className="w-full sm:w-40">
+                  <Button className="w-full h-10" onClick={buscarProdutos} disabled={pLoading}>
                     {pLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
                     Buscar
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="h-10 w-full sm:w-auto bg-transparent"
-                    onClick={() => { setPTermo(""); setPCodigo(""); setPResultados([]); setPErro(null); }}
-                  >
-                    Limpar
-                  </Button>
                 </div>
               </div>
 
-              {/* Resultados */}
-              <div className="rounded-md border border-border overflow-hidden">
-                <div className="max-h-[40vh] overflow-y-auto">
-                  <Table>
-                    <TableHeader>
+              {pErro && <div className="text-sm text-red-600">{pErro}</div>}
+
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50%]">Produto</TableHead>
+                      <TableHead className="w-[16%]">Código</TableHead>
+                      <TableHead className="w-[18%] text-right">Preço</TableHead>
+                      <TableHead className="w-[10%] text-center">Estoque</TableHead>
+                      <TableHead className="w-[6%] text-center">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pResultados.length === 0 ? (
                       <TableRow>
-                        <TableHead className="min-w-[120px]">Código</TableHead>
-                        <TableHead className="min-w-[280px]">Descrição</TableHead>
-                        <TableHead className="min-w-[120px] text-right">Preço</TableHead>
-                        <TableHead className="min-w-[110px] text-center">Estoque</TableHead>
-                        <TableHead className="min-w-[120px] text-center">Ações</TableHead>
+                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                          Nenhum produto encontrado.
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8">
-                            <Loader2 className="h-5 w-5 mr-2 inline animate-spin" />
-                            Carregando produtos…
+                    ) : (
+                      pResultados.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="pr-4">{p.descricao}</TableCell>
+                          <TableCell>{p.codigo}</TableCell>
+                          <TableCell className="text-right tabular-nums">{money(p.precounitario)}</TableCell>
+                          <TableCell className="text-center">{p.estoque}</TableCell>
+                          <TableCell className="text-center">
+                            <Button size="icon" variant="outline" onClick={() => addProduto(p)} title="Adicionar">
+                              <Plus className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
-                      ) : pErro ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-6 text-destructive">
-                            {pErro}
-                          </TableCell>
-                        </TableRow>
-                      ) : pResultados.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                            Nenhum produto encontrado.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        pResultados.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell className="font-medium">{p.codigo}</TableCell>
-                            <TableCell>{p.descricao}</TableCell>
-                            <TableCell className="text-right">{money(Number(p.precounitario) || 0)}</TableCell>
-                            <TableCell className="text-center">
-                              {typeof p.estoque === "number" ? (
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    "text-xs",
-                                    p.estoque <= 0 && "bg-destructive/20 text-destructive",
-                                    p.estoque > 0 && p.estoque <= 3 && "bg-amber-500/20 text-amber-500",
-                                    p.estoque > 3 && "bg-emerald-500/20 text-emerald-500"
-                                  )}
-                                >
-                                  {p.estoque}
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Button size="sm" onClick={() => addProdutoFromResult(p)}>
-                                <Plus className="h-4 w-4 mr-1.5" />
-                                Adicionar
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </TabsContent>
 
-            {/* SERVIÇOS */}
-            <TabsContent value="servicos" className="space-y-3">
-              {/* Filtros */}
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_280px_auto] gap-3">
-                <Input
-                  value={sTermo}
-                  onChange={(e) => setSTermo(e.target.value)}
-                  placeholder="Buscar por descrição, CNAE, item…"
-                  className="h-10"
-                  onKeyDown={(e) => e.key === "Enter" && buscarServicos()}
-                />
-                <Input
-                  value={sCodigo}
-                  onChange={(e) => setSCodigo(e.target.value)}
-                  placeholder="Código do serviço"
-                  className="h-10"
-                  onKeyDown={(e) => e.key === "Enter" && buscarServicos()}
-                />
-                <div className="flex gap-2">
-                  <Button className="h-10 w-full sm:w-auto" onClick={buscarServicos} disabled={sLoading}>
+            <TabsContent value="servicos" className="space-y-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex-1 min-w-[240px] space-y-1.5">
+                  <Label>Pesquisar por descrição / CNAE / item da lista</Label>
+                  <Input
+                    value={sQ}
+                    onChange={(e) => setSQ(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && buscarServicos()}
+                    placeholder="Ex.: revisão, alinhamento..."
+                    className="h-10"
+                  />
+                </div>
+
+                <div className="w-full sm:w-56 space-y-1.5">
+                  <Label>Código</Label>
+                  <Input
+                    value={sCodigo}
+                    onChange={(e) => setSCodigo(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && buscarServicos()}
+                    placeholder="Ex.: S-000321"
+                    className="h-10"
+                  />
+                </div>
+
+                <div className="w-full sm:w-40">
+                  <Button className="w-full h-10" onClick={buscarServicos} disabled={sLoading}>
                     {sLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
                     Buscar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-10 w-full sm:w-auto bg-transparent"
-                    onClick={() => { setSTermo(""); setSCodigo(""); setSResultados([]); setSErro(null); }}
-                  >
-                    Limpar
                   </Button>
                 </div>
               </div>
 
-              {/* Resultados */}
-              <div className="rounded-md border border-border overflow-hidden">
-                <div className="max-h-[40vh] overflow-y-auto">
-                  <Table>
-                    <TableHeader>
+              {sErro && <div className="text-sm text-red-600">{sErro}</div>}
+
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[58%]">Serviço</TableHead>
+                      <TableHead className="w-[18%]">Código</TableHead>
+                      <TableHead className="w-[18%] text-right">Preço base</TableHead>
+                      <TableHead className="w-[6%] text-center">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sResultados.length === 0 ? (
                       <TableRow>
-                        <TableHead className="min-w-[120px]">Código</TableHead>
-                        <TableHead className="min-w-[320px]">Descrição</TableHead>
-                        <TableHead className="min-w-[140px] text-right">Preço/Hora</TableHead>
-                        <TableHead className="min-w-[120px] text-center">Ações</TableHead>
+                        <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                          Nenhum serviço encontrado.
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8">
-                            <Loader2 className="h-5 w-5 mr-2 inline animate-spin" />
-                            Carregando serviços…
+                    ) : (
+                      sResultados.map((s) => (
+                        <TableRow key={s.id}>
+                          <TableCell className="pr-4">{s.descricao}</TableCell>
+                          <TableCell>{s.codigo}</TableCell>
+                          <TableCell className="text-right tabular-nums">{money(s.precohora)}</TableCell>
+                          <TableCell className="text-center">
+                            <Button size="icon" variant="outline" onClick={() => addServico(s)} title="Adicionar">
+                              <Plus className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
-                      ) : sErro ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-6 text-destructive">
-                            {sErro}
-                          </TableCell>
-                        </TableRow>
-                      ) : sResultados.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                            Nenhum serviço encontrado.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        sResultados.map((s) => (
-                          <TableRow key={s.id}>
-                            <TableCell className="font-medium">{s.codigo}</TableCell>
-                            <TableCell>{s.descricao}</TableCell>
-                            <TableCell className="text-right">{money(Number(s.precohora) || 0)}</TableCell>
-                            <TableCell className="text-center">
-                              <Button size="sm" onClick={() => addServicoFromResult(s)}>
-                                <Plus className="h-4 w-4 mr-1.5" />
-                                Adicionar
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
-      {/* CARRINHO: PRODUTOS */}
+      {/* ITENS ADICIONADOS */}
       <Card className="border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Produtos adicionados</CardTitle>
-          <CardDescription>Edite quantidades e preços conforme necessário.</CardDescription>
+          <div className="flex items-center gap-2">
+            <Wrench className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base sm:text-lg">Itens do orçamento</CardTitle>
+          </div>
+          <CardDescription>Use os botões para ajustar quantidade. Preço é fixo.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border border-border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[120px]">Código</TableHead>
-                  <TableHead className="min-w-[280px]">Descrição</TableHead>
-                  <TableHead className="min-w-[110px] text-right">Qtd.</TableHead>
-                  <TableHead className="min-w-[160px] text-right">Preço Unit.</TableHead>
-                  <TableHead className="min-w-[160px] text-right">Subtotal</TableHead>
-                  <TableHead className="min-w-[90px] text-center">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {produtos.length === 0 ? (
+
+        <CardContent className="space-y-6">
+          {/* Produtos */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Produtos</Label>
+              <Badge variant="outline" className="font-normal">
+                {itensProduto.length} item(ns)
+              </Badge>
+            </div>
+
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Nenhum produto adicionado.
-                    </TableCell>
+                    <TableHead className="w-[48%]">Descrição</TableHead>
+                    <TableHead className="w-[20%] text-center">Quantidade</TableHead>
+                    <TableHead className="w-[16%] text-right">Preço unit.</TableHead>
+                    <TableHead className="w-[12%] text-right">Subtotal</TableHead>
+                    <TableHead className="w-[4%] text-center">Ação</TableHead>
                   </TableRow>
-                ) : (
-                  produtos.map((l) => {
-                    const subtotal = (Number(l.quantidade) || 0) * (Number(l.precounitario) || 0);
-                    return (
-                      <TableRow key={l.id}>
-                        <TableCell>
-                          <Input
-                            value={l.codigo ?? ""}
-                            onChange={(e) => updateProduto(l.id, { codigo: e.target.value })}
-                            placeholder="Código/EAN"
-                            className="h-9"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={l.descricao}
-                            onChange={(e) => updateProduto(l.id, { descricao: e.target.value })}
-                            placeholder="Descrição do produto"
-                            className="h-9"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            inputMode="numeric"
-                            className="text-right h-9"
-                            value={String(l.quantidade)}
-                            onChange={(e) =>
-                              updateProduto(l.id, { quantidade: Number(e.target.value.replace(/\D/g, "")) || 0 })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            inputMode="decimal"
-                            className="text-right h-9"
-                            value={String(l.precounitario)}
-                            onChange={(e) =>
-                              updateProduto(l.id, { precounitario: Number(e.target.value.replace(",", ".")) || 0 })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="text-right font-medium">{money(subtotal)}</TableCell>
+                </TableHeader>
+                <TableBody>
+                  {itensProduto.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                        Nenhum produto adicionado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    itensProduto.map((it, i) => (
+                      <TableRow key={`${it.produtoid}-${i}`}>
+                        <TableCell className="pr-4">{it.descricao}</TableCell>
                         <TableCell className="text-center">
-                          <Button variant="ghost" size="icon" onClick={() => rmProduto(l.id)}>
+                          <QtyInput
+                            value={it.quantidade}
+                            onChange={(n) => updateProduto(i, { quantidade: n })}
+                            min={0}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{money(it.precounitario)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{money(it.subtotal)}</TableCell>
+                        <TableCell className="text-center">
+                          <Button size="icon" variant="ghost" onClick={() => removeProduto(i)} title="Remover">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex justify-end pt-4">
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground">Total de Produtos</div>
-              <div className="text-lg font-semibold">{money(totalProdutos)}</div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* CARRINHO: SERVIÇOS */}
-      <Card className="border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Serviços adicionados</CardTitle>
-          <CardDescription>Edite quantidades e preços conforme necessário.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border border-border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[120px]">Código</TableHead>
-                  <TableHead className="min-w-[320px]">Descrição</TableHead>
-                  <TableHead className="min-w-[110px] text-right">Qtd.</TableHead>
-                  <TableHead className="min-w-[160px] text-right">Preço Unit.</TableHead>
-                  <TableHead className="min-w-[160px] text-right">Subtotal</TableHead>
-                  <TableHead className="min-w-[90px] text-center">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {servicos.length === 0 ? (
+          <Separator />
+
+          {/* Serviços */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Serviços</Label>
+              <Badge variant="outline" className="font-normal">
+                {itensServico.length} item(ns)
+              </Badge>
+            </div>
+
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Nenhum serviço adicionado.
-                    </TableCell>
+                    <TableHead className="w-[48%]">Descrição</TableHead>
+                    <TableHead className="w-[20%] text-center">Quantidade</TableHead>
+                    <TableHead className="w-[16%] text-right">Preço unit.</TableHead>
+                    <TableHead className="w-[12%] text-right">Subtotal</TableHead>
+                    <TableHead className="w-[4%] text-center">Ação</TableHead>
                   </TableRow>
-                ) : (
-                  servicos.map((l) => {
-                    const subtotal = (Number(l.quantidade) || 0) * (Number(l.precounitario) || 0);
-                    return (
-                      <TableRow key={l.id}>
-                        <TableCell>
-                          <Input
-                            value={l.codigo ?? ""}
-                            onChange={(e) => updateServico(l.id, { codigo: e.target.value })}
-                            placeholder="Código/Serviço"
-                            className="h-9"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={l.descricao}
-                            onChange={(e) => updateServico(l.id, { descricao: e.target.value })}
-                            placeholder="Descrição do serviço"
-                            className="h-9"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            inputMode="numeric"
-                            className="text-right h-9"
-                            value={String(l.quantidade)}
-                            onChange={(e) =>
-                              updateServico(l.id, { quantidade: Number(e.target.value.replace(/\D/g, "")) || 0 })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            inputMode="decimal"
-                            className="text-right h-9"
-                            value={String(l.precounitario)}
-                            onChange={(e) =>
-                              updateServico(l.id, { precounitario: Number(e.target.value.replace(",", ".")) || 0 })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="text-right font-medium">{money(subtotal)}</TableCell>
+                </TableHeader>
+                <TableBody>
+                  {itensServico.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                        Nenhum serviço adicionado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    itensServico.map((it, i) => (
+                      <TableRow key={`${it.servicoid}-${i}`}>
+                        <TableCell className="pr-4">{it.descricao}</TableCell>
                         <TableCell className="text-center">
-                          <Button variant="ghost" size="icon" onClick={() => rmServico(l.id)}>
+                          <QtyInput
+                            value={it.quantidade}
+                            onChange={(n) => updateServico(i, { quantidade: n })}
+                            min={0}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{money(it.precounitario)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{money(it.subtotal)}</TableCell>
+                        <TableCell className="text-center">
+                          <Button size="icon" variant="ghost" onClick={() => removeServico(i)} title="Remover">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex justify-end pt-4">
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground">Total de Serviços</div>
-              <div className="text-lg font-semibold">{money(totalServicos)}</div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
+
+          {/* Removido: resumo de totais (footer do dialog já mostra) */}
         </CardContent>
       </Card>
-
-      
-      
     </div>
   );
 }
+
+export default OrcamentoForm;
