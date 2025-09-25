@@ -110,7 +110,7 @@ export default function RegisterContent ({newCustomer, setNewCustomer, setSelect
 
             {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
             
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
                 {/* Foto do Cliente */}
                 <div className="flex flex-col items-center space-y-3 sm:space-y-4">
                   <div className="relative">

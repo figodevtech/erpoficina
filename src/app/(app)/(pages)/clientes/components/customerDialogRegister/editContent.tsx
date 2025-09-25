@@ -162,7 +162,7 @@ export default function EditContent({ customerId }: EditContentProps) {
               value="Geral"
               className="h-full min-h-0 overflow-hidden p-0"
             >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
                 {/* Foto do Cliente */}
                 <div className="flex flex-col items-center space-y-3 sm:space-y-4">
                   <div className="relative">
@@ -581,7 +581,7 @@ export default function EditContent({ customerId }: EditContentProps) {
               value="Veículos"
               className="h-full min-h-0 overflow-hidden p-0"
             >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -593,7 +593,8 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedCustomer.veiculos.map((vehicle) => (
+                    {selectedCustomer.veiculos.length > 0 ? (
+                      selectedCustomer.veiculos.map((vehicle) => (
                       <TableRow
                         key={vehicle.id}
                         className="hover: cursor-pointer"
@@ -604,7 +605,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                         <TableCell>{vehicle.cor}</TableCell>
                         <TableCell>{vehicle.ano}</TableCell>
                       </TableRow>
-                    ))}
+                    )) 
+                    ): (
+                      <TableRow><TableCell className="text-center h-20" colSpan={5}>Cliente não possui veículos cadastrados</TableCell></TableRow>
+                    )}
+                    
                   </TableBody>
                 </Table>
               </div>
@@ -614,7 +619,7 @@ export default function EditContent({ customerId }: EditContentProps) {
               value="Ordens"
               className="h-full min-h-0 overflow-hidden p-0"
             >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
                 <Table>
                   <TableHeader>
                     <TableRow>
