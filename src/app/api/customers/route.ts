@@ -1,16 +1,26 @@
 // src/app/api/clientes/route.ts
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-type Status = 'ATIVO' | 'INATIVO' | 'PENDENTE';
-const STATUS_SET = new Set<Status>(['ATIVO', 'INATIVO', 'PENDENTE']);
+type Status = "ATIVO" | "INATIVO" | "PENDENTE";
+const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
 
-const REQUIRED_FIELDS = ['tipopessoa', 'cpfcnpj', 'nomerazaosocial', 'email', 'telefone', 'estado', 'cidade', 'cep', 'endereco'] as const;
+const REQUIRED_FIELDS = [
+  "tipopessoa",
+  "cpfcnpj",
+  "nomerazaosocial",
+  "email",
+  "telefone",
+  "estado",
+  "cidade",
+  "cep",
+  "endereco",
+] as const;
 
 type Payload = {
-  tipopessoa: 'FISICA' | 'JURIDICA' | string;
+  tipopessoa: "FISICA" | "JURIDICA" | string;
   cpfcnpj: string;
   nomerazaosocial: string;
   email?: string | null;
@@ -26,10 +36,10 @@ type Payload = {
 };
 
 function onlyDigits(v?: string | null) {
-  return (v ?? '').replace(/\D+/g, '');
+  return (v ?? "").replace(/\D+/g, "");
 }
 function normalizeString(v?: string | null) {
-  const s = (v ?? '').trim();
+  const s = (v ?? "").trim();
   return s.length ? s : null;
 }
 function normalizeUF(v?: string | null) {
@@ -40,7 +50,7 @@ function normalizeTipopessoa(v?: string | null) {
   const s = normalizeString(v);
   if (!s) return null;
   const up = s.toUpperCase();
-  return up === 'FISICA' || up === 'JURIDICA' ? up : null;
+  return up === "FISICA" || up === "JURIDICA" ? up : null;
 }
 
 /* ============================
@@ -50,29 +60,36 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const page = Math.max(Number(searchParams.get('page') ?? 1), 1);
-    const limitRaw = searchParams.get('limit') ?? searchParams.get('pageSize') ?? '20';
+    const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
+    const limitRaw =
+      searchParams.get("limit") ?? searchParams.get("pageSize") ?? "20";
     const limit = Math.min(Math.max(Number(limitRaw), 1), 100);
 
-    const q = (searchParams.get('search') ?? searchParams.get('q') ?? '').trim();
+    const q = (
+      searchParams.get("search") ??
+      searchParams.get("q") ??
+      ""
+    ).trim();
 
-    const statusParam = (searchParams.get('status') ?? 'TODOS').toUpperCase();
-    const statusFilter = STATUS_SET.has(statusParam as Status) ? (statusParam as Status) : null;
+    const statusParam = (searchParams.get("status") ?? "TODOS").toUpperCase();
+    const statusFilter = STATUS_SET.has(statusParam as Status)
+      ? (statusParam as Status)
+      : null;
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
     let query = supabaseAdmin
-      .from('cliente')
+      .from("cliente")
       .select(
         `
         id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
         cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
         createdat, updatedat, status
         `,
-        { count: 'exact' }
+        { count: "exact" }
       )
-      .order('id', { ascending: false })
+      .order("id", { ascending: false })
       .range(from, to);
 
     if (q) {
@@ -82,7 +99,7 @@ export async function GET(req: Request) {
     }
 
     if (statusFilter) {
-      query = query.eq('status', statusFilter);
+      query = query.eq("status", statusFilter);
     }
 
     const { data, error, count } = await query;
@@ -107,11 +124,11 @@ export async function GET(req: Request) {
         hasPrevPage,
         hasNextPage,
       },
-      filters: { search: q, status: statusFilter ?? 'TODOS' },
+      filters: { search: q, status: statusFilter ?? "TODOS" },
     });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message || 'Erro ao listar clientes' },
+      { error: e?.message || "Erro ao listar clientes" },
       { status: 500 }
     );
   }
@@ -126,19 +143,24 @@ export async function POST(req: Request) {
     const body = (await req.json()) as any;
 
     // Suporta { newCustomer: {...} } ou {...} direto
-    const json = body?.newCustomer && typeof body.newCustomer === 'object'
-      ? body.newCustomer
-      : body;
+    const json =
+      body?.newCustomer && typeof body.newCustomer === "object"
+        ? body.newCustomer
+        : body;
 
-    if (!json || typeof json !== 'object') {
-      return NextResponse.json({ error: 'Corpo da requisição inválido.' }, { status: 400 });
+    if (!json || typeof json !== "object") {
+      return NextResponse.json(
+        { error: "Corpo da requisição inválido." },
+        { status: 400 }
+      );
     }
 
-    const missing = ['tipopessoa', 'cpfcnpj', 'nomerazaosocial']
-      .filter((k) => !json[k] || String(json[k]).trim() === '');
+    const missing = ["tipopessoa", "cpfcnpj", "nomerazaosocial"].filter(
+      (k) => !json[k] || String(json[k]).trim() === ""
+    );
     if (missing.length) {
       return NextResponse.json(
-        { error: `Campos obrigatórios ausentes: ${missing.join(', ')}.` },
+        { error: `Campos obrigatórios ausentes: ${missing.join(", ")}.` },
         { status: 400 }
       );
     }
@@ -146,14 +168,16 @@ export async function POST(req: Request) {
     const tipopessoa = normalizeTipopessoa(String(json.tipopessoa));
     if (!tipopessoa) {
       return NextResponse.json(
-        { error: "Valor de 'tipopessoa' inválido. Use 'FISICA' ou 'JURIDICA'." },
+        {
+          error: "Valor de 'tipopessoa' inválido. Use 'FISICA' ou 'JURIDICA'.",
+        },
         { status: 400 }
       );
     }
 
     const cpfcnpj = onlyDigits(String(json.cpfcnpj));
     if (!cpfcnpj) {
-      return NextResponse.json({ error: 'cpfcnpj inválido.' }, { status: 400 });
+      return NextResponse.json({ error: "cpfcnpj inválido." }, { status: 400 });
     }
 
     const payload = {
@@ -173,16 +197,20 @@ export async function POST(req: Request) {
     };
 
     const { data, error } = await supabaseAdmin
-      .from('cliente')
+      .from("cliente")
       .insert(payload)
-      .select('id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, createdat, status')
+      .select(
+        "id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, createdat, status"
+      )
       .single();
 
     if (error) {
       // Trata violações de unicidade (cpfcnpj/email/telefone/nomerazaosocial)
-      if ((error as any).code === '23505') {
+      if ((error as any).code === "23505") {
         // Tenta extrair o nome da constraint da mensagem/detalhes
-        const raw = `${(error as any).message ?? ''} ${(error as any).details ?? ''}`;
+        const raw = `${(error as any).message ?? ""} ${
+          (error as any).details ?? ""
+        }`;
         const constraint =
           // padrão comum: Duplicate key value violates unique constraint "cliente_email_key"
           raw.match(/unique constraint "([^"]+)"/i)?.[1] ||
@@ -190,46 +218,55 @@ export async function POST(req: Request) {
           raw.match(/unique constraint ([^\s"]+)/i)?.[1] ||
           // outro padrão comum vindo do PostgREST
           raw.match(/cliente_[a-zA-Z_]+_key/)?.[0] ||
-          '';
+          "";
 
         // Mapeamento nome-da-constraint -> campo legível
-        let field: 'cpfcnpj' | 'email' | 'telefone' | 'nomerazaosocial' | 'desconhecido' = 'desconhecido';
-        if (constraint.includes('cpfcnpj')) field = 'cpfcnpj';
-        else if (constraint.includes('email')) field = 'email';
-        else if (constraint.includes('telefone')) field = 'telefone';
-        else if (constraint.includes('nomerazaosocial') || constraint.includes('nome')) field = 'nomerazaosocial';
+        let field:
+          | "cpfcnpj"
+          | "email"
+          | "telefone"
+          | "nomerazaosocial"
+          | "desconhecido" = "desconhecido";
+        if (constraint.includes("cpfcnpj")) field = "cpfcnpj";
+        else if (constraint.includes("email")) field = "email";
+        else if (constraint.includes("telefone")) field = "telefone";
+        else if (
+          constraint.includes("nomerazaosocial") ||
+          constraint.includes("nome")
+        )
+          field = "nomerazaosocial";
 
         const fieldLabel = {
-          cpfcnpj: 'CPF/CNPJ',
-          email: 'E-mail',
-          telefone: 'Telefone',
-          nomerazaosocial: 'Nome/Razão Social',
-          desconhecido: 'Campo único',
+          cpfcnpj: "CPF/CNPJ",
+          email: "E-mail",
+          telefone: "Telefone",
+          nomerazaosocial: "Nome/Razão Social",
+          desconhecido: "Campo único",
         }[field];
 
         return NextResponse.json(
           {
             error: `${fieldLabel} já cadastrado para outro cliente.`,
-            field,                 // útil pro front marcar o input com erro
-            constraint,            // útil para debug/observabilidade
+            field, // útil pro front marcar o input com erro
+            constraint, // útil para debug/observabilidade
           },
           { status: 409 }
         );
       }
 
       return NextResponse.json(
-        { error: (error as any).message ?? 'Erro ao salvar cliente.' },
+        { error: (error as any).message ?? "Erro ao salvar cliente." },
         { status: 500 }
       );
     }
 
     return NextResponse.json(
-      { message: 'Cliente criado com sucesso.', id: data.id, data },
+      { message: "Cliente criado com sucesso.", id: data.id, data },
       { status: 201 }
     );
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message ?? 'Erro ao salvar cliente.' },
+      { error: e?.message ?? "Erro ao salvar cliente." },
       { status: 500 }
     );
   }

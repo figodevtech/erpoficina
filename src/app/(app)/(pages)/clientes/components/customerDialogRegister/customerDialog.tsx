@@ -29,24 +29,26 @@ export function CustomerDialog({
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
 
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined);
+  const [selectedCustomer, setSelectedCustomer] = useState<
+    Customer | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [newCustomer, setNewCustomer] = useState<NewCustomer>({
-        tipopessoa: "FISICA",
-        cpfcnpj: "",
-        nomerazaosocial: "",
-        email: "",
-        telefone: "",
-        endereco: "",
-        cidade: "",
-        estado: "",
-        cep: "",
-        inscricaoestadual: "",
-        inscricaomunicipal: "",
-        codigomunicipio: "",
-        status: "ATIVO",
-        foto: "",
-      });
+    tipopessoa: "FISICA",
+    cpfcnpj: "",
+    nomerazaosocial: "",
+    email: "",
+    telefone: "",
+    endereco: "",
+    cidade: "",
+    estado: "",
+    cep: "",
+    inscricaoestadual: "",
+    inscricaomunicipal: "",
+    codigomunicipio: "",
+    status: "ATIVO",
+    foto: "",
+  });
 
   const handleGetCustomer = async (id: number) => {
     setIsLoading(true);
@@ -73,7 +75,6 @@ export function CustomerDialog({
 
   return (
     <Dialog
-    
       open={open}
       onOpenChange={(nextOpen) => {
         // sempre sincroniza o estado (controlado ou interno)
@@ -83,37 +84,40 @@ export function CustomerDialog({
           setSelectedCustomerId?.(undefined);
           setSelectedCustomer(undefined);
           setNewCustomer({
-        tipopessoa: "FISICA",
-        cpfcnpj: "",
-        nomerazaosocial: "",
-        email: "",
-        telefone: "",
-        endereco: "",
-        cidade: "",
-        estado: "",
-        cep: "",
-        inscricaoestadual: "",
-        inscricaomunicipal: "",
-        codigomunicipio: "",
-        status: "ATIVO",
-        foto: "",
-      });
+            tipopessoa: "FISICA",
+            cpfcnpj: "",
+            nomerazaosocial: "",
+            email: "",
+            telefone: "",
+            endereco: "",
+            cidade: "",
+            estado: "",
+            cep: "",
+            inscricaoestadual: "",
+            inscricaomunicipal: "",
+            codigomunicipio: "",
+            status: "ATIVO",
+            foto: "",
+          });
         }
       }}
     >
-      <DialogTrigger
-      autoFocus={false}
-      asChild>{children}</DialogTrigger>
+      <DialogTrigger autoFocus={false} asChild>
+        {children}
+      </DialogTrigger>
 
-        {customerId ? (
-          <EditContent customerId={customerId}  />
-        ) : (
-          <RegisterContent
+      {customerId ? (
+        <EditContent
+        
+          customerId={customerId}
+        />
+      ) : (
+        <RegisterContent
           setSelectedCustomerId={setSelectedCustomerId}
           newCustomer={newCustomer}
           setNewCustomer={setNewCustomer}
-          />
-        )}
+        />
+      )}
     </Dialog>
   );
 }
