@@ -23,13 +23,14 @@ import {
   Phone,
   FileText,
   Camera,
-  Loader,
   ChevronsUpDown,
   Check,
   MapPin,
 } from "lucide-react";
 import {
+  DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -66,7 +67,7 @@ import { cn } from "@/lib/utils";
 interface EditContentProps {
   customerId: number;
 }
-export default function EditContent({ customerId }: EditContentProps) {
+export default function EditContent({ customerId, }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCustomer, setselectedCustomer] = useState<
     Customer | undefined
@@ -100,16 +101,42 @@ export default function EditContent({ customerId }: EditContentProps) {
     }
   };
 
+  const handleUpdateCustomer = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await axios.put("/api/customers/" + customerId,
+        selectedCustomer
+      );
+
+      if (response.status === 200) {
+        // console.log(response)
+        const { data } = response;
+        setselectedCustomer(data.data);
+        console.log("Cliente atualizado:", data.data);
+        handleGetCustomer(data.data.id)
+      }
+    } catch (error) {
+      console.log("Erro ao atualizar cliente:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
   useEffect(() => {
     if (customerId) {
       handleGetCustomer(customerId);
     }
   }, []);
 
-  useEffect(()=>{console.log(selectedCustomer)},[selectedCustomer])
+  useEffect(() => {
+    console.log(selectedCustomer);
+  }, [selectedCustomer]);
   if (isLoading) {
     return (
-      <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden ">
+    <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+        <DialogHeader className="hidden">
+          <DialogTitle></DialogTitle>
+        </DialogHeader>
         <div className="flex h-full min-h-0 flex-col justify-center items-center">
           <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
           <span className="text-primary">Carregando</span>
@@ -120,18 +147,21 @@ export default function EditContent({ customerId }: EditContentProps) {
 
   if (selectedCustomer) {
     return (
-      <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
+    <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
-          <DialogHeader className="shrink-0 px-6 py-4">
+        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
             <DialogTitle>Cliente #{selectedCustomer.id}</DialogTitle>
+            <DialogDescription>
+              Modifique dados para atualizar o cliente
+            </DialogDescription>
           </DialogHeader>
 
           {/* Área principal com abas */}
           <Tabs
             defaultValue="Geral"
-            className="flex-1 min-h-0 overflow-hidden px-6 pb-0"
+            className="flex-1 min-h-0 overflow-hidden pb-0"
           >
-            <TabsList className="shrink-0 sticky top-0 z-10 bg-background">
+            <TabsList className="shrink-0 top-0 z-10 bg-background mt-3 ml-3">
               <TabsTrigger
                 value="Geral"
                 className={"hover:cursor-pointer" + tabTheme}
@@ -155,9 +185,9 @@ export default function EditContent({ customerId }: EditContentProps) {
             {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
             <TabsContent
               value="Geral"
-              className="h-full min-h-0 overflow-hidden p-0"
+              className="h-full min-h-0 overflow-hidden p-0 b"
             >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+              <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
                 {/* Foto do Cliente */}
                 <div className="flex flex-col items-center space-y-3 sm:space-y-4">
                   <div className="relative">
@@ -204,16 +234,27 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ATIVO">
+                      <SelectItem
+                        value="ATIVO"
+                        className="hover:cursor-pointer"
+                      >
                         <Badge variant="default" className="bg-green-500">
                           Ativo
                         </Badge>
                       </SelectItem>
-                      <SelectItem value="INATIVO">
-                        <Badge variant="secondary">Inativo</Badge>
+                      <SelectItem
+                        value="INATIVO"
+                        className="hover:cursor-pointer"
+                      >
+                        <Badge variant="destructive">Inativo</Badge>
                       </SelectItem>
-                      <SelectItem value="SUSPENSO">
-                        <Badge variant="destructive">Suspenso</Badge>
+                      <SelectItem
+                        value="PENDENTE"
+                        className="hover:cursor-pointer"
+                      >
+                        <Badge variant="default" className="bg-yellow-600">
+                          Pendente
+                        </Badge>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -233,7 +274,10 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FISICA">
+                      <SelectItem
+                        value="FISICA"
+                        className="hover:cursor-pointer"
+                      >
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4" />
                           <span className="text-sm sm:text-base">
@@ -241,7 +285,10 @@ export default function EditContent({ customerId }: EditContentProps) {
                           </span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="JURIDICA">
+                      <SelectItem
+                        value="JURIDICA"
+                        className="hover:cursor-pointer"
+                      >
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4" />
                           <span className="text-sm sm:text-base">
@@ -264,7 +311,8 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </Label>
                     <Input
                       id="cpfcnpj"
-                      className="text-sm sm:text-base"
+                      inputMode="numeric"
+                      className=""
                       value={formatCpfCnpj(
                         selectedCustomer.cpfcnpj,
                         selectedCustomer.tipopessoa
@@ -295,7 +343,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </Label>
                     <Input
                       id="nomerazaosocial"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={selectedCustomer.nomerazaosocial}
                       onChange={(e) =>
                         handleInputChange("nomerazaosocial", e.target.value)
@@ -322,7 +370,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                     <Input
                       id="email"
                       type="email"
-                      className="text-sm sm:text-base"
+                      className=""
                       value={selectedCustomer.email}
                       onChange={(e) =>
                         handleInputChange("email", e.target.value)
@@ -341,14 +389,15 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </Label>
                     <Input
                       id="telefone"
-                      className="text-sm sm:text-base"
+                      inputMode="tel"
+                      className=""
                       value={formatTelefone(selectedCustomer.telefone)}
-                      onChange={(e) =>{
-                        const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
-                        handleInputChange("telefone", raw)
-
-                      }
-                      }
+                      onChange={(e) => {
+                        const raw = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 11);
+                        handleInputChange("telefone", raw);
+                      }}
                       placeholder="(11) 99999-9999"
                       maxLength={15}
                     />
@@ -357,15 +406,14 @@ export default function EditContent({ customerId }: EditContentProps) {
                 <Separator className="mt-4" />
                 {/* Endereço */}
                 <div className="space-y-3 sm:space-y-4">
-                  
-
                   <div className="space-y-2">
                     <Label htmlFor="endereco" className="text-sm sm:text-base">
-                      <MapPin className="h-4.5"/>Endereço Completo 
+                      <MapPin className="h-4.5" />
+                      Endereço Completo
                     </Label>
                     <Input
                       id="endereco"
-                      className="text-sm sm:text-base resize-none"
+                      className=""
                       value={selectedCustomer.endereco}
                       onChange={(e) =>
                         handleInputChange("endereco", e.target.value)
@@ -400,7 +448,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                         <PopoverContent className="w-[200px] p-0">
                           <Command>
                             <CommandInput
-                              placeholder="Search framework..."
+                              placeholder="Buscar cidade..."
                               className="h-9"
                             />
                             <CommandList>
@@ -476,7 +524,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                       </Label>
                       <Input
                         id="cep"
-                        className="text-sm sm:text-base"
+                        className=""
                         value={formatCep(selectedCustomer.cep)}
                         onChange={(e) =>
                           handleInputChange("cep", e.target.value)
@@ -510,7 +558,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                           </Label>
                           <Input
                             id="inscricaoestadual"
-                            className="text-sm sm:text-base"
+                            className=""
                             value={selectedCustomer.inscricaoestadual}
                             onChange={(e) =>
                               handleInputChange(
@@ -531,7 +579,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                           </Label>
                           <Input
                             id="inscricaomunicipal"
-                            className="text-sm sm:text-base"
+                            className=""
                             value={selectedCustomer.inscricaomunicipal}
                             onChange={(e) =>
                               handleInputChange(
@@ -553,7 +601,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                         </Label>
                         <Input
                           id="codigomunicipio"
-                          className="text-sm sm:text-base"
+                          className=""
                           value={selectedCustomer.codigomunicipio}
                           onChange={(e) =>
                             handleInputChange("codigomunicipio", e.target.value)
@@ -574,7 +622,7 @@ export default function EditContent({ customerId }: EditContentProps) {
               value="Veículos"
               className="h-full min-h-0 overflow-hidden p-0"
             >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -586,18 +634,26 @@ export default function EditContent({ customerId }: EditContentProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedCustomer.veiculos.map((vehicle) => (
-                      <TableRow
-                        key={vehicle.id}
-                        className="hover: cursor-pointer"
-                      >
-                        <TableCell>{vehicle.id}</TableCell>
-                        <TableCell>{vehicle.modelo}</TableCell>
-                        <TableCell>{vehicle.placa}</TableCell>
-                        <TableCell>{vehicle.cor}</TableCell>
-                        <TableCell>{vehicle.ano}</TableCell>
+                    {selectedCustomer.veiculos.length > 0 ? (
+                      selectedCustomer.veiculos.map((vehicle) => (
+                        <TableRow
+                          key={vehicle.id}
+                          className="hover: cursor-pointer"
+                        >
+                          <TableCell>{vehicle.id}</TableCell>
+                          <TableCell>{vehicle.modelo}</TableCell>
+                          <TableCell>{vehicle.placa}</TableCell>
+                          <TableCell>{vehicle.cor}</TableCell>
+                          <TableCell>{vehicle.ano}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell className="text-center h-20" colSpan={5}>
+                          Cliente não possui veículos cadastrados
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -607,7 +663,7 @@ export default function EditContent({ customerId }: EditContentProps) {
               value="Ordens"
               className="h-full min-h-0 overflow-hidden p-0"
             >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2">
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -633,6 +689,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                 form="register-form"
                 disabled={isSubmitting}
                 className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+                onClick={handleUpdateCustomer}
               >
                 {isSubmitting ? (
                   <>
@@ -646,6 +703,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                   </>
                 )}
               </Button>
+              <DialogClose asChild>
+                <Button className="hover:cursor-pointer" variant={"outline"}>
+                  Cancelar
+                </Button>
+              </DialogClose>
             </div>
           </DialogFooter>
         </div>
