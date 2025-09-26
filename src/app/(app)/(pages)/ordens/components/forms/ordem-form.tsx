@@ -35,14 +35,13 @@ type ChecklistTemplateModel = {
   itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
 };
 
-// ⚠️ Ajuste estes valores se o seu ENUM do banco for diferente
+// Seu form marca: OK | NOK | NA
 const CHECK_STATUS = ["OK", "NOK", "NA"] as const;
 type Marcacao = typeof CHECK_STATUS[number] | "";
 
 export type FormularioNovaOSProps = {
   onSubmit?: (payload: any) => void;
   exposeSubmit?: (fn: () => void) => void;
-  
 };
 
 const NONE = "__none__";
@@ -77,6 +76,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
   // Checklist
   const [templates, setTemplates] = useState<ChecklistTemplateModel[]>([]);
+  theme: 'light'
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string>("");
@@ -207,8 +207,16 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     avulsoEmail,
   ]);
 
+  // Mapeia status para enum do banco
+  const mapStatusToDB = (s: Marcacao): "PENDENTE" | "OK" | "ALERTA" | "FALHA" => {
+    if (s === "OK") return "OK";
+    if (s === "NOK") return "FALHA";
+    // "NA" (não se aplica) ou vazio -> PENDENTE
+    return "PENDENTE";
+  };
+
   // Salvar
-  const salvar = () => {
+  const salvar = async () => {
     if (!setor) {
       alert("Selecione o Setor responsável.");
       return;
@@ -227,11 +235,10 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
     const checklistArray = Object.entries(checklist).map(([item, status]) => ({
       item,
-      status: (status || null) as string | null, // "OK" | "NOK" | "NA" | null
+      status: mapStatusToDB((status || "") as Marcacao),
     }));
 
-    const base = {
-      // tipoos fica como DEFAULT no banco
+    const payload = {
       setorid: setor ? Number(setor) : null,
       descricao: descricao || null,
       observacoes: observacoes || null,
@@ -249,7 +256,24 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
       checklist: checklistArray,
     };
 
-    onSubmit?.(base);
+    if (onSubmit) {
+      onSubmit(payload);
+      return;
+    }
+
+    // Fallback para salvar direto (remova este bloco se quiser forçar o pai a salvar)
+    try {
+      const r = await fetch("/api/ordens/criar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
+      alert(`OS criada com sucesso! ID: ${j.id}`);
+    } catch (e: any) {
+      alert(e?.message || "Erro ao salvar OS");
+    }
   };
 
   return (
@@ -407,7 +431,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             <Building2 className="h-5 w-5 text-primary" />
             <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
           </div>
-          <CardDescription>Selecione o setor responsável. O técnico irá assumir mais tarde.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -439,8 +462,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
               </Select>
               {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
             </div>
-            <div />
-            <div />
           </div>
         </CardContent>
       </Card>
@@ -470,7 +491,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             <CarFront className="h-5 w-5 text-primary" />
             <CardTitle className="text-base sm:text-lg">Checklist de Inspeção</CardTitle>
           </div>
-          <CardDescription>Escolha um modelo e marque cada item como OK, NOK ou N/A.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -494,11 +514,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                     }
                   />
                 </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  sideOffset={6}
-                  className="w-[var(--radix-select-trigger-width)]"
-                >
+                <SelectContent position="popper" sideOffset={6} className="w-[var(--radix-select-trigger-width)]">
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id} className="truncate">
                       {t.nome}
@@ -532,25 +548,15 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                 const marcado = checklist[key] ?? "";
 
                 return (
-                  <div
-                    key={key}
-                    className="p-3 rounded-lg border bg-muted/50 border-border text-foreground"
-                  >
+                  <div key={key} className="p-3 rounded-lg border bg-muted/50 border-border text-foreground">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="text-sm font-medium">{it.titulo}</div>
-                        {it.descricao ? (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {it.descricao}
-                          </div>
-                        ) : null}
+                        {it.descricao ? <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div> : null}
                       </div>
-                      {it.obrigatorio && (
-                        <Badge variant="secondary" className="text-[11px]">Obrigatório</Badge>
-                      )}
+                      {it.obrigatorio && <Badge variant="secondary" className="text-[11px]">Obrigatório</Badge>}
                     </div>
 
-                    {/* Grupo de marcação – harmonizado com o enum (OK/NOK/NA) */}
                     <div className="mt-3 flex flex-wrap gap-2">
                       {CHECK_STATUS.map((status) => {
                         const selected = marcado === status;
@@ -586,9 +592,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {templateId
-                ? "Este modelo não possui itens."
-                : "Selecione um modelo para exibir os itens do checklist."}
+              {templateId ? "Este modelo não possui itens." : "Selecione um modelo para exibir os itens do checklist."}
             </p>
           )}
         </CardContent>
