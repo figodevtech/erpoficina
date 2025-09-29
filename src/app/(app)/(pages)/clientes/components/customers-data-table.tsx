@@ -111,7 +111,7 @@ export default function CustomersDataTable({
   }
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="border-b-2 pb-4 ">
         <CardTitle>Lista de Clientes </CardTitle>
         <CardDescription>
           <div
@@ -124,24 +124,24 @@ export default function CustomersDataTable({
               );
               fetchStatusCounts();
             }}
-            className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70"
+            className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70]"
           >
             <span>recarregar</span>
             <Loader2 width={12} />
           </div>
         </CardDescription>
       </CardHeader>
-      <CardContent className="min-h-[300px]">
+      <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
         <div
           className={`${
             isLoading && " opacity-100"
-          } transition-all opacity-0 h-1 bg-slate-400 w-full overflow-hidden relative rounded-full`}
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full animate-slideIn absolute left-0 rounded-lg`}
+            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "} `}
           ></div>
         </div>
-        <Table>
+        <Table className="">
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
@@ -153,7 +153,7 @@ export default function CustomersDataTable({
               <TableHead className="w-[50px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody >
             {customerItems.map((customer) => (
               <TableRow
                 key={customer.id}
