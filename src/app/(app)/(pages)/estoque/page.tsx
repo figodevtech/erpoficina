@@ -67,7 +67,7 @@ const getStatusBadge = (status: Estoque_status) => {
 
   if (status === "BAIXO") {
     return (
-      <Badge variant="secondary" className="text-xs bg-yellow-600">
+      <Badge variant="secondary" className="text-xs bg-yellow-600 not-dark:text-white">
         <Clock className="h-3 w-3 mr-1" />
         Baixo
       </Badge>
@@ -121,10 +121,10 @@ export default function EstoquePage() {
         const { data } = response;
         setProducts(data.data);
         setPagination(data.pagination);
-        console.log("Clientes carregados:", data.data);
+        console.log("Produtos carregados:", data.data);
       }
     } catch (error) {
-      console.log("Erro ao buscar clientes:", error);
+      console.log("Erro ao buscar Produtos:", error);
     } finally {
       setIsLoading(false);
     }
@@ -160,7 +160,7 @@ export default function EstoquePage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -283,7 +283,7 @@ export default function EstoquePage() {
 
       {/* Tabela de Produtos */}
       <Card>
-        <CardHeader>
+      <CardHeader className="border-b-2 pb-4 ">
           <CardTitle>Lista de Produtos</CardTitle>
           <CardDescription>
             <div
@@ -298,23 +298,23 @@ export default function EstoquePage() {
             </div>
           </CardDescription>
         </CardHeader>
-        <CardContent className="min-h-[300px]">
+        <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
+        <div
+          className={`${
+            isLoading && " opacity-100"
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+        >
           <div
-            className={`${
-              isLoading && " opacity-100"
-            } transition-all opacity-0 h-1 bg-slate-400 w-full overflow-hidden relative rounded-full`}
-          >
-            <div
-              className={`w-1/2 bg-primary h-full animate-slideIn absolute left-0 rounded-lg`}
-            ></div>
-          </div>
-          <Table>
+            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "} `}
+          ></div>
+        </div>
+        <Table className="mt-6">
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Produto</TableHead>
-                <TableHead>Código</TableHead>
-                <TableHead>Origem</TableHead>
+                <TableHead>Referência</TableHead>
+                <TableHead>Fabricante</TableHead>
                 <TableHead>Estoque</TableHead>
                 <TableHead>Mín.</TableHead>
                 <TableHead>Status</TableHead>
@@ -325,7 +325,7 @@ export default function EstoquePage() {
             </TableHeader>
             <TableBody>
               {products.map((p) => {
-                const valorTotal = (p.estoque ?? 0) * p.precounitario;
+                const valorTotal = (p.estoque ?? 0) * p.precovenda;
 
                 return (
                   <TableRow key={p.id} className="hover:cursor-pointer">
@@ -333,29 +333,25 @@ export default function EstoquePage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div>
-                          <p className="font-medium">{p.descricao}</p>
+                          <p className="font-medium">{p.titulo}</p>
                           <p className="text-xs text-muted-foreground">
-                            ID: {p.id}
-                            {p.titulo ? ` • ${p.titulo}` : ""}
+                            {p.unidade}
+                            {p.fabricante ? ` • ${p.fabricante}` : ""}
                           </p>
-                          {p.ean && (
+                          {p.codigobarras && (
                             <p className="text-xs text-muted-foreground">
-                              EAN: {p.ean}
+                              CODIGOBARRAS: {p.codigobarras}
                             </p>
                           )}
-                          {p.referencia && (
-                            <p className="text-xs text-muted-foreground">
-                              Ref.: {p.referencia}
-                            </p>
-                          )}
+                          
                         </div>
                       </div>
                     </TableCell>
 
                     <TableCell className="font-mono text-xs">
-                      {p.codigo}
+                      {p.referencia}
                     </TableCell>
-                    <TableCell>{p.origem}</TableCell>
+                    <TableCell>{p.fabricante}</TableCell>
 
                     <TableCell className="font-medium">
                       {p.estoque ?? 0}
@@ -368,7 +364,7 @@ export default function EstoquePage() {
 
                     <TableCell>
                       R{"$ "}
-                      {p.precounitario.toLocaleString("pt-BR", {
+                      {p.precovenda.toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
                       })}
                     </TableCell>

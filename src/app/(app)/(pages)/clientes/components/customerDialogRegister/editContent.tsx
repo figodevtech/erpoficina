@@ -147,7 +147,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
 
   if (selectedCustomer) {
     return (
-    <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <DialogContent className="h-svh min-w-screen p-0  overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
             <DialogTitle>Cliente #{selectedCustomer.id}</DialogTitle>

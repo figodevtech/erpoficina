@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/theme-provider";
 import NProgressHandler from "@/components/NProgressHandler";
 
+
 export const metadata: Metadata = {
   title: "ERP",
   description: "Erp Oficina",

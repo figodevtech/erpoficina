@@ -141,7 +141,7 @@ export default function CustomersDataTable({
             className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "} `}
           ></div>
         </div>
-        <Table className="">
+        <Table className="mt-6">
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
