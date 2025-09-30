@@ -53,6 +53,7 @@ import axios from "axios";
 import useStatusCounter from "./hooks/status-counter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductDialog } from "./productDialog/productDialog";
+import Header from "./components/header";
 
 // 🔎 Deriva status a partir de estoque x estoque mínimo
 const getStatusBadge = (status: Estoque_status) => {
@@ -141,23 +142,8 @@ export default function EstoquePage() {
   return (
     <div className="mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">
-            Controle de Estoque
-          </h1>
-          <p className="text-muted-foreground text-pretty">
-            Gestão completa do inventário de peças e produtos
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* <Button className="hover:cursor-pointer ">
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Produto
-          </Button> */}
-          <ProductDialog/>
-        </div>
-      </div>
+
+      <Header/>
 
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">

@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
     if (q) {
       query = query.or(
-        `codigo.ilike.%${q}%,referencia.ilike.%${q}%,titulo.ilike.%${q}%,fornecedor.ilike.%${q}%,fabricante.ilike.%${q}%,`
+        `referencia.ilike.%${q}%,titulo.ilike.%${q}%,fornecedor.ilike.%${q}%,fabricante.ilike.%${q}%`
       );
     }
 
