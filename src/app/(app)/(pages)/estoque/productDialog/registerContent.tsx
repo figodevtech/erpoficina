@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Upload } from "lucide-react";
 import { Produto } from "../types";
+import { Estoque_status } from "../types";
+import { ok } from "assert";
 
 // --- Helper data ---
 const UNIDADES = ["UN", "PC", "CX", "KG", "G", "LT", "ML", "MT", "M2", "M3"];
@@ -44,14 +46,13 @@ const CSOSN_OPTIONS = [
 
 // Ajuste aos possíveis valores do enum public.estoque_status
 // Se o seu enum tiver valores diferentes, ajuste abaixo para casar com o banco.
-export type EstoqueStatus = "OK" | "BAIXO" | "ESGOTADO";
 const ESTOQUE_STATUS: {
-  value: EstoqueStatus;
+  value: Estoque_status;
   badge?: "default" | "secondary" | "destructive";
 }[] = [
-  { value: "OK", badge: "default" },
-  { value: "BAIXO", badge: "secondary" },
-  { value: "ESGOTADO", badge: "destructive" },
+  { value: Estoque_status.OK, badge: "default" },
+  { value: Estoque_status.BAIXO, badge: "secondary" },
+  { value: Estoque_status.CRITICO, badge: "destructive" },
 ];
 
 // --- Formatters/Masks ---
@@ -260,7 +261,7 @@ export default function RegisterContent({
                 <Label htmlFor="status_estoque">Status de Estoque *</Label>
                 <Select
                   value={newProduct.status_estoque}
-                  onValueChange={(v: EstoqueStatus) =>
+                  onValueChange={(v: Estoque_status) =>
                     handleChange("status_estoque", v)
                   }
                 >
