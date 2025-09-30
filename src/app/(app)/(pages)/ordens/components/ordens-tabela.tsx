@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, DollarSign } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@supabase/supabase-js";
 
 type StatusOS = "TODAS" | "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
@@ -42,6 +43,23 @@ function fmtDate(s?: string | null) {
   }
 }
 
+function TableSkeletonRow() {
+  return (
+    <TableRow>
+      <TableCell className="min-w-[96px]"><Skeleton className="h-4 w-14" /></TableCell>
+      <TableCell className="min-w-[220px]"><Skeleton className="h-4 w-56" /></TableCell>
+      <TableCell className="min-w-[160px]"><Skeleton className="h-4 w-40" /></TableCell>
+      <TableCell className="min-w-[160px]"><Skeleton className="h-4 w-44" /></TableCell>
+      <TableCell className="min-w-[140px]"><Skeleton className="h-4 w-28" /></TableCell>
+      <TableCell className="min-w-[130px]"><Skeleton className="h-4 w-28" /></TableCell>
+      <TableCell className="min-w-[130px]"><Skeleton className="h-4 w-28" /></TableCell>
+      <TableCell className="min-w-[130px]"><Skeleton className="h-4 w-28" /></TableCell>
+      <TableCell className="min-w-[120px]"><Skeleton className="h-6 w-24" /></TableCell>
+      <TableCell className="min-w-[120px]"><Skeleton className="h-8 w-20" /></TableCell>
+    </TableRow>
+  );
+}
+
 export function OrdensTabela({
   status,
   onOpenOrcamento,
@@ -51,14 +69,27 @@ export function OrdensTabela({
   onOpenOrcamento: (row: RowOS) => void;
   onEditar: (row: any) => void;
 }) {
-  const [loading, setLoading] = useState(false);
+  /** loading: está buscando agora */
+  const [loading, setLoading] = useState(true);
+  /** hasLoaded: pelo menos um fetch já terminou (com sucesso ou erro) */
+  const [hasLoaded, setHasLoaded] = useState(false);
+  /** showSkeleton: mostra skeleton no primeiro load e quando mudar de aba (status) */
+  const [showSkeleton, setShowSkeleton] = useState(true);
+
   const [rows, setRows] = useState<RowOS[]>([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [q, setQ] = useState("");
 
-  const fetchData = async () => {
+  const abortRef = useRef<AbortController | null>(null);
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
     setLoading(true);
     try {
       const url = new URL("/api/ordens", window.location.origin);
@@ -66,7 +97,8 @@ export function OrdensTabela({
       if (q) url.searchParams.set("q", q);
       url.searchParams.set("page", String(page));
       url.searchParams.set("limit", String(limit));
-      const r = await fetch(url.toString(), { cache: "no-store" });
+
+      const r = await fetch(url.toString(), { cache: "no-store", signal: ac.signal });
       const j = await r.json();
       if (r.ok) {
         setRows(j.items ?? []);
@@ -76,50 +108,76 @@ export function OrdensTabela({
         setRows([]);
         setTotalPages(1);
       }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") console.error(err);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
+      setShowSkeleton(false); // terminou (primeiro load ou troca de aba)
     }
-  };
+  }, [status, q, page, limit]);
 
-  // carrega quando muda status/page/limit
+  const refetchSoon = useCallback(() => {
+    if (refetchTimer.current) return;
+    refetchTimer.current = setTimeout(() => {
+      refetchTimer.current = null;
+      fetchData();
+    }, 250);
+  }, [fetchData]);
+
+  // primeiro load
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, page, limit]);
+  }, [fetchData]);
 
-  // busca com debounce simples
+  // busca com debounce
   useEffect(() => {
     const t = setTimeout(() => {
       setPage(1);
       fetchData();
     }, 400);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, [q, fetchData]);
 
-  // Realtime para a tabela também (opcional)
+  // ao trocar de aba (status), mostra skeleton novamente
+  useEffect(() => {
+    setShowSkeleton(true);
+    setPage(1);
+  }, [status]);
+
+  // realtime
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     if (!url || !anon) return;
 
-    const supabase = createClient(url, anon);
-    const channel = supabase
+    const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const ch = supabase
       .channel(`os-realtime-list-${status}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () => refetchSoon())
+      // .on("postgres_changes", { event: "*", schema: "public", table: "osproduto" }, () => refetchSoon())
+      // .on("postgres_changes", { event: "*", schema: "public", table: "osservico" }, () => refetchSoon())
+      // .on("postgres_changes", { event: "*", schema: "public", table: "pagamento" }, () => refetchSoon())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, page, limit, q]);
+    const onLocalRefresh = () => refetchSoon();
+    window.addEventListener("os:refresh", onLocalRefresh);
 
-  const empty = !loading && rows.length === 0;
+    return () => {
+      window.removeEventListener("os:refresh", onLocalRefresh);
+      supabase.removeChannel(ch);
+    };
+  }, [status, refetchSoon]);
+
+  /** Só mostra “vazio” depois do primeiro carregamento terminar */
+  const empty = hasLoaded && !loading && rows.length === 0;
 
   return (
     <Card className="bg-card">
       <CardContent className="p-3 sm:p-4">
+        {/* Barra de carregamento */}
+        <div className="mb-3">{loading ? <Skeleton className="h-1 w-full" /> : <div className="h-1 w-full" />}</div>
+
         {/* Filtros topo */}
         <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <div className="relative w-full sm:max-w-sm">
@@ -149,37 +207,44 @@ export function OrdensTabela({
                 <TableHead className="min-w-[120px] text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-mono">{r.id}</TableCell>
-                  <TableCell className="max-w-[380px] truncate">{r.descricao || "—"}</TableCell>
-                  <TableCell>{r.cliente?.nome ?? "—"}</TableCell>
-                  <TableCell>{r.veiculo ? `${r.veiculo.modelo} • ${r.veiculo.placa}` : "—"}</TableCell>
-                  <TableCell>{r.setor?.nome ?? "—"}</TableCell>
-                  <TableCell>{fmtDate(r.dataEntrada)}</TableCell>
-                  <TableCell>{fmtDate(r.dataSaidaPrevista)}</TableCell>
-                  <TableCell>{fmtDate(r.dataSaidaReal)}</TableCell>
-                  <TableCell>
-                    <Badge className={statusClasses[r.status] ?? ""}>{r.status.replaceAll("_", " ")}</Badge>
-                  </TableCell>
-                  <TableCell className="text-center flex items-center justify-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onOpenOrcamento(r)}
-                      disabled={r.status !== "CONCLUIDA"}
-                      title={r.status === "CONCLUIDA" ? "Abrir orçamento" : "Disponível quando concluída"}
-                    >
-                      <DollarSign className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => onEditar(r)} title="Editar / Tramitar OS">
-                      ✎ {/* ou um ícone Lucide */}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
 
+            <TableBody>
+              {/* Skeletons: primeiro load e quando muda a aba */}
+              {showSkeleton && loading && Array.from({ length: 8 }).map((_, i) => <TableSkeletonRow key={`s-${i}`} />)}
+
+              {/* Linhas reais (também aparecem durante loading em atualizações de fundo) */}
+              {(!showSkeleton || !loading) &&
+                rows.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-mono">{r.id}</TableCell>
+                    <TableCell className="max-w-[380px] truncate">{r.descricao || "—"}</TableCell>
+                    <TableCell>{r.cliente?.nome ?? "—"}</TableCell>
+                    <TableCell>{r.veiculo ? `${r.veiculo.modelo} • ${r.veiculo.placa}` : "—"}</TableCell>
+                    <TableCell>{r.setor?.nome ?? "—"}</TableCell>
+                    <TableCell>{fmtDate(r.dataEntrada)}</TableCell>
+                    <TableCell>{fmtDate(r.dataSaidaPrevista)}</TableCell>
+                    <TableCell>{fmtDate(r.dataSaidaReal)}</TableCell>
+                    <TableCell>
+                      <Badge className={statusClasses[r.status] ?? ""}>{r.status.replaceAll("_", " ")}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center flex items-center justify-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onOpenOrcamento(r)}
+                        disabled={r.status !== "CONCLUIDA"}
+                        title={r.status === "CONCLUIDA" ? "Abrir orçamento" : "Disponível quando concluída"}
+                      >
+                        <DollarSign className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => onEditar(r)} title="Editar / Tramitar OS">
+                        ✎
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+              {/* Vazio (só depois do primeiro fetch) */}
               {empty && (
                 <TableRow>
                   <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">

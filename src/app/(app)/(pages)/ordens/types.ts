@@ -1,7 +1,6 @@
 export type ID = number | string;
 
-export type StatusOS = "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
-export type TipoOS   = "ORCAMENTO" | "SERVICO" | "GARANTIA";
+export type StatusOS = "TODAS" | "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
 
 export type Cliente = {
   id: number;
@@ -22,7 +21,6 @@ export type Veiculo = {
 export type Ordem = {
   id: number;
   numero?: string;
-  tipoos?: TipoOS | null;
   status?: StatusOS | null;
   setor?: { id: number; nome: string } | null;
   responsavel?: { id: number; nome: string } | null;

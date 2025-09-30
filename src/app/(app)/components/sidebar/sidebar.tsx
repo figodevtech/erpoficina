@@ -53,8 +53,8 @@ const data = {
       isActive: true,
     },
     {
-      title: "Equipe",
-      url: "/equipe",
+      title: "Equipes",
+      url: "/equipes",
       icon: NotepadText,
       isActive: true,
     },
