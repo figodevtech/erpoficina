@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,8 +52,9 @@ import { Produto, Pagination, Estoque_status } from "./types";
 import axios from "axios";
 import useStatusCounter from "./hooks/status-counter";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ProductDialog } from "./productDialog/productDialog";
 import Header from "./components/header";
+import Cards from "./components/cards";
+import SearchFilter from "./components/searchFilter";
 
 // 🔎 Deriva status a partir de estoque x estoque mínimo
 const getStatusBadge = (status: Estoque_status) => {
@@ -146,127 +147,16 @@ export default function EstoquePage() {
       <Header/>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total de Itens
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingStatusCounter ? (
-              <Skeleton className="h-8 w-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold">{totalProducts}</div>
-            )}
-            <p className="text-xs text-muted-foreground">Produtos listados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Itens Críticos
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            {loadingStatusCounter ? (
-              <Skeleton className="w-8 h-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold text-destructive">
-                {statusCounts.CRITICO}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">Reposição urgente</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estoque Baixo</CardTitle>
-            <TrendingDown className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            {loadingStatusCounter ? (
-              <Skeleton className="w-8 h-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold text-orange-500">
-                {statusCounts.BAIXO}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">Atenção necessária</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estoque Bom</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingStatusCounter ? (
-              <Skeleton className="w-8 h-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold">{statusCounts.OK}</div>
-            )}
-            <p className="text-xs text-muted-foreground">Valor do inventário</p>
-          </CardContent>
-        </Card>
-      </div>
+      
+      <Cards
+      loadingStatusCounter={loadingStatusCounter}
+      statusCounts={statusCounts}
+      totalProducts={totalProducts}
+      />
 
       {/* Search / Filtros */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Busque por código, descrição, referência, título..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as Estoque_status)}
-            >
-              <SelectTrigger className="w-full md:w-2/6 hover:cursor-pointer">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  className="hover:cursor-pointer"
-                  value={Estoque_status.TODOS}
-                >
-                  Todos
-                </SelectItem>
-                <SelectItem
-                  className="hover:cursor-pointer"
-                  value={Estoque_status.OK}
-                >
-                  Ok
-                </SelectItem>
-                <SelectItem
-                  className="hover:cursor-pointer"
-                  value={Estoque_status.BAIXO}
-                >
-                  Estoque Baixo
-                </SelectItem>
-                <SelectItem
-                  className="hover:cursor-pointer"
-                  value={Estoque_status.CRITICO}
-                >
-                  Crítico
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
+      
+      <SearchFilter search={search} setSearch={setSearch} setStatus={setStatus}/>
       {/* Tabela de Produtos */}
       <Card>
       <CardHeader className="border-b-2 pb-4 ">
