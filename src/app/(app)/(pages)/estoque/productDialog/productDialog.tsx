@@ -36,6 +36,7 @@ export function ProductDialog({
     precovenda: 0,
     status_estoque: Estoque_status.OK,
     unidade: Unidade_medida.UN,
+    fornecedor: "DESCONHECIDO",
   });
   return (
     <Dialog>

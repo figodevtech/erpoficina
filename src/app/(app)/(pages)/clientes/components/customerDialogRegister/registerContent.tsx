@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface RegisterContentProps {
   newCustomer: NewCustomer;
@@ -74,6 +75,7 @@ export default function RegisterContent({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { cidades, loading } = useGetCidades(newCustomer?.estado);
   const [open, setOpen] = useState(false);
+  const [open2, setOpen2] = useState(false);
 
   const handleInputChange = (field: keyof NewCustomer, value: string) => {
     setNewCustomer({ ...newCustomer, [field]: value });
@@ -331,13 +333,83 @@ export default function RegisterContent({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              
+
+              <div className="space-y-2">
+                <Label htmlFor="estado" className="text-sm sm:text-base">
+                  Estado
+                </Label>
+
+
+                <Popover open={open2} onOpenChange={setOpen2}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open2}
+                      className="w-[200px] justify-between"
+                    >
+                      {newCustomer.estado
+                        ? ESTADOS_BRASIL.find(
+                            (estado) => estado === newCustomer.estado
+                          )
+                        :  "Selecione..."}
+                      <ChevronsUpDown className="opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    className="w-[200px] p-0"
+                    onWheelCapture={(e) => e.stopPropagation()}
+                  >
+                    <Command>
+                      <CommandInput
+                        placeholder="Buscar estado..."
+                        className="h-9"
+                      />
+                      <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
+                        <CommandEmpty>Nenhum estado encontrada.</CommandEmpty>
+
+                        {/* Aqui NÃO precisa de overflow/max-h */}
+                          <CommandGroup>
+                            {ESTADOS_BRASIL.map((estado,i) => (
+                              <CommandItem
+                                className="hover:cursor-pointer"
+                                key={i}
+                                value={estado}
+                                onSelect={(currentValue) => {
+                                  setNewCustomer({
+                                    ...newCustomer,
+                                    estado: currentValue,
+                                  });
+                                  setOpen2(false);
+                                }}
+                              >
+                                {estado}
+                                <Check
+                                  className={cn(
+                                    "ml-auto",
+                                    newCustomer.estado === estado
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="cidade" className="text-sm sm:text-base">
                   Cidade
                 </Label>
 
                 <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger asChild>
+                  <PopoverTrigger disabled={newCustomer.estado ? false : true} asChild>
                     <Button
                       variant="outline"
                       role="combobox"
@@ -348,69 +420,54 @@ export default function RegisterContent({
                         ? cidades.find(
                             (cidade) => cidade.nome === newCustomer.cidade
                           )?.nome
-                        : `${loading ? "Carregando..." : "Selecione..."}`}
+                        : loading ? "Carregando..." : newCustomer.estado ? "Selecione..." : "Selecione o estado"}
                       <ChevronsUpDown className="opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[200px] p-0">
+
+                  <PopoverContent
+                    className="w-[200px] p-0"
+                    onWheelCapture={(e) => e.stopPropagation()}
+                  >
                     <Command>
                       <CommandInput
                         placeholder="Buscar cidade..."
                         className="h-9"
                       />
-                      <CommandList>
+                      <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
                         <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
-                        <CommandGroup>
-                          {cidades.map((cidade) => (
-                            <CommandItem
-                              className="hover:cursor-pointer"
-                              key={cidade.id}
-                              value={cidade.nome}
-                              onSelect={(currentValue) => {
-                                setNewCustomer({
-                                  ...newCustomer,
-                                  cidade: currentValue,
-                                });
-                                setOpen(false);
-                              }}
-                            >
-                              {cidade.nome}
-                              <Check
-                                className={cn(
-                                  "ml-auto",
-                                  newCustomer.cidade === cidade.nome
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
+
+                        {/* Aqui NÃO precisa de overflow/max-h */}
+                          <CommandGroup>
+                            {cidades.map((cidade) => (
+                              <CommandItem
+                                className="hover:cursor-pointer"
+                                key={cidade.id}
+                                value={cidade.nome}
+                                onSelect={(currentValue) => {
+                                  setNewCustomer({
+                                    ...newCustomer,
+                                    cidade: currentValue,
+                                  });
+                                  setOpen(false);
+                                }}
+                              >
+                                {cidade.nome}
+                                <Check
+                                  className={cn(
+                                    "ml-auto",
+                                    newCustomer.cidade === cidade.nome
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
                       </CommandList>
                     </Command>
                   </PopoverContent>
                 </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="estado" className="text-sm sm:text-base">
-                  Estado
-                </Label>
-                <Select
-                  value={newCustomer.estado}
-                  onValueChange={(value) => handleInputChange("estado", value)}
-                >
-                  <SelectTrigger className="h-10 sm:h-11">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ESTADOS_BRASIL.map((estado) => (
-                      <SelectItem key={estado} value={estado}>
-                        {estado}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-2 sm:col-span-2 lg:col-span-1">
