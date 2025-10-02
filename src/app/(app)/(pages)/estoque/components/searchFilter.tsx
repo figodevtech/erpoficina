@@ -16,9 +16,10 @@ interface SearchFilterProps {
     search: string;
     setSearch: (value: string) => void;
     setStatus: (value: Estoque_status) => void;
+    status: Estoque_status;
 }
 
-export default function SearchFilter({search, setSearch, setStatus}: SearchFilterProps) {
+export default function SearchFilter({search, setSearch, setStatus, status}: SearchFilterProps) {
   return (
     <Card>
       <CardContent className="pt-6">

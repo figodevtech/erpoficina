@@ -19,7 +19,7 @@ export default function Header () {
                     Adicionar Produto
                   </Button> */}
                   <ProductDialog>
-                    <Button>
+                    <Button className="hover:cursor-pointer">
                         Novo Produto
                     </Button>
                   </ProductDialog>
