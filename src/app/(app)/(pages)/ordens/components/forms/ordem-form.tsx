@@ -37,7 +37,7 @@ type ChecklistTemplateModel = {
 
 // Seu form marca: OK | NOK | NA
 const CHECK_STATUS = ["OK", "NOK", "NA"] as const;
-type Marcacao = typeof CHECK_STATUS[number] | "";
+type Marcacao = (typeof CHECK_STATUS)[number] | "";
 
 export type FormularioNovaOSProps = {
   onSubmit?: (payload: any) => void;
@@ -55,6 +55,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
   // Atendimento
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
+  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
 
   // Cliente/Veículo
   const [docBusca, setDocBusca] = useState(""); // CPF/CNPJ
@@ -76,7 +77,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
   // Checklist
   const [templates, setTemplates] = useState<ChecklistTemplateModel[]>([]);
-  theme: 'light'
+  theme: "light";
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string>("");
@@ -254,6 +255,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             },
       veiculoid: veiculoSelecionadoId, // number | null
       checklist: checklistArray,
+      prioridade,
     };
 
     if (onSubmit) {
@@ -433,7 +435,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
             <div className="space-y-3">
               <Label>Setor responsável</Label>
               <Select
@@ -461,6 +463,19 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                 </SelectContent>
               </Select>
               {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
+            </div>
+            <div className="space-y-3">
+              <Label>Prioridade</Label>
+              <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)}>
+                <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                  <SelectValue placeholder="Selecione a prioridade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BAIXA">Baixa</SelectItem>
+                  <SelectItem value="NORMAL">Normal</SelectItem>
+                  <SelectItem value="ALTA">Alta</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -554,7 +569,11 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                         <div className="text-sm font-medium">{it.titulo}</div>
                         {it.descricao ? <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div> : null}
                       </div>
-                      {it.obrigatorio && <Badge variant="secondary" className="text-[11px]">Obrigatório</Badge>}
+                      {it.obrigatorio && (
+                        <Badge variant="secondary" className="text-[11px]">
+                          Obrigatório
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">

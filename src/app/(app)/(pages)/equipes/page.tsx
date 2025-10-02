@@ -2,9 +2,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import EquipesClient from "./_client";
+import EquipesClient from "./components/ordens-equipe";
 
-export default async function PageEquipes() {
+export default async function Page() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 

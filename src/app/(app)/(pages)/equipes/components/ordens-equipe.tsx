@@ -2,21 +2,26 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import EquipesFilters from "./components/filters";
-import EquipesTable from "./components/table";
-import EquipesDetailsDialog from "./components/details-dialog";
-import { DetalheOS, RowOS, StatusOS } from "./types";
-import { assumirOS, listarOrdensEquipe } from "./lib/api";
+import EquipesFilters from "./equipe-filtro";
+import EquipesTable from "./equipe-tabela";
+import EquipesDetailsDialog from "./details-dialog";
+import { RowOS, StatusOS } from "../types";
+import { assumirOS, listarOrdensEquipe } from "../lib/api";
 import { createClient } from "@supabase/supabase-js";
 
 export default function EquipesClient({ setorId, setorNome }: { setorId: number; setorNome: string }) {
   const [status, setStatus] = useState<StatusOS>("ABERTA");
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<RowOS[]>([]);
-  const [page, setPage] = useState(1);
-  const [limit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
 
+  // paginação
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pageCount, setPageCount] = useState(0);
+
+  // estado de loading/skeleton
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(true);
@@ -28,26 +33,43 @@ export default function EquipesClient({ setorId, setorNome }: { setorId: number;
   const abortRef = useRef<AbortController | null>(null);
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (abortRef.current) abortRef.current.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
+  const fetchData = useCallback(
+    async (p: number = page, l: number = limit) => {
+      if (abortRef.current) abortRef.current.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
 
-    setLoading(true);
-    try {
-      const { items, totalPages } = await listarOrdensEquipe({ status, q, page, limit });
-      setRows(items);
-      setTotalPages(totalPages);
-    } catch (e) {
-      console.error(e);
-      setRows([]);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
-      setHasLoaded(true);
-      setShowSkeleton(false);
-    }
-  }, [status, q, page, limit]);
+      setLoading(true);
+      try {
+        const {
+          items,
+          totalPages: tp,
+          total: t,
+        } = await listarOrdensEquipe({
+          status,
+          q,
+          page: p,
+          limit: l,
+        });
+
+        setRows(items ?? []);
+        setTotalPages(tp ?? 1);
+        setTotal(typeof t === "number" ? t : 0);
+        setPageCount(items?.length ?? 0);
+      } catch (e) {
+        console.error(e);
+        setRows([]);
+        setTotalPages(1);
+        setTotal(0);
+        setPageCount(0);
+      } finally {
+        setLoading(false);
+        setHasLoaded(true);
+        setShowSkeleton(false);
+      }
+    },
+    [status, q, page, limit]
+  );
 
   const refetchSoon = useCallback(() => {
     if (refetchTimer.current) return;
@@ -65,16 +87,17 @@ export default function EquipesClient({ setorId, setorNome }: { setorId: number;
   useEffect(() => {
     const t = setTimeout(() => {
       setPage(1);
-      fetchData();
+      fetchData(1, limit);
     }, 400);
     return () => clearTimeout(t);
-  }, [q, fetchData]);
+  }, [q, limit, fetchData]);
 
   // quando mudar o status, mostra skeleton de novo e volta p/ página 1
   useEffect(() => {
     setShowSkeleton(true);
     setPage(1);
-  }, [status]);
+    fetchData(1, limit);
+  }, [status]); // fetchData já depende de status
 
   // realtime filtrado pelo setor
   useEffect(() => {
@@ -115,6 +138,19 @@ export default function EquipesClient({ setorId, setorNome }: { setorId: number;
     }
   };
 
+  // handlers de paginação no modelo Customers
+  const onPaginate = (newPage: number, newLimit: number) => {
+    setPage(newPage);
+    setLimit(newLimit);
+    fetchData(newPage, newLimit);
+  };
+
+  const onChangeLimit = (newLimit: number) => {
+    setPage(1);
+    setLimit(newLimit);
+    fetchData(1, newLimit);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -134,9 +170,15 @@ export default function EquipesClient({ setorId, setorNome }: { setorId: number;
               empty={empty}
               onDetalhes={handleDetalhes}
               onAssumir={handleAssumir}
-              page={page}
-              totalPages={totalPages}
-              setPage={setPage}
+              pagination={{
+                page,
+                totalPages,
+                limit,
+                total,
+                pageCount,
+              }}
+              onPaginate={onPaginate}
+              onChangeLimit={onChangeLimit}
             />
           </div>
         </CardContent>

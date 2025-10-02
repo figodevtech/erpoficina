@@ -1,10 +1,4 @@
-export type StatusOS =
-  | "TODAS"
-  | "ABERTA"
-  | "EM_ANDAMENTO"
-  | "AGUARDANDO_PECA"
-  | "CONCLUIDA"
-  | "CANCELADA";
+export type StatusOS = "TODAS" | "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
 
 export type RowOS = {
   id: number;
@@ -16,6 +10,7 @@ export type RowOS = {
   cliente: { id: number; nome: string } | null;
   veiculo: { id: number; placa: string; modelo: string; marca: string } | null;
   setor: { id: number; nome: string } | null;
+  prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
 };
 
 export type DetalheOS = RowOS & {
