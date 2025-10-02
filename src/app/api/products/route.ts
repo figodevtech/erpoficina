@@ -28,7 +28,7 @@ export async function GET(req: Request) {
       .from('produto')
       .select(
         `
-        id, codigo, descricao, precounitario, estoque, estoqueminimo, unidade,origem, referencia, titulo, status_estoque
+        id, titulo, precovenda, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, fornecedor
         `,
         { count: 'exact' }
       )
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
     if (q) {
       query = query.or(
-        `codigo.ilike.%${q}%,descricao.ilike.%${q}%,referencia.ilike.%${q}%,titulo.ilike.%${q}%`
+        `referencia.ilike.%${q}%,titulo.ilike.%${q}%,fornecedor.ilike.%${q}%,fabricante.ilike.%${q}%`
       );
     }
 

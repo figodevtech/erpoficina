@@ -121,12 +121,23 @@
   }
 }
 
+@layer utilities {
+  .h-screen-safe {
+    height: 100dvh;                 /* moderno */
+    height: -webkit-fill-available; /* fallback WebKit */
+    height: var(--app-height);      /* nosso ajuste dinâmico */
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 @theme {
   --animate-slideIn: slideIn 1500ms ease-out infinite ;
 
   @keyframes slideIn {
     0% {
-      transform: translateX(-100%);
+      transform: translateX(-80%);
     }
 
     100% {
@@ -166,3 +177,5 @@
 * {
   scrollbar-color: #555;
 }
+
+
