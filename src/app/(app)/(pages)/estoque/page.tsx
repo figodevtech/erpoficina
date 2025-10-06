@@ -1,91 +1,23 @@
 "use client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Package,
-  Search,
-  Plus,
-  AlertTriangle,
-  Clock,
-  TrendingDown,
-  TrendingUp,
-  ChevronDown,
-  Pen,
-  Trash2Icon,
-  ChevronsRight,
-  ChevronRightIcon,
-  ChevronLeftIcon,
-  ChevronsLeft,
-  Loader2,
-} from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { useEffect, useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { Produto, Pagination, Estoque_status } from "./types";
 import axios from "axios";
 import useStatusCounter from "./hooks/status-counter";
-import { Skeleton } from "@/components/ui/skeleton";
 import Header from "./components/header";
 import Cards from "./components/cards";
 import SearchFilter from "./components/searchFilter";
 import ProductsDataTable from "./components/products-data-table";
 
 // 🔎 Deriva status a partir de estoque x estoque mínimo
-const getStatusBadge = (status: Estoque_status) => {
-  if (status === "CRITICO") {
-    return (
-      <Badge variant="destructive" className="text-xs">
-        <AlertTriangle className="h-3 w-3 mr-1" />
-        Crítico
-      </Badge>
-    );
-  }
-
-  if (status === "BAIXO") {
-    return (
-      <Badge variant="secondary" className="text-xs bg-yellow-600 not-dark:text-white">
-        <Clock className="h-3 w-3 mr-1" />
-        Baixo
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="outline" className="text-xs">
-      OK
-    </Badge>
-  );
-};
 
 export default function EstoquePage() {
   const [status, setStatus] = useState<Estoque_status>(Estoque_status.TODOS);
   const [products, setProducts] = useState<Produto[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<
+    number | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const {
     statusCounts,
@@ -94,7 +26,7 @@ export default function EstoquePage() {
     error,
     fetchStatusCounts,
   } = useStatusCounter();
-
+  const [isOpen, setIsOpen] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     page: 1,
@@ -137,36 +69,53 @@ export default function EstoquePage() {
     handleGetProducts(1, pagination.limit, search, status);
   }, []);
 
-  useEffect(()=>{
-    handleGetProducts(1, pagination.limit, search, status)
-  },[search, status])
+  useEffect(() => {
+    handleGetProducts(1, pagination.limit, search, status);
+  }, [search, status]);
+
+  useEffect(() => {
+    if (selectedProductId) {
+      setIsOpen(true);
+    }
+  }, [selectedProductId]);
 
   return (
     <div className="mx-auto space-y-6">
       {/* Header */}
 
-      <Header/>
+      <Header
+        setSelectedProductId={setSelectedProductId}
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+        selectedProductId={selectedProductId}
+      />
 
       {/* KPI Cards */}
-      
+
       <Cards
-      loadingStatusCounter={loadingStatusCounter}
-      statusCounts={statusCounts}
-      totalProducts={totalProducts}
+        loadingStatusCounter={loadingStatusCounter}
+        statusCounts={statusCounts}
+        totalProducts={totalProducts}
       />
 
       {/* Search / Filtros */}
-      
-      <SearchFilter search={search} setSearch={setSearch} setStatus={setStatus} status={status}/>
+
+      <SearchFilter
+        search={search}
+        setSearch={setSearch}
+        setStatus={setStatus}
+        status={status}
+      />
       {/* Tabela de Produtos */}
       <ProductsDataTable
-      fetchStatusCounts={fetchStatusCounts}
-      handleGetProducts={handleGetProducts}
-      isLoading={isLoading}
-      products={products}
-      pagination={pagination}
-      search={search}
-      status={status}
+        setSelectedProductId={setSelectedProductId}
+        fetchStatusCounts={fetchStatusCounts}
+        handleGetProducts={handleGetProducts}
+        isLoading={isLoading}
+        products={products}
+        pagination={pagination}
+        search={search}
+        status={status}
       />
     </div>
   );

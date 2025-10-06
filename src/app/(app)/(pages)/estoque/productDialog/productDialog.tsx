@@ -7,9 +7,10 @@ import { Package } from "lucide-react";
 import RegisterContent from "./registerContent";
 import { ReactNode, useState } from "react";
 import { Estoque_status, Produto, Unidade_medida } from "../types";
+import EditContent from "./editContent";
 
 interface ProductDialogProps {
-  productId?: number;
+  productId?: number | undefined;
   children?: ReactNode;
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
@@ -30,7 +31,7 @@ export function ProductDialog({
   const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(
     undefined
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [newProduct, setNewProduct] = useState<Produto>({
     id: 0,
     precovenda: 0,
@@ -39,10 +40,30 @@ export function ProductDialog({
     fornecedor: "DESCONHECIDO",
   });
   return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        // sempre sincroniza o estado (controlado ou interno)
+        setOpen(nextOpen);
+
+        if (!nextOpen) {
+          setSelectedProductId?.(undefined);
+          setSelectedProduct(undefined);
+          setNewProduct({
+            id: 0,
+            precovenda: 0,
+            status_estoque: Estoque_status.OK,
+            unidade: Unidade_medida.UN,
+            fornecedor: "DESCONHECIDO",
+          });
+        }
+      }}
+    >
+      <DialogTrigger autoFocus={false} asChild>
+        {children}
+      </DialogTrigger>
       {productId ? (
-        <></>
+        <EditContent productId={productId} />
       ) : (
         <RegisterContent
           setSelectedProductId={setSelectedProductId}

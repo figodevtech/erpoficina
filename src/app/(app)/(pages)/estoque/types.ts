@@ -69,8 +69,8 @@ export interface Produto {
   csosn?: string;
   aliquotaicms?: number;
   codigobarras?: string;
-  createdat?: string; // timestamp no banco, pode ser null
-  updatedat?: string; // timestamp no banco, pode ser null
+  createdat?: Date; // timestamp no banco, pode ser null
+  updatedat?: Date; // timestamp no banco, pode ser null
   referencia?: string;
   titulo?: string;
   fornecedor?: string;
