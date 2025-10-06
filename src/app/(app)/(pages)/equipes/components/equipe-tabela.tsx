@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import TableSkeleton from "../../../components/table-skeleton";
 import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
@@ -13,9 +12,17 @@ import {
   Eye,
   ClipboardCheck,
   Loader,
+  MoreHorizontal,
 } from "lucide-react";
 import { RowOS } from "../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import TableSkeleton from "../../../components/table-skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statusClasses: Record<string, string> = {
   ABERTA: "bg-blue-600/15 text-blue-400",
@@ -23,6 +30,12 @@ const statusClasses: Record<string, string> = {
   AGUARDANDO_PECA: "bg-purple-600/15 text-purple-400",
   CONCLUIDA: "bg-green-600/15 text-green-400",
   CANCELADA: "bg-red-600/15 text-red-400",
+};
+
+const prioClasses: Record<string, string> = {
+  ALTA: "bg-red-600/15 text-red-500",
+  NORMAL: "bg-amber-600/15 text-amber-500",
+  BAIXA: "bg-emerald-600/15 text-emerald-500",
 };
 
 function priorityRowClasses(p?: string | null) {
@@ -39,6 +52,39 @@ function prioWeight(p?: string | null) {
 }
 function tsAsc(d?: string | null) {
   return d ? new Date(d).getTime() : Number.MAX_SAFE_INTEGER;
+}
+
+/** tick para re-render a cada X ms (mostradores “ao vivo”) */
+function useNowTick(periodMs = 60000) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), periodMs);
+    return () => clearInterval(id);
+  }, [periodMs]);
+  return now;
+}
+function fmtDuration(ms: number) {
+  if (ms < 0) ms = 0;
+  const m = Math.floor(ms / 60000);
+  const d = Math.floor(m / (60 * 24));
+  const h = Math.floor((m % (60 * 24)) / 60);
+  const min = m % 60;
+  const parts: string[] = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  parts.push(`${min}m`);
+  return parts.join(" ");
+}
+
+/** util para pegar o primeiro campo de data válido em milissegundos */
+function pickTs(obj: any, keys: string[]) {
+  for (const k of keys) {
+    const v = obj?.[k];
+    if (!v) continue;
+    const t = new Date(v).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  return undefined;
 }
 
 export default function EquipesTable({
@@ -68,7 +114,9 @@ export default function EquipesTable({
   onPaginate?: (page: number, limit: number) => void;
   onChangeLimit?: (limit: number) => void;
 }) {
-  // Ordenação por prioridade e, dentro de cada grupo, mais antigas primeiro
+  const now = useNowTick(60000);
+
+  // Ordena por prioridade e mais antigas primeiro
   const sortedRows = useMemo(() => {
     const arr = [...(rows || [])];
     arr.sort((a: any, b: any) => {
@@ -81,7 +129,7 @@ export default function EquipesTable({
     return arr;
   }, [rows]);
 
-  // Defaults seguros caso 'pagination' não venha
+  // Defaults de paginação
   const page = pagination?.page ?? 1;
   const totalPages = pagination?.totalPages ?? 1;
   const limit = pagination?.limit ?? 10;
@@ -90,6 +138,60 @@ export default function EquipesTable({
 
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
+
+  // Bases de data
+  const getCriadaEm = (r: any) =>
+    pickTs(r, ["dataEntrada", "entrada", "createdat", "createdAt"]);
+  const getAssumidaEm = (r: any) =>
+    pickTs(r, [
+      "assumidaEm",
+      "assumidoEm",
+      "iniciadaEm",
+      "inicioExecucao",
+      "iniciadoEm",
+      "dataInicio",
+      "datainicio",
+    ]);
+  const getAtualizadaEm = (r: any) => pickTs(r, ["updatedat", "updatedAt"]);
+  const getSaidaReal = (r: any) => pickTs(r, ["dataSaidaReal"]);
+
+  /** Tempo de espera: da criação até ser assumida.
+   *  - Se ainda ABERTA: agora - criadaEm
+   *  - Se já assumida: assumidaEm - criadaEm
+   *  - Fallback: se não houver “assumidaEm”, usa updatedAt quando status !== ABERTA
+   */
+  const renderEspera = (r: any) => {
+    const criada = getCriadaEm(r);
+    if (!criada) return "—";
+
+    const st = String(r?.status || "").toUpperCase();
+    const assumida = getAssumidaEm(r);
+    if (assumida) return fmtDuration(assumida - criada);
+
+    if (st === "ABERTA") return fmtDuration(now - criada);
+
+    const upd = getAtualizadaEm(r);
+    if (upd && upd > criada) return fmtDuration(upd - criada);
+
+    return "—";
+  };
+
+  /** Tempo de execução: do momento assumida até conclusão (ou agora, se em andamento) */
+  const renderExecucao = (r: any) => {
+    const assumida = getAssumidaEm(r) ?? (String(r?.status).toUpperCase() !== "ABERTA" ? getAtualizadaEm(r) : undefined);
+    if (!assumida) return "—";
+
+    const st = String(r?.status || "").toUpperCase();
+    const fim = (st === "CONCLUIDA" || st === "CANCELADA") ? (getSaidaReal(r) ?? getAtualizadaEm(r) ?? now) : now;
+
+    return fmtDuration((fim as number) - assumida);
+  };
+
+  const renderPrio = (p?: string | null) => {
+    const key = (p || "").toUpperCase();
+    const cls = prioClasses[key] ?? "";
+    return p ? <Badge className={cls}>{key}</Badge> : "—";
+  };
 
   return (
     <>
@@ -102,6 +204,9 @@ export default function EquipesTable({
               <TableHead className="min-w-[160px]">Cliente</TableHead>
               <TableHead className="min-w-[160px]">Veículo</TableHead>
               <TableHead className="min-w-[130px]">Status</TableHead>
+              <TableHead className="min-w-[120px]">Prioridade</TableHead>
+              <TableHead className="min-w-[120px]">Espera</TableHead>
+              <TableHead className="min-w-[120px]">Execução</TableHead>
               <TableHead className="min-w-[160px] text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -110,12 +215,15 @@ export default function EquipesTable({
               <TableSkeleton
                 rows={8}
                 columns={[
-                  { cellClass: "min-w-[64px]", barClass: "h-4 w-10" },
+                  { cellClass: "min-w-[64px]",  barClass: "h-4 w-10" },
                   { cellClass: "min-w-[240px]", barClass: "h-4 w-56" },
                   { cellClass: "min-w-[160px]", barClass: "h-4 w-40" },
                   { cellClass: "min-w-[160px]", barClass: "h-4 w-44" },
                   { cellClass: "min-w-[130px]", barClass: "h-4 w-24" },
-                  { cellClass: "min-w-[160px] text-center", barClass: "h-8 w-24 mx-auto" },
+                  { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
+                  { cellClass: "min-w-[120px]", barClass: "h-4 w-20" }, // Espera
+                  { cellClass: "min-w-[120px]", barClass: "h-4 w-20" }, // Execução
+                  { cellClass: "min-w-[160px]", barClass: "h-8 w-24 mx-auto" },
                 ]}
               />
             )}
@@ -134,26 +242,37 @@ export default function EquipesTable({
                       {(r as any).status.replaceAll("_", " ")}
                     </Badge>
                   </TableCell>
+                  <TableCell>{renderPrio((r as any).prioridade)}</TableCell>
+                  <TableCell>{renderEspera(r)}</TableCell>
+                  <TableCell>{renderExecucao(r)}</TableCell>
                   <TableCell className="text-center">
-                    <div className="inline-flex gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => onDetalhes(r)}>
-                        <Eye className="h-4 w-4 mr-1" />
-                        Detalhes
-                      </Button>
-                      {(r as any).status === "ABERTA" && (
-                        <Button size="sm" onClick={() => onAssumir(r)}>
-                          <ClipboardCheck className="h-4 w-4 mr-1" />
-                          Assumir
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      )}
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => onDetalhes(r)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Detalhes
+                        </DropdownMenuItem>
+
+                        {(r as any).status === "ABERTA" && (
+                          <DropdownMenuItem onClick={() => onAssumir(r)}>
+                            <ClipboardCheck className="h-4 w-4 mr-2" />
+                            Assumir
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
 
             {empty && (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                   Nenhuma OS encontrada para seu setor.
                 </TableCell>
               </TableRow>
@@ -162,7 +281,7 @@ export default function EquipesTable({
         </Table>
       </div>
 
-      {/* Rodapé — mesmo visual do Customers */}
+      {/* Rodapé — modelo Customers */}
       <div className="flex items-center mt-4 justify-between">
         <div className="text-xs text-muted-foreground flex flex-nowrap">
           <span>{start || 0}</span> - <span>{end || 0}</span>
@@ -217,9 +336,7 @@ export default function EquipesTable({
             value={String(limit)}
             onValueChange={(v) => {
               const newLimit = Number(v);
-              // atualiza o limit no pai
               onChangeLimit?.(newLimit);
-              // garante reset para página 1 e refetch
               onPaginate?.(1, newLimit);
             }}
           >
@@ -227,15 +344,9 @@ export default function EquipesTable({
               <SelectValue placeholder={limit}></SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem className="hover:cursor-pointer" value="10">
-                10
-              </SelectItem>
-              <SelectItem className="hover:cursor-pointer" value="25">
-                25
-              </SelectItem>
-              <SelectItem className="hover:cursor-pointer" value="50">
-                50
-              </SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
             </SelectContent>
           </Select>
         </div>

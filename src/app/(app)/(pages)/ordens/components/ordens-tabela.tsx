@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Ordem, StatusOS } from "../types";
 import TableSkeleton from "../components/table-skeleton";
 
-// ---------- helpers ----------
+// --------- Helpers de UI ---------
 const statusClasses: Record<string, string> = {
   ABERTA: "bg-blue-600/15 text-blue-400",
   EM_ANDAMENTO: "bg-amber-600/15 text-amber-400",
@@ -30,33 +30,55 @@ const statusClasses: Record<string, string> = {
   CANCELADA: "bg-red-600/15 text-red-400",
 };
 
+const prioClasses: Record<string, string> = {
+  ALTA: "bg-red-600/15 text-red-500",
+  NORMAL: "bg-amber-600/15 text-amber-500",
+  BAIXA: "bg-emerald-600/15 text-emerald-500",
+};
+
+// --------- Helpers de tempo ---------
 function fmtDate(s?: string | null) {
   if (!s) return "—";
-  try {
-    const d = new Date(s);
-    return d.toLocaleString();
-  } catch {
-    return s!;
-  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
 
-function useDebounced<T>(value: T, delay = 400) {
-  const [v, setV] = useState(value);
+function toMs(s?: string | null): number | null {
+  if (!s) return null;
+  const t = new Date(s).getTime();
+  return isNaN(t) ? null : t;
+}
+
+function fmtDuration(ms: number) {
+  if (ms < 0) ms = 0;
+  const m = Math.floor(ms / 60000);
+  const d = Math.floor(m / (60 * 24));
+  const h = Math.floor((m % (60 * 24)) / 60);
+  const min = m % 60;
+  const parts: string[] = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  parts.push(`${min}m`);
+  return parts.join(" ");
+}
+
+function useNowTick(periodMs = 60000) {
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    const t = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return v;
+    const id = setInterval(() => setNow(Date.now()), periodMs);
+    return () => clearInterval(id);
+  }, [periodMs]);
+  return now;
 }
 
-// alias local para datas exibidas na tabela
+// alias local só para datas exibidas na tabela
 type OrdemComDatas = Ordem & {
   dataEntrada?: string | null;
   dataSaidaPrevista?: string | null;
   dataSaidaReal?: string | null;
+  prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
 };
 
-// ---------- componente ----------
 export function OrdensTabela({
   status,
   onOpenOrcamento,
@@ -66,26 +88,28 @@ export function OrdensTabela({
   onOpenOrcamento: (row: OrdemComDatas) => void;
   onEditar: (row: OrdemComDatas) => void;
 }) {
-  // dados da tabela
+  // dados
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
 
-  // paginação e filtro
+  // paginação/filtro
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounced(q, 400);
 
-  // loading & req guard
+  // loading + guarda de request
   const [isLoading, setIsLoading] = useState(true);
   const reqIdRef = useRef(0);
 
-  // mantém os params atuais para usar em callbacks (ex.: realtime)
-  const currentParamsRef = useRef({ status, q: debouncedQ, page, limit });
+  // tick para atualizar contador de tempo a cada 60s
+  const now = useNowTick(60000);
+
+  // params atuais para realtime
+  const currentParamsRef = useRef({ status, q, page, limit });
   useEffect(() => {
-    currentParamsRef.current = { status, q: debouncedQ, page, limit };
-  }, [status, debouncedQ, page, limit]);
+    currentParamsRef.current = { status, q, page, limit };
+  }, [status, q, page, limit]);
 
   async function fetchNow({
     status: st,
@@ -100,7 +124,6 @@ export function OrdensTabela({
   }) {
     const myId = ++reqIdRef.current;
     setIsLoading(true);
-
     try {
       const url = new URL("/api/ordens", window.location.origin);
       url.searchParams.set("status", st);
@@ -111,7 +134,7 @@ export function OrdensTabela({
       const r = await fetch(url.toString(), { cache: "no-store" });
       const j = await r.json();
 
-      if (myId !== reqIdRef.current) return; // ignora resposta antiga
+      if (myId !== reqIdRef.current) return;
 
       if (r.ok) {
         setRows(j.items ?? []);
@@ -134,18 +157,19 @@ export function OrdensTabela({
     }
   }
 
-  // carregar quando filtros/paginação mudarem
+  // carregar quando filtros/paginação mudarem (com debounce simples para q)
   useEffect(() => {
-    fetchNow({ status, q: debouncedQ, page, limit });
+    const t = setTimeout(() => fetchNow({ status, q, page, limit }), 350);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, debouncedQ, page, limit]);
+  }, [status, q, page, limit]);
 
-  // ao trocar status, resetar para página 1 (sem disparar fetch manual)
+  // reset página quando mudar status
   useEffect(() => {
     setPage(1);
   }, [status]);
 
-  // realtime: refetch com os filtros/paginação atuais
+  // realtime
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -168,7 +192,7 @@ export function OrdensTabela({
     };
   }, [status]);
 
-  // gates de render
+  // gates
   const showRows = !isLoading && rows.length > 0;
   const showEmpty = !isLoading && rows.length === 0;
 
@@ -177,7 +201,34 @@ export function OrdensTabela({
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
 
+  // helpers de linha
   const safeStatus = (s: Ordem["status"]) => (s ?? "ABERTA") as Exclude<StatusOS, "TODAS">;
+  const renderTempo = (r: OrdemComDatas) => {
+    const startMs =
+      toMs(r.dataEntrada) ??
+      toMs((r as any).createdat) ??
+      toMs((r as any).createdAt) ??
+      null;
+
+    if (!startMs) return "—";
+
+    const st = safeStatus(r.status);
+    const endMs =
+      st === "CONCLUIDA" || st === "CANCELADA"
+        ? toMs(r.dataSaidaReal) ??
+          toMs((r as any).updatedat) ??
+          toMs((r as any).updatedAt) ??
+          now
+        : now;
+
+    return fmtDuration((endMs ?? now) - startMs);
+  };
+
+  const renderPrio = (p?: OrdemComDatas["prioridade"]) => {
+    const key = (p || "").toUpperCase();
+    const cls = prioClasses[key] ?? "";
+    return p ? <Badge className={cls}>{key}</Badge> : "—";
+  };
 
   return (
     <Card className="bg-card">
@@ -209,6 +260,8 @@ export function OrdensTabela({
                 <TableHead className="min-w-[130px]">Prevista</TableHead>
                 <TableHead className="min-w-[130px]">Saída</TableHead>
                 <TableHead className="min-w-[120px]">Status</TableHead>
+                <TableHead className="min-w-[120px]">Prioridade</TableHead>
+                <TableHead className="min-w-[120px]">Tempo</TableHead>
                 <TableHead className="min-w-[120px] text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -226,13 +279,15 @@ export function OrdensTabela({
                     { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
                     { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
                     { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
-                    { cellClass: "min-w-[120px]", barClass: "h-6 w-24" },
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
                     { cellClass: "min-w-[120px]", barClass: "h-8 w-20" },
                   ]}
                 />
               )}
 
-              {showRows &&
+              {!isLoading &&
                 rows.map((r) => {
                   const st = safeStatus(r.status);
                   return (
@@ -248,6 +303,8 @@ export function OrdensTabela({
                       <TableCell>
                         <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>
                       </TableCell>
+                      <TableCell>{renderPrio(r.prioridade)}</TableCell>
+                      <TableCell>{renderTempo(r)}</TableCell>
                       <TableCell className="text-center flex items-center justify-center gap-1">
                         <Button
                           variant="outline"
@@ -266,9 +323,9 @@ export function OrdensTabela({
                   );
                 })}
 
-              {showEmpty && (
+              {!isLoading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={12} className="py-10 text-center text-muted-foreground">
                     Nenhuma OS encontrada.
                   </TableCell>
                 </TableRow>
@@ -277,7 +334,7 @@ export function OrdensTabela({
           </Table>
         </div>
 
-        {/* Rodapé (mesmo visual) */}
+        {/* Rodapé — mesmo visual */}
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{start || 0}</span> - <span>{end || 0}</span>

@@ -2,7 +2,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import EquipesClient from "./components/ordens-equipe";
+import Equipes from "./components/ordens-equipe";
 
 export default async function Page() {
   const session = await auth();
@@ -41,5 +41,5 @@ export default async function Page() {
 
   const setorNome = srow?.nome ?? `Setor #${setorId}`;
 
-  return <EquipesClient setorId={setorId} setorNome={setorNome} />;
+  return <Equipes setorId={setorId} setorNome={setorNome} />;
 }
