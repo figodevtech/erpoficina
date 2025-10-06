@@ -210,6 +210,15 @@ export default function EditContent({
     
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
+                      <Label htmlFor="referencia">Fabricante</Label>
+                      <Input
+                        id="referencia"
+                        value={selectedProduct.fabricante || ""}
+                        onChange={(e) => handleChange("fabricante", e.target.value)}
+                        placeholder="SKU / Referência interna"
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="referencia">Referência</Label>
                       <Input
                         id="referencia"
@@ -218,6 +227,7 @@ export default function EditContent({
                         placeholder="SKU / Referência interna"
                       />
                     </div>
+                    
     
                     <div className="space-y-2">
                       <Label htmlFor="ean">Código de Barras</Label>

@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -18,15 +17,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Package,
-  Search,
-  Plus,
   AlertTriangle,
   Clock,
-  TrendingDown,
-  TrendingUp,
   ChevronDown,
-  Pen,
   Trash2Icon,
   ChevronsRight,
   ChevronRightIcon,
@@ -34,6 +27,7 @@ import {
   ChevronsLeft,
   Loader2,
   Edit,
+  Loader,
 } from "lucide-react";
 import {
   Select,
@@ -42,15 +36,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Estoque_status, Pagination, Produto } from "../types";
 import { ProductDialog } from "../productDialog/productDialog";
+import DeleteAlert from "./deleteAlert";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
+import { useEffect, useState } from "react";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -106,6 +102,42 @@ export default function ProductsDataTable({
   status,
   setSelectedProductId,
 }: ProductsDataTableProps) {
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteProduct = async (id: number) => {
+    setIsDeleting(true);
+    toast(
+      <div className="flex gap-2 items-center flex-nowrap">
+        <Loader className=" animate-spin w-4" />
+        <span className="text-nowrap">Deletando produto...</span>
+      </div>
+    );
+    try {
+      const response = await axios.delete(`/api/products/${id}`, {});
+      console.log("teste2");
+      if (response.status === 204) {
+        console.log("teste3");
+        console.log(response);
+        toast("Produto deletado!");
+        handleGetProducts(pagination.page, pagination.limit, search, status);
+        fetchStatusCounts();
+      } else {
+        toast.warning(`Status inesperado: ${response.status}`);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        // console.log(error)
+        toast.error("Error", {
+          description: error.response?.data.error,
+        });
+      }
+    } finally {
+      setIsDeleting(false);
+      setIsAlertOpen(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="border-b-2 pb-4 ">
@@ -231,13 +263,20 @@ export default function ProductsDataTable({
                             <span>Editar</span>
                           </Button>
                         </ProductDialog>
-                        <Button
-                          variant={"default"}
-                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
+                        <DeleteAlert
+                          handleDeleteProduct={handleDeleteProduct}
+                          isAlertOpen={isAlertOpen}
+                          setIsAlertOpen={setIsAlertOpen}
+                          idToDelete={p.id}
                         >
-                          <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
-                          <span>Excluir</span>
-                        </Button>
+                          <Button
+                            variant={"default"}
+                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
+                          >
+                            <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
+                            <span>Excluir</span>
+                          </Button>
+                        </DeleteAlert>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

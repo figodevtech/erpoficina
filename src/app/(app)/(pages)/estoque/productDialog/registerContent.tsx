@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DialogClose,
@@ -28,6 +27,8 @@ import { Produto, Unidade_medida } from "../types";
 import { Estoque_status } from "../types";
 import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "./valueInput";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
 
 // --- Helper data ---
 
@@ -81,6 +82,35 @@ export default function RegisterContent({
   const handleChange = (field: keyof Produto, value: string | number) => {
     setNewProduct({ ...newProduct, [field]: value });
   };
+
+  const handleCreateProduct = async () => {
+      setIsSubmitting(true);
+      try {
+        const response = await axios.post("/api/products", {
+          newProduct,
+        });
+  
+        if (response.status === 201 && setSelectedProductId) {
+          console.log(response.data.data);
+          toast("Sucesso!", {
+            description: "Produto cadastrado.",
+            duration: 2000,
+          });
+          setSelectedProductId(response.data.id);
+        }
+      } catch (error) {
+        if (isAxiosError(error)) {
+          toast("Erro", {
+            description: error.response?.data.error,
+            duration: 2000,
+          });
+  
+          console.log(error);
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
 
   useEffect(() => {
     console.log("New Product:", newProduct);
@@ -164,6 +194,15 @@ export default function RegisterContent({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="referencia">Fabricante</Label>
+                  <Input
+                    id="referencia"
+                    value={newProduct.fabricante || ""}
+                    onChange={(e) => handleChange("fabricante", e.target.value)}
+                    placeholder="Fabricante"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="referencia">Referência</Label>
                   <Input
@@ -289,20 +328,7 @@ export default function RegisterContent({
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="origem">Fornecedor *</Label>
-                  <Select
-                    value={String(newProduct.fornecedor)}
-                    onValueChange={(v) => handleChange("fornecedor", Number(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DESCONHECIDO">DESCONHECIDO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -370,6 +396,20 @@ export default function RegisterContent({
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                  <Label htmlFor="origem">Fornecedor *</Label>
+                  <Select
+                    value={String(newProduct.fornecedor)}
+                    onValueChange={(v) => handleChange("fornecedor", Number(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DESCONHECIDO">DESCONHECIDO</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
             </div>
           </TabsContent>
@@ -382,6 +422,7 @@ export default function RegisterContent({
               form="register-form"
               disabled={isSubmitting}
               //   onClick={handleCreateCustomer}
+              onClick={handleCreateProduct}
               className="flex-1 text-sm sm:text-base hover:cursor-pointer"
             >
               {isSubmitting ? (

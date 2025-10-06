@@ -89,9 +89,9 @@ export default function CustomersDataTable({
       const response = await axios.delete(`/api/customers/${id}`, {
       })
 
-      if(response.status === 201){
+      if(response.status === 204){
         console.log(response)
-        toast.success("Usuário deletado!")
+        toast("Usuário deletado!")
         handleGetCustomers(
                 pagination.page,
                 pagination.limit,
@@ -107,6 +107,9 @@ export default function CustomersDataTable({
           description: error.response?.data.error
         })
       }
+    }finally{
+      setIsAlertOpen(false)
+      setIsDeleting(false)
     }
   }
   return (
