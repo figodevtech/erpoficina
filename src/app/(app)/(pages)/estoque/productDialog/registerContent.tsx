@@ -197,7 +197,7 @@ export default function RegisterContent({
                 <div className="space-y-2">
                   <Label htmlFor="referencia">Fabricante</Label>
                   <Input
-                    id="referencia"
+                    id="fabricante"
                     value={newProduct.fabricante || ""}
                     onChange={(e) => handleChange("fabricante", e.target.value)}
                     placeholder="Fabricante"
