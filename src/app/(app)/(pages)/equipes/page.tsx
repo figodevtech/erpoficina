@@ -2,9 +2,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import EquipesClient from "./_client";
+import Equipes from "./components/ordens-equipe";
 
-export default async function PageEquipes() {
+export default async function Page() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -41,5 +41,5 @@ export default async function PageEquipes() {
 
   const setorNome = srow?.nome ?? `Setor #${setorId}`;
 
-  return <EquipesClient setorId={setorId} setorNome={setorNome} />;
+  return <Equipes setorId={setorId} setorNome={setorNome} />;
 }

@@ -4,21 +4,26 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+type StatusOS = "TODAS" | "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status") || undefined; // ABERTA | EM_ANDAMENTO | ...
-    const search = searchParams.get("q")?.trim() || undefined;
-    const limit = Math.min(Number(searchParams.get("limit") ?? 10), 200);
+    const status = (searchParams.get("status") as StatusOS) || "TODAS";
+    const q = searchParams.get("q")?.trim() || "";
+    const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 10), 1), 200);
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
-    const offset = (page - 1) * limit;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    let q = supabaseAdmin
+    // base
+    let query = supabaseAdmin
       .from("ordemservico")
       .select(
         `
         id,
         descricao,
+        prioridade,
         status,
         dataentrada,
         datasaidaprevista,
@@ -29,34 +34,35 @@ export async function GET(req: Request) {
       `,
         { count: "exact" }
       )
-      .order("dataentrada", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order("dataentrada", { ascending: false }) // mais recentes primeiro
+      .range(from, to);
 
-    if (status && status !== "TODAS") q = q.eq("status", status);
-    if (search) q = q.ilike("descricao", `%${search}%`);
+    if (status && status !== "TODAS") query = query.eq("status", status);
+    if (q) query = query.ilike("descricao", `%${q}%`);
 
-    const { data, error, count } = await q;
+    const { data, error, count } = await query;
     if (error) throw error;
 
     const items = (data ?? []).map((r: any) => ({
-      id: r.id,
-      descricao: r.descricao ?? "",
-      status: r.status,
-      dataEntrada: r.dataentrada,
-      dataSaidaPrevista: r.datasaidaprevista,
-      dataSaidaReal: r.datasaidareal,
-      cliente: r.cliente ? { id: r.cliente.id, nome: r.cliente.nomerazaosocial } : null,
-      veiculo: r.veiculo ? { id: r.veiculo.id, placa: r.veiculo.placa, modelo: r.veiculo.modelo, marca: r.veiculo.marca } : null,
-      setor: r.setor ? { id: r.setor.id, nome: r.setor.nome } : null,
+      id: r.id as number,
+      descricao: (r.descricao as string) ?? "",
+      prioridade: (r.prioridade as "ALTA" | "NORMAL" | "BAIXA" | null) ?? null,
+      status: r.status as Exclude<StatusOS, "TODAS">,
+      dataEntrada: r.dataentrada as string | null,
+      dataSaidaPrevista: r.datasaidaprevista as string | null,
+      dataSaidaReal: r.datasaidareal as string | null,
+      cliente: r.cliente ? { id: r.cliente.id as number, nome: r.cliente.nomerazaosocial as string } : null,
+      veiculo: r.veiculo
+        ? { id: r.veiculo.id as number, placa: r.veiculo.placa as string, modelo: r.veiculo.modelo as string, marca: r.veiculo.marca as string }
+        : null,
+      setor: r.setor ? { id: r.setor.id as number, nome: r.setor.nome as string } : null,
     }));
 
-    return NextResponse.json({
-      items,
-      page,
-      limit,
-      total: count ?? 0,
-      totalPages: Math.max(1, Math.ceil((count ?? 0) / limit)),
-    });
+    const total = count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const pageCount = items.length;
+
+    return NextResponse.json({ items, page, limit, total, totalPages, pageCount });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Erro ao listar OS" }, { status: 500 });
   }
