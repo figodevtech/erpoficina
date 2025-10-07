@@ -3,7 +3,7 @@
 import { JSX, useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { ClipboardList, Wrench, Loader2, PackageSearch, CheckCircle2, XCircle, Dot } from "lucide-react";
+import { ClipboardList, Wrench, Loader2, PackageSearch, CheckCircle2, XCircle } from "lucide-react";
 import { OrdensTabela } from "./ordens-tabela";
 import { createClient } from "@supabase/supabase-js";
 

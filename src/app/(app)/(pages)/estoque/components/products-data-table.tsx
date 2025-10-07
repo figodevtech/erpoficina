@@ -46,7 +46,7 @@ import { ProductDialog } from "../productDialog/productDialog";
 import DeleteAlert from "./deleteAlert";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface ProductsDataTableProps {
   isLoading: boolean;

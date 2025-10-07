@@ -1,9 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { Package } from "lucide-react";
 import RegisterContent from "./registerContent";
 import { ReactNode, useState } from "react";
 import { Estoque_status, Produto, Unidade_medida } from "../types";

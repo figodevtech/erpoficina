@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,8 +58,6 @@ import {
 import { cn } from "@/lib/utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface RegisterContentProps {
   newCustomer: NewCustomer;

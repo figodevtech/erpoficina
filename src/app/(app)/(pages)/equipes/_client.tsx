@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import EquipesFilters from "./components/filters";
 import EquipesTable from "./components/table";
 import EquipesDetailsDialog from "./components/details-dialog";
-import { DetalheOS, RowOS, StatusOS } from "./types";
+import { RowOS, StatusOS } from "./types";
 import { assumirOS, listarOrdensEquipe } from "./lib/api";
 import { createClient } from "@supabase/supabase-js";
 

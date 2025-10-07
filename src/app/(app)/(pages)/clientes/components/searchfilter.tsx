@@ -12,7 +12,7 @@ interface SearchFilterProps {
     status: Status
 
 }
-export default function SearchFilter ({search, setSearch, setStatus, status}: SearchFilterProps) {
+export default function SearchFilter ({setSearch, setStatus, status}: SearchFilterProps) {
     return(
         <Card>
         <CardContent className="pt-6">

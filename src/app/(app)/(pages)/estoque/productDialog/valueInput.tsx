@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ChangeEvent, type KeyboardEvent } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 
 interface ValueInputProps {

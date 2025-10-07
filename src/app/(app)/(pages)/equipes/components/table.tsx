@@ -15,16 +15,6 @@ const statusClasses: Record<string, string> = {
   CANCELADA: "bg-red-600/15 text-red-400",
 };
 
-function fmtDate(s?: string | null) {
-  if (!s) return "—";
-  try {
-    const d = new Date(s);
-    return d.toLocaleString();
-  } catch {
-    return s!;
-  }
-}
-
 function TableSkeletonRow() {
   return (
     <TableRow>
