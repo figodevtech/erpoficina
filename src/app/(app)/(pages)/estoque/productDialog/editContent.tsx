@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Upload } from "lucide-react";
-import { Produto, Unidade_medida } from "../types";
+import { Grupo_produto, Produto, Unidade_medida } from "../types";
 import { Estoque_status } from "../types";
 import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "./valueInput";
@@ -102,6 +102,27 @@ export default function EditContent({
     }
   };
 
+  const handleUpdateProduct = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await axios.put("/api/products/" + productId,
+        selectedProduct
+      );
+
+      if (response.status === 200) {
+        // console.log(response)
+        const { data } = response;
+        setSelectedProduct(data.data);
+        console.log("Cliente atualizado:", data.data);
+        handleGetProduct(data.data.id)
+      }
+    } catch (error) {
+      console.log("Erro ao atualizar produto:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     console.log("Product:", selectedProduct);
   }, [selectedProduct]);
@@ -169,25 +190,36 @@ export default function EditContent({
                 className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
               >
                 <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="status_estoque">Status de Estoque *</Label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex flex-nowrap space-x-2">
+
+                      <Label htmlFor="status_estoque">Status do Estoque:</Label>
+                      
+                          {ESTOQUE_STATUS.filter(s => s.value === selectedProduct.status_estoque).map(s => (
+                            <Badge className="" key={s.value} variant={s.badge}>
+                              {s.value}
+                            </Badge>
+                          ))}
+                        
+                    </div>
+                    <div className="flex flex-nowrap space-x-2">
+
+                      <Label>Grupo:</Label>
                       <Select
-                        value={selectedProduct.status_estoque}
-                        onValueChange={(v: Estoque_status) =>
-                          handleChange("status_estoque", v)
-                        }
-                      >
+                        value={selectedProduct.grupo || "OUTROS"}
+                        onValueChange={(v) => handleChange("grupo", v)}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {ESTOQUE_STATUS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              <Badge variant={s.badge}>{s.value}</Badge>
+                          {Object.values(Grupo_produto).map((g) => (
+                            <SelectItem className="hover:cursor-pointer" key={g} value={g}>
+                              {g}
                             </SelectItem>
                           ))}
                         </SelectContent>
-                      </Select>
+                        </Select>
+                    </div>
                     </div>
                   <div className="space-y-2">
                     <Label htmlFor="titulo">Título *</Label>
@@ -457,7 +489,7 @@ export default function EditContent({
                             form="register-form"
                             disabled={isSubmitting}
                             className="flex-1 text-sm sm:text-base hover:cursor-pointer"
-                            // onClick={handleUpdateCustomer}
+                            onClick={handleUpdateProduct}
                           >
                             {isSubmitting ? (
                               <>
@@ -467,6 +499,7 @@ export default function EditContent({
                             ) : (
                               <>
                                 <Upload className="h-4 w-4 mr-2" />
+
                                 Salvar
                               </>
                             )}

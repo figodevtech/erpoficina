@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Upload } from "lucide-react";
-import { Produto, Unidade_medida } from "../types";
+import { Grupo_produto, Produto, Unidade_medida } from "../types";
 import { Estoque_status } from "../types";
 import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "./valueInput";
@@ -154,26 +154,37 @@ export default function RegisterContent({
             className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
           >
             <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-              <div className="space-y-2">
-                  <Label htmlFor="status_estoque">Status de Estoque *</Label>
-                  <Select
-                    value={newProduct.status_estoque}
-                    onValueChange={(v: Estoque_status) =>
-                      handleChange("status_estoque", v)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ESTOQUE_STATUS.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          <Badge variant={s.badge}>{s.value}</Badge>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+               <div className="flex items-center space-x-4">
+                                  <div className="flex flex-nowrap space-x-2">
+              
+                                    <Label htmlFor="status_estoque">Status do Estoque:</Label>
+                                    
+                                        {ESTOQUE_STATUS.filter(s => s.value === newProduct.status_estoque).map(s => (
+                                          <Badge className="" key={s.value} variant={s.badge}>
+                                            {s.value}
+                                          </Badge>
+                                        ))}
+                                      
+                                  </div>
+                                  <div className="flex flex-nowrap space-x-2">
+              
+                                    <Label>Grupo:</Label>
+                                    <Select
+                                      value={newProduct.grupo || "OUTROS"}
+                                      onValueChange={(v) => handleChange("grupo", v)}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Object.values(Grupo_produto).map((g) => (
+                                          <SelectItem className="hover:cursor-pointer" key={g} value={g}>
+                                            {g}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                      </Select>
+                                  </div>
+                                  </div>
               <div className="space-y-2">
                 <Label htmlFor="titulo">Título *</Label>
                 <Input
