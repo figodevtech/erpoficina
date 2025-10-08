@@ -76,6 +76,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
 
   const { cidades, loading } = useGetCidades(selectedCustomer?.estado);
   const [open, setOpen] = useState(false);
+  const [open2, setOpen2] = useState(false);
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -424,99 +425,139 @@ export default function EditContent({ customerId, }: EditContentProps) {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="cidade" className="text-sm sm:text-base">
-                        Cidade
-                      </Label>
-
-                      <Popover open={open} onOpenChange={setOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-[200px] justify-between"
-                          >
-                            {selectedCustomer.cidade
-                              ? cidades.find(
-                                  (cidade) =>
-                                    cidade.nome === selectedCustomer.cidade
-                                )?.nome
-                              : `${loading ? "Carregando..." : "Selecione..."}`}
-                            <ChevronsUpDown className="opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[200px] p-0">
-                          <Command>
-                            <CommandInput
-                              placeholder="Buscar cidade..."
-                              className="h-9"
-                            />
-                            <CommandList>
-                              <CommandEmpty>
-                                Nenhuma cidade encontrada.
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {cidades.map((cidade) => (
-                                  <CommandItem
-                                    className="hover:cursor-pointer"
-                                    key={cidade.id}
-                                    value={cidade.nome}
-                                    onSelect={(currentValue) => {
-                                      setselectedCustomer({
-                                        ...selectedCustomer,
-                                        cidade: currentValue,
-                                      });
-                                      setOpen(false);
-                                    }}
-                                  >
-                                    {cidade.nome}
-                                    <Check
-                                      className={cn(
-                                        "ml-auto",
-                                        selectedCustomer.cidade === cidade.nome
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="estado" className="text-sm sm:text-base">
-                        Estado
-                      </Label>
-                      <Select
-                        value={selectedCustomer.estado}
-                        onValueChange={(value) =>
-                          setselectedCustomer({
-                            ...selectedCustomer,
-                            estado: value,
-                            cidade: "",
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-10 sm:h-11">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ESTADOS_BRASIL.map((estado) => (
-                            <SelectItem
-                              key={estado}
-                              value={estado}
-                              className="hover:cursor-pointer"
-                            >
-                              {estado}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                                    <Label htmlFor="estado" className="text-sm sm:text-base">
+                                      Estado
+                                    </Label>
+                    
+                    
+                                    <Popover open={open2} onOpenChange={setOpen2}>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          role="combobox"
+                                          aria-expanded={open2}
+                                          className="w-[200px] justify-between"
+                                        >
+                                          {selectedCustomer.estado
+                                            ? ESTADOS_BRASIL.find(
+                                                (estado) => estado === selectedCustomer.estado
+                                              )
+                                            :  "Selecione..."}
+                                          <ChevronsUpDown className="opacity-50" />
+                                        </Button>
+                                      </PopoverTrigger>
+                    
+                                      <PopoverContent
+                                        className="w-[200px] p-0"
+                                        onWheelCapture={(e) => e.stopPropagation()}
+                                      >
+                                        <Command>
+                                          <CommandInput
+                                            placeholder="Buscar estado..."
+                                            className="h-9"
+                                          />
+                                          <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
+                                            <CommandEmpty>Nenhum estado encontrada.</CommandEmpty>
+                    
+                                            {/* Aqui NÃO precisa de overflow/max-h */}
+                                              <CommandGroup>
+                                                {ESTADOS_BRASIL.map((estado,i) => (
+                                                  <CommandItem
+                                                    className="hover:cursor-pointer"
+                                                    key={i}
+                                                    value={estado}
+                                                    onSelect={(currentValue) => {
+                                                      setselectedCustomer({
+                                                        ...selectedCustomer,
+                                                        estado: currentValue,
+                                                      });
+                                                      setOpen2(false);
+                                                    }}
+                                                  >
+                                                    {estado}
+                                                    <Check
+                                                      className={cn(
+                                                        "ml-auto",
+                                                        selectedCustomer.estado === estado
+                                                          ? "opacity-100"
+                                                          : "opacity-0"
+                                                      )}
+                                                    />
+                                                  </CommandItem>
+                                                ))}
+                                              </CommandGroup>
+                                          </CommandList>
+                                        </Command>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
+                    
+                                  <div className="space-y-2">
+                                    <Label htmlFor="cidade" className="text-sm sm:text-base">
+                                      Cidade
+                                    </Label>
+                    
+                                    <Popover open={open} onOpenChange={setOpen}>
+                                      <PopoverTrigger disabled={selectedCustomer.estado ? false : true} asChild>
+                                        <Button
+                                          variant="outline"
+                                          role="combobox"
+                                          aria-expanded={open}
+                                          className="w-[200px] justify-between"
+                                        >
+                                          {selectedCustomer.cidade
+                                            ? cidades.find(
+                                                (cidade) => cidade.nome === selectedCustomer.cidade
+                                              )?.nome
+                                            : loading ? "Carregando..." : selectedCustomer.estado ? "Selecione..." : "Selecione o estado"}
+                                          <ChevronsUpDown className="opacity-50" />
+                                        </Button>
+                                      </PopoverTrigger>
+                    
+                                      <PopoverContent
+                                        className="w-[200px] p-0"
+                                        onWheelCapture={(e) => e.stopPropagation()}
+                                      >
+                                        <Command>
+                                          <CommandInput
+                                            placeholder="Buscar cidade..."
+                                            className="h-9"
+                                          />
+                                          <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
+                                            <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
+                    
+                                            {/* Aqui NÃO precisa de overflow/max-h */}
+                                              <CommandGroup>
+                                                {cidades.map((cidade) => (
+                                                  <CommandItem
+                                                    className="hover:cursor-pointer"
+                                                    key={cidade.id}
+                                                    value={cidade.nome}
+                                                    onSelect={(currentValue) => {
+                                                      setselectedCustomer({
+                                                        ...selectedCustomer,
+                                                        cidade: currentValue,
+                                                      });
+                                                      setOpen(false);
+                                                    }}
+                                                  >
+                                                    {cidade.nome}
+                                                    <Check
+                                                      className={cn(
+                                                        "ml-auto",
+                                                        selectedCustomer.cidade === cidade.nome
+                                                          ? "opacity-100"
+                                                          : "opacity-0"
+                                                      )}
+                                                    />
+                                                  </CommandItem>
+                                                ))}
+                                              </CommandGroup>
+                                          </CommandList>
+                                        </Command>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
 
                     <div className="space-y-2 sm:col-span-2 lg:col-span-1">
                       <Label htmlFor="cep" className="text-sm sm:text-base">

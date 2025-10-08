@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { listarQuadro, QuadItem } from "../lib/api";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import OsTile from "./os-tile";

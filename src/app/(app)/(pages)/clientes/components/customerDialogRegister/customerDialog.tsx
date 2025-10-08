@@ -3,7 +3,7 @@
 import type React from "react";
 import { ReactNode, useEffect, useState } from "react";
 import axios from "axios";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
 import { Customer } from "../../types";

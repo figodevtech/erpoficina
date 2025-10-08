@@ -23,7 +23,6 @@ export function OrcamentoDialog({
   onGerarOrcamento,
   onEnviarFinanceiro,
 }: ProdutosServicosDialogProps) {
-  const submitRef = useRef<null | (() => void)>(null);
   const [totalProdutos, setTotalProdutos] = useState(0);
   const [totalServicos, setTotalServicos] = useState(0);
   const totalGeral = totalProdutos + totalServicos;

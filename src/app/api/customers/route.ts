@@ -7,34 +7,6 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 type Status = "ATIVO" | "INATIVO" | "PENDENTE";
 const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
 
-const REQUIRED_FIELDS = [
-  "tipopessoa",
-  "cpfcnpj",
-  "nomerazaosocial",
-  "email",
-  "telefone",
-  "estado",
-  "cidade",
-  "cep",
-  "endereco",
-] as const;
-
-type Payload = {
-  tipopessoa: "FISICA" | "JURIDICA" | string;
-  cpfcnpj: string;
-  nomerazaosocial: string;
-  email?: string | null;
-  telefone?: string | null;
-  endereco?: string | null;
-  cidade?: string | null;
-  estado?: string | null;
-  cep?: string | null;
-  inscricaoestadual?: string | null;
-  inscricaomunicipal?: string | null;
-  codigomunicipio?: string | null;
-  status?: Status | string | null;
-};
-
 function onlyDigits(v?: string | null) {
   return (v ?? "").replace(/\D+/g, "");
 }

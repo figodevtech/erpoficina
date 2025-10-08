@@ -1,4 +1,3 @@
-import { Ordem } from "../types";
 
 const JSONH = { "Content-Type": "application/json" };
 
