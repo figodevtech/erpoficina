@@ -1,3 +1,12 @@
+import Cards from "./components/cards";
+import Header from "./components/header";
+
 export default function FinanceiroPage() {
-    return <div>Financeiro Page</div>;
+    return(
+        <div className="p-y-4 space-y-4">
+            <Header />
+            <Cards />
+            
+        </div>
+    )
 }
