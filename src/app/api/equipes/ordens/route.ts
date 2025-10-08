@@ -49,8 +49,7 @@ export async function GET(req: NextRequest) {
         prioridade,
         status,
         dataentrada,
-        datasaidaprevista,
-        datasaidareal,
+        datasaida,
         cliente:clienteid ( id, nomerazaosocial ),
         veiculo:veiculoid ( id, placa, modelo, marca ),
         setor:setorid ( id, nome )
@@ -73,8 +72,7 @@ export async function GET(req: NextRequest) {
       prioridade: (os.prioridade as "ALTA" | "NORMAL" | "BAIXA" | null) ?? null,
       status: os.status as Exclude<StatusOS, "TODAS">,
       dataEntrada: (os.dataentrada as string | null) ?? null,
-      dataSaidaPrevista: (os.datasaidaprevista as string | null) ?? null,
-      dataSaidaReal: (os.datasaidareal as string | null) ?? null,
+      dataSaida: (os.datasaida as string | null) ?? null,
       cliente: os.cliente ? { id: os.cliente.id as number, nome: os.cliente.nomerazaosocial as string } : null,
       veiculo: os.veiculo
         ? { id: os.veiculo.id as number, placa: os.veiculo.placa as string, modelo: os.veiculo.modelo as string, marca: os.veiculo.marca as string }

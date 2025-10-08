@@ -5,8 +5,7 @@ export type RowOS = {
   descricao: string | null;
   status: Exclude<StatusOS, "TODAS">;
   dataEntrada: string | null;
-  dataSaidaPrevista: string | null;
-  dataSaidaReal: string | null;
+  dataSaida: string | null;
   cliente: { id: number; nome: string } | null;
   veiculo: { id: number; placa: string; modelo: string; marca: string } | null;
   setor: { id: number; nome: string } | null;
@@ -18,7 +17,7 @@ export type DetalheOS = RowOS & {
   checklist: {
     id: number;
     item: string;
-    status: "PENDENTE" | "OK" | "ALERTA" | "FALHA";
+    status: "OK" | "ALERTA" | "FALHA";
     observacao: string | null;
   }[];
 };

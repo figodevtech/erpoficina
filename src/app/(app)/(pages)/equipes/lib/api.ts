@@ -32,3 +32,13 @@ export async function obterDetalhesOS(id: number): Promise<DetalheOS> {
   if (!r.ok) throw new Error(j?.error || "Falha ao carregar detalhes da OS");
   return j as DetalheOS;
 }
+
+export async function finalizarOS(id: number, observacoes: string): Promise<void> {
+  const r = await fetch(`/api/ordens/${id}/finalizar`, {
+    method: "POST",
+    headers: JSONH,
+    body: JSON.stringify({ observacoes }),
+  })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(j?.error || "Falha ao finalizar OS")
+}
