@@ -12,22 +12,25 @@ import { Search, Filter } from "lucide-react";
 
 export default function EquipesPage() {
   const [ordens, setOrdens] = useState<RowOS[]>([]);
-  const [ordemSelecionada, setOrdemSelecionada] = useState<DetalheOS>();
+  const [ordemSelecionada, setOrdemSelecionada] = useState<DetalheOS | undefined>(undefined);
+
   const [filtroStatus, setFiltroStatus] = useState<StatusOS>("TODAS");
   const [busca, setBusca] = useState("");
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(10);
   const [totalItens, setTotalItens] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(1);
-  const [carregando, setCarregando] = useState(false);
+
+  const [carregandoLista, setCarregandoLista] = useState(false);
+  const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
 
   useEffect(() => {
     carregarOrdens();
   }, [filtroStatus, busca, paginaAtual, itensPorPagina]);
 
-  const carregarOrdens = async () => {
+  async function carregarOrdens() {
     try {
-      setCarregando(true);
+      setCarregandoLista(true);
       const resultado = await listarOrdensEquipe({
         status: filtroStatus,
         q: busca,
@@ -40,35 +43,44 @@ export default function EquipesPage() {
     } catch (error) {
       console.error("[v0] Erro ao carregar ordens:", error);
     } finally {
-      setCarregando(false);
+      setCarregandoLista(false);
     }
-  };
+  }
 
-  const aoSelecionarOrdem = async (ordem: RowOS) => {
+  async function aoSelecionarOrdem(row: RowOS) {
     try {
-      const detalhes = await obterDetalhesOS(ordem.id);
+      // mantém o painel aberto com o último detalhe enquanto busca o novo
+      setCarregandoDetalhe(true);
+      const detalhes = await obterDetalhesOS(row.id);
       setOrdemSelecionada(detalhes);
     } catch (error) {
       console.error("[v0] Erro ao carregar detalhes:", error);
+    } finally {
+      setCarregandoDetalhe(false);
     }
-  };
+  }
 
-  const aoMudarFiltros = (novoFiltro: StatusOS) => {
+  function aoMudarFiltros(novoFiltro: StatusOS) {
     setFiltroStatus(novoFiltro);
     setPaginaAtual(1);
-  };
+    setOrdemSelecionada(undefined); // fecha painel ao mudar o filtro (opcional)
+  }
 
-  const aoMudarBusca = (novaBusca: string) => {
+  function aoMudarBusca(novaBusca: string) {
     setBusca(novaBusca);
     setPaginaAtual(1);
-  };
+    // mantém painel ou fecha, escolha sua:
+    // setOrdemSelecionada(undefined);
+  }
 
-  const aoMudarItensPorPagina = (novosItens: number) => {
+  function aoMudarItensPorPagina(novosItens: number) {
     setItensPorPagina(novosItens);
     setPaginaAtual(1);
-  };
+    // idem acima
+    // setOrdemSelecionada(undefined);
+  }
 
-  const aoAssumirOrdem = async (ordemId: number) => {
+  async function aoAssumirOrdem(ordemId: number) {
     try {
       await assumirOS(ordemId);
       await carregarOrdens();
@@ -79,9 +91,9 @@ export default function EquipesPage() {
     } catch (error) {
       console.error("[v0] Erro ao assumir ordem:", error);
     }
-  };
+  }
 
-  const aoFinalizarOrdem = async (ordemId: number, observacoes: string) => {
+  async function aoFinalizarOrdem(ordemId: number, observacoes: string) {
     try {
       await finalizarOS(ordemId, observacoes);
       await carregarOrdens();
@@ -92,7 +104,11 @@ export default function EquipesPage() {
     } catch (error) {
       console.error("[v0] Erro ao finalizar ordem:", error);
     }
-  };
+  }
+
+  // para destacar a linha selecionada na tabela
+  const rowSelecionada: RowOS | null =
+    ordemSelecionada ? (ordens.find((r) => r.id === ordemSelecionada.id) ?? null) : null;
 
   return (
     <div className="flex h-[calc(100vh-120px)] flex-col overflow-hidden">
@@ -118,7 +134,7 @@ export default function EquipesPage() {
             <div className="shrink-0 rounded-lg border bg-card p-3">
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                   <Input
                     placeholder="Buscar por OS, cliente, placa ou descrição..."
                     value={busca}
@@ -126,7 +142,7 @@ export default function EquipesPage() {
                     className="bg-card pl-10"
                   />
                 </div>
-                <Select value={filtroStatus} onValueChange={(value) => aoMudarFiltros(value as StatusOS)}>
+                <Select value={filtroStatus} onValueChange={(v) => aoMudarFiltros(v as StatusOS)}>
                   <SelectTrigger className="bg-card sm:w-[200px]">
                     <Filter className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Status" />
@@ -144,48 +160,34 @@ export default function EquipesPage() {
 
             {/* Tabela/Cards */}
             <div className="min-h-0 flex-1 overflow-auto rounded-lg">
-              {carregando ? (
-                <div className="flex h-full items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-lg font-medium text-muted-foreground">Carregando...</p>
-                  </div>
-                </div>
-              ) : ordens.length > 0 ? (
-                <TabelaOrdens
-                  ordens={ordens}
-                  ordemSelecionada={ordemSelecionada}
-                  aoSelecionarOrdem={aoSelecionarOrdem}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-lg font-medium text-muted-foreground">Nenhuma ordem encontrada</p>
-                    <p className="text-sm text-muted-foreground">Tente ajustar os filtros de busca</p>
-                  </div>
-                </div>
-              )}
+              <TabelaOrdens
+                ordens={ordens}
+                ordemSelecionada={rowSelecionada ?? undefined}
+                aoSelecionarOrdem={aoSelecionarOrdem}
+              />
             </div>
 
-            {/* Páginação */}
-            {ordens.length > 0 && (
-              <div className="shrink-0 rounded-lg border bg-card p-3">
+            {/* Paginação */}
+            {totalPaginas > 1 && (
+              <div className="shrink-0 rounded-lg border bg-card">
                 <Paginacao
                   paginaAtual={paginaAtual}
                   totalPaginas={totalPaginas}
                   itensPorPagina={itensPorPagina}
                   totalItens={totalItens}
                   aoMudarPagina={setPaginaAtual}
-                  aoMudarItensPorPagina={aoMudarItensPorPagina}
+                  aoMudarItensPorPagina={setItensPorPagina}
                 />
               </div>
             )}
           </div>
 
-          {/* Painel de Detalhes - Desktop */}
+          {/* Painel de Detalhes - Desktop (sempre montado quando há algum detalhe) */}
           {ordemSelecionada && (
             <div className="hidden min-h-0 w-[400px] shrink-0 overflow-auto border-l pl-6 lg:block xl:w-[480px]">
               <PainelDetalhes
                 ordem={ordemSelecionada}
+                carregando={carregandoDetalhe}
                 aoAssumirOrdem={aoAssumirOrdem}
                 aoFinalizarOrdem={aoFinalizarOrdem}
               />
@@ -199,6 +201,7 @@ export default function EquipesPage() {
         <div className="fixed inset-0 z-50 bg-background p-3 lg:hidden">
           <PainelDetalhes
             ordem={ordemSelecionada}
+            carregando={carregandoDetalhe}
             aoFechar={() => setOrdemSelecionada(undefined)}
             aoAssumirOrdem={aoAssumirOrdem}
             aoFinalizarOrdem={aoFinalizarOrdem}
