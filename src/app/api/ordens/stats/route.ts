@@ -26,7 +26,7 @@ export async function GET() {
     const { count: atrasadas, error: errAtraso } = await supabaseAdmin
       .from("ordemservico")
       .select("*", { count: "exact", head: true })
-      .lt("datasaidaprevista", nowIso)
+      .lt("datasaida", nowIso)
       .neq("status", "CONCLUIDA");
     if (errAtraso) throw errAtraso;
 
