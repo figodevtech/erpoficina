@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "./components/mode-toggle";
 import Clock from "@/app/(app)/components/clock";
 import { Toaster } from "@/components/ui/sonner";
+import { usePathname } from 'next/navigation';
 
 /** Renderiza a data SOMENTE após montar no cliente
  *  para evitar divergência entre SSR e cliente. */
@@ -32,9 +33,29 @@ function DateLabel() {
   return <span className="hidden md:block text-sm text-gray-500">{dateStr}</span>;
 }
 
+const routeTitles: Record<string, string> = {
+  '/': 'Início',
+  '/usuarios': 'Gerenciamento de Usuários',
+  '/estoque': 'Gerenciamento de Estoque',
+  '/config': 'Configurações',
+  '/ordens': 'Gerenciamento de Ordens de Serviço',
+  '/clientes': 'Gerenciamento de Clientes',
+  '/equipes': 'Acompanhamento de Equipes',
+  // adicione conforme necessário
+};
+
+function humanize(path: string) {
+  // fallback simples: /produtos/123 -> "Produtos"
+  const seg = path.split('/').filter(Boolean)[0] ?? '';
+  return seg ? seg[0].toUpperCase() + seg.slice(1) : 'Início';
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+    const pathname = usePathname();
+  const title = routeTitles[pathname] ?? humanize(pathname);
+
   return (
     // 🔒 Defina um default estável para o 1º render (igual no SSR e cliente)
     // e deixe a responsividade (matchMedia) para dentro do próprio Provider via useEffect.
@@ -48,6 +69,7 @@ export default function RootLayout({
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
 
           <Clock />
+           - <h2 className="text-lg font-normal italic text-muted-foreground not-dark:text-gray-600">{title}</h2>
 
           <div className="flex-1" />
 

@@ -19,15 +19,12 @@ export default function Header({selectedCustomerId, setSelectedCustomerId, isOpe
     }
   },[selectedCustomerId])
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-balance">
-          Gestão de Clientes
-        </h1>
+    <div className="flex flex-col gap-4">
+      {/* <div>
         <p className="text-muted-foreground text-pretty">
           Controle completo da base de clientes da oficina
         </p>
-      </div>
+      </div> */}
       <div className="flex items-center gap-2">
         <CustomerDialog
         setSelectedCustomerId={setSelectedCustomerId}
