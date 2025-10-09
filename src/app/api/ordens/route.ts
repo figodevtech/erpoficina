@@ -26,15 +26,14 @@ export async function GET(req: Request) {
         prioridade,
         status,
         dataentrada,
-        datasaidaprevista,
-        datasaidareal,
+        datasaida,
         cliente:clienteid ( id, nomerazaosocial ),
         veiculo:veiculoid ( id, placa, modelo, marca ),
         setor:setorid ( id, nome )
       `,
         { count: "exact" }
       )
-      .order("dataentrada", { ascending: false }) // mais recentes primeiro
+      .order("dataentrada", { ascending: false }) 
       .range(from, to);
 
     if (status && status !== "TODAS") query = query.eq("status", status);
@@ -49,8 +48,7 @@ export async function GET(req: Request) {
       prioridade: (r.prioridade as "ALTA" | "NORMAL" | "BAIXA" | null) ?? null,
       status: r.status as Exclude<StatusOS, "TODAS">,
       dataEntrada: r.dataentrada as string | null,
-      dataSaidaPrevista: r.datasaidaprevista as string | null,
-      dataSaidaReal: r.datasaidareal as string | null,
+      dataSaida: r.datasaida as string | null,
       cliente: r.cliente ? { id: r.cliente.id as number, nome: r.cliente.nomerazaosocial as string } : null,
       veiculo: r.veiculo
         ? { id: r.veiculo.id as number, placa: r.veiculo.placa as string, modelo: r.veiculo.modelo as string, marca: r.veiculo.marca as string }
