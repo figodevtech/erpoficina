@@ -115,10 +115,10 @@ export default function EquipesPage() {
       {/* Header */}
       <header className="shrink-0 border-b bg-card/60 px-4 py-4">
         <div className="flex items-end justify-between">
-          <div className="space-y-1">
+          {/* <div className="space-y-1">
             <h1 className="text-2xl font-bold leading-tight">Equipes</h1>
             <p className="text-sm text-muted-foreground">Gerencie ordens de serviço da oficina</p>
-          </div>
+          </div> */}
           <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground">
             {totalItens} Ordem{totalItens !== 1 && "s"} de Serviço
           </div>

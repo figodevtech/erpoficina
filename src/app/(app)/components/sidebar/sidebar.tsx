@@ -14,7 +14,8 @@ import {
   Type,
   Settings,
   UsersRound,
-  SquareCheckBig
+  SquareCheckBig,
+  DollarSign
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -62,6 +63,11 @@ const data = {
       title: "Estoque",
       url: "/estoque",
       icon: Package,
+    },
+    {
+      title: "Financeiro",
+      url: "/financeiro",
+      icon: DollarSign,
     },
     {
       title: "Acompanhamento",
