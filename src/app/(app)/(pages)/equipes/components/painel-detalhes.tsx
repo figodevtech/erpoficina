@@ -3,53 +3,21 @@
 import type { DetalheOS } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { BadgeStatus } from "./badge-status";
 import { BadgePrioridade } from "./badge-prioridade";
 import { DialogChecklist } from "./dialog-checklist";
 import { Calendar, CheckCircle2, Clock, User, X, Car } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState } from "react";
+import { useMemo } from "react";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 
-/* Util: pega o primeiro valor verdade entre várias chaves possíveis */
-function firstTruthy<T = any>(obj: any, keys: string[]): T | null {
-  for (const k of keys) {
-    const v = obj?.[k];
-    if (v) return v as T;
-  }
-  return null;
-}
-
-/* Util: conversor robusto para Date */
 function toDate(val: any): Date | null {
   if (!val) return null;
-  if (typeof val === "number") {
-    const d = new Date(val);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof val === "string" && /^\d+$/.test(val)) {
-    const d = new Date(Number(val));
-    return isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof val === "string") {
-    let s = val;
-    if (s.includes(" ") && !s.includes("T")) s = s.replace(" ", "T");
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return d;
-  }
-  try {
-    const d = new Date(val);
-    return isNaN(d.getTime()) ? null : d;
-  } catch {
-    return null;
-  }
+  const d = new Date(typeof val === "string" && val.includes(" ") && !val.includes("T") ? val.replace(" ", "T") : val);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-/* Util: humaniza duração em ms para "Xd Xh Xm" */
 function humanizeDuration(ms: number) {
   if (!isFinite(ms)) return "—";
   if (ms < 0) ms = 0;
@@ -66,46 +34,80 @@ function humanizeDuration(ms: number) {
 
 interface PainelDetalhesProps {
   ordem: DetalheOS;
+  carregando?: boolean;
   aoFechar?: () => void;
   aoAssumirOrdem: (ordemId: number) => void;
   aoFinalizarOrdem: (ordemId: number, observacoes: string) => void;
 }
 
-export function PainelDetalhes({ ordem, aoFechar, aoAssumirOrdem, aoFinalizarOrdem }: PainelDetalhesProps) {
-  const [observacoes, setObservacoes] = useState(ordem.observacoes || "");
+export function PainelDetalhes({
+  ordem,
+  carregando = false,
+  aoFechar,
+  aoAssumirOrdem,
+  aoFinalizarOrdem,
+}: PainelDetalhesProps) {
   const podeAssumir = ordem.status === "ABERTA";
   const podeFinalizar = ordem.status === "EM_ANDAMENTO";
 
-  // Datas com fallbacks SEM usar updatedAt como saída real
-  const dataEntrada = toDate(
-    ordem.dataEntrada ?? firstTruthy(ordem as any, ["dataentrada", "entrada", "createdat", "created_at", "createdAt"])
+  const dataEntrada = useMemo(
+    () =>
+      toDate(
+        (ordem as any).dataEntrada ??
+          (ordem as any).dataentrada ??
+          (ordem as any).createdAt ??
+          (ordem as any).created_at ??
+          (ordem as any).createdat
+      ),
+    [ordem]
+  );
+  const dataSaida = useMemo(
+    () => toDate((ordem as any).dataSaida ?? (ordem as any).datasaidareal ?? (ordem as any).saida_real),
+    [ordem]
   );
 
-  // Só considerar campos explícitos de saída real
-  const dataSaida = toDate(ordem.dataSaida ?? firstTruthy(ordem as any, ["datasaidareal", "saida_real"]));
+  const tempoAbertura = useMemo(() => {
+    if (!dataEntrada) return "—";
+    const end = dataSaida ?? new Date();
+    return humanizeDuration(end.getTime() - dataEntrada.getTime());
+  }, [dataEntrada, dataSaida]);
 
-  // Tempo de abertura: de entrada até agora (ou até saída real se existir)
-  const tempoAbertura = dataEntrada
-    ? humanizeDuration(((dataSaida ?? new Date()) as Date).getTime() - dataEntrada.getTime())
-    : "—";
-
-  function getClienteNome(cliente: unknown): string {
-    const c = cliente as any;
-    return c?.nome ?? c?.nomerazaosocial ?? c?.nomeRazaoSocial ?? c?.razaoSocial ?? c?.razao ?? "—";
-  }
+  const clienteNome =
+    (ordem as any)?.cliente?.nome ??
+    (ordem as any)?.cliente?.nomerazaosocial ??
+    (ordem as any)?.cliente?.nomeRazaoSocial ??
+    (ordem as any)?.cliente?.razaoSocial ??
+    (ordem as any)?.cliente?.razao ??
+    "—";
 
   const veiculoStr = ordem.veiculo ? `${ordem.veiculo.marca ?? ""} ${ordem.veiculo.modelo ?? ""}`.trim() : "—";
   const placaStr = ordem.veiculo?.placa ?? "";
 
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader className="flex-row items-start justify-between space-y-0 border-b pb-4">
+    <Card className="relative flex h-full flex-col">
+      {/* Overlay de carregamento enquanto troca de OS */}
+      {carregando && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
+            <span className="text-sm text-muted-foreground">Carregando detalhes…</span>
+          </div>
+        </div>
+      )}
+
+      <CardHeader className="relative flex-row items-start justify-between space-y-0 border-b pb-4 pr-10">
         <div className="space-y-1">
           <CardTitle className="text-xl">Ordem de Serviço</CardTitle>
           <p className="font-mono text-sm text-muted-foreground">OS #{ordem.id}</p>
         </div>
         {aoFechar && (
-          <Button variant="ghost" size="icon" onClick={aoFechar} className="lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={aoFechar}
+            aria-label="Fechar painel"
+            className="absolute right-2 top-2 lg:hidden"
+          >
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -123,7 +125,7 @@ export function PainelDetalhes({ ordem, aoFechar, aoAssumirOrdem, aoFinalizarOrd
           <div className="space-y-2 rounded-lg bg-muted/50 p-3">
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{getClienteNome(ordem.cliente)}</span>
+              <span className="font-medium">{clienteNome}</span>
             </div>
           </div>
         </div>
@@ -153,8 +155,8 @@ export function PainelDetalhes({ ordem, aoFechar, aoAssumirOrdem, aoFinalizarOrd
           </div>
         )}
 
-        {/* Descrição */}
-        {!!ordem.descricao && (
+        {/* Observações */}
+        {!!ordem.observacoes && (
           <div className="space-y-3">
             <h3 className="font-semibold">Observações</h3>
             <p className="text-sm leading-relaxed text-muted-foreground">{ordem.observacoes}</p>
@@ -181,41 +183,44 @@ export function PainelDetalhes({ ordem, aoFechar, aoAssumirOrdem, aoFinalizarOrd
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Entrada:</span>
-                <span className="font-medium">{format(dataEntrada, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                <span className="font-medium">
+                  {format(dataEntrada, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </span>
               </div>
             )}
 
             <div className="flex items-center gap-2 text-sm">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Tempo de abertura:</span>
-              <span className="font-medium">{tempoAbertura}</span>
+              <span className="font-medium">
+                {dataEntrada ? humanizeDuration((dataSaida ?? new Date()).getTime() - dataEntrada.getTime()) : "—"}
+              </span>
             </div>
 
             {dataSaida && (
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                 <span className="text-muted-foreground">Saída real:</span>
-                <span className="font-medium">{format(dataSaida, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                <span className="font-medium">
+                  {format(dataSaida, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </span>
               </div>
             )}
           </div>
         </div>
-
-        {/* Observações */}
       </CardContent>
 
-      {/* Ações */}
       <div className="border-t p-4">
         <div className="flex flex-col gap-2 sm:flex-row">
           {podeAssumir && (
-            <Button onClick={() => aoAssumirOrdem(ordem.id)} className="flex-1" size="lg">
+            <Button onClick={() => aoAssumirOrdem(ordem.id)} className="flex-1" size="default">
               <User className="mr-2 h-4 w-4" />
               Assumir Ordem
             </Button>
           )}
           {podeFinalizar && (
             <Button
-              onClick={() => aoFinalizarOrdem(ordem.id, observacoes)}
+              onClick={() => aoFinalizarOrdem(ordem.id, ordem.observacoes ?? "")}
               className="flex-1"
               size="lg"
               variant="default"
