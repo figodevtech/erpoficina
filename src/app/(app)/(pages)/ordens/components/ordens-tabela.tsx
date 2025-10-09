@@ -74,7 +74,7 @@ function useNowTick(periodMs = 60000) {
 // alias local só para datas exibidas na tabela
 type OrdemComDatas = Ordem & {
   dataEntrada?: string | null;
-  dataSaidaPrevista?: string | null;
+  dataSaida?: string | null;
   dataSaidaReal?: string | null;
   prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
 };
@@ -257,7 +257,6 @@ export function OrdensTabela({
                 <TableHead className="min-w-[160px]">Veículo</TableHead>
                 <TableHead className="min-w-[140px]">Setor</TableHead>
                 <TableHead className="min-w-[130px]">Entrada</TableHead>
-                <TableHead className="min-w-[130px]">Prevista</TableHead>
                 <TableHead className="min-w-[130px]">Saída</TableHead>
                 <TableHead className="min-w-[120px]">Status</TableHead>
                 <TableHead className="min-w-[120px]">Prioridade</TableHead>
@@ -298,8 +297,7 @@ export function OrdensTabela({
                       <TableCell>{r.veiculo ? `${r.veiculo.modelo} • ${r.veiculo.placa}` : "—"}</TableCell>
                       <TableCell>{r.setor?.nome ?? "—"}</TableCell>
                       <TableCell>{fmtDate(r.dataEntrada)}</TableCell>
-                      <TableCell>{fmtDate(r.dataSaidaPrevista)}</TableCell>
-                      <TableCell>{fmtDate(r.dataSaidaReal)}</TableCell>
+                      <TableCell>{fmtDate(r.dataSaida)}</TableCell>
                       <TableCell>
                         <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>
                       </TableCell>
