@@ -1,26 +1,26 @@
-export enum tipo_transacao {
+export enum Tipo_transacao {
     RECEITA = 'RECEITA',
     DESPESA = 'DESPESA',
     DEPOSITO = 'DEPOSITO',
     SAQUE = 'SAQUE',
 }
 
-export enum categoria_transacao {
+export enum Categoria_transacao {
     SERVICO='SERVICO',
     PRODUTO='PRODUTO',
-    TRANSPORTE_LOGISTICA='TRANSPORTE/LOGISTICA',
-    COMISSAO_REPASSE='COMISSAO/REPASSE',
+    TRANSPORTE_LOGISTICA='TRANSPORTE_LOGISTICA',
+    COMISSAO_REPASSE='COMISSAO_REPASSE',
     TRANSFERENCIA='TRANSFERENCIA',
     ALUGUEL='ALUGUEL',
-    EQUIPAMENTO_FERRAMENTA='EQUIPAMENTO/FERRAMENTA',
+    EQUIPAMENTO_FERRAMENTA='EQUIPAMENTO_FERRAMENTA',
     OUTROS='OUTROS',
-    PECA='PEÇA',
+    PECA='PECA',
     SALARIO='SALARIO',
-    IMPOSTO_TAXA='IMPOSTO/TAXA',
+    IMPOSTO_TAXA='IMPOSTO_TAXA',
     UTILIDADE='UTILIDADE',
 }
 
-export enum metodo_pagamento {
+export enum Metodo_pagamento {
     PIX = 'PIX',
     CREDITO = 'CREDITO',
     DEBITO = 'DEBITO',
@@ -29,15 +29,44 @@ export enum metodo_pagamento {
     DINHEIRO = 'DINHEIRO',
 }
 
+export enum Banco_tipo {
+    CORRENTE = "CORRENTE",
+    POUPANCA = "POUPANCA",
+    DIGITAL = "DIGITAL",
+    PAGAMENTO = "PAGAMENTO",
+    SALARIO = "SALARIO",
+    EMPRESARIAL = "EMPRESARIAL"
+}
+
+export interface Banco {
+    id:number,
+    titulo: string,
+    valorinicial: number,
+    agencia: string,
+    contanumero: string,
+    tipo: Banco_tipo,
+    proprietario: string,
+
+}
+
 export interface transacao {
     id: number;
     descricao: string;
     valor: number;
     data: Date;
-    metodopagamento: metodo_pagamento;
-    categoria: categoria_transacao;
-    tipo: tipo_transacao;
+    metodopagamento: Metodo_pagamento;
+    categoria: Categoria_transacao;
+    tipo: Tipo_transacao;
     cliente_id?: number;
     banco_id: number;
+    banco: Banco
 
+}
+
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  pageCount?: number;
 }
