@@ -70,3 +70,10 @@ export interface Pagination {
   totalPages: number;
   pageCount?: number;
 }
+
+export interface StatusInfo {
+    somaReceitas: number,
+    somaDespesas: number,
+    year: number,
+    month: number
+}

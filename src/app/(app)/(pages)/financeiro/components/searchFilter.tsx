@@ -4,16 +4,19 @@ import { Input } from "@/components/ui/input";
 import { SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Select } from "@radix-ui/react-select";
 import { Search } from "lucide-react";
-import { Tipo_transacao } from "../types";
+import { Pagination, Tipo_transacao } from "../types";
 
 interface SearchFilterProps {
     search: string
     setSearch: (value: string)=> void
     setTipo: (value: Tipo_transacao | "") => void
     tipo: Tipo_transacao | ""
+    handleGetTransactions: (pageNumber?: number, limit?: number, search?: string, tipo?: Tipo_transacao | "")=> void
+    pagination: Pagination;
+    
 
 }
-export default function SearchFilter ({setSearch, setTipo, tipo}: SearchFilterProps) {
+export default function SearchFilter ({setSearch, setTipo, tipo, handleGetTransactions, pagination, search}: SearchFilterProps) {
     return(
         
           <div className="flex gap-6 flex-col-reverse md:flex-row w-full">
@@ -36,7 +39,6 @@ export default function SearchFilter ({setSearch, setTipo, tipo}: SearchFilterPr
                     setTipo(value as Tipo_transacao)
                     
                   }
-
                   }
                 }
             >

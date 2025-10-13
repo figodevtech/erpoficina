@@ -43,11 +43,13 @@ import { getCategoryIcon, getTypeColor } from "../utils";
     handleGetTransactions: (pageNumber?: number, limit?: number, search?: string, tipo?: Tipo_transacao | "")=> void
     search: string
     tipo: Tipo_transacao | ""
+    isLoading: boolean
+    handleGetStatusCounter: ()=> void
   }
-  export default function FinancialTable({transactions, pagination, handleGetTransactions, search, tipo}: FinancialTableProps) {
+  export default function FinancialTable({transactions, pagination, handleGetTransactions, search, tipo, isLoading, handleGetStatusCounter}: FinancialTableProps) {
     return (
-      <Card className="px-2">
-        <CardHeader className=" flex flex-col">
+      <Card className="">
+      <CardHeader className="border-b-2 pb-4 flex flex-col">
           <div className="flex flex-row justify-between w-full">
             <CardTitle className="text-lg font-medium">
               Transações{" "}
@@ -60,17 +62,30 @@ import { getCategoryIcon, getTypeColor } from "../utils";
               Nova Transação
             </Button>
           </div>
-          <div className="flex flex-row space-x-1 items-center hover:cursor-pointer">
+          <div 
+          onClick={()=>{handleGetTransactions(pagination.page, pagination.limit, search, tipo);handleGetStatusCounter()}}
+          className="flex flex-row space-x-1 items-center hover:cursor-pointer">
             <Loader2 className="w-3 h-3" />
             <span className="text-xs text-muted-foreground"> Recarregar</span>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex flex-col justify-between min-h-[300px]">
-          <Table className=" text-xs">
+      <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
+          <div
+          className={`${
+            isLoading && " opacity-100"
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+        >
+          <div
+            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "} `}
+          ></div>
+          
+        </div>
+          <Table className=" text-xs mt-6">
             <TableHeader>
               <TableRow className="font-bold">
                 <TableCell>Descrição</TableCell>
                 <TableCell >Data</TableCell>
+                <TableCell >Tipo</TableCell>
                 <TableCell>Categoria</TableCell>
                 <TableCell>Banco</TableCell>
                 <TableCell>Método</TableCell>
@@ -88,6 +103,7 @@ import { getCategoryIcon, getTypeColor } from "../utils";
                     </div>
                     {t.descricao}</TableCell>
                   <TableCell>{formatDate(t.data)}</TableCell>
+                  <TableCell>{t.tipo}</TableCell>
                   <TableCell>{t.categoria}</TableCell>
                   <TableCell>{t.banco.titulo}</TableCell>
                   <TableCell>{t.metodopagamento}</TableCell>
