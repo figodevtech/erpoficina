@@ -32,13 +32,14 @@
     Search,
   } from "lucide-react";
   import SearchFilter from "./searchFilter";
-import { Pagination, Tipo_transacao, transacao } from "../types";
+import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { getCategoryIcon, getTypeColor } from "../utils";
+import TransactionDialog from "./transactionDialog/transactionDialog";
 
   interface FinancialTableProps{
-    transactions: transacao[]
+    transactions: Transaction[]
     pagination: Pagination
     handleGetTransactions: (pageNumber?: number, limit?: number, search?: string, tipo?: Tipo_transacao | "")=> void
     search: string
@@ -57,10 +58,13 @@ import { getCategoryIcon, getTypeColor } from "../utils";
                 |LISTA
               </span>
             </CardTitle>
-            <Button>
+            <TransactionDialog
+            >
+            <Button className="hover:cursor-pointer">
               <Plus className="mr-2 h-4 w-4" />
               Nova Transação
             </Button>
+            </TransactionDialog>
           </div>
           <div 
           onClick={()=>{handleGetTransactions(pagination.page, pagination.limit, search, tipo);handleGetStatusCounter()}}

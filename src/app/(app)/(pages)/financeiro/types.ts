@@ -38,6 +38,11 @@ export enum Banco_tipo {
     EMPRESARIAL = "EMPRESARIAL"
 }
 
+export interface TransactionCustomer {
+    nome: string,
+    cpfcnpj: string,
+}
+
 export interface Banco {
     id:number,
     titulo: string,
@@ -49,7 +54,7 @@ export interface Banco {
 
 }
 
-export interface transacao {
+export interface Transaction {
     id: number;
     descricao: string;
     valor: number;
@@ -60,6 +65,23 @@ export interface transacao {
     cliente_id?: number;
     banco_id: number;
     banco: Banco
+    nomepagador?: string;
+    cpfcnpjpagador?: string
+
+}
+export interface NewTransaction {
+    id?: number;
+    descricao?: string;
+    valor?: number;
+    data?: Date;
+    metodopagamento?: Metodo_pagamento;
+    categoria?: Categoria_transacao;
+    tipo?: Tipo_transacao;
+    cliente_id?: number;
+    banco_id?: number;
+    banco?: Banco
+    nomepagador?: string
+    cpfcnpjpagador?: string
 
 }
 

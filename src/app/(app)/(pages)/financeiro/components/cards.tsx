@@ -22,33 +22,38 @@ interface CardsProps {
 }
 
 export default function Cards({ statusInfo, isLoadingStatus }: CardsProps) {
-
   const handleFormatPercent = (v: number, v2: number) => {
-    if(!v || !v2) {
-
-      return 0
+    if (!v || !v2) {
+      return 0;
     }
-    if(v === 0 || v2 === 0){
-      return 0
+    if (v === 0 || v2 === 0) {
+      return 0;
     }
-    return(
-      Intl.NumberFormat('pt-BR', {style: "percent", maximumFractionDigits: 1,}).format(Math.abs(v)/Math.abs(v2))
-    )
-  }
-  function calcularVariacaoPercentual(valorAtual: number, valorAnterior: number) {
-  const diferenca = valorAtual - valorAnterior;
-  
-  // Evita divisão por zero
-  if (valorAnterior === 0) {
-    return Infinity;
+    return Intl.NumberFormat("pt-BR", {
+      style: "percent",
+      maximumFractionDigits: 1,
+    }).format(Math.abs(v) / Math.abs(v2));
+  };
+  function calcularVariacaoPercentual(
+    valorAtual: number,
+    valorAnterior: number
+  ) {
+    const diferenca = valorAtual - valorAnterior;
+
+    // Evita divisão por zero
+    if (valorAnterior === 0) {
+      return Infinity;
+    }
+
+    // Calcula a variação percentual com base no valor absoluto do anterior
+    const variacaoPercentual = diferenca / Math.abs(valorAnterior);
+
+    return Intl.NumberFormat("pt-BR", {
+      style: "percent",
+      maximumFractionDigits: 1,
+    }).format(variacaoPercentual);
   }
 
-  // Calcula a variação percentual com base no valor absoluto do anterior
-  const variacaoPercentual = (diferenca / Math.abs(valorAnterior));
-
-  return Intl.NumberFormat('pt-BR', {style: "percent", maximumFractionDigits: 1,}).format(variacaoPercentual);
-}
-  
   return (
     <div className="text-nowrap grid gap-4 grid-cols-1 lg:grid-cols-3">
       <Card className="gap-1 py-4 h-fit ">
@@ -69,29 +74,63 @@ export default function Cards({ statusInfo, isLoadingStatus }: CardsProps) {
               </div>
             ) : (
               <span className="text-base lg:text-xl">
-                {statusInfo && formatarEmReal(statusInfo?.mesAtual.somaReceitas)}
+                {statusInfo &&
+                  formatarEmReal(statusInfo?.mesAtual.somaReceitas)}
               </span>
             )}
 
             <p className="text-xs text-muted-foreground">Mensal</p>
           </div>
           <div className="flex flex-col items-end text-xs">
-            <Badge className={`
-              ${statusInfo && (statusInfo.mesAtual.somaReceitas < statusInfo?.mesAnterior.somaReceitas && "bg-red-700")}
-              ${statusInfo && (statusInfo.mesAtual.somaReceitas >= statusInfo?.mesAnterior.somaReceitas && "bg-green-700")}
-              ${statusInfo && ((statusInfo.mesAtual.somaReceitas/statusInfo?.mesAnterior.somaReceitas*100) >= 50 && "bg-yellow-700")}
-              ${statusInfo && ((statusInfo.mesAtual.somaReceitas/statusInfo?.mesAnterior.somaReceitas*100) >= 80 && "bg-blue-700")}
-              mb-1`}>
+            <Badge
+              className={`
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaReceitas <
+                  statusInfo?.mesAnterior.somaReceitas &&
+                "bg-red-700"
+              }
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaReceitas >=
+                  statusInfo?.mesAnterior.somaReceitas &&
+                "bg-green-700"
+              }
+              ${
+                statusInfo &&
+                (statusInfo.mesAtual.somaReceitas /
+                  statusInfo?.mesAnterior.somaReceitas) *
+                  100 >=
+                  50 &&
+                "bg-yellow-700"
+              }
+              ${
+                statusInfo &&
+                (statusInfo.mesAtual.somaReceitas /
+                  statusInfo?.mesAnterior.somaReceitas) *
+                  100 >=
+                  80 &&
+                "bg-blue-700"
+              }
+              mb-1`}
+            >
               {isLoadingStatus ? (
-              <div className="h-4 flex items-center">
-                <Skeleton className="h-2 w-8"></Skeleton>
-              </div>
-            ) : (
-              
-              statusInfo && handleFormatPercent(statusInfo.mesAtual.somaReceitas,statusInfo.mesAnterior.somaReceitas)
-            )}
-             {statusInfo && (statusInfo.mesAtual.somaReceitas < statusInfo.mesAnterior.somaReceitas && <TrendingDown />)}
-            {statusInfo && (statusInfo.mesAtual.somaReceitas >= statusInfo.mesAnterior.somaReceitas && <TrendingUp />)}
+                <div className="h-4 flex items-center">
+                  <Skeleton className="h-2 w-8"></Skeleton>
+                </div>
+              ) : (
+                statusInfo &&
+                handleFormatPercent(
+                  statusInfo.mesAtual.somaReceitas,
+                  statusInfo.mesAnterior.somaReceitas
+                )
+              )}
+              {statusInfo &&
+                statusInfo.mesAtual.somaReceitas <
+                  statusInfo.mesAnterior.somaReceitas && <TrendingDown />}
+              {statusInfo &&
+                statusInfo.mesAtual.somaReceitas >=
+                  statusInfo.mesAnterior.somaReceitas && <TrendingUp />}
             </Badge>
             <span>Mês anterior</span>
             {isLoadingStatus ? (
@@ -99,11 +138,10 @@ export default function Cards({ statusInfo, isLoadingStatus }: CardsProps) {
                 <Skeleton className="h-2 w-15"></Skeleton>
               </div>
             ) : (
-              
-            <span className="w-fit text-muted-foreground">
-              {statusInfo && formatarEmReal(statusInfo?.mesAnterior.somaReceitas)}
-              
-            </span>
+              <span className="w-fit text-muted-foreground">
+                {statusInfo &&
+                  formatarEmReal(statusInfo?.mesAnterior.somaReceitas)}
+              </span>
             )}
           </div>
         </CardContent>
@@ -126,30 +164,64 @@ export default function Cards({ statusInfo, isLoadingStatus }: CardsProps) {
               </div>
             ) : (
               <span className="text-base lg:text-xl">
-                {statusInfo && formatarEmReal(statusInfo?.mesAtual.somaDespesas)}
+                {statusInfo &&
+                  formatarEmReal(statusInfo?.mesAtual.somaDespesas)}
               </span>
             )}
 
             <p className="text-xs text-muted-foreground">Mensal</p>
           </div>
           <div className="flex flex-col items-end text-xs">
-            <Badge className={`
-              ${statusInfo && (statusInfo.mesAtual.somaDespesas < statusInfo?.mesAnterior.somaDespesas && "bg-green-700")}
-              ${statusInfo && (statusInfo.mesAtual.somaDespesas >= statusInfo?.mesAnterior.somaDespesas && "bg-red-700")}
-              ${statusInfo && ((statusInfo.mesAtual.somaDespesas/statusInfo?.mesAnterior.somaDespesas*100) >= 50 && "bg-yellow-700")}
-              ${statusInfo && ((statusInfo.mesAtual.somaDespesas/statusInfo?.mesAnterior.somaDespesas*100) >= 80 && "bg-orange-700")}
-              mb-1`}>
+            <Badge
+              className={`
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaDespesas <
+                  statusInfo?.mesAnterior.somaDespesas &&
+                "bg-green-700"
+              }
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaDespesas >=
+                  statusInfo?.mesAnterior.somaDespesas &&
+                "bg-red-700"
+              }
+              ${
+                statusInfo &&
+                (statusInfo.mesAtual.somaDespesas /
+                  statusInfo?.mesAnterior.somaDespesas) *
+                  100 >=
+                  50 &&
+                "bg-yellow-700"
+              }
+              ${
+                statusInfo &&
+                (statusInfo.mesAtual.somaDespesas /
+                  statusInfo?.mesAnterior.somaDespesas) *
+                  100 >=
+                  80 &&
+                "bg-orange-700"
+              }
+              mb-1`}
+            >
               {isLoadingStatus ? (
-              <div className="h-4 flex items-center">
-                <Skeleton className="h-2 w-8"></Skeleton>
-              </div>
-            ) : (
-              
-              statusInfo && handleFormatPercent(statusInfo.mesAtual.somaDespesas,statusInfo.mesAnterior.somaDespesas)
-            )}
-            
-            {statusInfo && (statusInfo.mesAtual.somaDespesas < statusInfo.mesAnterior.somaDespesas && <TrendingDown />)}
-            {statusInfo && (statusInfo.mesAtual.somaDespesas >= statusInfo.mesAnterior.somaDespesas && <TrendingUp />)}
+                <div className="h-4 flex items-center">
+                  <Skeleton className="h-2 w-8"></Skeleton>
+                </div>
+              ) : (
+                statusInfo &&
+                handleFormatPercent(
+                  statusInfo.mesAtual.somaDespesas,
+                  statusInfo.mesAnterior.somaDespesas
+                )
+              )}
+
+              {statusInfo &&
+                statusInfo.mesAtual.somaDespesas <
+                  statusInfo.mesAnterior.somaDespesas && <TrendingDown />}
+              {statusInfo &&
+                statusInfo.mesAtual.somaDespesas >=
+                  statusInfo.mesAnterior.somaDespesas && <TrendingUp />}
             </Badge>
             <span>Mês anterior</span>
             {isLoadingStatus ? (
@@ -157,11 +229,10 @@ export default function Cards({ statusInfo, isLoadingStatus }: CardsProps) {
                 <Skeleton className="h-2 w-15"></Skeleton>
               </div>
             ) : (
-              
-            <span className="w-fit text-muted-foreground">
-              {statusInfo && formatarEmReal(statusInfo?.mesAnterior.somaDespesas)}
-              
-            </span>
+              <span className="w-fit text-muted-foreground">
+                {statusInfo &&
+                  formatarEmReal(statusInfo?.mesAnterior.somaDespesas)}
+              </span>
             )}
           </div>
         </CardContent>
@@ -184,30 +255,79 @@ export default function Cards({ statusInfo, isLoadingStatus }: CardsProps) {
               </div>
             ) : (
               <span className="text-base lg:text-xl">
-                {statusInfo && formatarEmReal(statusInfo?.mesAtual.somaReceitas - statusInfo?.mesAtual.somaDespesas)}
+                {statusInfo &&
+                  formatarEmReal(
+                    statusInfo?.mesAtual.somaReceitas -
+                      statusInfo?.mesAtual.somaDespesas
+                  )}
               </span>
             )}
 
             <p className="text-xs text-muted-foreground">Mensal</p>
           </div>
           <div className="flex flex-col items-end text-xs">
-            <Badge className={`
-              ${statusInfo && (statusInfo.mesAtual.somaReceitas - statusInfo.mesAtual.somaDespesas < statusInfo?.mesAnterior.somaReceitas - statusInfo?.mesAnterior.somaDespesas && "bg-red-700")}
-              ${statusInfo && ((statusInfo.mesAtual.somaReceitas - statusInfo.mesAtual.somaDespesas / statusInfo?.mesAnterior.somaReceitas - statusInfo?.mesAnterior.somaDespesas) > 50 && "bg-yellow-700")}
-              ${statusInfo && ((statusInfo.mesAtual.somaReceitas - statusInfo.mesAtual.somaDespesas / statusInfo?.mesAnterior.somaReceitas - statusInfo?.mesAnterior.somaDespesas) > 80 && "bg-blue-700")}
-              ${statusInfo && (statusInfo.mesAtual.somaReceitas - statusInfo.mesAtual.somaDespesas >= statusInfo?.mesAnterior.somaReceitas - statusInfo?.mesAnterior.somaDespesas && "bg-green-700")}
+            <Badge
+              className={`
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaReceitas -
+                  statusInfo.mesAtual.somaDespesas <
+                  statusInfo?.mesAnterior.somaReceitas -
+                    statusInfo?.mesAnterior.somaDespesas &&
+                "bg-red-700"
+              }
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaReceitas -
+                  statusInfo.mesAtual.somaDespesas /
+                    statusInfo?.mesAnterior.somaReceitas -
+                  statusInfo?.mesAnterior.somaDespesas >
+                  50 &&
+                "bg-yellow-700"
+              }
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaReceitas -
+                  statusInfo.mesAtual.somaDespesas /
+                    statusInfo?.mesAnterior.somaReceitas -
+                  statusInfo?.mesAnterior.somaDespesas >
+                  80 &&
+                "bg-blue-700"
+              }
+              ${
+                statusInfo &&
+                statusInfo.mesAtual.somaReceitas -
+                  statusInfo.mesAtual.somaDespesas >=
+                  statusInfo?.mesAnterior.somaReceitas -
+                    statusInfo?.mesAnterior.somaDespesas &&
+                "bg-green-700"
+              }
               
-              mb-1`}>
+              mb-1`}
+            >
               {isLoadingStatus ? (
-              <div className="h-4 flex items-center">
-                <Skeleton className="h-2 w-8"></Skeleton>
-              </div>
-            ) : (
-              
-              statusInfo && calcularVariacaoPercentual(statusInfo.mesAtual.somaReceitas - statusInfo.mesAtual.somaDespesas, statusInfo.mesAnterior.somaReceitas-statusInfo.mesAnterior.somaDespesas)
-            )}
-             {statusInfo && (statusInfo.mesAtual.somaReceitas - statusInfo.mesAtual.somaDespesas < statusInfo.mesAnterior.somaReceitas-statusInfo.mesAnterior.somaDespesas && <TrendingDown />)}
-            {statusInfo && (statusInfo.mesAtual.somaReceitas - statusInfo.mesAtual.somaDespesas >= statusInfo.mesAnterior.somaReceitas - statusInfo.mesAnterior.somaDespesas && <TrendingUp />)}
+                <div className="h-4 flex items-center">
+                  <Skeleton className="h-2 w-8"></Skeleton>
+                </div>
+              ) : (
+                statusInfo &&
+                calcularVariacaoPercentual(
+                  statusInfo.mesAtual.somaReceitas -
+                    statusInfo.mesAtual.somaDespesas,
+                  statusInfo.mesAnterior.somaReceitas -
+                    statusInfo.mesAnterior.somaDespesas
+                )
+              )}
+              {statusInfo &&
+                statusInfo.mesAtual.somaReceitas -
+                  statusInfo.mesAtual.somaDespesas <
+                  statusInfo.mesAnterior.somaReceitas -
+                    statusInfo.mesAnterior.somaDespesas && <TrendingDown />}
+              {statusInfo &&
+                statusInfo.mesAtual.somaReceitas -
+                  statusInfo.mesAtual.somaDespesas >=
+                  statusInfo.mesAnterior.somaReceitas -
+                    statusInfo.mesAnterior.somaDespesas && <TrendingUp />}
             </Badge>
             <span>Mês anterior</span>
             {isLoadingStatus ? (
@@ -215,16 +335,17 @@ export default function Cards({ statusInfo, isLoadingStatus }: CardsProps) {
                 <Skeleton className="h-2 w-15"></Skeleton>
               </div>
             ) : (
-              
-            <span className="w-fit text-muted-foreground">
-              {statusInfo && formatarEmReal(statusInfo?.mesAnterior.somaReceitas - statusInfo?.mesAnterior.somaDespesas)}
-              
-            </span>
+              <span className="w-fit text-muted-foreground">
+                {statusInfo &&
+                  formatarEmReal(
+                    statusInfo?.mesAnterior.somaReceitas -
+                      statusInfo?.mesAnterior.somaDespesas
+                  )}
+              </span>
             )}
           </div>
         </CardContent>
       </Card>
-      
     </div>
   );
 }
