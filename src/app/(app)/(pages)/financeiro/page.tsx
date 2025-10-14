@@ -54,11 +54,16 @@ export default function FinanceiroPage() {
     setIsLoadingStatus(true);
     try {
       const response = await axios.get("/api/transaction/status-counter", {});
-      if (response.status === 200) {
+      const response2 = await axios.get("/api/transaction/status-counter", {
+        params: {offset: -1}
+      });
+      if (response.status === 200 && response2.status === 200) {
         // console.log(response)
-        const { data } = response;
-        setStatusInfo(data);
-        console.log("Status Carregado:", data);
+       setStatusInfo( {...statusInfo, mesAtual: response.data, mesAnterior: response2.data}
+
+       )
+        console.log("Status Carregado, mês atual:", response.data);
+        console.log("Status Carregado, mês anterior:", response2.data);
       }
     } catch (error) {
       console.log("Erro ao buscar Status:", error);

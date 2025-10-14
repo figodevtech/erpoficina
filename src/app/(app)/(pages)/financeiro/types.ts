@@ -72,8 +72,19 @@ export interface Pagination {
 }
 
 export interface StatusInfo {
-    somaReceitas: number,
-    somaDespesas: number,
-    year: number,
-    month: number
+    mesAtual:{
+
+        somaReceitas: number,
+        somaDespesas: number,
+        year: number,
+        month: number
+    },
+    
+    mesAnterior:{
+
+        somaReceitas: number,
+        somaDespesas: number,
+        year: number,
+        month: number
+    },
 }
