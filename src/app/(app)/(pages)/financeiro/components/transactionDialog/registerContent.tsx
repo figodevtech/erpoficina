@@ -32,16 +32,20 @@ interface RegisterContentProps {
   setSelectedTransactionId?: (value: number | undefined) => void;
   newTransaction: NewTransaction;
   setNewTransaction: (value: NewTransaction) => void;
+  dialogOpen: boolean | undefined;
+  selectedCustomer: TransactionCustomer | undefined;
+  setSelectedCustomer: (value:TransactionCustomer | undefined)=>void
 }
 
 export default function RegisterContent({
   setSelectedTransactionId,
   newTransaction,
   setNewTransaction,
+  selectedCustomer,
+  setSelectedCustomer
 }: RegisterContentProps) {
-  const [selectedCustomer, setSelectedCustomer] = useState<
-    TransactionCustomer | undefined
-  >({ cpfcnpj: "234234", nome: "Lucas Rawlison" });
+  
+  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false)
   const handleChange = (
     field: keyof NewTransaction,
     value: string | number
@@ -58,6 +62,8 @@ export default function RegisterContent({
       });
     }
   }, [, selectedCustomer]);
+
+
 
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
@@ -163,9 +169,7 @@ export default function RegisterContent({
             <div className="flex justify-end">
               {selectedCustomer ? (
                 <Button
-                  onClick={() => {
-                    handleChange("nomepagador","")
-                    handleChange("cpfcnpjpagador","")
+                  onClick={() => {setNewTransaction({...newTransaction, nomepagador:"", cpfcnpjpagador: ""})
                     setSelectedCustomer(undefined)}}
                   className="hover:cursor-pointer"
                   variant={"ghost"}
@@ -174,19 +178,25 @@ export default function RegisterContent({
                   Remover Cliente
                 </Button>
               ) : (
+                <>
                 <CustomerSelect
+                open={isCustomerSelectOpen}
+                setOpen={setIsCustomerSelectOpen}
+                OnSelect={(c)=>{
+                  setSelectedCustomer({cpfcnpj:c.cpfcnpj, nome:c.nomerazaosocial})
+                }}
+                />
 
-                OnSelect={(c)=>{console.log(c)}}
-                >
-
+                
                 <Button
+                onClick={()=>setIsCustomerSelectOpen(true)}
                   className="hover:cursor-pointer"
                   variant={"outline"}
                   size={"sm"}
                 >
                   Selecionar Cliente
                 </Button>
-                </CustomerSelect>
+                </>
               )}
             </div>
             <div className="space-y-4 grid sm:grid-cols-2 gap-4">
