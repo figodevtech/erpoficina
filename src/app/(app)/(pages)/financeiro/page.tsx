@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import Cards from "./components/cards";
 import FinancialTable from "./components/financialTable";
 import Header from "./components/header";
-import { StatusInfo, Tipo_transacao, transacao } from "./types";
+import { StatusInfo, Tipo_transacao, Transaction, } from "./types";
 import axios from "axios";
 import SearchFilter from "./components/searchFilter";
 
 export default function FinanceiroPage() {
-  const [transactions, setTransactions] = useState<transacao[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [statusInfo, setStatusInfo] = useState<StatusInfo | undefined>(undefined);
