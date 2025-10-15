@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { OrdensHeader } from "../components/ordens-header";
 import { OrdensTabs } from "../components/ordens-tabs";
 import { NovaOSDialog } from "../components/dialogs/ordem-dialog";
 import { EditarOSDialog } from "../components/dialogs/editar-ordem-dialog";
@@ -16,11 +15,13 @@ export default function GerenciadorOS() {
   const [openEdit, setOpenEdit] = useState(false);
   const [openBudget, setOpenBudget] = useState(false);
 
+  const handleNovaOS = () => setOpenCreate(true);
+
   return (
     <>
-      <OrdensHeader onNovaOS={() => setOpenCreate(true)} />
-
+      {/* Tabs já inclui o botão "Nova OS" dentro da tabela */}
       <OrdensTabs
+        onNovaOS={handleNovaOS}
         onOpenOrcamento={(row) => {
           setSelected(row as Ordem);
           setOpenBudget(true);
@@ -36,6 +37,9 @@ export default function GerenciadorOS() {
         onOpenChange={setOpenCreate}
         onCreate={async (payload) => {
           await criarOrdem(payload);
+          setOpenCreate(false);
+          // atualiza todas as listas / abas
+          if (typeof window !== "undefined") window.dispatchEvent(new Event("os:refresh"));
         }}
       />
 
@@ -45,6 +49,8 @@ export default function GerenciadorOS() {
         defaultValues={selected}
         onEdit={async (payload) => {
           await editarOrdem(payload.id, payload);
+          setOpenEdit(false);
+          if (typeof window !== "undefined") window.dispatchEvent(new Event("os:refresh"));
         }}
       />
 

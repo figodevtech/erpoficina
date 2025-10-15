@@ -10,10 +10,7 @@ export function OrdensHeader({ onNovaOS }: { onNovaOS: () => void }) {
         <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
         <p className="text-muted-foreground">Crie, acompanhe e finalize OS</p>
       </div> */}
-      <Button onClick={onNovaOS} className="self-start">
-        <PlusCircle className="h-4 w-4 mr-2" />
-        Nova OS
-      </Button>
+
     </div>
   );
 }

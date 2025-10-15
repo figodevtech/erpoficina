@@ -2,87 +2,92 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
 export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!, // server-only
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
-// GET: retorna os itens (produtos/serviços) do orçamento da OS
+// GET: itens (produtos/serviços) do orçamento
 export async function GET(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  _req: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params;
-    const osId = Number(id);
-    if (!osId || Number.isNaN(osId)) {
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-    }
+    const osId = Number(params.id);
+    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
-    // Produtos da OS
+    // Produtos da OS (sem 'codigo' para evitar erro)
     const { data: prodRows, error: prodErr } = await supabase
       .from("osproduto")
-      .select("ordemservicoid, produtoid, quantidade, precounitario, subtotal, produto:produtoid (codigo, descricao)")
+      .select(`
+        ordemservicoid,
+        produtoid,
+        quantidade,
+        precounitario,
+        subtotal,
+        produto:produtoid (descricao)
+      `)
       .eq("ordemservicoid", osId);
     if (prodErr) throw prodErr;
 
     const produtos = (prodRows ?? []).map((r: any) => ({
       produtoid: r.produtoid,
-      codigo: r.produto?.codigo ?? null,
+      codigo: null as string | null, // ajuste se quiser um campo real depois
       descricao: r.produto?.descricao ?? "",
       quantidade: Number(r.quantidade || 1),
       precounitario: Number(r.precounitario || 0),
       subtotal: Number(r.subtotal || 0),
     }));
 
-    // Serviços da OS
+    // Serviços da OS (idem)
     const { data: servRows, error: servErr } = await supabase
       .from("osservico")
-      .select("ordemservicoid, servicoid, quantidade, precounitario, subtotal, servico:servicoid (codigo, descricao)")
+      .select(`
+        ordemservicoid,
+        servicoid,
+        quantidade,
+        precounitario,
+        subtotal,
+        servico:servicoid (descricao)
+      `)
       .eq("ordemservicoid", osId);
     if (servErr) throw servErr;
 
     const servicos = (servRows ?? []).map((r: any) => ({
       servicoid: r.servicoid,
-      codigo: r.servico?.codigo ?? null,
+      codigo: null as string | null, // ajuste se quiser um campo real depois
       descricao: r.servico?.descricao ?? "",
       quantidade: Number(r.quantidade || 1),
       precounitario: Number(r.precounitario || 0),
       subtotal: Number(r.subtotal || 0),
     }));
 
-    return NextResponse.json(
-      { produtos, servicos },
-      { headers: { "Cache-Control": "no-store" } }
-    );
+    return NextResponse.json({ produtos, servicos }, { headers: { "Cache-Control": "no-store" } });
   } catch (err: any) {
     console.error("GET /api/ordens/[id]/orcamento", err);
-    return NextResponse.json({ error: "Falha ao carregar orçamento" }, { status: 500 });
+    return NextResponse.json({ error: err?.message || "Falha ao carregar orçamento" }, { status: 500 });
   }
 }
 
-// PUT: salva itens (produtos/serviços) do orçamento da OS
+// PUT: salva os itens do orçamento
 export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params;
-    const osId = Number(id);
-    if (!osId || Number.isNaN(osId)) {
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-    }
+    const osId = Number(params.id);
+    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
-    const body = await request.json();
-    const produtos: Array<{ produtoid: number; quantidade: number; precounitario: number; subtotal: number }> =
-      Array.isArray(body?.produtos) ? body.produtos : [];
-    const servicos: Array<{ servicoid: number; quantidade: number; precounitario: number; subtotal: number }> =
-      Array.isArray(body?.servicos) ? body.servicos : [];
+    const body = await req.json();
+    const produtos = Array.isArray(body?.produtos) ? body.produtos : [];
+    const servicos = Array.isArray(body?.servicos) ? body.servicos : [];
 
-    // Transação "manual": limpa e insere novamente
+    // limpa e reinsere
     const del1 = await supabase.from("osproduto").delete().eq("ordemservicoid", osId);
     if (del1.error) throw del1.error;
     const del2 = await supabase.from("osservico").delete().eq("ordemservicoid", osId);
@@ -90,9 +95,9 @@ export async function PUT(
 
     if (produtos.length) {
       const ins1 = await supabase.from("osproduto").insert(
-        produtos.map((p) => ({
+        produtos.map((p: any) => ({
           ordemservicoid: osId,
-          produtoid: p.produtoid,
+          produtoid: Number(p.produtoid),
           quantidade: Number(p.quantidade || 1),
           precounitario: Number(p.precounitario || 0),
           subtotal: Number(p.subtotal || 0),
@@ -103,9 +108,9 @@ export async function PUT(
 
     if (servicos.length) {
       const ins2 = await supabase.from("osservico").insert(
-        servicos.map((s) => ({
+        servicos.map((s: any) => ({
           ordemservicoid: osId,
-          servicoid: s.servicoid,
+          servicoid: Number(s.servicoid),
           quantidade: Number(s.quantidade || 1),
           precounitario: Number(s.precounitario || 0),
           subtotal: Number(s.subtotal || 0),
@@ -115,19 +120,15 @@ export async function PUT(
     }
 
     const totalGeral =
-      produtos.reduce((acc, p) => acc + Number(p.subtotal || 0), 0) +
-      servicos.reduce((acc, s) => acc + Number(s.subtotal || 0), 0);
+      produtos.reduce((acc: number, p: any) => acc + Number(p.subtotal || 0), 0) +
+      servicos.reduce((acc: number, s: any) => acc + Number(s.subtotal || 0), 0);
 
-    // opcional: guarda um espelho do total na OS
-    const upd = await supabase
-      .from("ordemservico")
-      .update({ orcamentototal: totalGeral })
-      .eq("id", osId);
+    const upd = await supabase.from("ordemservico").update({ orcamentototal: totalGeral }).eq("id", osId);
     if (upd.error) throw upd.error;
 
     return NextResponse.json({ ok: true, totalGeral });
   } catch (err: any) {
     console.error("PUT /api/ordens/[id]/orcamento", err);
-    return NextResponse.json({ error: "Falha ao salvar orçamento" }, { status: 500 });
+    return NextResponse.json({ error: err?.message || "Falha ao salvar orçamento" }, { status: 500 });
   }
 }

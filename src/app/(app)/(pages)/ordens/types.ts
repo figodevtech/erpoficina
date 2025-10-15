@@ -1,6 +1,6 @@
 export type ID = number | string;
 
-export type StatusOS = "TODAS" | "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
+export type StatusOS = "TODAS" | "ABERTO" | "EM_ANDAMENTO" | "PAGAMENTO" | "CONCLUIDO" | "CANCELADO";
 
 export type Cliente = {
   id: number;
@@ -14,6 +14,7 @@ export type Veiculo = {
   id: number;
   placa: string;
   modelo: string;
+  marca?: string;
   ano?: number | null;
   clienteid?: number;
 };
