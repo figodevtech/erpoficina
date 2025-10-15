@@ -12,16 +12,18 @@ const supabase = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
-// GET: itens (produtos/serviços) do orçamento
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const osId = Number(params.id);
-    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+type RouteCtx = { params: Promise<{ id: string }> };
 
-    // Produtos da OS (sem 'codigo' para evitar erro)
+// GET: itens (produtos/serviços) do orçamento
+export async function GET(_req: NextRequest, { params }: RouteCtx) {
+  try {
+    const { id } = await params;                // <- await aqui
+    const osId = Number(id);
+    if (!Number.isFinite(osId)) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
+
+    // Produtos da OS
     const { data: prodRows, error: prodErr } = await supabase
       .from("osproduto")
       .select(`
@@ -37,14 +39,14 @@ export async function GET(
 
     const produtos = (prodRows ?? []).map((r: any) => ({
       produtoid: r.produtoid,
-      codigo: null as string | null, // ajuste se quiser um campo real depois
+      codigo: null as string | null,
       descricao: r.produto?.descricao ?? "",
       quantidade: Number(r.quantidade || 1),
       precounitario: Number(r.precounitario || 0),
       subtotal: Number(r.subtotal || 0),
     }));
 
-    // Serviços da OS (idem)
+    // Serviços da OS
     const { data: servRows, error: servErr } = await supabase
       .from("osservico")
       .select(`
@@ -60,28 +62,34 @@ export async function GET(
 
     const servicos = (servRows ?? []).map((r: any) => ({
       servicoid: r.servicoid,
-      codigo: null as string | null, // ajuste se quiser um campo real depois
+      codigo: null as string | null,
       descricao: r.servico?.descricao ?? "",
       quantidade: Number(r.quantidade || 1),
       precounitario: Number(r.precounitario || 0),
       subtotal: Number(r.subtotal || 0),
     }));
 
-    return NextResponse.json({ produtos, servicos }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { produtos, servicos },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err: any) {
     console.error("GET /api/ordens/[id]/orcamento", err);
-    return NextResponse.json({ error: err?.message || "Falha ao carregar orçamento" }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message || "Falha ao carregar orçamento" },
+      { status: 500 }
+    );
   }
 }
 
 // PUT: salva os itens do orçamento
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: NextRequest, { params }: RouteCtx) {
   try {
-    const osId = Number(params.id);
-    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    const { id } = await params;                // <- await aqui
+    const osId = Number(id);
+    if (!Number.isFinite(osId)) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
 
     const body = await req.json();
     const produtos = Array.isArray(body?.produtos) ? body.produtos : [];
@@ -123,12 +131,18 @@ export async function PUT(
       produtos.reduce((acc: number, p: any) => acc + Number(p.subtotal || 0), 0) +
       servicos.reduce((acc: number, s: any) => acc + Number(s.subtotal || 0), 0);
 
-    const upd = await supabase.from("ordemservico").update({ orcamentototal: totalGeral }).eq("id", osId);
+    const upd = await supabase
+      .from("ordemservico")
+      .update({ orcamentototal: totalGeral })
+      .eq("id", osId);
     if (upd.error) throw upd.error;
 
     return NextResponse.json({ ok: true, totalGeral });
   } catch (err: any) {
     console.error("PUT /api/ordens/[id]/orcamento", err);
-    return NextResponse.json({ error: err?.message || "Falha ao salvar orçamento" }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message || "Falha ao salvar orçamento" },
+      { status: 500 }
+    );
   }
 }
