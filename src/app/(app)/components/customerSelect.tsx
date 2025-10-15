@@ -112,12 +112,7 @@ export default function CustomerSelect({
                 className="pl-10"
               />
             </div>
-            <Card>
-              <CardHeader className="border-b-2 text-muted-foreground text-xs">
-                Resultados: {pagination.total}
-              </CardHeader>
-
-              <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative flex flex-col justify-between">
+            
                 <div
                   className={`${
                     isLoading && " opacity-100"
@@ -260,8 +255,7 @@ export default function CustomerSelect({
                     </Select>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+             
           </div>
         </div>
       </DialogContent>
