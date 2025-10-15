@@ -14,6 +14,8 @@ import {
   Search,
   DollarSign,
   Loader,
+  Car,
+  PlusCircle,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createClient } from "@supabase/supabase-js";
@@ -23,11 +25,11 @@ import TableSkeleton from "../components/table-skeleton";
 
 // --------- Helpers de UI ---------
 const statusClasses: Record<string, string> = {
-  ABERTA: "bg-blue-600/15 text-blue-400",
+  ABERTO: "bg-blue-600/15 text-blue-400",
   EM_ANDAMENTO: "bg-amber-600/15 text-amber-400",
-  AGUARDANDO_PECA: "bg-purple-600/15 text-purple-400",
-  CONCLUIDA: "bg-green-600/15 text-green-400",
-  CANCELADA: "bg-red-600/15 text-red-400",
+  PAGAMENTO: "bg-indigo-600/15 text-indigo-400",
+  CONCLUIDO: "bg-green-600/15 text-green-400",
+  CANCELADO: "bg-red-600/15 text-red-400",
 };
 
 const prioClasses: Record<string, string> = {
@@ -42,13 +44,11 @@ function fmtDate(s?: string | null) {
   const d = new Date(s);
   return isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
-
 function toMs(s?: string | null): number | null {
   if (!s) return null;
   const t = new Date(s).getTime();
   return isNaN(t) ? null : t;
 }
-
 function fmtDuration(ms: number) {
   if (ms < 0) ms = 0;
   const m = Math.floor(ms / 60000);
@@ -61,7 +61,6 @@ function fmtDuration(ms: number) {
   parts.push(`${min}m`);
   return parts.join(" ");
 }
-
 function useNowTick(periodMs = 60000) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -74,7 +73,7 @@ function useNowTick(periodMs = 60000) {
 // alias local só para datas exibidas na tabela
 type OrdemComDatas = Ordem & {
   dataEntrada?: string | null;
-  dataSaidaPrevista?: string | null;
+  dataSaida?: string | null;
   dataSaidaReal?: string | null;
   prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
 };
@@ -83,10 +82,12 @@ export function OrdensTabela({
   status,
   onOpenOrcamento,
   onEditar,
+  onNovaOS,
 }: {
   status: StatusOS;
   onOpenOrcamento: (row: OrdemComDatas) => void;
   onEditar: (row: OrdemComDatas) => void;
+  onNovaOS: () => void;
 }) {
   // dados
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
@@ -192,17 +193,12 @@ export function OrdensTabela({
     };
   }, [status]);
 
-  // gates
-  const showRows = !isLoading && rows.length > 0;
-  const showEmpty = !isLoading && rows.length === 0;
-
   // rodapé
   const pageCount = rows.length;
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
 
-  // helpers de linha
-  const safeStatus = (s: Ordem["status"]) => (s ?? "ABERTA") as Exclude<StatusOS, "TODAS">;
+  const safeStatus = (s: Ordem["status"]) => (s ?? "ABERTO") as Exclude<StatusOS, "TODAS">;
   const renderTempo = (r: OrdemComDatas) => {
     const startMs =
       toMs(r.dataEntrada) ??
@@ -214,7 +210,7 @@ export function OrdensTabela({
 
     const st = safeStatus(r.status);
     const endMs =
-      st === "CONCLUIDA" || st === "CANCELADA"
+      st === "CONCLUIDO" || st === "CANCELADO"
         ? toMs(r.dataSaidaReal) ??
           toMs((r as any).updatedat) ??
           toMs((r as any).updatedAt) ??
@@ -233,10 +229,10 @@ export function OrdensTabela({
   return (
     <Card className="bg-card">
       <CardContent className="p-3 sm:p-4">
-        {/* filtro topo */}
-        <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <div className="relative w-full sm:max-w-sm">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60" />
+        {/* filtro topo + botão Nova OS */}
+        <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center justify-between">
+          <div className="relative w-full sm:max-w-sm flex-1">
+            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 opacity-60" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -244,6 +240,11 @@ export function OrdensTabela({
               className="pl-8"
             />
           </div>
+
+          <Button onClick={onNovaOS} className="whitespace-nowrap sm:self-auto">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nova OS
+          </Button>
         </div>
 
         {/* tabela */}
@@ -252,17 +253,15 @@ export function OrdensTabela({
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead className="min-w-[96px]">#</TableHead>
+                <TableHead className="min-w-[240px]">Cliente / Veículo</TableHead>
                 <TableHead className="min-w-[220px]">Descrição</TableHead>
-                <TableHead className="min-w-[160px]">Cliente</TableHead>
-                <TableHead className="min-w-[160px]">Veículo</TableHead>
                 <TableHead className="min-w-[140px]">Setor</TableHead>
                 <TableHead className="min-w-[130px]">Entrada</TableHead>
-                <TableHead className="min-w-[130px]">Prevista</TableHead>
                 <TableHead className="min-w-[130px]">Saída</TableHead>
                 <TableHead className="min-w-[120px]">Status</TableHead>
                 <TableHead className="min-w-[120px]">Prioridade</TableHead>
                 <TableHead className="min-w-[120px]">Tempo</TableHead>
-                <TableHead className="min-w-[120px] text-center">Ações</TableHead>
+                <TableHead className="min-w-[160px] text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -271,18 +270,16 @@ export function OrdensTabela({
                 <TableSkeleton
                   rows={8}
                   columns={[
-                    { cellClass: "min-w-[96px]", barClass: "h-4 w-14" },
-                    { cellClass: "min-w-[220px]", barClass: "h-4 w-56" },
-                    { cellClass: "min-w-[160px]", barClass: "h-4 w-40" },
-                    { cellClass: "min-w-[160px]", barClass: "h-4 w-44" },
-                    { cellClass: "min-w-[140px]", barClass: "h-4 w-28" },
-                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
-                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
-                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
-                    { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },
-                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
-                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
-                    { cellClass: "min-w-[120px]", barClass: "h-8 w-20" },
+                    { cellClass: "min-w-[96px]", barClass: "h-4 w-14" },   // #
+                    { cellClass: "min-w-[240px]", barClass: "h-4 w-56" },  // Cliente / Veículo
+                    { cellClass: "min-w-[220px]", barClass: "h-4 w-44" },  // Descrição
+                    { cellClass: "min-w-[140px]", barClass: "h-4 w-28" },  // Setor
+                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },  // Entrada
+                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },  // Saída
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },  // Status
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Prioridade
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Tempo
+                    { cellClass: "min-w-[160px]", barClass: "h-8 w-24" },  // Ações
                   ]}
                 />
               )}
@@ -290,31 +287,55 @@ export function OrdensTabela({
               {!isLoading &&
                 rows.map((r) => {
                   const st = safeStatus(r.status);
+                  const clienteNome = r.cliente?.nome ?? "—";
+                  const veiculoStr = r.veiculo
+                    ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
+                    : "";
+
+                  const canBudget = st === "CONCLUIDO"; // mude para: const canBudget = st === "CONCLUIDO" || st === "PAGAMENTO";
+
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-mono">{r.id}</TableCell>
+
+                      <TableCell className="min-w-0">
+                        <div className="truncate font-medium text-[15px]">{clienteNome}</div>
+                        {veiculoStr && (
+                          <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+                            <Car className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{veiculoStr}</span>
+                          </div>
+                        )}
+                      </TableCell>
+
                       <TableCell className="max-w-[380px] truncate">{r.descricao || "—"}</TableCell>
-                      <TableCell>{r.cliente?.nome ?? "—"}</TableCell>
-                      <TableCell>{r.veiculo ? `${r.veiculo.modelo} • ${r.veiculo.placa}` : "—"}</TableCell>
                       <TableCell>{r.setor?.nome ?? "—"}</TableCell>
                       <TableCell>{fmtDate(r.dataEntrada)}</TableCell>
-                      <TableCell>{fmtDate(r.dataSaidaPrevista)}</TableCell>
-                      <TableCell>{fmtDate(r.dataSaidaReal)}</TableCell>
+                      <TableCell>{fmtDate(r.dataSaida)}</TableCell>
                       <TableCell>
                         <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>
                       </TableCell>
                       <TableCell>{renderPrio(r.prioridade)}</TableCell>
                       <TableCell>{renderTempo(r)}</TableCell>
-                      <TableCell className="text-center flex items-center justify-center gap-1">
+
+                      {/* Ações */}
+                      <TableCell className="flex items-center justify-center gap-1 text-center">
                         <Button
-                          variant="outline"
                           size="sm"
                           onClick={() => onOpenOrcamento(r)}
-                          disabled={st !== "CONCLUIDA"}
-                          title={st === "CONCLUIDA" ? "Abrir orçamento" : "Disponível quando concluída"}
+                          disabled={!canBudget}
+                          title={canBudget ? "Abrir orçamento" : "Disponível quando concluída"}
+                          // Verde cheio quando disponível, discreto quando não
+                          variant={canBudget ? "default" : "outline"}
+                          className={
+                            canBudget
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
+                              : "bg-transparent"
+                          }
                         >
-                          <DollarSign className="h-4 w-4" />
+                          <DollarSign className={`h-4 w-4 ${canBudget ? "text-white" : ""}`} />
                         </Button>
+
                         <Button variant="outline" size="sm" onClick={() => onEditar(r)} title="Editar / Tramitar OS">
                           ✎
                         </Button>
@@ -325,7 +346,7 @@ export function OrdensTabela({
 
               {!isLoading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={12} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
                     Nenhuma OS encontrada.
                   </TableCell>
                 </TableRow>
@@ -335,11 +356,11 @@ export function OrdensTabela({
         </div>
 
         {/* Rodapé — mesmo visual */}
-        <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex flex-nowrap text-xs text-muted-foreground">
             <span>{start || 0}</span> - <span>{end || 0}</span>
             <span className="ml-1 hidden sm:block">de {total}</span>
-            <Loader className={`ml-2 w-4 h-full animate-spin transition-all ${isLoading ? "opacity-100" : "opacity-0"}`} />
+            <Loader className={`ml-2 h-full w-4 animate-spin transition-all ${isLoading ? "opacity-100" : "opacity-0"}`} />
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
@@ -378,7 +399,7 @@ export function OrdensTabela({
                 setLimit(Number(v));
               }}
             >
-              <SelectTrigger className="hover:cursor-pointer ml-2">
+              <SelectTrigger className="ml-2 hover:cursor-pointer">
                 <SelectValue placeholder={limit}></SelectValue>
               </SelectTrigger>
               <SelectContent>

@@ -3,11 +3,24 @@
 import { JSX, useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { ClipboardList, Wrench, Loader2, PackageSearch, CheckCircle2, XCircle } from "lucide-react";
+import {
+  ClipboardList,
+  Wrench,
+  Loader2,
+  CreditCard,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import { OrdensTabela } from "./ordens-tabela";
 import { createClient } from "@supabase/supabase-js";
 
-type StatusOS = "TODAS" | "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
+export type StatusOS =
+  | "TODAS"
+  | "ABERTO"
+  | "EM_ANDAMENTO"
+  | "PAGAMENTO"
+  | "CONCLUIDO"
+  | "CANCELADO";
 
 const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string; active: string }[] = [
   {
@@ -19,8 +32,8 @@ const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string
       "data-[state=active]:bg-slate-500/15 data-[state=active]:text-slate-200 data-[state=active]:ring-slate-500/30",
   },
   {
-    key: "ABERTA",
-    label: "Abertas",
+    key: "ABERTO",
+    label: "Aberto",
     icon: <Wrench className="h-4 w-4" />,
     dot: "bg-amber-500",
     active:
@@ -28,117 +41,163 @@ const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string
   },
   {
     key: "EM_ANDAMENTO",
-    label: "Em andamento",
+    label: "Em Andamento",
     icon: <Loader2 className="h-4 w-4" />,
     dot: "bg-blue-500",
-    active: "data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-200 data-[state=active]:ring-blue-500/30",
-  },
-  {
-    key: "AGUARDANDO_PECA",
-    label: "Aguard. peça",
-    icon: <PackageSearch className="h-4 w-4" />,
-    dot: "bg-violet-500",
     active:
-      "data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-200 data-[state=active]:ring-violet-500/30",
+      "data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-200 data-[state=active]:ring-blue-500/30",
   },
   {
-    key: "CONCLUIDA",
-    label: "Concluídas",
+    key: "PAGAMENTO",
+    label: "Pagamento",
+    icon: <CreditCard className="h-4 w-4" />,
+    dot: "bg-indigo-500",
+    active:
+      "data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-200 data-[state=active]:ring-indigo-500/30",
+  },
+  {
+    key: "CONCLUIDO",
+    label: "Concluído",
     icon: <CheckCircle2 className="h-4 w-4" />,
     dot: "bg-emerald-500",
     active:
       "data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-200 data-[state=active]:ring-emerald-500/30",
   },
   {
-    key: "CANCELADA",
-    label: "Canceladas",
+    key: "CANCELADO",
+    label: "Cancelado",
     icon: <XCircle className="h-4 w-4" />,
     dot: "bg-rose-500",
-    active: "data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-200 data-[state=active]:ring-rose-500/30",
+    active:
+      "data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-200 data-[state=active]:ring-rose-500/30",
   },
 ];
+
+// --- normalização robusta das chaves vindas da API ---
+function normalizeKey(raw: string): Exclude<StatusOS, "TODAS"> | null {
+  if (!raw) return null;
+
+  // remove acentos (Concluído -> CONCLUIDO), trim, maiúsculas
+  let k = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+  // troca espaços por _
+  k = k.replace(/\s+/g, "_");
+
+  // sinônimos mais comuns
+  const alias: Record<string, Exclude<StatusOS, "TODAS">> = {
+    ABERTA: "ABERTO",
+    EM_ANDAMENTO: "EM_ANDAMENTO",
+    "EM-ANDAMENTO": "EM_ANDAMENTO",
+    PAGTO: "PAGAMENTO",
+    PAGAMENTOS: "PAGAMENTO",
+    CONCLUIDA: "CONCLUIDO",
+    CONCLUIDOS: "CONCLUIDO",
+    CANCELADAS: "CANCELADO",
+  };
+
+  return (alias[k] ?? (k as any)) as Exclude<StatusOS, "TODAS">;
+}
 
 export function OrdensTabs({
   onOpenOrcamento,
   onEditar,
+  onNovaOS,
 }: {
   onOpenOrcamento: (row: any) => void;
   onEditar: (row: any) => void;
+  onNovaOS: () => void;
 }) {
   const [active, setActive] = useState<StatusOS>("TODAS");
-  const [stats, setStats] = useState<Record<string, number>>({
-    ABERTA: 0,
+  const [stats, setStats] = useState<Record<Exclude<StatusOS, "TODAS">, number>>({
+    ABERTO: 0,
     EM_ANDAMENTO: 0,
-    AGUARDANDO_PECA: 0,
-    CONCLUIDA: 0,
-    CANCELADA: 0,
+    PAGAMENTO: 0,
+    CONCLUIDO: 0,
+    CANCELADO: 0,
   });
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
 
+  // carrega contadores da API e normaliza as chaves
   const loadStats = async () => {
     try {
       const r = await fetch("/api/ordens/stats", { cache: "no-store" });
       const j = await r.json();
-      if (r.ok) setStats(j.counters ?? {});
-    } catch {}
+
+      // aceita vários formatos: { counters: {...} } | { stats: {...} } | { ... }
+      const src: Record<string, any> =
+        j?.counters ?? j?.stats ?? j ?? {};
+
+      const next: Record<Exclude<StatusOS, "TODAS">, number> = {
+        ABERTO: 0,
+        EM_ANDAMENTO: 0,
+        PAGAMENTO: 0,
+        CONCLUIDO: 0,
+        CANCELADO: 0,
+      };
+
+      for (const [rawKey, val] of Object.entries(src)) {
+        const nk = normalizeKey(rawKey);
+        if (!nk || next[nk] === undefined) continue;
+        next[nk] += Number(val) || 0;
+      }
+
+      setStats(next);
+    } catch (e) {
+      // em caso de erro, zera para não mostrar valores "fantasmas"
+      setStats({
+        ABERTO: 0,
+        EM_ANDAMENTO: 0,
+        PAGAMENTO: 0,
+        CONCLUIDO: 0,
+        CANCELADO: 0,
+      });
+      console.error("Falha ao carregar stats de OS:", e);
+    }
   };
 
   useEffect(() => {
     loadStats();
   }, []);
 
-  // Realtime contadores
+  // Realtime: atualiza contadores ao mudar a tabela
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     if (!url || !anon) return;
 
-    const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const supabase = createClient(url, anon, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
     const channel = supabase
       .channel("os-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () => loadStats())
       .subscribe();
 
+    // também escuta refresh local (ex.: após criar/editar)
+    const onLocalRefresh = () => loadStats();
+    window.addEventListener("os:refresh", onLocalRefresh);
+
     return () => {
+      window.removeEventListener("os:refresh", onLocalRefresh);
       supabase.removeChannel(channel);
     };
   }, []);
 
   return (
     <div className="space-y-4">
-      {/* Cards compactos (mantidos) */}
+      {/* Resumo compacto com valores corrigidos */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <MiniCard accent="text-slate-300" title="Total" value={total} icon={<ClipboardList className="h-4 w-4" />} />
-        <MiniCard
-          accent="text-amber-300"
-          title="Abertas"
-          value={stats.ABERTA || 0}
-          icon={<Wrench className="h-4 w-4" />}
-        />
-        <MiniCard
-          accent="text-blue-300"
-          title="Em andamento"
-          value={stats.EM_ANDAMENTO || 0}
-          icon={<Loader2 className="h-4 w-4" />}
-        />
-        <MiniCard
-          accent="text-violet-300"
-          title="Aguard. peça"
-          value={stats.AGUARDANDO_PECA || 0}
-          icon={<PackageSearch className="h-4 w-4" />}
-        />
-        <MiniCard
-          accent="text-emerald-300"
-          title="Concluídas"
-          value={stats.CONCLUIDA || 0}
-          icon={<CheckCircle2 className="h-4 w-4" />}
-        />
-        <MiniCard
-          accent="text-rose-300"
-          title="Canceladas"
-          value={stats.CANCELADA || 0}
-          icon={<XCircle className="h-4 w-4" />}
-        />
+        <MiniCard accent="text-slate-300"   title="Total"        value={total}                 icon={<ClipboardList className="h-4 w-4" />} />
+        <MiniCard accent="text-amber-300"   title="Aberto"       value={stats.ABERTO}          icon={<Wrench className="h-4 w-4" />} />
+        <MiniCard accent="text-blue-300"    title="Em Andamento" value={stats.EM_ANDAMENTO}    icon={<Loader2 className="h-4 w-4" />} />
+        <MiniCard accent="text-indigo-300"  title="Pagamento"    value={stats.PAGAMENTO}       icon={<CreditCard className="h-4 w-4" />} />
+        <MiniCard accent="text-emerald-300" title="Concluído"    value={stats.CONCLUIDO}       icon={<CheckCircle2 className="h-4 w-4" />} />
+        <MiniCard accent="text-rose-300"    title="Cancelado"    value={stats.CANCELADO}       icon={<XCircle className="h-4 w-4" />} />
       </div>
 
       <Tabs value={active} onValueChange={(v) => setActive(v as StatusOS)} className="w-full">
@@ -146,7 +205,6 @@ export function OrdensTabs({
           className={[
             "w-full overflow-x-auto justify-start gap-2",
             "rounded-lg px-1 py-1",
-            // fundo mais claro para destaque no dark
             "bg-muted/30 supports-[backdrop-filter]:bg-muted/25 backdrop-blur",
             "ring-1 ring-border",
           ].join(" ")}
@@ -173,7 +231,12 @@ export function OrdensTabs({
 
         {statusTabs.map((t) => (
           <TabsContent key={t.key} value={t.key} className="mt-3">
-            <OrdensTabela status={t.key} onOpenOrcamento={onOpenOrcamento} onEditar={onEditar} />
+            <OrdensTabela
+              status={t.key}
+              onOpenOrcamento={onOpenOrcamento}
+              onEditar={onEditar}
+              onNovaOS={onNovaOS}
+            />
           </TabsContent>
         ))}
       </Tabs>
