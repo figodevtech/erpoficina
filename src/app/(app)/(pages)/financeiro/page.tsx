@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Cards from "./components/cards";
 import FinancialTable from "./components/financialTable";
 import Header from "./components/header";
-import { StatusInfo, Tipo_transacao, Transaction, } from "./types";
+import { StatusInfo, Tipo_transacao, Transaction } from "./types";
 import axios from "axios";
 import SearchFilter from "./components/searchFilter";
 
@@ -11,7 +11,9 @@ export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
-  const [statusInfo, setStatusInfo] = useState<StatusInfo | undefined>(undefined);
+  const [statusInfo, setStatusInfo] = useState<StatusInfo | undefined>(
+    undefined
+  );
   const [tipo, setTipo] = useState<Tipo_transacao | "">("");
   const [pagination, setPagination] = useState({
     total: 0,
@@ -55,13 +57,15 @@ export default function FinanceiroPage() {
     try {
       const response = await axios.get("/api/transaction/status-counter", {});
       const response2 = await axios.get("/api/transaction/status-counter", {
-        params: {offset: -1}
+        params: { offset: -1 },
       });
       if (response.status === 200 && response2.status === 200) {
         // console.log(response)
-       setStatusInfo( {...statusInfo, mesAtual: response.data, mesAnterior: response2.data}
-
-       )
+        setStatusInfo({
+          ...statusInfo,
+          mesAtual: response.data,
+          mesAnterior: response2.data,
+        });
         console.log("Status Carregado, mês atual:", response.data);
         console.log("Status Carregado, mês anterior:", response2.data);
       }
@@ -84,10 +88,7 @@ export default function FinanceiroPage() {
   return (
     <div className="p-y-4 space-y-4">
       {/* <Header /> */}
-      <Cards
-      isLoadingStatus={isLoadingStatus}
-      statusInfo={statusInfo}
-      />
+      <Cards isLoadingStatus={isLoadingStatus} statusInfo={statusInfo} />
       <SearchFilter
         pagination={pagination}
         handleGetTransactions={handleGetTransactions}
@@ -95,10 +96,9 @@ export default function FinanceiroPage() {
         setSearch={setSearch}
         search={search}
         setTipo={setTipo}
-
       />
       <FinancialTable
-      handleGetStatusCounter={handleGetStatusCounter}
+        handleGetStatusCounter={handleGetStatusCounter}
         isLoading={isLoading}
         search={search}
         tipo={tipo}

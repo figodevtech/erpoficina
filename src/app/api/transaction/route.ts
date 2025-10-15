@@ -14,6 +14,8 @@ const WRITABLE_FIELDS = new Set([
   "tipo",
   "cliente_id",
   "banco_id",
+  "nomepagador",
+  "cpfcnpjpagador",
 ]);
 
 /** Campos retornados no select padrão (transacao) */
@@ -224,6 +226,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
 
     const payload = sanitizeTransacaoPayload(json, { strict: true });
 

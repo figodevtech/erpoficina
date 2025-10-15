@@ -50,13 +50,31 @@ export default function RegisterContent({
   setSelectedCustomer,
 }: RegisterContentProps) {
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [banks, setBanks] = useState<Banco[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+  const [banks, setBanks] = useState<Banco[]>([]);
   const handleChange = (
     field: keyof NewTransaction,
     value: string | number
   ) => {
     setNewTransaction({ ...newTransaction, [field]: value });
+  };
+
+  const handleGetBanks = async () => {
+    setIsLoadingBanks(true);
+    try {
+      const response = await axios.get("/api/banks", {});
+      if (response.status === 200) {
+        // console.log(response)
+        const { data } = response;
+        setBanks(data.data);
+        console.log("Bancos carregados:", data.data);
+      }
+    } catch (error) {
+      console.log("Erro ao buscar bancos:", error);
+    } finally {
+      setIsLoadingBanks(false);
+    }
   };
 
   useEffect(() => {
@@ -97,12 +115,15 @@ export default function RegisterContent({
     } finally {
       setIsSubmitting(false);
     }
-  }
-
+  };
 
   useEffect(() => {
     console.log(newTransaction);
   }, [newTransaction]);
+
+  useEffect(()=>{
+    handleGetBanks()
+  },[])
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
@@ -303,7 +324,6 @@ export default function RegisterContent({
               form="register-form"
               // disabled={isSubmitting}
               className="flex-1 text-sm sm:text-base hover:cursor-pointer"
-
               onClick={handleCreateTransaction}
             >
               {isSubmitting ? (
