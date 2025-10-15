@@ -22,11 +22,13 @@
   } from "@/components/ui/table";
   import {
     BanknoteArrowUp,
+    Calendar,
     ChevronDown,
     ChevronLeftIcon,
     ChevronRightIcon,
     ChevronsLeft,
     ChevronsRight,
+    Clock8,
     Loader2,
     Plus,
     Search,
@@ -87,12 +89,12 @@ import TransactionDialog from "./transactionDialog/transactionDialog";
           <Table className=" text-xs mt-6">
             <TableHeader>
               <TableRow className="font-bold">
-                <TableCell>Descrição</TableCell>
-                <TableCell >Data</TableCell>
-                <TableCell >Tipo</TableCell>
-                <TableCell>Categoria</TableCell>
-                <TableCell>Banco</TableCell>
-                <TableCell>Método</TableCell>
+                <TableCell >Descrição</TableCell>
+                <TableCell className="hidden md:table-cell">Data</TableCell>
+                <TableCell className="hidden md:table-cell">Tipo</TableCell>
+                <TableCell className="hidden md:table-cell">Categoria</TableCell>
+                <TableCell className="hidden md:table-cell">Banco</TableCell>
+                <TableCell className="hidden md:table-cell">Método</TableCell>
                 <TableCell className="text-right">Valor</TableCell>
                 <TableCell ></TableCell>
               </TableRow>
@@ -105,13 +107,26 @@ import TransactionDialog from "./transactionDialog/transactionDialog";
                     {getCategoryIcon(t.categoria)}
                     {/* <BanknoteArrowUp className="text-black-500 size-4"/> */}
                     </div>
-                    {t.descricao}</TableCell>
-                  <TableCell>{formatDate(t.data)}</TableCell>
-                  <TableCell>{t.tipo}</TableCell>
-                  <TableCell>{t.categoria}</TableCell>
-                  <TableCell>{t.banco.titulo}</TableCell>
-                  <TableCell>{t.metodopagamento}</TableCell>
-                  <TableCell className={`text-right ${getTypeColor(t.tipo)}`}>{formatarEmReal(t.valor)}</TableCell>
+                    <div className="flex flex-col items-start">
+
+                    {t.descricao}
+                    <span className="text-xs text-muted-foreground md:hidden">{t.banco.titulo} - {t.metodopagamento} </span>
+                    <span className="text-muted-foreground text-nowrap flex-nowrap flex justify-center items-center gap-2 md:hidden"><Calendar className="w-[10px] h-[10px]"/> {formatDate(t.data)}</span>
+                    </div>
+                    
+                    </TableCell>
+                  <TableCell className="hidden md:table-cell">{formatDate(t.data)}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.tipo}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.categoria}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.banco.titulo}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.metodopagamento}</TableCell>
+                  <TableCell className={`text-right ${getTypeColor(t.tipo)}`}>
+                    <div className="flex flex-col items-end">
+                      
+                    {(t.tipo === "RECEITA" || t.tipo === "DEPOSITO") && "+ "}{(t.tipo === "DESPESA" || t.tipo === "SAQUE") && "- "}{formatarEmReal(t.valor)}
+
+                    </div>
+                    </TableCell>
                   <TableCell className=" flex justify-end "><ChevronDown/></TableCell>
                 </TableRow>
               )) }

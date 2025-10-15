@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Banco,
   Categoria_transacao,
   Metodo_pagamento,
   NewTransaction,
@@ -27,6 +28,10 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { formatCpfCnpj } from "../../utils";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
+import { Upload } from "lucide-react";
 
 interface RegisterContentProps {
   setSelectedTransactionId?: (value: number | undefined) => void;
@@ -34,7 +39,7 @@ interface RegisterContentProps {
   setNewTransaction: (value: NewTransaction) => void;
   dialogOpen: boolean | undefined;
   selectedCustomer: TransactionCustomer | undefined;
-  setSelectedCustomer: (value:TransactionCustomer | undefined)=>void
+  setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
 }
 
 export default function RegisterContent({
@@ -42,10 +47,11 @@ export default function RegisterContent({
   newTransaction,
   setNewTransaction,
   selectedCustomer,
-  setSelectedCustomer
+  setSelectedCustomer,
 }: RegisterContentProps) {
-  
-  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false)
+  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [banks, setBanks] = useState<Banco[]>([])
   const handleChange = (
     field: keyof NewTransaction,
     value: string | number
@@ -59,12 +65,44 @@ export default function RegisterContent({
         ...newTransaction,
         nomepagador: selectedCustomer.nome,
         cpfcnpjpagador: selectedCustomer.cpfcnpj,
+        cliente_id: selectedCustomer.id,
       });
     }
   }, [, selectedCustomer]);
 
+  const handleCreateTransaction = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await axios.post("/api/transaction", {
+        newTransaction,
+      });
+
+      if (response.status === 201 && setSelectedTransactionId) {
+        console.log(response.data.data);
+        toast("Sucesso!", {
+          description: "Transação registrada.",
+          duration: 2000,
+        });
+        setSelectedTransactionId(response.data.id);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast("Erro", {
+          description: error.response?.data.error,
+          duration: 2000,
+        });
+
+        console.log(error);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
 
+  useEffect(() => {
+    console.log(newTransaction);
+  }, [newTransaction]);
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
@@ -82,7 +120,7 @@ export default function RegisterContent({
                 <Label htmlFor="tipo">Tipo</Label>
                 <Select
                   value={newTransaction.tipo}
-                  onValueChange={(v) => handleChange("categoria", v)}
+                  onValueChange={(v) => handleChange("tipo", v)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione" />
@@ -119,6 +157,24 @@ export default function RegisterContent({
                   type="datetime-local"
                   onChange={(e) => handleChange("data", e.target.value)}
                 ></Input>
+              </div>
+              <div className="space-y-2 w-full">
+                <Label htmlFor="banco">Banco</Label>
+                <Select
+                  value={newTransaction.banco_id?.toString()}
+                  onValueChange={(v) => handleChange("banco_id", Number(v))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {banks.map((b) => (
+                      <SelectItem key={b.id} value={b.id.toString()}>
+                        {b.titulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 w-full">
                 <Label htmlFor="metodopagamento">Método de pagamento</Label>
@@ -169,8 +225,15 @@ export default function RegisterContent({
             <div className="flex justify-end">
               {selectedCustomer ? (
                 <Button
-                  onClick={() => {setNewTransaction({...newTransaction, nomepagador:"", cpfcnpjpagador: ""})
-                    setSelectedCustomer(undefined)}}
+                  onClick={() => {
+                    setNewTransaction({
+                      ...newTransaction,
+                      nomepagador: "",
+                      cpfcnpjpagador: "",
+                      cliente_id: null,
+                    });
+                    setSelectedCustomer(undefined);
+                  }}
                   className="hover:cursor-pointer"
                   variant={"ghost"}
                   size={"sm"}
@@ -179,23 +242,26 @@ export default function RegisterContent({
                 </Button>
               ) : (
                 <>
-                <CustomerSelect
-                open={isCustomerSelectOpen}
-                setOpen={setIsCustomerSelectOpen}
-                OnSelect={(c)=>{
-                  setSelectedCustomer({cpfcnpj:c.cpfcnpj, nome:c.nomerazaosocial})
-                }}
-                />
+                  <CustomerSelect
+                    open={isCustomerSelectOpen}
+                    setOpen={setIsCustomerSelectOpen}
+                    OnSelect={(c) => {
+                      setSelectedCustomer({
+                        cpfcnpj: c.cpfcnpj,
+                        nome: c.nomerazaosocial,
+                        id: c.id,
+                      });
+                    }}
+                  />
 
-                
-                <Button
-                onClick={()=>setIsCustomerSelectOpen(true)}
-                  className="hover:cursor-pointer"
-                  variant={"outline"}
-                  size={"sm"}
-                >
-                  Selecionar Cliente
-                </Button>
+                  <Button
+                    onClick={() => setIsCustomerSelectOpen(true)}
+                    className="hover:cursor-pointer"
+                    variant={"outline"}
+                    size={"sm"}
+                  >
+                    Selecionar Cliente
+                  </Button>
                 </>
               )}
             </div>
@@ -216,7 +282,10 @@ export default function RegisterContent({
                 <Input
                   disabled={selectedCustomer ? true : false}
                   id="cpfcnpjpagador"
-                  value={newTransaction.cpfcnpjpagador || ""}
+                  maxLength={14}
+                  value={
+                    formatCpfCnpj(newTransaction.cpfcnpjpagador || "") || ""
+                  }
                   onChange={(e) =>
                     handleChange("cpfcnpjpagador", e.target.value)
                   }
@@ -234,21 +303,20 @@ export default function RegisterContent({
               form="register-form"
               // disabled={isSubmitting}
               className="flex-1 text-sm sm:text-base hover:cursor-pointer"
-              // onClick={handleUpdateProduct}
+
+              onClick={handleCreateTransaction}
             >
-              {/* {isSubmitting ? (
-                                      <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                        Salvando...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Upload className="h-4 w-4 mr-2" />
-        
-                                        Salvar
-                                      </>
-                                    )} */}
-              Salvar
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Registrar
+                </>
+              )}
             </Button>
             <DialogClose asChild>
               <Button className="hover:cursor-pointer" variant={"outline"}>

@@ -56,12 +56,9 @@ const ESTOQUE_STATUS: {
   { value: Estoque_status.CRITICO, badge: "destructive" },
 ];
 
-
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
-
-
 
 interface RegisterContentProps {
   setSelectedProductId?: (value: number | undefined) => void;
@@ -84,33 +81,33 @@ export default function RegisterContent({
   };
 
   const handleCreateProduct = async () => {
-      setIsSubmitting(true);
-      try {
-        const response = await axios.post("/api/products", {
-          newProduct,
+    setIsSubmitting(true);
+    try {
+      const response = await axios.post("/api/products", {
+        newProduct,
+      });
+
+      if (response.status === 201 && setSelectedProductId) {
+        console.log(response.data.data);
+        toast("Sucesso!", {
+          description: "Produto cadastrado.",
+          duration: 2000,
         });
-  
-        if (response.status === 201 && setSelectedProductId) {
-          console.log(response.data.data);
-          toast("Sucesso!", {
-            description: "Produto cadastrado.",
-            duration: 2000,
-          });
-          setSelectedProductId(response.data.id);
-        }
-      } catch (error) {
-        if (isAxiosError(error)) {
-          toast("Erro", {
-            description: error.response?.data.error,
-            duration: 2000,
-          });
-  
-          console.log(error);
-        }
-      } finally {
-        setIsSubmitting(false);
+        setSelectedProductId(response.data.id);
       }
-    };
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast("Erro", {
+          description: error.response?.data.error,
+          duration: 2000,
+        });
+
+        console.log(error);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     console.log("New Product:", newProduct);
@@ -154,37 +151,41 @@ export default function RegisterContent({
             className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
           >
             <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-               <div className="flex items-center space-x-4">
-                                  <div className="flex flex-nowrap space-x-2">
-              
-                                    <Label htmlFor="status_estoque">Status do Estoque:</Label>
-                                    
-                                        {ESTOQUE_STATUS.filter(s => s.value === newProduct.status_estoque).map(s => (
-                                          <Badge className="" key={s.value} variant={s.badge}>
-                                            {s.value}
-                                          </Badge>
-                                        ))}
-                                      
-                                  </div>
-                                  <div className="flex flex-nowrap space-x-2">
-              
-                                    <Label>Grupo:</Label>
-                                    <Select
-                                      value={newProduct.grupo || "OUTROS"}
-                                      onValueChange={(v) => handleChange("grupo", v)}>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Selecione" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {Object.values(Grupo_produto).map((g) => (
-                                          <SelectItem className="hover:cursor-pointer" key={g} value={g}>
-                                            {g}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                      </Select>
-                                  </div>
-                                  </div>
+              <div className="flex items-center space-x-4">
+                <div className="flex flex-nowrap space-x-2">
+                  <Label htmlFor="status_estoque">Status do Estoque:</Label>
+
+                  {ESTOQUE_STATUS.filter(
+                    (s) => s.value === newProduct.status_estoque
+                  ).map((s) => (
+                    <Badge className="" key={s.value} variant={s.badge}>
+                      {s.value}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex flex-nowrap space-x-2">
+                  <Label>Grupo:</Label>
+                  <Select
+                    value={newProduct.grupo || "OUTROS"}
+                    onValueChange={(v) => handleChange("grupo", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(Grupo_produto).map((g) => (
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          key={g}
+                          value={g}
+                        >
+                          {g}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="titulo">Título *</Label>
                 <Input
@@ -237,15 +238,14 @@ export default function RegisterContent({
                     maxLength={14}
                   />
                 </div>
-                
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="precounitario">Preço Unitário *</Label>
                   <ValueInput
-                  price={newProduct.precovenda}
-                  setPrice={(v) => handleChange("precovenda", v)}
+                    price={newProduct.precovenda}
+                    setPrice={(v) => handleChange("precovenda", v)}
                   />
                   {/* <Input
                     id="precovenda"
@@ -279,8 +279,6 @@ export default function RegisterContent({
                     </SelectContent>
                   </Select>
                 </div>
-
-                
               </div>
             </div>
           </TabsContent>
@@ -338,8 +336,6 @@ export default function RegisterContent({
                     </SelectContent>
                   </Select>
                 </div>
-
-                
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -408,20 +404,19 @@ export default function RegisterContent({
                 </div>
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="origem">Fornecedor *</Label>
-                  <Select
-                    value={String(newProduct.fornecedor)}
-                    onValueChange={(v) => handleChange("fornecedor", Number(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DESCONHECIDO">DESCONHECIDO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
+                <Label htmlFor="origem">Fornecedor *</Label>
+                <Select
+                  value={String(newProduct.fornecedor)}
+                  onValueChange={(v) => handleChange("fornecedor", Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DESCONHECIDO">DESCONHECIDO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

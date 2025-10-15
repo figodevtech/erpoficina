@@ -4,13 +4,13 @@ import { Categoria_transacao, Tipo_transacao } from "./types"
 export const getTypeColor = (tipo: Tipo_transacao) => {
     switch (tipo) {
       case Tipo_transacao.RECEITA:
-        return "text-green-500"
+        return "text-green-400 not-dark:text-green-700"
       case Tipo_transacao.DESPESA:
-        return "text-red-500"
+        return "text-red-400 not-dark:text-red-700"
       case Tipo_transacao.DEPOSITO:
-        return "text-green-500"
+        return "text-green-400 not-dark:text-green-700"
       case Tipo_transacao.SAQUE:
-        return "text-red-500"
+        return "text-red-400 not-dark:text-red-700"
       
       default:
         return "text-gray-500"
@@ -49,3 +49,21 @@ export const getCategoryIcon = (categoria: Categoria_transacao) => {
              
     }
 }
+
+
+export const formatCpfCnpj = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+
+    if (numbers.length <= 11) {
+      // CPF: 000.000.000-00
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    } 
+    
+    if(numbers.length > 11){
+      // CNPJ: 00.000.000/0000-00
+      return numbers.replace(
+        /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+        "$1.$2.$3/$4-$5"
+      );
+    }
+};

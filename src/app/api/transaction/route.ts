@@ -211,7 +211,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as any;
-
+    console.log(body)
     // Aceita payload bruto ou { newTransaction: {...} }
     const json =
       body?.newTransaction && typeof body.newTransaction === "object"
