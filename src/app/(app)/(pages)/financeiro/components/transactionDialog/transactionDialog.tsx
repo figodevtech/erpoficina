@@ -1,6 +1,6 @@
 "use client";
 import { Dialog, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
-import { Children, ReactNode, useState } from "react";
+import { Children, ReactNode, useEffect, useState } from "react";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
 import { NewTransaction, Transaction, TransactionCustomer } from "../../types";
@@ -24,6 +24,8 @@ export default function TransactionDialog({
   const [selectedCustomer, setSelectedCustomer] = useState<
     TransactionCustomer | undefined
   >(undefined);
+
+
   return (
     <Dialog
       open={open}
@@ -34,7 +36,10 @@ export default function TransactionDialog({
         }
 
         if (!nextOpen) {
-          setSelectedTransactionId?.(undefined);
+          if(setSelectedTransactionId){
+
+            setSelectedTransactionId(undefined);
+          }
           setNewTransaction({});
           setSelectedCustomer(undefined);
         }
@@ -43,7 +48,7 @@ export default function TransactionDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       {selectedTransactionId ? (
         <EditContent
-          transactionId={selectedTransactionId}
+          selectedTransactionId={selectedTransactionId}
           selectedCustomer={selectedCustomer}
           setSelectedCustomer={setSelectedCustomer}
         />

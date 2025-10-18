@@ -33,7 +33,6 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import SearchFilter from "./searchFilter";
 import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
@@ -70,10 +69,12 @@ export default function FinancialTable({
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    console.log("mudou:", selectedTransactionId);
     if (selectedTransactionId) {
       setIsOpen(true);
     }
   }, [selectedTransactionId]);
+
   return (
     <Card className="">
       <CardHeader className="border-b-2 pb-4 flex flex-col">
@@ -88,8 +89,12 @@ export default function FinancialTable({
             open={isOpen}
             setOpen={setIsOpen}
             selectedTransactionId={selectedTransactionId}
+            setSelectedTransactionId={setSelectedTransactionId}
           >
-            <Button className="hover:cursor-pointer">
+            <Button
+              className="hover:cursor-pointer"
+              onClick={() => setSelectedTransactionId(undefined)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Nova Transação
             </Button>
@@ -139,7 +144,12 @@ export default function FinancialTable({
           <TableBody>
             {transactions.map((t) => (
               <TableRow
-                onDoubleClick={() => setSelectedTransactionId(t.id)}
+                onDoubleClick={() => {
+                  console.log("-------------------");
+                  console.log("atual: ", selectedTransactionId);
+                  console.log("clicou 2: ", t.id);
+                  setSelectedTransactionId(t.id);
+                }}
                 key={t.id}
                 className="hover:cursor-pointer"
               >
@@ -150,6 +160,9 @@ export default function FinancialTable({
                   </div>
                   <div className="flex flex-col items-start">
                     {t.descricao}
+                    <span className="text-xs text-muted-foreground">
+                      ID: {t.id}
+                    </span>
                     <span className="text-xs text-muted-foreground md:hidden">
                       {t.banco.titulo} - {t.metodopagamento}{" "}
                     </span>
@@ -188,10 +201,10 @@ export default function FinancialTable({
         </Table>
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
-            <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
+            <span>{pagination.limit * (pagination.page - 1) + 1}</span>
+            {" - "}
             <span>
-              {pagination.limit * (pagination.page - 1) +
-                (pagination.pageCount || 0)}
+              {pagination.limit * (pagination.page - 1) + transactions.length}
             </span>
           </div>
           <div className="flex items-center justify-center space-x-2">
@@ -214,7 +227,8 @@ export default function FinancialTable({
                 handleGetTransactions(
                   pagination.page - 1,
                   pagination.limit,
-                  search
+                  search,
+                  tipo
                 )
               }
               disabled={pagination.page === 1}

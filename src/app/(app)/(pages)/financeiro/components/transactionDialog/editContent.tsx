@@ -33,13 +33,14 @@ import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
+
 interface EditContentProps {
-  transactionId: number | undefined;
+  selectedTransactionId: number | undefined;
   selectedCustomer: TransactionCustomer | undefined;
   setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
 }
 export default function EditContent({
-  transactionId,
+  selectedTransactionId,
   selectedCustomer,
   setSelectedCustomer,
 }: EditContentProps) {
@@ -52,6 +53,12 @@ export default function EditContent({
   const [isLoadingBanks, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
 
+  const formatForInput = (date?: string | Date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  };
   const handleChange = (field: keyof Transaction, value: string | number) => {
     if (selectedTransaction) {
       setSelectedTransaction({ ...selectedTransaction, [field]: value });
@@ -91,14 +98,22 @@ export default function EditContent({
   };
 
   useEffect(() => {
-    if(transactionId){
-        handleGetTransaction(transactionId);
-        handleGetBanks()
+    if (selectedTransactionId) {
+      handleGetTransaction(selectedTransactionId);
+      handleGetBanks();
     }
   }, []);
 
-
-  
+  useEffect(() => {
+    if (selectedCustomer && selectedTransaction) {
+      setSelectedTransaction({
+        ...selectedTransaction,
+        cliente_id: selectedCustomer.id,
+        nomepagador: selectedCustomer.nome,
+        cpfcnpjpagador: selectedCustomer.cpfcnpj,
+      });
+    }
+  }, [selectedCustomer]);
 
   if (isLoading) {
     return (
@@ -118,7 +133,7 @@ export default function EditContent({
       <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle>Nova Transação</DialogTitle>
+            <DialogTitle>Transação {selectedTransaction.id}</DialogTitle>
             <DialogDescription>
               Preencha dados para registrar uma transação
             </DialogDescription>
@@ -166,14 +181,27 @@ export default function EditContent({
                   <Label htmlFor="data">Data</Label>
                   <Input
                     type="datetime-local"
+                    value={formatForInput(selectedTransaction.data)}
                     onChange={(e) => handleChange("data", e.target.value)}
-                  ></Input>
+                  />
                 </div>
                 <div className="space-y-2 w-full">
                   <Label htmlFor="banco">Banco</Label>
                   <Select
                     value={selectedTransaction.banco_id?.toString()}
-                    onValueChange={(v) => handleChange("banco_id", Number(v))}
+                    onValueChange={(v) => {
+                      const bancoId = Number(v);
+                      const b = banks.find((x) => x.id === bancoId);
+                      setSelectedTransaction((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              banco_id: bancoId,
+                              banco: b ? { ...prev.banco, ...b } : prev.banco, // opcional
+                            }
+                          : prev
+                      );
+                    }}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione" />

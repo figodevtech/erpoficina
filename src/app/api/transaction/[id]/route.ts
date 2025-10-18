@@ -11,6 +11,11 @@ const TRANSACAO_FIELDS = `
   banco_id, nomepagador, cpfcnpjpagador, created_at, updated_at
 `;
 
+/** Campos do banco (bancoconta) alinhados ao que você precisa no front */
+const BANCO_FIELDS =
+  "id, titulo, tipo, agencia, contanumero, proprietario, valorinicial, empresa_id, created_at, updated_at";
+
+
 const WRITABLE_FIELDS = new Set([
   "descricao",
   "valor",
@@ -113,7 +118,13 @@ export async function GET(_: Request, ctx: Params) {
 
     const { data, error } = await supabaseAdmin
       .from("transacao")
-      .select(TRANSACAO_FIELDS)
+      .select(
+        `
+        ${TRANSACAO_FIELDS},
+        banco:bancoconta!transacao_banco_id_fkey ( ${BANCO_FIELDS} )
+        `,
+        { count: "exact" }
+      )
       .eq("id", id)
       .single();
 
