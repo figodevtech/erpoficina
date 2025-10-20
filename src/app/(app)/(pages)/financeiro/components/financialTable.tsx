@@ -29,9 +29,12 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Clock8,
+  Edit,
+  Loader,
   Loader2,
   Plus,
   Search,
+  Trash2Icon,
 } from "lucide-react";
 import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { formatDate } from "@/utils/formatDate";
@@ -39,6 +42,16 @@ import formatarEmReal from "@/utils/formatarEmReal";
 import { getCategoryIcon, getTypeColor } from "../utils";
 import TransactionDialog from "./transactionDialog/transactionDialog";
 import { useEffect, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ProductDialog } from "../../estoque/productDialog/productDialog";
+import DeleteAlert from "./deleteAlert";
+
+import { toast } from "sonner";
+import axios, { isAxiosError } from "axios";
 
 interface FinancialTableProps {
   transactions: Transaction[];
@@ -67,6 +80,8 @@ export default function FinancialTable({
     number | undefined
   >(undefined);
   const [isOpen, setIsOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     console.log("mudou:", selectedTransactionId);
@@ -74,6 +89,37 @@ export default function FinancialTable({
       setIsOpen(true);
     }
   }, [selectedTransactionId]);
+
+   const handleDeleteTransaction = async (id: number) => {
+    setIsDeleting(true);
+    toast(
+      <div className="flex gap-2 items-center flex-nowrap">
+        <Loader className=" animate-spin w-4" />
+        <span className="text-nowrap">Deletando transação...</span>
+      </div>
+    );
+    try {
+      const response = await axios.delete(`/api/transaction/${id}`, {});
+      if (response.status === 204) {
+        console.log(response);
+        toast("Transação deletada!");
+        handleGetTransactions(pagination.page, pagination.limit, search, tipo);
+        handleGetStatusCounter();
+      } else {
+        toast.warning(`Status inesperado: ${response.status}`);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        // console.log(error)
+        toast.error("Error", {
+          description: error.response?.data.error,
+        });
+      }
+    } finally {
+      setIsDeleting(false);
+      setIsAlertOpen(false);
+    }
+  };
 
   return (
     <Card className="">
@@ -193,7 +239,41 @@ export default function FinancialTable({
                   </div>
                 </TableCell>
                 <TableCell className=" flex justify-end ">
-                  <ChevronDown />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0 cursor-pointer"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="space-y-1">
+                      <ProductDialog productId={t.id}>
+                        <Button
+                          variant={"ghost"}
+                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
+                        >
+                          <Edit className="-ml-1 -mr-1 h-4 w-4" />
+                          <span>Editar</span>
+                        </Button>
+                      </ProductDialog>
+                      <DeleteAlert
+                        handleDeleteTransaction={handleDeleteTransaction}
+                        isAlertOpen={isAlertOpen}
+                        setIsAlertOpen={setIsAlertOpen}
+                        idToDelete={t.id}
+                      >
+                        <Button
+                          variant={"default"}
+                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
+                        >
+                          <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
+                          <span>Excluir</span>
+                        </Button>
+                      </DeleteAlert>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}

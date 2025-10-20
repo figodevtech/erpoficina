@@ -15,7 +15,10 @@ import {
   Settings,
   UsersRound,
   SquareCheckBig,
-  DollarSign
+  DollarSign,
+  Calculator,
+  Speech,
+  ArrowDownUp
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -35,6 +38,7 @@ const data = {
     },
   ],
   navOptions: [
+    
     {
       title: "Dashboard",
       url: "/dashboard",
@@ -53,12 +57,12 @@ const data = {
       icon: NotepadText,
       isActive: true,
     },
-    {
-      title: "Equipes",
-      url: "/equipes",
-      icon: NotepadText,
-      isActive: true,
-    },
+    // {
+    //   title: "Equipes",
+    //   url: "/equipes",
+    //   icon: Speech,
+    //   isActive: true,
+    // },
     {
       title: "Estoque",
       url: "/estoque",
@@ -68,6 +72,21 @@ const data = {
       title: "Financeiro",
       url: "/financeiro",
       icon: DollarSign,
+      isActive: true,
+      items: [
+        {
+          title: "Fluxo de Caixa",
+          url: "/financeiro",
+          icon: ArrowDownUp
+        },
+        {
+          title: "Assist. de Pagamentos",
+          url: "/financeiro/assistentepagamento",
+          icon: Calculator
+        }
+      ]
+
+
     },
     {
       title: "Acompanhamento",
