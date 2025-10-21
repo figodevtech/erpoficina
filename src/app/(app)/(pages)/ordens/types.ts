@@ -1,6 +1,13 @@
 export type ID = number | string;
 
-export type StatusOS = "TODAS" | "ABERTO" | "EM_ANDAMENTO" | "PAGAMENTO" | "CONCLUIDO" | "CANCELADO";
+export type StatusOS =
+  | "TODAS"
+  | "ORCAMENTO"
+  | "APROVACAO_ORCAMENTO"
+  | "EM_ANDAMENTO"
+  | "PAGAMENTO"
+  | "CONCLUIDO"
+  | "CANCELADO";
 
 export type Cliente = {
   id: number;

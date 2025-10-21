@@ -1,3 +1,4 @@
+// src/app/(app)/(pages)/ordens/components/ordens-tabela.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -16,16 +17,45 @@ import {
   Loader,
   Car,
   PlusCircle,
+  MoreHorizontal,
+  Link2,
+  Pencil,
+  Send,
+  Wallet,
+  AlertTriangle,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { createClient } from "@supabase/supabase-js";
+import { toast } from "sonner";
 
-import { Ordem, StatusOS } from "../types";
+import { Ordem } from "../types";
+import { StatusOS } from "./ordens-tabs";
 import TableSkeleton from "../components/table-skeleton";
+import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 
-// --------- Helpers de UI ---------
+/* ========================== Helpers de UI ========================== */
 const statusClasses: Record<string, string> = {
-  ABERTO: "bg-blue-600/15 text-blue-400",
+  ORCAMENTO: "bg-fuchsia-600/15 text-fuchsia-400",
+  APROVACAO_ORCAMENTO: "bg-sky-600/15 text-sky-400",
   EM_ANDAMENTO: "bg-amber-600/15 text-amber-400",
   PAGAMENTO: "bg-indigo-600/15 text-indigo-400",
   CONCLUIDO: "bg-green-600/15 text-green-400",
@@ -38,7 +68,7 @@ const prioClasses: Record<string, string> = {
   BAIXA: "bg-emerald-600/15 text-emerald-500",
 };
 
-// --------- Helpers de tempo ---------
+/* ========================== Helpers de tempo ========================== */
 function fmtDate(s?: string | null) {
   if (!s) return "—";
   const d = new Date(s);
@@ -70,7 +100,7 @@ function useNowTick(periodMs = 60000) {
   return now;
 }
 
-// alias local só para datas exibidas na tabela
+/* Alias local com campos de data exibidos */
 type OrdemComDatas = Ordem & {
   dataEntrada?: string | null;
   dataSaida?: string | null;
@@ -89,29 +119,30 @@ export function OrdensTabela({
   onEditar: (row: OrdemComDatas) => void;
   onNovaOS: () => void;
 }) {
-  // dados
+  /* ========================== Estado de dados ========================== */
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
 
-  // paginação/filtro
+  /* paginação/filtro */
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
 
-  // loading + guarda de request
+  /* loading + guarda de request */
   const [isLoading, setIsLoading] = useState(true);
   const reqIdRef = useRef(0);
 
-  // tick para atualizar contador de tempo a cada 60s
+  /* tick de 60s p/ recalcular tempo decorrido */
   const now = useNowTick(60000);
 
-  // params atuais para realtime
+  /* guarda params atuais p/ realtime */
   const currentParamsRef = useRef({ status, q, page, limit });
   useEffect(() => {
     currentParamsRef.current = { status, q, page, limit };
   }, [status, q, page, limit]);
 
+  /* ========================== Fetch ========================== */
   async function fetchNow({
     status: st,
     q: search,
@@ -158,19 +189,19 @@ export function OrdensTabela({
     }
   }
 
-  // carregar quando filtros/paginação mudarem (com debounce simples para q)
+  /* carregar quando filtros/paginação mudarem (debounce p/ q) */
   useEffect(() => {
     const t = setTimeout(() => fetchNow({ status, q, page, limit }), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, q, page, limit]);
 
-  // reset página quando mudar status
+  /* reset página quando mudar status */
   useEffect(() => {
     setPage(1);
   }, [status]);
 
-  // realtime
+  /* ========================== Realtime SUPABASE ========================== */
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -193,12 +224,13 @@ export function OrdensTabela({
     };
   }, [status]);
 
-  // rodapé
+  /* ========================== Helpers de render ========================== */
   const pageCount = rows.length;
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
 
-  const safeStatus = (s: Ordem["status"]) => (s ?? "ABERTO") as Exclude<StatusOS, "TODAS">;
+  const safeStatus = (s: Ordem["status"]) => (s ?? "ORCAMENTO") as Exclude<StatusOS, "TODAS">;
+
   const renderTempo = (r: OrdemComDatas) => {
     const startMs =
       toMs(r.dataEntrada) ??
@@ -211,10 +243,7 @@ export function OrdensTabela({
     const st = safeStatus(r.status);
     const endMs =
       st === "CONCLUIDO" || st === "CANCELADO"
-        ? toMs(r.dataSaidaReal) ??
-          toMs((r as any).updatedat) ??
-          toMs((r as any).updatedAt) ??
-          now
+        ? toMs(r.dataSaidaReal) ?? toMs((r as any).updatedat) ?? toMs((r as any).updatedAt) ?? now
         : now;
 
     return fmtDuration((endMs ?? now) - startMs);
@@ -226,6 +255,34 @@ export function OrdensTabela({
     return p ? <Badge className={cls}>{key}</Badge> : "—";
   };
 
+  async function setStatus(id: number, status: Exclude<StatusOS, "TODAS">) {
+    try {
+      const r = await fetch(`/api/ordens/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "Falha ao atualizar status");
+
+      toast.success(`Status atualizado para ${status.replaceAll("_", " ")}`);
+      // dispara refresh local/global
+      fetchNow(currentParamsRef.current);
+      window.dispatchEvent(new Event("os:refresh"));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao atualizar status");
+    }
+  }
+
+  /* ========================== Dialog: Link de aprovação ========================== */
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkRow, setLinkRow] = useState<OrdemComDatas | null>(null);
+
+  /* ========================== Dialog: Confirmar envio p/ pagamento ========================== */
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmRow, setConfirmRow] = useState<OrdemComDatas | null>(null);
+
+  /* ========================== UI ========================== */
   return (
     <Card className="bg-card">
       <CardContent className="p-3 sm:p-4">
@@ -261,14 +318,14 @@ export function OrdensTabela({
                 <TableHead className="min-w-[120px]">Status</TableHead>
                 <TableHead className="min-w-[120px]">Prioridade</TableHead>
                 <TableHead className="min-w-[120px]">Tempo</TableHead>
-                <TableHead className="min-w-[160px] text-center">Ações</TableHead>
+                <TableHead className="min-w-[180px] text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {isLoading && (
                 <TableSkeleton
-                  rows={8}
+                  rows={10}
                   columns={[
                     { cellClass: "min-w-[96px]", barClass: "h-4 w-14" },   // #
                     { cellClass: "min-w-[240px]", barClass: "h-4 w-56" },  // Cliente / Veículo
@@ -279,7 +336,7 @@ export function OrdensTabela({
                     { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },  // Status
                     { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Prioridade
                     { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Tempo
-                    { cellClass: "min-w-[160px]", barClass: "h-8 w-24" },  // Ações
+                    { cellClass: "min-w-[180px]", barClass: "h-8 w-28" },  // Ações
                   ]}
                 />
               )}
@@ -292,7 +349,7 @@ export function OrdensTabela({
                     ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
 
-                  const canBudget = st === "CONCLUIDO"; // mude para: const canBudget = st === "CONCLUIDO" || st === "PAGAMENTO";
+                  const podeLink = st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO";
 
                   return (
                     <TableRow key={r.id}>
@@ -318,27 +375,101 @@ export function OrdensTabela({
                       <TableCell>{renderPrio(r.prioridade)}</TableCell>
                       <TableCell>{renderTempo(r)}</TableCell>
 
-                      {/* Ações */}
-                      <TableCell className="flex items-center justify-center gap-1 text-center">
-                        <Button
-                          size="sm"
-                          onClick={() => onOpenOrcamento(r)}
-                          disabled={!canBudget}
-                          title={canBudget ? "Abrir orçamento" : "Disponível quando concluída"}
-                          // Verde cheio quando disponível, discreto quando não
-                          variant={canBudget ? "default" : "outline"}
-                          className={
-                            canBudget
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
-                              : "bg-transparent"
-                          }
-                        >
-                          <DollarSign className={`h-4 w-4 ${canBudget ? "text-white" : ""}`} />
-                        </Button>
+                      {/* Ações via Dropdown */}
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="px-2">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-60">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
 
-                        <Button variant="outline" size="sm" onClick={() => onEditar(r)} title="Editar / Tramitar OS">
-                          ✎
-                        </Button>
+                            {/* Orçamento */}
+                            <DropdownMenuItem onClick={() => onOpenOrcamento(r)}>
+                              <DollarSign className="mr-2 h-4 w-4" />
+                              <span>Orçamento</span>
+                            </DropdownMenuItem>
+
+                            {/* Link de aprovação (ORCAMENTO / APROVACAO_ORCAMENTO) */}
+                            {podeLink && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setLinkRow(r);
+                                  setLinkDialogOpen(true);
+                                }}
+                              >
+                                <Link2 className="mr-2 h-4 w-4" />
+                                <span>Link de aprovação…</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {/* Enviar p/ aprovação (opcional) — move para APROVACAO_ORCAMENTO */}
+                            {st === "ORCAMENTO" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setStatus(r.id, "APROVACAO_ORCAMENTO")}>
+                                  <Send className="mr-2 h-4 w-4" />
+                                  <span>Enviar p/ aprovação</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
+
+                            {/* Finalizar e enviar p/ pagamento (com confirmação) */}
+                            {st === "EM_ANDAMENTO" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <AlertDialog open={confirmOpen && confirmRow?.id === r.id} onOpenChange={setConfirmOpen}>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setConfirmRow(r);
+                                        setConfirmOpen(true);
+                                      }}
+                                    >
+                                      <Wallet className="mr-2 h-4 w-4" />
+                                      <span>Finalizar e enviar p/ pagamento…</span>
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="flex items-center gap-2">
+                                        <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                        Confirmar envio ao Financeiro
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Esta ação mudará o status da OS <b>#{confirmRow?.id}</b> para <b>PAGAMENTO</b>.
+                                        Verifique se todos os serviços foram concluídos e lançados no orçamento.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={async () => {
+                                          if (!confirmRow) return;
+                                          await setStatus(confirmRow.id, "PAGAMENTO");
+                                          setConfirmOpen(false);
+                                          setConfirmRow(null);
+                                        }}
+                                      >
+                                        Enviar p/ pagamento
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </>
+                            )}
+
+                            <DropdownMenuSeparator />
+
+                            {/* Editar OS sempre disponível */}
+                            <DropdownMenuItem onClick={() => onEditar(r)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Editar OS</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );
@@ -411,6 +542,14 @@ export function OrdensTabela({
           </div>
         </div>
       </CardContent>
+
+      {/* Diálogo de Link de Aprovação */}
+      <LinkAprovacaoDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        osId={linkRow?.id}
+        clienteNome={linkRow?.cliente?.nome}
+      />
     </Card>
   );
 }

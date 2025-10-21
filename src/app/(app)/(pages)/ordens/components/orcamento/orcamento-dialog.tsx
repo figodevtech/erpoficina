@@ -1,31 +1,38 @@
+// src/app/(app)/(pages)/ordens/components/orcamento/orcamento-dialog.tsx
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DialogShell } from "./dialog-shell";
-import { OrcamentoForm } from "../forms/orcamento-form";
+import { Loader2 } from "lucide-react";
+import { DialogShell } from "../dialogs/dialog-shell";
+import { OrcamentoForm } from "./orcamento-form";
+import type { OrcamentoFormHandle } from "./tipos";
 
 const money = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v) || 0);
 
-export type ProdutosServicosDialogProps = {
+export type OrcamentoDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   osSelecionada: any | null;
-  onGerarOrcamento: () => void | Promise<void>;
-  onEnviarFinanceiro: () => void | Promise<void>;
+  onSalvarOrcamento?: () => void | Promise<void>;
+  onGerarLinkAprovacao?: () => void | Promise<void>;
 };
 
 export function OrcamentoDialog({
   open,
   onOpenChange,
   osSelecionada,
-  onGerarOrcamento,
-  onEnviarFinanceiro,
-}: ProdutosServicosDialogProps) {
+  onSalvarOrcamento,
+}: OrcamentoDialogProps) {
+  const formRef = useRef<OrcamentoFormHandle | null>(null);
+
   const [totalProdutos, setTotalProdutos] = useState(0);
   const [totalServicos, setTotalServicos] = useState(0);
   const totalGeral = totalProdutos + totalServicos;
+
+  const [salvando, setSalvando] = useState(false);
+  const [gerandoLink, setGerandoLink] = useState(false);
 
   const numero = useMemo(
     () => osSelecionada?.numero ?? (osSelecionada?.id != null ? String(osSelecionada.id) : "—"),
@@ -50,6 +57,20 @@ export function OrcamentoDialog({
     [osSelecionada, numero, clienteNome, veiculoStr]
   );
 
+  async function handleSalvar() {
+    if (salvando || gerandoLink) return;
+    setSalvando(true);
+    try {
+      if (onSalvarOrcamento) {
+        await onSalvarOrcamento();
+      } else {
+        await formRef.current?.salvarOrcamento();
+      }
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   return (
     <DialogShell
       open={open}
@@ -65,21 +86,33 @@ export function OrcamentoDialog({
               {money(totalProdutos)} em produtos • {money(totalServicos)} em serviços
             </div>
           </div>
+
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onGerarOrcamento} className="bg-transparent" disabled={totalGeral <= 0}>
-              Gerar Orçamento
+            <Button
+              variant="outline"
+              onClick={handleSalvar}
+              className="bg-transparent"
+              // sempre habilitado; só desabilita durante uma ação
+              disabled={salvando || gerandoLink}
+            >
+              {salvando ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando…
+                </>
+              ) : (
+                "Salvar orçamento"
+              )}
             </Button>
-            <Button onClick={onEnviarFinanceiro} disabled={totalGeral <= 0}>
-              Enviar ao Financeiro
-            </Button>
+
+           
           </div>
         </div>
       }
     >
       <OrcamentoForm
+        ref={formRef}
         ordemServico={ordemServico}
-        onGerarOrcamento={onGerarOrcamento}
-        onEnviarFinanceiro={onEnviarFinanceiro}
         onTotaisChange={({ totalProdutos, totalServicos }) => {
           setTotalProdutos(totalProdutos || 0);
           setTotalServicos(totalServicos || 0);

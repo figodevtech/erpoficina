@@ -1,7 +1,9 @@
+// src/app/api/servicos/buscar/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const revalidate = 0;
+export const dynamic = "force-dynamic";
+export const revalidate = 0; // sem cache
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,30 +27,30 @@ export async function GET(request: Request) {
       .range(from, to)
       .order("descricao", { ascending: true });
 
-    if (codigo) {
+    if (codigo && !q) {
       query = query.ilike("codigo", `%${codigo}%`);
     }
+
     if (q) {
-      const filters = [
-        `descricao.ilike.%${q}%`,
-        `cnae.ilike.%${q}%`,
-        `itemlistaservico.ilike.%${q}%`,
-      ].join(",");
-      // cast pontual para o .or(...)
-      query = (query as any).or(filters);
+      (query as any).or(
+        `descricao.ilike.%${q}%,cnae.ilike.%${q}%,itemlistaservico.ilike.%${q}%,codigo.ilike.%${q}%`
+      );
     }
 
     const { data, error } = await query;
     if (error) throw error;
 
     const servicos = (data ?? []).map((s: any) => ({
-      id: s.id,
-      codigo: s.codigo,
-      descricao: s.descricao,
-      precohora: Number(s.precohora || 0),
+      id: Number(s.id),
+      codigo: String(s.codigo ?? ""),
+      descricao: String(s.descricao ?? ""),
+      precohora: Number(s.precohora ?? 0),
     }));
 
-    return NextResponse.json({ servicos }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { servicos, total: servicos.length },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err: any) {
     console.error("GET /api/servicos/buscar", err);
     return NextResponse.json({ error: "Falha ao buscar serviços" }, { status: 500 });

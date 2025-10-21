@@ -4,66 +4,67 @@ import { useState } from "react";
 import { OrdensTabs } from "../components/ordens-tabs";
 import { NovaOSDialog } from "../components/dialogs/ordem-dialog";
 import { EditarOSDialog } from "../components/dialogs/editar-ordem-dialog";
-import { OrcamentoDialog } from "../components/dialogs/orcamento-dialog";
+import { OrcamentoDialog } from "../components/orcamento/orcamento-dialog";
 import { criarOrdem, editarOrdem } from "../lib/api";
 
 type Ordem = any;
 
 export default function GerenciadorOS() {
-  const [selected, setSelected] = useState<Ordem | null>(null);
-  const [openCreate, setOpenCreate] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openBudget, setOpenBudget] = useState(false);
-
-  const handleNovaOS = () => setOpenCreate(true);
+  const [selecionada, setSelecionada] = useState<Ordem | null>(null);
+  const [abrirCriar, setAbrirCriar] = useState(false);
+  const [abrirEditar, setAbrirEditar] = useState(false);
+  const [abrirOrcamento, setAbrirOrcamento] = useState(false);
 
   return (
     <>
-      {/* Tabs já inclui o botão "Nova OS" dentro da tabela */}
       <OrdensTabs
-        onNovaOS={handleNovaOS}
+        onNovaOS={() => setAbrirCriar(true)}
         onOpenOrcamento={(row) => {
-          setSelected(row as Ordem);
-          setOpenBudget(true);
+          setSelecionada(row as Ordem);
+          setAbrirOrcamento(true);
         }}
         onEditar={(row) => {
-          setSelected(row as Ordem);
-          setOpenEdit(true);
+          setSelecionada(row as Ordem);
+          setAbrirEditar(true);
         }}
       />
 
+      {/* Nova OS */}
       <NovaOSDialog
-        open={openCreate}
-        onOpenChange={setOpenCreate}
+        open={abrirCriar}
+        onOpenChange={(v) => setAbrirCriar(v)}
         onCreate={async (payload) => {
-          await criarOrdem(payload);
-          setOpenCreate(false);
-          // atualiza todas as listas / abas
-          if (typeof window !== "undefined") window.dispatchEvent(new Event("os:refresh"));
+          await criarOrdem({ ...payload, status: "ORCAMENTO" }); // nova OS começa em ORÇAMENTO
+          setAbrirCriar(false);
+          window.dispatchEvent(new CustomEvent("os:refresh"));
         }}
       />
 
+      {/* Editar OS */}
       <EditarOSDialog
-        open={openEdit}
-        onOpenChange={setOpenEdit}
-        defaultValues={selected}
+        open={abrirEditar}
+        onOpenChange={(v) => setAbrirEditar(v)}
+        defaultValues={selecionada}
         onEdit={async (payload) => {
           await editarOrdem(payload.id, payload);
-          setOpenEdit(false);
-          if (typeof window !== "undefined") window.dispatchEvent(new Event("os:refresh"));
+          setAbrirEditar(false);
+          window.dispatchEvent(new CustomEvent("os:refresh"));
         }}
       />
 
+      {/* Orçamento */}
       <OrcamentoDialog
-        open={openBudget}
-        onOpenChange={setOpenBudget}
-        osSelecionada={selected}
-        onGerarOrcamento={async () => {
-          console.log("Gerar Orçamento", selected?.id);
+        open={abrirOrcamento}
+        onOpenChange={(v) => {
+          setAbrirOrcamento(v);
+          if (!v) {
+            // ao fechar, atualiza a lista (ex.: após salvar orçamento)
+            window.dispatchEvent(new CustomEvent("os:refresh"));
+            // opcional: limpar seleção
+            // setSelecionada(null);
+          }
         }}
-        onEnviarFinanceiro={async () => {
-          console.log("Enviar ao Financeiro", selected?.id);
-        }}
+        osSelecionada={selecionada}
       />
     </>
   );
