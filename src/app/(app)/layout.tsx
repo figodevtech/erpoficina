@@ -42,7 +42,8 @@ const routeTitles: Record<string, string> = {
   '/clientes': 'Gerenciamento de Clientes',
   '/equipes': 'Acompanhamento de Equipes',
   '/financeiro': 'Financeiro',
-  '/financeiro/assistentepagamento': 'Assistente de Pagamento',
+  '/fluxodecaixa': "Fluxo de Caixa",
+  '/assistentepagamento': 'Assistente de Pagamento',
   // adicione conforme necessário
 };
 

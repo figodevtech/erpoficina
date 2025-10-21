@@ -1,11 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import Cards from "./components/cards";
-import FinancialTable from "./components/financialTable";
-import Header from "./components/header";
-import { StatusInfo, Tipo_transacao, Transaction } from "./types";
 import axios from "axios";
+import { StatusInfo, Tipo_transacao, Transaction } from "./types";
+import Cards from "./components/cards";
 import SearchFilter from "./components/searchFilter";
+import FinancialTable from "./components/financialTable";
 
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);

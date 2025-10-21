@@ -13,8 +13,8 @@ import {
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { StatusInfo } from "../types";
 import formatarEmReal from "@/utils/formatarEmReal";
+import { StatusInfo } from "../types";
 
 interface CardsProps {
   statusInfo: StatusInfo | undefined;

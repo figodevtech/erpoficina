@@ -70,23 +70,21 @@ const data = {
     },
     {
       title: "Financeiro",
-      url: "/financeiro",
+      url: "#",
       icon: DollarSign,
       isActive: true,
       items: [
         {
           title: "Fluxo de Caixa",
-          url: "/financeiro",
+          url: "/fluxodecaixa",
           icon: ArrowDownUp
         },
         {
           title: "Assist. de Pagamentos",
-          url: "/financeiro/assistentepagamento",
+          url: "/assistentepagamento",
           icon: Calculator
         }
       ]
-
-
     },
     {
       title: "Acompanhamento",

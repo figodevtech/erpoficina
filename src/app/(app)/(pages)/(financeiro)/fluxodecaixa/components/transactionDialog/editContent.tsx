@@ -8,15 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Banco,
-  Categoria_transacao,
-  Metodo_pagamento,
-  NewTransaction,
-  Tipo_transacao,
-  Transaction,
-  TransactionCustomer,
-} from "../../types";
+
 import ValueInput from "./valueInput";
 import {
   Select,
@@ -29,10 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
-import { formatCpfCnpj } from "../../utils";
-import axios, { isAxiosError } from "axios";
-import { toast } from "sonner";
+import axios from "axios";
 import { Upload } from "lucide-react";
+import { Banco, Categoria_transacao, Metodo_pagamento, Tipo_transacao, Transaction, TransactionCustomer } from "../../types";
+import { formatCpfCnpj } from "../../utils";
 
 interface EditContentProps {
   selectedTransactionId: number | undefined;
