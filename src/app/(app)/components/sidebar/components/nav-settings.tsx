@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { ChevronRight, type LucideIcon } from "lucide-react";
-
 import {
   Collapsible,
   CollapsibleContent,
@@ -19,116 +18,78 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 
-// Helper: renderiza filhos só após montar (SSR/1º render mostram fallback estável)
-function ClientOnly({
-  children,
-  fallback = null,
-}: {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-}) {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
-  return mounted ? <>{children}</> : <>{fallback}</>;
-}
-
 type Item = {
   title: string;
   url: string;
   icon?: LucideIcon;
   isActive?: boolean;
-  items?: {
-    title: string;
-    url: string;
-    icon?: LucideIcon;
-  }[];
+  items?: { title: string; url: string; icon?: LucideIcon }[];
 };
+
+function NavSettingsCollapsibleItem({ item }: { item: Item & { items: NonNullable<Item["items"]> } }) {
+  const uid = React.useId();
+  const contentId = `${uid}-content`;
+
+  return (
+    <Collapsible asChild defaultOpen={false} className="group/collapsible">
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton
+            tooltip={item.title}
+            className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
+            aria-controls={contentId}              // <- estável
+          >
+            {item.icon ? <item.icon /> : null}
+            <span>{item.title}</span>
+            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent id={contentId}>      {/* <- estável */}
+          <SidebarMenuSub>
+            {item.items.map((sub) => (
+              <SidebarMenuSubItem key={sub.title}>
+                <SidebarMenuSubButton
+                  asChild
+                  className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
+                >
+                  <a href={sub.url}>
+                    {sub.icon && <sub.icon />}
+                    <span>{sub.title}</span>
+                  </a>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
 
 export function NavSettings({ items }: { items: Item[] }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Ajustes</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => {
-          const Icon = item.icon;
-          const hasChildren = !!item.items?.length;
-
-          // Fallback: mesma altura/shape no SSR e 1º render
-          const fallback = (
-            <SidebarMenuItem key={`fallback-${item.title}`}>
+        {items.map((item) =>
+          item.items ? (
+            <NavSettingsCollapsibleItem key={item.title} item={item as any} />
+          ) : (
+            <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
-                tooltip={undefined} // evita montar Tooltip/ids no 1º render
-                className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary justify-between opacity-90"
-                aria-disabled
+                asChild
+                tooltip={item.title}
+                className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
               >
-                <div className="flex items-center gap-2">
-                  {Icon ? <Icon /> : null}
+                <a href={item.url}>
+                  {item.icon ? <item.icon /> : null}
                   <span>{item.title}</span>
-                </div>
-                {hasChildren ? (
-                  <ChevronRight className="ml-auto transition-transform duration-200" />
-                ) : null}
+                </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          );
-
-          return (
-            <ClientOnly key={item.title} fallback={fallback}>
-              {hasChildren ? (
-                // ⚠️ defaultOpen fixo no 1º render (o open real só importa após montar)
-                <Collapsible asChild defaultOpen={false} className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                        // tooltip só após mount (aqui estamos após mount)
-                        tooltip={item.title}
-                        className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-                      >
-                        {Icon ? <Icon /> : null}
-                        <span>{item.title}</span>
-                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {item.items!.map((sub) => {
-                          const SubIcon = sub.icon;
-                          return (
-                            <SidebarMenuSubItem key={sub.title}>
-                              <SidebarMenuSubButton
-                                asChild
-                                className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-                              >
-                                <a href={sub.url}>
-                                  {SubIcon ? <SubIcon /> : null}
-                                  <span>{sub.title}</span>
-                                </a>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          );
-                        })}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              ) : (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={item.title}
-                    className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-                  >
-                    <a href={item.url}>
-                      {Icon ? <Icon /> : null}
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </ClientOnly>
-          );
-        })}
+          )
+        )}
       </SidebarMenu>
     </SidebarGroup>
   );
