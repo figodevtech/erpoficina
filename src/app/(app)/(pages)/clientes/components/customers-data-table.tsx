@@ -143,7 +143,7 @@ export default function CustomersDataTable({
             className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "} `}
           ></div>
         </div>
-        <Table className="mt-6">
+        <Table className="mt-6 text-xs">
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
@@ -247,7 +247,7 @@ export default function CustomersDataTable({
             </span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
             <Loader
-              className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${
+              className={`w-4 h-full animate-spin transition-all opacity-0 ${
                 isLoading && "opacity-100"
               }`}
             />
@@ -256,7 +256,7 @@ export default function CustomersDataTable({
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
                 handleGetCustomers(1, pagination.limit, search, status)
@@ -267,7 +267,7 @@ export default function CustomersDataTable({
             </Button>
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
                 handleGetCustomers(
@@ -281,14 +281,14 @@ export default function CustomersDataTable({
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-xs font-medium text-nowrap">
+            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
               Pg. {pagination.page} de {pagination.totalPages || 1}
             </span>
 
             <Button
               className="hover:cursor-pointer"
               variant="outline"
-              size="icon"
+              size="sm"
               onClick={() =>
                 handleGetCustomers(
                   pagination.page + 1,
@@ -307,7 +307,7 @@ export default function CustomersDataTable({
             <Button
               className="hover:cursor-pointer"
               variant="outline"
-              size="icon"
+              size="sm"
               onClick={() =>
                 handleGetCustomers(
                   pagination.totalPages,
@@ -325,8 +325,11 @@ export default function CustomersDataTable({
             </Button>
           </div>
           <div className="">
-            <Select>
-              <SelectTrigger className="hover:cursor-pointer ml-2">
+            <Select
+            
+            >
+              <SelectTrigger
+              size="sm" className="hover:cursor-pointer ml-2 m">
                 <SelectValue placeholder={pagination.limit}></SelectValue>
               </SelectTrigger>
               <SelectContent className="">

@@ -43,8 +43,11 @@ import {
 interface OsTableProps {
   ordens: Ordem[];
   pagination: Pagination;
-  handleGetOrdens: () => void;
+  handleGetOrdens: (pageNumber?: number,
+    limit?: number,
+    search?: string,) => void;
   isLoading: boolean;
+  search: string
 }
 
 export default function OsTable({
@@ -52,6 +55,7 @@ export default function OsTable({
   pagination,
   handleGetOrdens,
   isLoading,
+  search
 }: OsTableProps) {
   // ID estável para o Select de "itens por página"
   const limitUid = React.useId();
@@ -96,13 +100,12 @@ export default function OsTable({
           <TableHeader>
             <TableRow className="font-bold">
               <TableCell>Descrição</TableCell>
-              <TableCell className="hidden md:table-cell">Data</TableCell>
-              <TableCell className="hidden md:table-cell">Tipo</TableCell>
-              <TableCell className="hidden md:table-cell">Categoria</TableCell>
-              <TableCell className="hidden md:table-cell">Banco</TableCell>
-              <TableCell className="hidden md:table-cell">Método</TableCell>
-              <TableCell className="text-right">Valor</TableCell>
-              <TableCell />
+              <TableCell>Cliente</TableCell>
+              <TableCell>Setor</TableCell>
+              <TableCell>Pago</TableCell>
+              <TableCell>Total</TableCell>
+              <TableCell></TableCell>
+              
             </TableRow>
           </TableHeader>
 
@@ -113,9 +116,13 @@ export default function OsTable({
               const menuId = `os-row-${o.id}-menu`;
 
               return (
-                <TableRow key={o.id}>
+                <TableRow key={o.id} className="hover:cursor-pointer">
                   {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
-
+                  <TableCell>{o.descricao}</TableCell>
+                  <TableCell>{o.cliente?.nome}</TableCell>
+                  <TableCell>{o.setor?.nome}</TableCell>
+                  <TableCell>R$ 0,00</TableCell>
+                  <TableCell>R$ 0,00</TableCell>
                   <TableCell className="flex justify-end">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -134,9 +141,12 @@ export default function OsTable({
                         aria-labelledby={triggerId}
                         className="space-y-1"
                       >
-                        <DropdownMenuItem className="gap-2">
-                          <DollarSign className="h-4 w-4" /> Faturar
-                        </DropdownMenuItem>
+                        <Button
+                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
+                        >
+                          <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
+                          <span>Pagamento</span>
+                        </Button>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -160,7 +170,7 @@ export default function OsTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetOrdens()}
+              onClick={() => handleGetOrdens(1, pagination.limit, search)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -170,7 +180,7 @@ export default function OsTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetOrdens()}
+              onClick={() => handleGetOrdens(pagination.page -1, pagination.limit, search)}
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -184,7 +194,7 @@ export default function OsTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() => handleGetOrdens()}
+              onClick={() => handleGetOrdens(pagination.page +1, pagination.limit, search)}
               disabled={
                 pagination.page === pagination.totalPages ||
                 pagination.totalPages === 0
@@ -197,7 +207,7 @@ export default function OsTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() => handleGetOrdens()}
+              onClick={() => handleGetOrdens(pagination.totalPages, pagination.limit, search)}
               disabled={
                 pagination.page === pagination.totalPages ||
                 pagination.totalPages === 0

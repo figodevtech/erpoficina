@@ -286,17 +286,24 @@ export default function ProductsDataTable({
           </TableBody>
         </Table>
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
+          <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
             <span>
               {pagination.limit * (pagination.page - 1) +
                 (pagination.pageCount || 0)}
             </span>
+            <span className="ml-1 hidden sm:block">de {pagination.total}</span>
+            <Loader
+              className={`w-4 h-full animate-spin transition-all opacity-0 ${
+                isLoading && "opacity-100"
+              }`}
+            />
           </div>
-          <div className="flex items-center justify-center space-x-2">
+
+          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
                 handleGetProducts(1, pagination.limit, search, status)
@@ -307,22 +314,28 @@ export default function ProductsDataTable({
             </Button>
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetProducts(pagination.page - 1, pagination.limit, search)
+                handleGetProducts(
+                  pagination.page - 1,
+                  pagination.limit,
+                  search,
+                  status
+                )
               }
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-xs font-medium text-nowrap">
-              Página {pagination.page} de {pagination.totalPages || 1}
+            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+              Pg. {pagination.page} de {pagination.totalPages || 1}
             </span>
+
             <Button
               className="hover:cursor-pointer"
               variant="outline"
-              size="icon"
+              size="sm"
               onClick={() =>
                 handleGetProducts(
                   pagination.page + 1,
@@ -341,7 +354,7 @@ export default function ProductsDataTable({
             <Button
               className="hover:cursor-pointer"
               variant="outline"
-              size="icon"
+              size="sm"
               onClick={() =>
                 handleGetProducts(
                   pagination.totalPages,
@@ -358,9 +371,12 @@ export default function ProductsDataTable({
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
-          <div>
-            <Select>
-              <SelectTrigger className="hover:cursor-pointer ml-2">
+          <div className="">
+            <Select
+            
+            >
+              <SelectTrigger
+              size="sm" className="hover:cursor-pointer ml-2 m">
                 <SelectValue placeholder={pagination.limit}></SelectValue>
               </SelectTrigger>
               <SelectContent className="">

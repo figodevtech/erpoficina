@@ -1,7 +1,8 @@
 "use client"
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import OsTable from "./components/osTable";
-import { Ordem } from "../../ordens/types";
+import { Ordem, StatusOS } from "../../ordens/types";
+import axios from "axios";
 
 export default function AssistentePagamento (){
     const [ordens, setOrdens] = useState<Ordem[]>([])
@@ -11,14 +12,49 @@ export default function AssistentePagamento (){
     limit: 20,
     totalPages: 0,
   });
-    const [isLoading, setIsloading] = useState(false)
-    const handleGetOrdens = async () => {
+    const [isLoading, setIsLoading] = useState(false)
+    const[search, setSearch] = useState("")
+    
 
+    const handleGetOrdens = async (
+    pageNumber?: number,
+    limit?: number,
+    search?: string,
+  ) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get("/api/ordens", {
+        params: {
+          page: pageNumber || 1,
+          limit: limit || pagination.limit,
+          q: search || "",
+          status: "PAGAMENTO"
+        },
+      });
+      if (response.status === 200) {
+        // console.log(response)
+        console.log(response)
+        const { data } = response;
+        setOrdens(data.items);
+        setPagination({...pagination, limit:data.limit, page: data.page, totalPages:data.totalPages, total: data.total});
+        console.log("Ordens carregadas:", data.items);
+      }
+    } catch (error) {
+      console.log("Erro ao buscar Ordens:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(()=> {
+    handleGetOrdens();
+  },[])
+
     return (
 
     <div className="p-y-4 space-y-4">
         <OsTable
+        search={search}
         isLoading={isLoading}
         handleGetOrdens={handleGetOrdens}
         ordens={ordens}
