@@ -353,8 +353,8 @@ export default function ConfigFiscalPagamentosPage() {
 
   return (
     <div className="min-h-screen w-full">
-      <header className="border-b bg-background">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between gap-4">
+      <header className="">
+        <div className="w-full  flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
@@ -363,12 +363,9 @@ export default function ConfigFiscalPagamentosPage() {
                 {ambiente}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Preencha os dados fiscais e as formas de cobrança. Para João Pessoa/PB use o código IBGE <b>2507507</b>.
-            </p>
           </div>
           <Button onClick={handleSubmit(onSalvar)} disabled={salvando || carregando}>
-            {(salvando || carregando) ? (
+            {salvando || carregando ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" /> {carregando ? "Carregando…" : "Salvando…"}
               </>
@@ -379,7 +376,7 @@ export default function ConfigFiscalPagamentosPage() {
         </div>
       </header>
 
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="w-full  py-6 sm:py-8">
         <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5 rounded-xl bg-muted/60 p-1">
             <TabsTrigger value="empresa" className="flex items-center gap-2">
@@ -419,7 +416,7 @@ export default function ConfigFiscalPagamentosPage() {
 
           <TabsContent value="webhooks" className="mt-6">
             {/* se quiser controlar via form, pode passar register também */}
-            <WebhooksTab  />
+            <WebhooksTab />
           </TabsContent>
         </Tabs>
       </main>
