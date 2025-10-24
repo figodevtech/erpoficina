@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DialogShell } from "./dialog-shell";
-import { FormularioNovaOS } from "../forms/ordem-form";
+import { DialogShell } from "../dialogs/dialog-shell";
+import { FormularioNovaOS } from "./ordem-form";
 import { criarOrdem } from "../../lib/api"; // <- centralizado
 
 export function NovaOSDialog({
