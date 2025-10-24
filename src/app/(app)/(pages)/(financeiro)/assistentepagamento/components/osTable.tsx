@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import OsFinancialDialog from "./osFinancialDialog/osFinancialDialog";
 
 interface OsTableProps {
   ordens: Ordem[];
@@ -99,6 +100,7 @@ export default function OsTable({
         <Table className="text-xs mt-6">
           <TableHeader>
             <TableRow className="font-bold">
+              <TableCell>ID</TableCell>
               <TableCell>Descrição</TableCell>
               <TableCell>Cliente</TableCell>
               <TableCell>Setor</TableCell>
@@ -118,6 +120,7 @@ export default function OsTable({
               return (
                 <TableRow key={o.id} className="hover:cursor-pointer">
                   {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
+                  <TableCell>{o.id}</TableCell>
                   <TableCell>{o.descricao}</TableCell>
                   <TableCell>{o.cliente?.nome}</TableCell>
                   <TableCell>{o.setor?.nome}</TableCell>
@@ -141,12 +144,17 @@ export default function OsTable({
                         aria-labelledby={triggerId}
                         className="space-y-1"
                       >
+                        <OsFinancialDialog
+                        osId={o.id}
+                        >
+
                         <Button
                           className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
                         >
                           <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Pagamento</span>
                         </Button>
+                        </OsFinancialDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

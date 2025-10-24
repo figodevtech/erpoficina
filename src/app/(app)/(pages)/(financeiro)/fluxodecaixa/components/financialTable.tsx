@@ -50,7 +50,6 @@ import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
 import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { getCategoryIcon, getTypeColor } from "../utils";
-import { ProductDialog } from "../../../estoque/productDialog/productDialog";
 
 interface FinancialTableProps {
   transactions: Transaction[];

@@ -20,7 +20,7 @@ export async function GET(
       .from("ordemservico")
       .select(`
         id, descricao, status, statusaprovacao,
-        dataentrada, datasaidaprevista, datasaidareal,
+        dataentrada,
         usuariocriadorid, setorid, clienteid, veiculoid,
         setor:setorid ( id, nome ),
         cliente:clienteid ( id, nomerazaosocial ),

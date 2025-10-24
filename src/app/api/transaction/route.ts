@@ -16,11 +16,12 @@ const WRITABLE_FIELDS = new Set([
   "banco_id",
   "nomepagador",
   "cpfcnpjpagador",
+  
 ]);
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
-  "id, descricao, valor, data, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
+  "id, descricao, valor, data, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at, ordemservicoid";
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
 const BANCO_FIELDS =
@@ -122,6 +123,7 @@ export async function GET(req: Request) {
     // Filtros opcionais
     const tipo = (searchParams.get("tipo") ?? "").trim(); // public.tipos_transacao
     const categoria = (searchParams.get("categoria") ?? "").trim(); // public.categoria_transacao
+    const ordemservicoid = (searchParams.get("ordemservicoid"))
     const metodo = (searchParams.get("metodo") ??
       searchParams.get("metodopagamento") ??
       ""
@@ -153,6 +155,7 @@ export async function GET(req: Request) {
     if (q) {
       query = query.ilike("descricao", `%${q}%`);
     }
+    if(ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
     if (tipo) query = query.eq("tipo", tipo);
     if (categoria) query = query.eq("categoria", categoria);
     if (metodo) query = query.eq("metodopagamento", metodo);
