@@ -20,7 +20,7 @@ export async function GET(
       .from("ordemservico")
       .select(`
         id, descricao, status, statusaprovacao,
-        dataentrada,
+        dataentrada, orcamentototal,
         usuariocriadorid, setorid, clienteid, veiculoid,
         setor:setorid ( id, nome ),
         cliente:clienteid ( id, nomerazaosocial ),
@@ -38,7 +38,7 @@ export async function GET(
         ordemservicoid, produtoid, quantidade, precounitario, subtotal,
         produto:produtoid ( id, codigo, descricao, precounitario, unidade )
       `)
-      .eq("ordemservicoid", osId);
+      
 
     const { data: itensServico } = await supabaseAdmin
       .from("osservico")

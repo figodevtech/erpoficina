@@ -154,9 +154,11 @@ export default function OsContent({ osId }: OsContentProps) {
             ></div>
           </div>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+          <h1>Transações</h1>
+          <Separator/>
             <Table className="text-xs">
               <TableHeader>
-                <TableRow>
+                <TableRow className="">
                   <TableCell>ID</TableCell>
                   <TableCell>DESCRIÇÃO</TableCell>
                   <TableCell>BANCO/MÉTODO</TableCell>
@@ -186,32 +188,12 @@ export default function OsContent({ osId }: OsContentProps) {
             </Table>
           </div>
           <DialogFooter className="px-6 py-4">
-            <div className="flex flex-col w-full gap-3 sm:gap-4 justify-start text-xs">
-              <span className="text-sm">Resumo da OS:</span>
+            <div className="flex flex-col w-full gap-3 sm:gap-4 justify-start">
+              <span className="text-sm">Total Geral:</span>
+              <h1>{formatarEmReal(ordem.orcamentototal || 0)}</h1>
               <Separator />
               <div className="w-full flex flex-col space-y-1">
-                {itensServico.map((s) => (
-                  <div className="flex">
-                    <span className="text-nowrap">Total em Serviços</span>
-                    <div className="mx-4 w-full border-b-2 border-dashed"></div>
-                    <span>
-                      {formatarEmReal(
-                        itensServico.reduce((acc, s) => acc + s.subtotal, 0)
-                      )}
-                    </span>
-                  </div>
-                ))}
-                {itensServico.map((s) => (
-                  <div className="flex">
-                    <span className="text-nowrap">Total em produtos</span>
-                    <div className="mx-4 w-full border-b-2 border-dashed"></div>
-                    <span>
-                      {formatarEmReal(
-                        itensServico.reduce((acc, s) => acc + s.subtotal, 0)
-                      )}
-                    </span>
-                  </div>
-                ))}
+                
               </div>
             </div>
           </DialogFooter>

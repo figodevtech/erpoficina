@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ordem } from "../../../ordens/types";
 import { Pagination } from "../../fluxodecaixa/types";
 import {
@@ -40,15 +35,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import OsFinancialDialog from "./osFinancialDialog/osFinancialDialog";
+import formatarEmReal from "@/utils/formatarEmReal";
 
 interface OsTableProps {
   ordens: Ordem[];
   pagination: Pagination;
-  handleGetOrdens: (pageNumber?: number,
+  handleGetOrdens: (
+    pageNumber?: number,
     limit?: number,
-    search?: string,) => void;
+    search?: string
+  ) => void;
   isLoading: boolean;
-  search: string
+  search: string;
 }
 
 export default function OsTable({
@@ -56,7 +54,7 @@ export default function OsTable({
   pagination,
   handleGetOrdens,
   isLoading,
-  search
+  search,
 }: OsTableProps) {
   // ID estável para o Select de "itens por página"
   const limitUid = React.useId();
@@ -106,8 +104,8 @@ export default function OsTable({
               <TableCell>Setor</TableCell>
               <TableCell>Pago</TableCell>
               <TableCell>Total</TableCell>
+              <TableCell>Situação</TableCell>
               <TableCell></TableCell>
-              
             </TableRow>
           </TableHeader>
 
@@ -124,8 +122,26 @@ export default function OsTable({
                   <TableCell>{o.descricao}</TableCell>
                   <TableCell>{o.cliente?.nome}</TableCell>
                   <TableCell>{o.setor?.nome}</TableCell>
-                  <TableCell>R$ 0,00</TableCell>
-                  <TableCell>R$ 0,00</TableCell>
+                  <TableCell className=" text-blue-300 not-dark:text-blue-700 font-bold">
+                    {formatarEmReal(
+                      o.transacoes?.reduce(
+                        (acc, t) => acc + Number(t?.valor ?? 0),
+                        0
+                      ) ?? 0
+                    )}
+                  </TableCell>
+                  <TableCell>{formatarEmReal(o.orcamentototal || 0)}</TableCell>
+                  <TableCell className="">
+                    {
+                      o.orcamentototal ? 
+                      ((o.transacoes?.reduce((acc, t) => acc + Number(t?.valor ?? 0),0) || 0) < (o.orcamentototal || 0) ? <span className="font-bold text-amber-400">Pendente</span > : 
+                      
+                      <span className="font-bold text-green-400">Faturado</span>
+                    
+                    )
+                    : "Orçamento falta valor"
+                    }
+                  </TableCell>
                   <TableCell className="flex justify-end">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -144,16 +160,11 @@ export default function OsTable({
                         aria-labelledby={triggerId}
                         className="space-y-1"
                       >
-                        <OsFinancialDialog
-                        osId={o.id}
-                        >
-
-                        <Button
-                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
-                        >
-                          <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
-                          <span>Pagamento</span>
-                        </Button>
+                        <OsFinancialDialog osId={o.id}>
+                          <Button className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all">
+                            <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
+                            <span>Pagamento</span>
+                          </Button>
                         </OsFinancialDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -188,7 +199,9 @@ export default function OsTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetOrdens(pagination.page -1, pagination.limit, search)}
+              onClick={() =>
+                handleGetOrdens(pagination.page - 1, pagination.limit, search)
+              }
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -202,7 +215,9 @@ export default function OsTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() => handleGetOrdens(pagination.page +1, pagination.limit, search)}
+              onClick={() =>
+                handleGetOrdens(pagination.page + 1, pagination.limit, search)
+              }
               disabled={
                 pagination.page === pagination.totalPages ||
                 pagination.totalPages === 0
@@ -215,7 +230,9 @@ export default function OsTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() => handleGetOrdens(pagination.totalPages, pagination.limit, search)}
+              onClick={() =>
+                handleGetOrdens(pagination.totalPages, pagination.limit, search)
+              }
               disabled={
                 pagination.page === pagination.totalPages ||
                 pagination.totalPages === 0
