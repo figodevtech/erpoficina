@@ -18,6 +18,7 @@ export enum Categoria_transacao {
   SALARIO = "SALARIO",
   IMPOSTO_TAXA = "IMPOSTO_TAXA",
   UTILIDADE = "UTILIDADE",
+  ORDEM_SERVICO = "ORDEM_SERVICO"
 }
 
 export enum Metodo_pagamento {
@@ -79,7 +80,7 @@ export interface NewTransaction {
   cliente_id?: number | null;
   banco_id?: number;
   banco?: Banco;
-
+  ordemservicoid?: number | null
   nomepagador?: string;
   cpfcnpjpagador?: string;
 }

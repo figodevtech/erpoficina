@@ -17,8 +17,15 @@ import {
 import formatarEmReal from "@/utils/formatarEmReal";
 import { Tipo_transacao, Transaction } from "../../../fluxodecaixa/types";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import { Servico } from "@/types/servico";
+import TransactionDialog from "../../../fluxodecaixa/components/transactionDialog/transactionDialog";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ChevronDown, Loader, Trash2Icon } from "lucide-react";
+import DeleteAlert from "./deleteAlert";
+import { toast } from "sonner";
+import { formatDate } from "@/utils/formatDate";
 
 interface OsContentProps {
   osId: number;
@@ -47,6 +54,8 @@ export default function OsContent({ osId }: OsContentProps) {
   const [ordem, setOrdem] = useState<Ordem | undefined>(undefined);
   const [itensProduto, setItensProduto] = useState<ItemProduto[]>([]);
   const [itensServico, setItensServico] = useState<ItemServico[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
 
   const handleGetOrdem = async (
     osId: number,
@@ -97,6 +106,34 @@ export default function OsContent({ osId }: OsContentProps) {
       console.log("Erro ao buscar Transações:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+   const handleDeleteTransaction = async (id: number) => {
+    setIsDeleting(true);
+    toast(
+      <div className="flex gap-2 items-center flex-nowrap">
+        <Loader className="animate-spin w-4" />
+        <span className="text-nowrap">Deletando transação...</span>
+      </div>
+    );
+    try {
+      const response = await axios.delete(`/api/transaction/${id}`, {});
+      if (response.status === 204) {
+        handleGetTransactions(pagination.page)
+        toast("Transação deletada!");
+      } else {
+        toast.warning(`Status inesperado: ${response.status}`);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Error", {
+          description: error.response?.data.error,
+        });
+      }
+    } finally {
+      setIsDeleting(false);
+      setIsAlertOpen(false);
     }
   };
 
@@ -154,15 +191,24 @@ export default function OsContent({ osId }: OsContentProps) {
             ></div>
           </div>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-          <h1>Transações</h1>
-          <Separator/>
+            <div className="flex flex-row justify-end">
+              <TransactionDialog
+              osId={ordem.id}
+              >
+                <Button className="hover:cursor-pointer">Novo pagamento</Button>
+              </TransactionDialog>
+            </div>
+            <h1>Transações: {transactions.length}</h1>
+            <Separator />
             <Table className="text-xs">
               <TableHeader>
                 <TableRow className="">
                   <TableCell>ID</TableCell>
                   <TableCell>DESCRIÇÃO</TableCell>
+                  <TableCell>DATA</TableCell>
                   <TableCell>BANCO/MÉTODO</TableCell>
                   <TableCell>VALOR</TableCell>
+                  <TableCell></TableCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -171,10 +217,43 @@ export default function OsContent({ osId }: OsContentProps) {
                     <TableRow key={t.id} className="hover:cursor-pointer">
                       <TableCell>{t.id}</TableCell>
                       <TableCell>{t.descricao}</TableCell>
+                      <TableCell>{formatDate(t.data)}</TableCell>
                       <TableCell>
                         {t.banco.titulo} - {t.metodopagamento}
                       </TableCell>
                       <TableCell>{formatarEmReal(t.valor)}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 cursor-pointer"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent
+                        className="space-y-1"
+                      >
+                        
+                        <DeleteAlert
+                          handleDeleteTransaction={handleDeleteTransaction}
+                          isAlertOpen={isAlertOpen}
+                          setIsAlertOpen={setIsAlertOpen}
+                          idToDelete={t.id}
+                        >
+                          <Button
+                            variant="default"
+                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
+                          >
+                            <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
+                            <span>Excluir</span>
+                          </Button>
+                        </DeleteAlert>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -192,9 +271,7 @@ export default function OsContent({ osId }: OsContentProps) {
               <span className="text-sm">Total Geral:</span>
               <h1>{formatarEmReal(ordem.orcamentototal || 0)}</h1>
               <Separator />
-              <div className="w-full flex flex-col space-y-1">
-                
-              </div>
+              <div className="w-full flex flex-col space-y-1"></div>
             </div>
           </DialogFooter>
         </div>

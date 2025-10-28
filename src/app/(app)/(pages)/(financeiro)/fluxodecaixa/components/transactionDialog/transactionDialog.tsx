@@ -7,6 +7,7 @@ import { NewTransaction, Transaction, TransactionCustomer } from "../../types";
 
 interface TransactionDialogProps {
   children?: ReactNode;
+  osId?: number
   transactionId?: number;
   setSelectedTransactionId?: (value: number | undefined) => void;
   open?: boolean;
@@ -18,6 +19,7 @@ export default function TransactionDialog({
   setSelectedTransactionId,
   selectedTransactionId,
   open,
+  osId,
   setOpen,
 }: TransactionDialogProps) {
   const [newTransaction, setNewTransaction] = useState<NewTransaction>({});
@@ -54,6 +56,7 @@ export default function TransactionDialog({
         />
       ) : (
         <RegisterContent
+        osId={osId}
           selectedCustomer={selectedCustomer}
           setSelectedCustomer={setSelectedCustomer}
           dialogOpen={open}

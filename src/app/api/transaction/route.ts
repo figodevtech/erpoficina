@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** Campos graváveis em transacao */
 const WRITABLE_FIELDS = new Set([
+  "ordemservicoid",
   "descricao",
   "valor",
   "data",
@@ -21,7 +22,7 @@ const WRITABLE_FIELDS = new Set([
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
-  "id, descricao, valor, data, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at, ordemservicoid";
+  "id, descricao, valor, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at, ordemservicoid";
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
 const BANCO_FIELDS =

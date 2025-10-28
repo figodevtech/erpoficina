@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { Upload } from "lucide-react";
 
 interface RegisterContentProps {
+  osId?: number | undefined;
   setSelectedTransactionId?: (value: number | undefined) => void;
   newTransaction: NewTransaction;
   setNewTransaction: (value: NewTransaction) => void;
@@ -47,6 +48,7 @@ export default function RegisterContent({
   newTransaction,
   setNewTransaction,
   selectedCustomer,
+  osId,
   setSelectedCustomer,
 }: RegisterContentProps) {
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
@@ -121,14 +123,32 @@ export default function RegisterContent({
     console.log(newTransaction);
   }, [newTransaction]);
 
-  useEffect(()=>{
-    handleGetBanks()
-  },[])
+  useEffect(() => {
+    if(osId){
+
+      setNewTransaction({
+        ...newTransaction,
+        ordemservicoid: osId,
+        tipo: Tipo_transacao.RECEITA,
+        categoria: Categoria_transacao.ORDEM_SERVICO
+      });
+    }
+  }, [osId]);
+
+  useEffect(() => {
+    console.log("osId:", osId);
+    handleGetBanks();
+  }, []);
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          <DialogTitle>Nova Transação</DialogTitle>
+          {osId ? 
+          <DialogTitle>Nova Transação OS #{osId}</DialogTitle>
+        :  
+                  <DialogTitle>Nova Transação</DialogTitle>
+
+        }
           <DialogDescription>
             Preencha dados para registrar uma transação
           </DialogDescription>
@@ -139,21 +159,36 @@ export default function RegisterContent({
             <div className="space-y-4 grid sm:grid-cols-3 gap-4">
               <div className="space-y-2 w-full">
                 <Label htmlFor="tipo">Tipo</Label>
-                <Select
-                  value={newTransaction.tipo}
-                  onValueChange={(v) => handleChange("tipo", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(Tipo_transacao).map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {osId ? (
+                  <Select
+                  disabled
+                    value={"RECEITA"}
+                    onValueChange={(v) => handleChange("tipo", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RECEITA">RECEITA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select
+                    value={newTransaction.tipo}
+                    onValueChange={(v) => handleChange("tipo", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(Tipo_transacao).map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2 w-full col-span-full">
                 <Label htmlFor="descricao">Descrição*</Label>
@@ -217,6 +252,23 @@ export default function RegisterContent({
               </div>
               <div className="space-y-2 w-full">
                 <Label htmlFor="categoria">Categoria</Label>
+                {osId ? 
+                <Select
+                disabled
+                  value={newTransaction.categoria}
+                  onValueChange={(v) => handleChange("categoria", v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="ORDEM_SERVICO" >
+                        ORDEM DE SERVIÇO
+                      </SelectItem>
+                  </SelectContent>
+                </Select>
+              :
+
                 <Select
                   value={newTransaction.categoria}
                   onValueChange={(v) => handleChange("categoria", v)}
@@ -232,6 +284,7 @@ export default function RegisterContent({
                     ))}
                   </SelectContent>
                 </Select>
+              }
               </div>
             </div>
 
