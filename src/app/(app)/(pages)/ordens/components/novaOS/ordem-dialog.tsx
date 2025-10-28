@@ -4,7 +4,9 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogShell } from "../dialogs/dialog-shell";
 import { FormularioNovaOS } from "./ordem-form";
-import { criarOrdem } from "../../lib/api"; // <- centralizado
+import { criarOrdem } from "../../lib/api";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export function NovaOSDialog({
   open,
@@ -26,11 +28,24 @@ export function NovaOSDialog({
       description="Preencha os dados para criar uma nova OS"
       footer={
         <>
-          <Button variant="outline" className="bg-transparent" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button
+            variant="outline"
+            className="bg-transparent"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancelar
           </Button>
+
           <Button onClick={() => submitRef.current?.()} disabled={saving}>
-            {saving ? "Salvando..." : "Criar OS"}
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando…
+              </>
+            ) : (
+              "Criar OS"
+            )}
           </Button>
         </>
       }
@@ -43,12 +58,12 @@ export function NovaOSDialog({
             if (onCreate) {
               await onCreate(payload);
             } else {
-              // fluxo padrão
               await criarOrdem(payload);
             }
-            onOpenChange(false);
+            toast.success("OS criada com sucesso!");
+            onOpenChange(false); // ✅ fecha o dialog no sucesso
           } catch (e: any) {
-            alert(e?.message || "Erro ao criar OS");
+            toast.error(e?.message || "Erro ao criar OS"); // ✅ Sonner (sem alert)
           } finally {
             setSaving(false);
           }
