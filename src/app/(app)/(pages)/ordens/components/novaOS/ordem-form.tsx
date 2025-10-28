@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, CarFront, User2, ClipboardList, Building2 } from "lucide-react";
+import { Loader2, Search, CarFront, User2, ClipboardList, Building2, Wrench } from "lucide-react";
+import { toast } from "sonner";
 
 type Cliente = {
   id: number;
@@ -35,14 +36,14 @@ type ChecklistTemplateModel = {
   itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
 };
 
-// Seu form marca: OK | NOK | NA
 const CHECK_STATUS = ["OK", "NOK", "NA"] as const;
 type Marcacao = (typeof CHECK_STATUS)[number] | "";
 
 export type FormularioNovaOSProps = {
-  onSubmit?: (payload: any) => void;
+  onSubmit?: (payload: any) => Promise<void> | void;
   exposeSubmit?: (fn: () => void) => void;
 };
+
 
 const NONE = "__none__";
 
@@ -57,32 +58,47 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
   const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
 
-  // Cliente/Veículo
-  const [docBusca, setDocBusca] = useState(""); // CPF/CNPJ
+  // Cliente/Veículo existentes
+  const [docBusca, setDocBusca] = useState("");
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<Veiculo[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState<string | null>(null);
 
-  // Avulso
+  // Avulso (obs: schema exige email e telefone)
   const [avulsoNome, setAvulsoNome] = useState<string>("");
   const [avulsoDoc, setAvulsoDoc] = useState<string>("");
   const [avulsoTelefone, setAvulsoTelefone] = useState<string>("");
   const [avulsoEmail, setAvulsoEmail] = useState<string>("");
 
-  // Texto
+  // Descrição/Observações
   const [descricao, setDescricao] = useState<string>("");
   const [observacoes, setObservacoes] = useState<string>("");
 
   // Checklist
   const [templates, setTemplates] = useState<ChecklistTemplateModel[]>([]);
-  theme: "light";
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string>("");
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateModel["itens"]>([]);
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
+
+  // === ALVO DO REPARO (somente UI; iremos anexar nas observações) ===
+  type AlvoTipo = "VEICULO" | "PECA";
+  const [alvoTipo, setAlvoTipo] = useState<AlvoTipo>("VEICULO");
+
+  // Veículo (dados básicos na OS, mesmo sem cadastro)
+  const [vPlaca, setVPlaca] = useState("");
+  const [vModelo, setVModelo] = useState("");
+  const [vMarca, setVMarca] = useState("");
+  const [vAno, setVAno] = useState<string>("");
+  const [vCor, setVCor] = useState("");
+  const [vKm, setVKm] = useState<string>("");
+
+  // Peça (sem pesquisa, só nome e opcional descrição)
+  const [pNome, setPNome] = useState("");
+  const [pDesc, setPDesc] = useState("");
 
   // Carrega Setores
   useEffect(() => {
@@ -150,7 +166,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     setChecklist(novo);
   }, [templateId, templates]);
 
-  // Veículos
+  // Veículos existentes do cliente
   const veiculoOptions = useMemo(
     () =>
       veiculosDoCliente.map((v) => ({
@@ -206,77 +222,119 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     avulsoDoc,
     avulsoTelefone,
     avulsoEmail,
+    prioridade,
+    alvoTipo,
+    vPlaca,
+    vModelo,
+    vMarca,
+    vAno,
+    vCor,
+    vKm,
+    pNome,
+    pDesc,
   ]);
 
-  // Mapeia status para enum do banco
   const mapStatusToDB = (s: Marcacao): "PENDENTE" | "OK" | "ALERTA" | "FALHA" => {
     if (s === "OK") return "OK";
     if (s === "NOK") return "FALHA";
-    // "NA" (não se aplica) ou vazio -> PENDENTE
     return "PENDENTE";
   };
 
-  // Salvar
-  const salvar = async () => {
-    if (!setor) {
-      alert("Selecione o Setor responsável.");
-      return;
+  function validar(): string | null {
+    if (!setor) return "Selecione o setor responsável.";
+
+    if (modoAtendimento === "cadastrado" && !cliente) return "Busque o cliente pelo CPF/CNPJ.";
+    if (modoAtendimento === "avulso") {
+      if (!avulsoNome || !avulsoDoc) return "Preencha Nome/Razão Social e CPF/CNPJ para atendimento avulso.";
+      if (!avulsoTelefone?.trim() || !avulsoEmail?.trim()) {
+        return "Para atendimento avulso, telefone e e-mail são obrigatórios.";
+      }
     }
-    if (modoAtendimento === "cadastrado") {
-      if (!cliente) {
-        alert("Busque o cliente pelo CPF/CNPJ e selecione um veículo (se houver).");
-        return;
+
+    if (alvoTipo === "VEICULO") {
+      // dados básicos para identificar o veículo (modelo ou placa)
+      if (!vModelo.trim() && !vPlaca.trim()) {
+        return "Informe pelo menos o Modelo ou a Placa do veículo.";
       }
     } else {
-      if (!avulsoNome || !avulsoDoc) {
-        alert("Preencha Nome/Razão Social e CPF/CNPJ para atendimento avulso.");
-        return;
-      }
+      if (!pNome.trim()) return "Informe o nome da peça.";
     }
+    return null;
+  }
 
-    const checklistArray = Object.entries(checklist).map(([item, status]) => ({
-      item,
-      status: mapStatusToDB((status || "") as Marcacao),
-    }));
+const salvar = async () => {
+  const err = validar();
+  if (err) {
+    toast.error(err);
+    return;
+  }
 
-    const payload = {
-      setorid: setor ? Number(setor) : null,
-      descricao: descricao || null,
-      observacoes: observacoes || null,
-      checklistTemplateId: templateId || null,
-      cliente:
-        modoAtendimento === "cadastrado"
-          ? { id: cliente!.id }
-          : {
-              nome: avulsoNome,
-              documento: avulsoDoc,
-              telefone: avulsoTelefone || null,
-              email: avulsoEmail || null,
+  const checklistArray = Object.entries(checklist).map(([item, status]) => ({
+    item,
+    status: mapStatusToDB((status || "") as Marcacao),
+  }));
+
+  const payload: any = {
+    setorid: setor ? Number(setor) : null,
+    descricao: descricao || null,
+    observacoes: (observacoes || "").trim() || null,
+    checklistTemplateId: templateId || null,
+    prioridade,
+    cliente:
+      modoAtendimento === "cadastrado"
+        ? { id: cliente!.id }
+        : {
+            nome: avulsoNome,
+            documento: avulsoDoc,
+            telefone: avulsoTelefone || null,
+            email: avulsoEmail || null,
+          },
+    veiculoid: veiculoSelecionadoId, // pode ser null
+    checklist: checklistArray,
+    alvo:
+      alvoTipo === "VEICULO"
+        ? {
+            tipo: "VEICULO",
+            veiculo: {
+              placa: vPlaca || null,
+              modelo: vModelo || null,
+              marca: vMarca || null,
+              ano: vAno ? Number(vAno) : null,
+              cor: vCor || null,
+              kmatual: vKm ? Number(vKm) : null,
             },
-      veiculoid: veiculoSelecionadoId, // number | null
-      checklist: checklistArray,
-      prioridade,
-    };
-
-    if (onSubmit) {
-      onSubmit(payload);
-      return;
-    }
-
-    // Fallback para salvar direto (remova este bloco se quiser forçar o pai a salvar)
-    try {
-      const r = await fetch("/api/ordens/criar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
-      alert(`OS criada com sucesso! ID: ${j.id}`);
-    } catch (e: any) {
-      alert(e?.message || "Erro ao salvar OS");
-    }
+          }
+        : {
+            tipo: "PECA",
+            peca: {
+              nome: pNome.trim(),
+              descricao: pDesc?.trim() || null,
+            },
+          },
   };
+
+  // ✅ Se o pai (Dialog) passou onSubmit, delega e sai.
+  if (onSubmit) {
+    await onSubmit(payload);
+    return;
+  }
+
+  // 🌐 Fluxo interno (quando o formulário é usado fora do Dialog)
+  try {
+    const r = await fetch("/api/ordens/criar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
+    toast.success(`OS criada com sucesso!${j?.id ? ` ID: ${j.id}` : ""}`);
+  } catch (e: any) {
+    toast.error(e?.message || "Erro ao salvar OS");
+  }
+};
+
+
 
   return (
     <div className="space-y-6">
@@ -296,7 +354,12 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             <Label className="text-sm font-medium">Tipo de atendimento</Label>
             <RadioGroup
               value={modoAtendimento}
-              onValueChange={(v: "cadastrado" | "avulso") => setModoAtendimento(v)}
+              onValueChange={(v: "cadastrado" | "avulso") => {
+                setModoAtendimento(v);
+                setCliente(null);
+                setVeiculosDoCliente([]);
+                setVeiculoSelecionadoId(null);
+              }}
               className="flex flex-wrap gap-4"
             >
               <label className="flex items-center gap-2 cursor-pointer">
@@ -357,43 +420,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                   <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
                 </div>
               </div>
-
-              {/* Veículo */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Veículo do cliente</Label>
-                  {cliente && (
-                    <Badge variant="outline" className="font-normal">
-                      {veiculoOptions.length} veículo(s)
-                    </Badge>
-                  )}
-                </div>
-                <Select
-                  value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
-                  onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
-                  disabled={!cliente || veiculoOptions.length === 0}
-                >
-                  <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
-                    <SelectValue
-                      placeholder={
-                        !cliente
-                          ? "Busque o cliente"
-                          : veiculoOptions.length
-                          ? "Selecione um veículo"
-                          : "Cliente sem veículos"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Sem veículo</SelectItem>
-                    {veiculoOptions.map((v) => (
-                      <SelectItem key={v.value} value={v.value}>
-                        {v.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -434,8 +460,8 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-3">
               <Label>Setor responsável</Label>
               <Select
@@ -478,10 +504,112 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
               </Select>
             </div>
           </div>
+
+          {/* ALVO DO REPARO (apenas UI; será escrito nas observações) */}
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Wrench className="h-4 w-4 text-primary" />
+              <Label className="font-medium">Alvo do reparo</Label>
+            </div>
+            <RadioGroup
+              value={alvoTipo}
+              onValueChange={(v: "VEICULO" | "PECA") => setAlvoTipo(v)}
+              className="flex flex-wrap gap-4 mb-4"
+            >
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem id="alvo-veic" value="VEICULO" />
+                <span>Veículo</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem id="alvo-peca" value="PECA" />
+                <span>Peça</span>
+              </label>
+            </RadioGroup>
+
+            {alvoTipo === "VEICULO" ? (
+              <div className="space-y-4">
+                {/* Vincular veículo já cadastrado (opcional) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Vincular a um veículo já cadastrado (opcional)</Label>
+                    <Badge variant="outline" className="font-normal">
+                      {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
+                    </Badge>
+                  </div>
+                  <Select
+                    value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
+                    onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
+                    disabled={(modoAtendimento === "cadastrado" && !cliente) || veiculoOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                      <SelectValue
+                        placeholder={
+                          modoAtendimento === "cadastrado"
+                            ? !cliente
+                              ? "Busque o cliente"
+                              : veiculoOptions.length
+                              ? "Selecione um veículo"
+                              : "Cliente sem veículos"
+                            : "Nenhum veículo cadastrado"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Não vincular</SelectItem>
+                      {veiculoOptions.map((v) => (
+                        <SelectItem key={v.value} value={v.value}>
+                          {v.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Dados básicos do veículo (sempre registrados nas observações) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Placa</Label>
+                    <Input value={vPlaca} onChange={(e) => setVPlaca(e.target.value)} placeholder="ABC1D23" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Modelo</Label>
+                    <Input value={vModelo} onChange={(e) => setVModelo(e.target.value)} placeholder="Ex.: i30 2.0" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Marca</Label>
+                    <Input value={vMarca} onChange={(e) => setVMarca(e.target.value)} placeholder="Ex.: Hyundai" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Ano</Label>
+                    <Input value={vAno} onChange={(e) => setVAno(e.target.value)} inputMode="numeric" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Cor</Label>
+                    <Input value={vCor} onChange={(e) => setVCor(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>KM atual</Label>
+                    <Input value={vKm} onChange={(e) => setVKm(e.target.value)} inputMode="numeric" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Nome da peça</Label>
+                  <Input value={pNome} onChange={(e) => setPNome(e.target.value)} placeholder="Ex.: Bomba d’água" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Descrição (opcional)</Label>
+                  <Input value={pDesc} onChange={(e) => setPDesc(e.target.value)} placeholder="Detalhes da peça" />
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* DESCRIÇÃO */}
+      {/* DESCRIÇÃO DO PROBLEMA */}
       <Card className="border-border">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
@@ -491,7 +619,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         </CardHeader>
         <CardContent>
           <Textarea
-            placeholder="Descreva o problema do veículo…"
+            placeholder="Descreva o problema…"
             className="min-h-[100px] resize-y"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
@@ -509,7 +637,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Modelo */}
           <div className="space-y-3">
             <Label>Modelo de checklist</Label>
             <div className="flex items-center gap-2">
@@ -555,13 +682,11 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             {templatesError && <p className="text-sm text-red-500">{templatesError}</p>}
           </div>
 
-          {/* Itens */}
           {templateItems.length > 0 ? (
             <div className="grid grid-cols-1 gap-3">
               {templateItems.map((it) => {
                 const key = it.titulo ?? "";
                 const marcado = checklist[key] ?? "";
-
                 return (
                   <div key={key} className="p-3 rounded-lg border bg-muted/50 border-border text-foreground">
                     <div className="flex items-start justify-between gap-2">
@@ -577,7 +702,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {CHECK_STATUS.map((status) => {
+                      {(["OK", "NOK", "NA"] as const).map((status) => {
                         const selected = marcado === status;
                         return (
                           <button

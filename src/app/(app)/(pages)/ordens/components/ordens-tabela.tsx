@@ -1,7 +1,9 @@
 // src/app/(app)/(pages)/ordens/components/ordens-tabela.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -13,46 +15,32 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Search,
-  DollarSign,
   Loader,
   Car,
-  PlusCircle,
   MoreHorizontal,
+  DollarSign,
   Link2,
-  Pencil,
   Send,
   Wallet,
+  CreditCard,
+  Pencil,
   AlertTriangle,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { createClient } from "@supabase/supabase-js";
-import { toast } from "sonner";
+
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import { Ordem } from "../types";
 import { StatusOS } from "./ordens-tabs";
 import TableSkeleton from "../components/table-skeleton";
-import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 
-/* ========================== Helpers de UI ========================== */
+// >>> ajuste os caminhos a seguir conforme sua estrutura <<<
+import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
+import { PagamentoDialog } from "./dialogs/pagamento-dialog";
+
+// --------- Helpers de UI ---------
 const statusClasses: Record<string, string> = {
   ORCAMENTO: "bg-fuchsia-600/15 text-fuchsia-400",
   APROVACAO_ORCAMENTO: "bg-sky-600/15 text-sky-400",
@@ -68,7 +56,7 @@ const prioClasses: Record<string, string> = {
   BAIXA: "bg-emerald-600/15 text-emerald-500",
 };
 
-/* ========================== Helpers de tempo ========================== */
+// --------- Helpers de tempo ---------
 function fmtDate(s?: string | null) {
   if (!s) return "—";
   const d = new Date(s);
@@ -100,7 +88,7 @@ function useNowTick(periodMs = 60000) {
   return now;
 }
 
-/* Alias local com campos de data exibidos */
+// alias local só para datas exibidas na tabela
 type OrdemComDatas = Ordem & {
   dataEntrada?: string | null;
   dataSaida?: string | null;
@@ -119,30 +107,29 @@ export function OrdensTabela({
   onEditar: (row: OrdemComDatas) => void;
   onNovaOS: () => void;
 }) {
-  /* ========================== Estado de dados ========================== */
+  // dados
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
 
-  /* paginação/filtro */
+  // paginação/filtro
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
 
-  /* loading + guarda de request */
+  // loading + guarda de request
   const [isLoading, setIsLoading] = useState(true);
   const reqIdRef = useRef(0);
 
-  /* tick de 60s p/ recalcular tempo decorrido */
+  // tick para atualizar contador de tempo a cada 60s
   const now = useNowTick(60000);
 
-  /* guarda params atuais p/ realtime */
+  // params atuais para realtime
   const currentParamsRef = useRef({ status, q, page, limit });
   useEffect(() => {
     currentParamsRef.current = { status, q, page, limit };
   }, [status, q, page, limit]);
 
-  /* ========================== Fetch ========================== */
   async function fetchNow({
     status: st,
     q: search,
@@ -189,19 +176,19 @@ export function OrdensTabela({
     }
   }
 
-  /* carregar quando filtros/paginação mudarem (debounce p/ q) */
+  // carregar quando filtros/paginação mudarem (debounce simples para q)
   useEffect(() => {
     const t = setTimeout(() => fetchNow({ status, q, page, limit }), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, q, page, limit]);
 
-  /* reset página quando mudar status */
+  // reset página quando mudar status
   useEffect(() => {
     setPage(1);
   }, [status]);
 
-  /* ========================== Realtime SUPABASE ========================== */
+  // realtime
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -224,13 +211,12 @@ export function OrdensTabela({
     };
   }, [status]);
 
-  /* ========================== Helpers de render ========================== */
+  // rodapé
   const pageCount = rows.length;
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
 
   const safeStatus = (s: Ordem["status"]) => (s ?? "ORCAMENTO") as Exclude<StatusOS, "TODAS">;
-
   const renderTempo = (r: OrdemComDatas) => {
     const startMs =
       toMs(r.dataEntrada) ??
@@ -243,7 +229,10 @@ export function OrdensTabela({
     const st = safeStatus(r.status);
     const endMs =
       st === "CONCLUIDO" || st === "CANCELADO"
-        ? toMs(r.dataSaidaReal) ?? toMs((r as any).updatedat) ?? toMs((r as any).updatedAt) ?? now
+        ? toMs(r.dataSaidaReal) ??
+          toMs((r as any).updatedat) ??
+          toMs((r as any).updatedAt) ??
+          now
         : now;
 
     return fmtDuration((endMs ?? now) - startMs);
@@ -256,33 +245,28 @@ export function OrdensTabela({
   };
 
   async function setStatus(id: number, status: Exclude<StatusOS, "TODAS">) {
-    try {
-      const r = await fetch(`/api/ordens/${id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
+    const r = await fetch(`/api/ordens/${id}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!r.ok) {
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || "Falha ao atualizar status");
-
-      toast.success(`Status atualizado para ${status.replaceAll("_", " ")}`);
-      // dispara refresh local/global
-      fetchNow(currentParamsRef.current);
-      window.dispatchEvent(new Event("os:refresh"));
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao atualizar status");
+      throw new Error(j?.error || "Falha ao atualizar status");
     }
+    window.dispatchEvent(new CustomEvent("os:refresh"));
   }
 
-  /* ========================== Dialog: Link de aprovação ========================== */
+  // Estados de diálogos
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkRow, setLinkRow] = useState<OrdemComDatas | null>(null);
 
-  /* ========================== Dialog: Confirmar envio p/ pagamento ========================== */
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmRow, setConfirmRow] = useState<OrdemComDatas | null>(null);
 
-  /* ========================== UI ========================== */
+  const [payOpen, setPayOpen] = useState(false);
+  const [payRow, setPayRow] = useState<OrdemComDatas | null>(null);
+
   return (
     <Card className="bg-card">
       <CardContent className="p-3 sm:p-4">
@@ -299,8 +283,7 @@ export function OrdensTabela({
           </div>
 
           <Button onClick={onNovaOS} className="whitespace-nowrap sm:self-auto">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Nova OS
+            + Nova OS
           </Button>
         </div>
 
@@ -318,14 +301,14 @@ export function OrdensTabela({
                 <TableHead className="min-w-[120px]">Status</TableHead>
                 <TableHead className="min-w-[120px]">Prioridade</TableHead>
                 <TableHead className="min-w-[120px]">Tempo</TableHead>
-                <TableHead className="min-w-[180px] text-center">Ações</TableHead>
+                <TableHead className="min-w-[80px]" />
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {isLoading && (
                 <TableSkeleton
-                  rows={10}
+                  rows={8}
                   columns={[
                     { cellClass: "min-w-[96px]", barClass: "h-4 w-14" },   // #
                     { cellClass: "min-w-[240px]", barClass: "h-4 w-56" },  // Cliente / Veículo
@@ -336,7 +319,7 @@ export function OrdensTabela({
                     { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },  // Status
                     { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Prioridade
                     { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Tempo
-                    { cellClass: "min-w-[180px]", barClass: "h-8 w-28" },  // Ações
+                    { cellClass: "min-w-[80px]", barClass: "h-8 w-6" },    // Ações
                   ]}
                 />
               )}
@@ -367,8 +350,8 @@ export function OrdensTabela({
 
                       <TableCell className="max-w-[380px] truncate">{r.descricao || "—"}</TableCell>
                       <TableCell>{r.setor?.nome ?? "—"}</TableCell>
-                      <TableCell>{fmtDate(r.dataEntrada)}</TableCell>
-                      <TableCell>{fmtDate(r.dataSaida)}</TableCell>
+                      <TableCell>{fmtDate((r as any).dataEntrada ?? (r as any).dataentrada)}</TableCell>
+                      <TableCell>{fmtDate((r as any).dataSaida ?? (r as any).datasaida)}</TableCell>
                       <TableCell>
                         <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>
                       </TableCell>
@@ -376,23 +359,21 @@ export function OrdensTabela({
                       <TableCell>{renderTempo(r)}</TableCell>
 
                       {/* Ações via Dropdown */}
-                      <TableCell className="text-center">
+                      <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="px-2">
+                            <Button variant="outline" size="icon" className="px-2">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-60">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
 
-                            {/* Orçamento */}
                             <DropdownMenuItem onClick={() => onOpenOrcamento(r)}>
                               <DollarSign className="mr-2 h-4 w-4" />
                               <span>Orçamento</span>
                             </DropdownMenuItem>
 
-                            {/* Link de aprovação (ORCAMENTO / APROVACAO_ORCAMENTO) */}
                             {podeLink && (
                               <DropdownMenuItem
                                 onClick={() => {
@@ -405,7 +386,6 @@ export function OrdensTabela({
                               </DropdownMenuItem>
                             )}
 
-                            {/* Enviar p/ aprovação (opcional) — move para APROVACAO_ORCAMENTO */}
                             {st === "ORCAMENTO" && (
                               <>
                                 <DropdownMenuSeparator />
@@ -416,54 +396,39 @@ export function OrdensTabela({
                               </>
                             )}
 
-                            {/* Finalizar e enviar p/ pagamento (com confirmação) */}
                             {st === "EM_ANDAMENTO" && (
                               <>
                                 <DropdownMenuSeparator />
-                                <AlertDialog open={confirmOpen && confirmRow?.id === r.id} onOpenChange={setConfirmOpen}>
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setConfirmRow(r);
-                                        setConfirmOpen(true);
-                                      }}
-                                    >
-                                      <Wallet className="mr-2 h-4 w-4" />
-                                      <span>Finalizar e enviar p/ pagamento…</span>
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle className="flex items-center gap-2">
-                                        <AlertTriangle className="h-5 w-5 text-amber-500" />
-                                        Confirmar envio ao Financeiro
-                                      </AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Esta ação mudará o status da OS <b>#{confirmRow?.id}</b> para <b>PAGAMENTO</b>.
-                                        Verifique se todos os serviços foram concluídos e lançados no orçamento.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={async () => {
-                                          if (!confirmRow) return;
-                                          await setStatus(confirmRow.id, "PAGAMENTO");
-                                          setConfirmOpen(false);
-                                          setConfirmRow(null);
-                                        }}
-                                      >
-                                        Enviar p/ pagamento
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault(); // evita fechar e perder clique
+                                    setConfirmRow(r);
+                                    setTimeout(() => setConfirmOpen(true), 10);
+                                  }}
+                                >
+                                  <Wallet className="mr-2 h-4 w-4" />
+                                  <span>Finalizar e enviar p/ pagamento…</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
+
+                            {st === "PAGAMENTO" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setPayRow(r);
+                                    setPayOpen(true);
+                                  }}
+                                >
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  <span>Receber pagamento…</span>
+                                </DropdownMenuItem>
                               </>
                             )}
 
                             <DropdownMenuSeparator />
 
-                            {/* Editar OS sempre disponível */}
                             <DropdownMenuItem onClick={() => onEditar(r)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               <span>Editar OS</span>
@@ -486,7 +451,7 @@ export function OrdensTabela({
           </Table>
         </div>
 
-        {/* Rodapé — mesmo visual */}
+        {/* Rodapé — paginação */}
         <div className="mt-4 flex items-center justify-between">
           <div className="flex flex-nowrap text-xs text-muted-foreground">
             <span>{start || 0}</span> - <span>{end || 0}</span>
@@ -531,7 +496,7 @@ export function OrdensTabela({
               }}
             >
               <SelectTrigger className="ml-2 hover:cursor-pointer">
-                <SelectValue placeholder={limit}></SelectValue>
+                <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="10">10</SelectItem>
@@ -543,12 +508,52 @@ export function OrdensTabela({
         </div>
       </CardContent>
 
-      {/* Diálogo de Link de Aprovação */}
+      {/* Dialog: Link de aprovação */}
       <LinkAprovacaoDialog
         open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
-        osId={linkRow?.id}
-        clienteNome={linkRow?.cliente?.nome}
+        onOpenChange={(v) => {
+          setLinkDialogOpen(v);
+          if (!v) setLinkRow(null);
+        }}
+        osId={linkRow?.id ?? 0}
+      />
+
+      {/* AlertDialog único: enviar p/ pagamento */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirmar envio ao Financeiro
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação mudará o status da OS <b>#{confirmRow?.id}</b> para <b>PAGAMENTO</b>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!confirmRow) return;
+                await setStatus(confirmRow.id, "PAGAMENTO");
+                setConfirmOpen(false);
+                setConfirmRow(null);
+              }}
+            >
+              Enviar p/ pagamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog: Receber pagamento */}
+      <PagamentoDialog
+        open={payOpen}
+        onOpenChange={(v) => {
+          setPayOpen(v);
+          if (!v) setPayRow(null);
+        }}
+        osId={payRow?.id ?? null}
       />
     </Card>
   );

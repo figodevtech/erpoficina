@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { OrdensTabs } from "../components/ordens-tabs";
-import { NovaOSDialog } from "../components/dialogs/ordem-dialog";
-import { EditarOSDialog } from "../components/dialogs/editar-ordem-dialog";
+import { NovaOSDialog } from "../components/novaOS/ordem-dialog";
+import { EditarOSDialog } from "./editarOS/editar-ordem-dialog";
 import { OrcamentoDialog } from "../components/orcamento/orcamento-dialog";
 import { criarOrdem, editarOrdem } from "../lib/api";
 

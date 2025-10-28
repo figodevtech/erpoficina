@@ -2,8 +2,8 @@
 
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { DialogShell } from "./dialog-shell";
-import { OrdemEditForm } from "../forms/ordem-edit-form";
+import { DialogShell } from "../dialogs/dialog-shell";
+import { OrdemEditForm } from "./ordem-edit-form";
 
 export function EditarOSDialog({
   open, onOpenChange, defaultValues, onEdit,

@@ -18,7 +18,8 @@ import {
   DollarSign,
   Calculator,
   Speech,
-  ArrowDownUp
+  ArrowDownUp,
+  Receipt
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -107,6 +108,11 @@ const data = {
           title: "Geral",
           url: "#",
           icon: Settings,
+        },
+         {
+          title: "Fiscal & Pagamentos",
+          url: "/configuracoes/fiscal-pagamentos",
+          icon: Receipt,
         },
         {
           title: "Tipos",
