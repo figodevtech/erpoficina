@@ -18,6 +18,7 @@ export type StatusOS =
   | "TODAS"
   | "ORCAMENTO"
   | "APROVACAO_ORCAMENTO"
+  | "ORCAMENTO_APROVADO"
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
   | "CONCLUIDO"

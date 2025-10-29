@@ -1,7 +1,7 @@
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-
-export const revalidate = 0;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,7 +11,7 @@ const supabase = createClient(
 
 const onlyDigits = (s: string) => (s || "").replace(/\D/g, "");
 
-// Carrega tudo que a página precisa sem relações aninhadas
+// Carrega tudo que a página pública precisa, sem relações aninhadas profundas
 async function carregarPorToken(token: string) {
   const tok = await supabase
     .from("osaprovacao")
@@ -23,7 +23,6 @@ async function carregarPorToken(token: string) {
 
   const osId = tok.data.ordemservicoid as number | null;
 
-  // Sem OS? retorna payload mínimo
   if (!osId) {
     return {
       tokenRow: tok.data,
@@ -32,12 +31,14 @@ async function carregarPorToken(token: string) {
       produtos: [],
       servicos: [],
       totais: { totalProdutos: 0, totalServicos: 0, totalGeral: 0 },
+      statusOS: "ORCAMENTO",
+      statusAprovacao: "PENDENTE",
     };
   }
 
   const os = await supabase
     .from("ordemservico")
-    .select("id, clienteid, status")
+    .select("id, clienteid, status, statusaprovacao")
     .eq("id", osId)
     .maybeSingle();
   if (os.error) throw os.error;
@@ -94,6 +95,7 @@ async function carregarPorToken(token: string) {
       totalGeral: totalProdutos + totalServicos,
     },
     statusOS: os.data?.status || "ORCAMENTO",
+    statusAprovacao: os.data?.statusaprovacao || "PENDENTE",
   };
 }
 
@@ -163,7 +165,10 @@ export async function POST(request: Request, ctx: { params: Promise<{ token: str
       return NextResponse.json({ error: "Documento não confere" }, { status: 401 });
     }
 
-    const novoStatus = acao === "aprovar" ? "EM_ANDAMENTO" : "ORCAMENTO";
+    // Se aprovar: statusaprovacao = APROVADO, status = ORCAMENTO_APROVADO
+    // Se reprovar: statusaprovacao = RECUSADO, status = ORCAMENTO (permanece em orçamento)
+    const novoStatusAprov: "APROVADO" | "RECUSADO" = acao === "aprovar" ? "APROVADO" : "RECUSADO";
+    const novoStatusOS = acao === "aprovar" ? "ORCAMENTO_APROVADO" : "ORCAMENTO";
 
     // marca token como usado
     const updTok = await supabase
@@ -172,14 +177,14 @@ export async function POST(request: Request, ctx: { params: Promise<{ token: str
       .eq("id", tokenRow.id);
     if (updTok.error) throw updTok.error;
 
-    // atualiza status da OS
+    // atualiza status da OS + statusaprovacao
     const updOS = await supabase
       .from("ordemservico")
-      .update({ status: novoStatus })
+      .update({ status: novoStatusOS, statusaprovacao: novoStatusAprov })
       .eq("id", ordemservicoid);
     if (updOS.error) throw updOS.error;
 
-    return NextResponse.json({ ok: true, status: novoStatus });
+    return NextResponse.json({ ok: true, status: novoStatusOS, statusaprovacao: novoStatusAprov });
   } catch (e: any) {
     console.error("POST /api/ordens/aprovacao/[token]", e);
     return NextResponse.json({ error: "Falha ao processar" }, { status: 500 });
