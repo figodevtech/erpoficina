@@ -32,6 +32,7 @@ import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
+import { describe } from "node:test";
 
 interface RegisterContentProps {
   osId?: number | undefined;
@@ -41,6 +42,8 @@ interface RegisterContentProps {
   dialogOpen: boolean | undefined;
   selectedCustomer: TransactionCustomer | undefined;
   setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
+  handleGetTransactions?: (pageNumber?: number) => void
+  setOpen?: (value: boolean)=> void
 }
 
 export default function RegisterContent({
@@ -50,6 +53,8 @@ export default function RegisterContent({
   selectedCustomer,
   osId,
   setSelectedCustomer,
+  handleGetTransactions,
+  setOpen,
 }: RegisterContentProps) {
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,52 +93,62 @@ export default function RegisterContent({
         cliente_id: selectedCustomer.id,
       });
     }
-  }, [, selectedCustomer]);
+  }, [setNewTransaction, selectedCustomer]);
 
   const handleCreateTransaction = async () => {
-    setIsSubmitting(true);
-    try {
-      const response = await axios.post("/api/transaction", {
-        newTransaction,
+  setIsSubmitting(true);
+  try {
+    const response = await axios.post("/api/transaction", { newTransaction });
+
+    if (response.status === 201) {
+      const created = response.data?.data ?? response.data;
+
+      toast("Sucesso!", {
+        description: "Transação registrada.",
+        duration: 2000,
       });
 
-      if (response.status === 201 && setSelectedTransactionId) {
-        console.log(response.data.data);
-        toast("Sucesso!", {
-          description: "Transação registrada.",
-          duration: 2000,
-        });
-        setSelectedTransactionId(response.data.id);
-      }
-    } catch (error) {
-      if (isAxiosError(error)) {
-        toast("Erro", {
-          description: error.response?.data.error,
-          duration: 2000,
-        });
+      // se existir, seta o id (fluxo fora de OS)
+      setSelectedTransactionId?.(created?.id);
 
-        console.log(error);
-      }
-    } finally {
-      setIsSubmitting(false);
+      // recarrega a lista da OS (quando veio por OS)
+      handleGetTransactions?.();
+
+      // fecha SEMPRE que criar
+      setOpen?.(false);
+
+      // opcional: limpar o formulário
+      setNewTransaction({});
+      setSelectedCustomer?.(undefined);
     }
-  };
+  } catch (error) {
+    if (isAxiosError(error)) {
+      toast("Erro", {
+        description: error.response?.data?.error,
+        duration: 2000,
+      });
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   useEffect(() => {
     console.log(newTransaction);
   }, [newTransaction]);
 
-  useEffect(() => {
-    if(osId){
+  // useEffect(() => {
+  //   if(osId){
 
-      setNewTransaction({
-        ...newTransaction,
-        ordemservicoid: osId,
-        tipo: Tipo_transacao.RECEITA,
-        categoria: Categoria_transacao.ORDEM_SERVICO
-      });
-    }
-  }, [osId]);
+  //     setNewTransaction({
+  //       ...newTransaction,
+  //       ordemservicoid: osId,
+  //       tipo: Tipo_transacao.RECEITA,
+  //       categoria: Categoria_transacao.ORDEM_SERVICO,
+  //       descricao: `Pagamento da OS #${osId}`
+  //     });
+  //   }
+  // }, [osId]);
 
   useEffect(() => {
     console.log("osId:", osId);
@@ -193,6 +208,7 @@ export default function RegisterContent({
               <div className="space-y-2 w-full col-span-full">
                 <Label htmlFor="descricao">Descrição*</Label>
                 <Input
+                  disabled={osId ? true : false}
                   id="descricao"
                   value={newTransaction.descricao || ""}
                   onChange={(e) => handleChange("descricao", e.target.value)}

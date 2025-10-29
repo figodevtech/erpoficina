@@ -3,7 +3,7 @@ import { Dialog, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
 import { Children, ReactNode, useEffect, useState } from "react";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
-import { NewTransaction, Transaction, TransactionCustomer } from "../../types";
+import { Categoria_transacao, NewTransaction, Tipo_transacao, Transaction, TransactionCustomer } from "../../types";
 
 interface TransactionDialogProps {
   children?: ReactNode;
@@ -13,6 +13,7 @@ interface TransactionDialogProps {
   open?: boolean;
   setOpen?: (value: boolean) => void;
   selectedTransactionId?: number | undefined;
+  handleGetTransactions?: (pageNumber?: number) => void
 }
 export default function TransactionDialog({
   children,
@@ -21,6 +22,7 @@ export default function TransactionDialog({
   open,
   osId,
   setOpen,
+  handleGetTransactions,
 }: TransactionDialogProps) {
   const [newTransaction, setNewTransaction] = useState<NewTransaction>({});
   const [selectedCustomer, setSelectedCustomer] = useState<
@@ -31,21 +33,28 @@ export default function TransactionDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        // sempre sincroniza o estado (controlado ou interno)
-        if (setOpen) {
-          setOpen(nextOpen);
-        }
+  onOpenChange={(nextOpen) => {
+    if (setOpen) setOpen(nextOpen);
 
-        if (!nextOpen) {
-          if(setSelectedTransactionId){
+    if (nextOpen) {
+      if (osId) {
+        setNewTransaction({
+          ordemservicoid: osId,
+          tipo: Tipo_transacao.RECEITA,
+          categoria: Categoria_transacao.ORDEM_SERVICO,
+          descricao: `Pagamento da OS #${osId}`,
+        });
+      } else {
+        setNewTransaction({});
+      }
+      return;
+    }
 
-            setSelectedTransactionId(undefined);
-          }
-          setNewTransaction({});
-          setSelectedCustomer(undefined);
-        }
-      }}
+    // ao fechar, limpa estados
+    if (setSelectedTransactionId) setSelectedTransactionId(undefined);
+    setNewTransaction({});
+    setSelectedCustomer(undefined);
+  }}
     >
       <DialogTrigger asChild>{children}</DialogTrigger>
       {selectedTransactionId ? (
@@ -57,12 +66,14 @@ export default function TransactionDialog({
       ) : (
         <RegisterContent
         osId={osId}
+        handleGetTransactions={handleGetTransactions}
           selectedCustomer={selectedCustomer}
           setSelectedCustomer={setSelectedCustomer}
           dialogOpen={open}
           newTransaction={newTransaction}
           setNewTransaction={setNewTransaction}
           setSelectedTransactionId={setSelectedTransactionId}
+          setOpen={setOpen}
         />
       )}
     </Dialog>
