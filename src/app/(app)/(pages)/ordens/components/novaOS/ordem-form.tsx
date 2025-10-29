@@ -44,7 +44,6 @@ export type FormularioNovaOSProps = {
   exposeSubmit?: (fn: () => void) => void;
 };
 
-
 const NONE = "__none__";
 
 export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSProps) {
@@ -100,6 +99,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
   const [pNome, setPNome] = useState("");
   const [pDesc, setPDesc] = useState("");
 
+  const veiculoVinculado = veiculoSelecionadoId !== null;
   // Carrega Setores
   useEffect(() => {
     (async () => {
@@ -243,7 +243,10 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
   function validar(): string | null {
     if (!setor) return "Selecione o setor responsável.";
 
-    if (modoAtendimento === "cadastrado" && !cliente) return "Busque o cliente pelo CPF/CNPJ.";
+    if (modoAtendimento === "cadastrado" && !cliente) {
+      return "Busque o cliente pelo CPF/CNPJ.";
+    }
+
     if (modoAtendimento === "avulso") {
       if (!avulsoNome || !avulsoDoc) return "Preencha Nome/Razão Social e CPF/CNPJ para atendimento avulso.";
       if (!avulsoTelefone?.trim() || !avulsoEmail?.trim()) {
@@ -252,89 +255,101 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     }
 
     if (alvoTipo === "VEICULO") {
-      // dados básicos para identificar o veículo (modelo ou placa)
-      if (!vModelo.trim() && !vPlaca.trim()) {
-        return "Informe pelo menos o Modelo ou a Placa do veículo.";
+      // ✅ se houver veículo vinculado, não exige dados de cadastro novo
+      if (!veiculoVinculado) {
+        // Sem veículo vinculado? então precisamos de dados mínimos para criar um.
+        if (!vModelo.trim() && !vPlaca.trim()) {
+          return "Informe pelo menos o Modelo ou a Placa do veículo (ou selecione um veículo já cadastrado).";
+        }
       }
     } else {
+      // alvo = peça
       if (!pNome.trim()) return "Informe o nome da peça.";
     }
+
     return null;
   }
 
-const salvar = async () => {
-  const err = validar();
-  if (err) {
-    toast.error(err);
-    return;
-  }
+  const salvar = async () => {
+    const err = validar();
+    if (err) {
+      toast.error(err);
+      return;
+    }
 
-  const checklistArray = Object.entries(checklist).map(([item, status]) => ({
-    item,
-    status: mapStatusToDB((status || "") as Marcacao),
-  }));
+    const checklistArray = Object.entries(checklist).map(([item, status]) => ({
+      item,
+      status: mapStatusToDB((status || "") as Marcacao),
+    }));
 
-  const payload: any = {
-    setorid: setor ? Number(setor) : null,
-    descricao: descricao || null,
-    observacoes: (observacoes || "").trim() || null,
-    checklistTemplateId: templateId || null,
-    prioridade,
-    cliente:
-      modoAtendimento === "cadastrado"
-        ? { id: cliente!.id }
-        : {
-            nome: avulsoNome,
-            documento: avulsoDoc,
-            telefone: avulsoTelefone || null,
-            email: avulsoEmail || null,
-          },
-    veiculoid: veiculoSelecionadoId, // pode ser null
-    checklist: checklistArray,
-    alvo:
-      alvoTipo === "VEICULO"
-        ? {
-            tipo: "VEICULO",
-            veiculo: {
-              placa: vPlaca || null,
-              modelo: vModelo || null,
-              marca: vMarca || null,
-              ano: vAno ? Number(vAno) : null,
-              cor: vCor || null,
-              kmatual: vKm ? Number(vKm) : null,
+    const payload: any = {
+      setorid: setor ? Number(setor) : null,
+      descricao: descricao || null,
+      observacoes: (observacoes || "").trim() || null,
+      checklistTemplateId: templateId || null,
+      prioridade,
+
+      cliente:
+        modoAtendimento === "cadastrado"
+          ? { id: cliente!.id }
+          : {
+              nome: avulsoNome,
+              documento: avulsoDoc,
+              telefone: avulsoTelefone || null,
+              email: avulsoEmail || null,
             },
-          }
-        : {
-            tipo: "PECA",
-            peca: {
-              nome: pNome.trim(),
-              descricao: pDesc?.trim() || null,
+
+      // mantém o vínculo explicitamente
+      veiculoid: veiculoSelecionadoId,
+
+      checklist: checklistArray,
+
+      alvo:
+        alvoTipo === "VEICULO"
+          ? veiculoVinculado
+            ? // 🔽 com vínculo, não manda objeto de criação de veículo
+              { tipo: "VEICULO" }
+            : // 🔽 sem vínculo, manda dados para criar
+              {
+                tipo: "VEICULO",
+                veiculo: {
+                  placa: vPlaca || null,
+                  modelo: vModelo || null,
+                  marca: vMarca || null,
+                  ano: vAno ? Number(vAno) : null,
+                  cor: vCor || null,
+                  kmatual: vKm ? Number(vKm) : null,
+                },
+              }
+          : {
+              tipo: "PECA",
+              peca: {
+                nome: pNome.trim(),
+                descricao: pDesc?.trim() || null,
+              },
             },
-          },
+    };
+
+    // ✅ Se o pai (Dialog) passou onSubmit, delega e sai.
+    if (onSubmit) {
+      await onSubmit(payload);
+      return;
+    }
+
+    // 🌐 Fluxo interno (quando o formulário é usado fora do Dialog)
+    try {
+      const r = await fetch("/api/ordens/criar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
+      toast.success(`OS criada com sucesso!${j?.id ? ` ID: ${j.id}` : ""}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao salvar OS");
+    }
   };
-
-  // ✅ Se o pai (Dialog) passou onSubmit, delega e sai.
-  if (onSubmit) {
-    await onSubmit(payload);
-    return;
-  }
-
-  // 🌐 Fluxo interno (quando o formulário é usado fora do Dialog)
-  try {
-    const r = await fetch("/api/ordens/criar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
-    toast.success(`OS criada com sucesso!${j?.id ? ` ID: ${j.id}` : ""}`);
-  } catch (e: any) {
-    toast.error(e?.message || "Erro ao salvar OS");
-  }
-};
-
-
 
   return (
     <div className="space-y-6">
@@ -538,7 +553,19 @@ const salvar = async () => {
                   </div>
                   <Select
                     value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
-                    onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
+                    onValueChange={(v) => {
+                      const id = v === NONE ? null : Number(v);
+                      setVeiculoSelecionadoId(id);
+                      // 🔽 se vinculou um veículo, limpamos os campos de cadastro manual
+                      if (id !== null) {
+                        setVPlaca("");
+                        setVModelo("");
+                        setVMarca("");
+                        setVAno("");
+                        setVCor("");
+                        setVKm("");
+                      }
+                    }}
                     disabled={(modoAtendimento === "cadastrado" && !cliente) || veiculoOptions.length === 0}
                   >
                     <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">

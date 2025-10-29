@@ -1,4 +1,3 @@
-// src/app/(app)/(pages)/ordens/components/ordens-tabela.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -17,83 +16,55 @@ import {
   Search,
   Loader,
   Car,
-  MoreHorizontal,
-  DollarSign,
-  Link2,
-  Send,
-  Wallet,
-  CreditCard,
-  Pencil,
   AlertTriangle,
+  ChevronsUpDown,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 import { Ordem } from "../types";
 import { StatusOS } from "./ordens-tabs";
 import TableSkeleton from "../components/table-skeleton";
-
-// >>> ajuste os caminhos a seguir conforme sua estrutura <<<
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { PagamentoDialog } from "./dialogs/pagamento-dialog";
+import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 
-// --------- Helpers de UI ---------
-const statusClasses: Record<string, string> = {
-  ORCAMENTO: "bg-fuchsia-600/15 text-fuchsia-400",
-  APROVACAO_ORCAMENTO: "bg-sky-600/15 text-sky-400",
-  EM_ANDAMENTO: "bg-amber-600/15 text-amber-400",
-  PAGAMENTO: "bg-indigo-600/15 text-indigo-400",
-  CONCLUIDO: "bg-green-600/15 text-green-400",
-  CANCELADO: "bg-red-600/15 text-red-400",
-};
+// utils & helpers
+import { statusClasses, prioClasses, fmtDate, fmtDuration, toMs, useNowTick, safeStatus } from "./ordens-utils";
+import { RowActions } from "./row-actions";
 
-const prioClasses: Record<string, string> = {
-  ALTA: "bg-red-600/15 text-red-500",
-  NORMAL: "bg-amber-600/15 text-amber-500",
-  BAIXA: "bg-emerald-600/15 text-emerald-500",
-};
-
-// --------- Helpers de tempo ---------
-function fmtDate(s?: string | null) {
-  if (!s) return "—";
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
-}
-function toMs(s?: string | null): number | null {
-  if (!s) return null;
-  const t = new Date(s).getTime();
-  return isNaN(t) ? null : t;
-}
-function fmtDuration(ms: number) {
-  if (ms < 0) ms = 0;
-  const m = Math.floor(ms / 60000);
-  const d = Math.floor(m / (60 * 24));
-  const h = Math.floor((m % (60 * 24)) / 60);
-  const min = m % 60;
-  const parts: string[] = [];
-  if (d) parts.push(`${d}d`);
-  if (h) parts.push(`${h}h`);
-  parts.push(`${min}m`);
-  return parts.join(" ");
-}
-function useNowTick(periodMs = 60000) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), periodMs);
-    return () => clearInterval(id);
-  }, [periodMs]);
-  return now;
-}
-
-// alias local só para datas exibidas na tabela
+// ---- Tipos locais (datas amigas p/ tabela)
 type OrdemComDatas = Ordem & {
   dataEntrada?: string | null;
   dataSaida?: string | null;
   dataSaidaReal?: string | null;
   prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
+};
+
+// ---- Ordenação (apenas prioridade, como pedido)
+type SortKey = "prioridade" | null;
+type SortDir = "asc" | "desc";
+const nextDir: Record<SortDir, SortDir> = { asc: "desc", desc: "asc" };
+
+// mapeia prioridade para número (para ordenar)
+const prioRank = (p?: OrdemComDatas["prioridade"]) => {
+  const key = String(p || "").toUpperCase();
+  if (key === "ALTA") return 3;
+  if (key === "NORMAL") return 2;
+  if (key === "BAIXA") return 1;
+  return 0;
 };
 
 export function OrdensTabela({
@@ -117,12 +88,16 @@ export function OrdensTabela({
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
 
+  // ordenação
+  const [sortKey, setSortKey] = useState<SortKey>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
   // loading + guarda de request
   const [isLoading, setIsLoading] = useState(true);
   const reqIdRef = useRef(0);
 
-  // tick para atualizar contador de tempo a cada 60s
-  const now = useNowTick(60000);
+  // tick para tempo correndo (5s para sensação de “contando”)
+  const now = useNowTick(5000);
 
   // params atuais para realtime
   const currentParamsRef = useRef({ status, q, page, limit });
@@ -160,14 +135,14 @@ export function OrdensTabela({
         setTotalPages(j.totalPages ?? 1);
         setTotal(j.total ?? j.totalItems ?? 0);
       } else {
-        console.error(j?.error || "Falha ao carregar");
+        toast.error(j?.error || "Falha ao carregar as ordens");
         setRows([]);
         setTotalPages(1);
         setTotal(0);
       }
     } catch (err: any) {
       if (myId !== reqIdRef.current) return;
-      if (err?.name !== "AbortError") console.error(err);
+      if (err?.name !== "AbortError") toast.error(err?.message || "Erro ao carregar as ordens");
       setRows([]);
       setTotalPages(1);
       setTotal(0);
@@ -176,7 +151,7 @@ export function OrdensTabela({
     }
   }
 
-  // carregar quando filtros/paginação mudarem (debounce simples para q)
+  // carregar quando filtros/paginação mudarem (debounce simples do q)
   useEffect(() => {
     const t = setTimeout(() => fetchNow({ status, q, page, limit }), 350);
     return () => clearTimeout(t);
@@ -188,7 +163,7 @@ export function OrdensTabela({
     setPage(1);
   }, [status]);
 
-  // realtime
+  // realtime via supabase
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -216,32 +191,17 @@ export function OrdensTabela({
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
 
-  const safeStatus = (s: Ordem["status"]) => (s ?? "ORCAMENTO") as Exclude<StatusOS, "TODAS">;
   const renderTempo = (r: OrdemComDatas) => {
-    const startMs =
-      toMs(r.dataEntrada) ??
-      toMs((r as any).createdat) ??
-      toMs((r as any).createdAt) ??
-      null;
-
+    const startMs = toMs(r.dataEntrada) ?? toMs((r as any).createdat) ?? toMs((r as any).createdAt) ?? null;
     if (!startMs) return "—";
 
     const st = safeStatus(r.status);
     const endMs =
       st === "CONCLUIDO" || st === "CANCELADO"
-        ? toMs(r.dataSaidaReal) ??
-          toMs((r as any).updatedat) ??
-          toMs((r as any).updatedAt) ??
-          now
+        ? toMs(r.dataSaidaReal) ?? toMs((r as any).updatedat) ?? toMs((r as any).updatedAt) ?? now
         : now;
 
     return fmtDuration((endMs ?? now) - startMs);
-  };
-
-  const renderPrio = (p?: OrdemComDatas["prioridade"]) => {
-    const key = (p || "").toUpperCase();
-    const cls = prioClasses[key] ?? "";
-    return p ? <Badge className={cls}>{key}</Badge> : "—";
   };
 
   async function setStatus(id: number, status: Exclude<StatusOS, "TODAS">) {
@@ -252,9 +212,23 @@ export function OrdensTabela({
     });
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
-      throw new Error(j?.error || "Falha ao atualizar status");
+      toast.error(j?.error || "Falha ao atualizar status");
+      return;
     }
     window.dispatchEvent(new CustomEvent("os:refresh"));
+    toast.success("Status atualizado");
+  }
+
+  async function deleteOS(id: number) {
+    try {
+      const r = await fetch(`/api/ordens/${id}`, { method: "DELETE" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "Falha ao excluir OS");
+      toast.success(`OS #${id} excluída`);
+      window.dispatchEvent(new CustomEvent("os:refresh"));
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao excluir OS");
+    }
   }
 
   // Estados de diálogos
@@ -267,10 +241,66 @@ export function OrdensTabela({
   const [payOpen, setPayOpen] = useState(false);
   const [payRow, setPayRow] = useState<OrdemComDatas | null>(null);
 
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsId, setDetailsId] = useState<number | null>(null);
+
+  const [delOpen, setDelOpen] = useState(false);
+  const [delRow, setDelRow] = useState<OrdemComDatas | null>(null);
+
+  // ------- Ordenação em memória (só na página atual)
+  const sortedRows = useMemo(() => {
+    if (!sortKey) return rows;
+    const decorated = rows.map((r, i) => ({ r, i })); // estável
+    if (sortKey === "prioridade") {
+      decorated.sort((a, b) => {
+        const pa = prioRank(a.r.prioridade);
+        const pb = prioRank(b.r.prioridade);
+        const cmp = pa - pb;
+        if (cmp !== 0) return sortDir === "asc" ? cmp : -cmp;
+        return a.i - b.i; // estável
+      });
+    }
+    return decorated.map((d) => d.r);
+  }, [rows, sortKey, sortDir]);
+
+  // Componente do cabeçalho clicável para Prioridade
+  const PrioridadeHeader = () => {
+    const icon =
+      !sortKey
+        ? <ChevronsUpDown className="ml-1 h-3.5 w-3.5 opacity-60" />
+        : sortKey === "prioridade" && sortDir === "asc"
+          ? <ChevronUp className="ml-1 h-3.5 w-3.5" />
+          : <ChevronDown className="ml-1 h-3.5 w-3.5" />;
+
+    const handleClick = () => {
+      // ciclo: none -> desc -> asc -> none
+      if (!sortKey) {
+        setSortKey("prioridade");
+        setSortDir("desc");
+      } else if (sortKey === "prioridade" && sortDir === "desc") {
+        setSortDir("asc");
+      } else {
+        setSortKey(null);
+      }
+    };
+
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        className="inline-flex items-center select-none cursor-pointer"
+        title="Ordenar por prioridade"
+      >
+        Prioridade
+        {icon}
+      </button>
+    );
+  };
+
   return (
     <Card className="bg-card">
       <CardContent className="p-3 sm:p-4">
-        {/* filtro topo + botão Nova OS */}
+        {/* Top bar: busca + Nova OS */}
         <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center justify-between">
           <div className="relative w-full sm:max-w-sm flex-1">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 opacity-60" />
@@ -287,7 +317,7 @@ export function OrdensTabela({
           </Button>
         </div>
 
-        {/* tabela */}
+        {/* Tabela */}
         <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
@@ -299,7 +329,9 @@ export function OrdensTabela({
                 <TableHead className="min-w-[130px]">Entrada</TableHead>
                 <TableHead className="min-w-[130px]">Saída</TableHead>
                 <TableHead className="min-w-[120px]">Status</TableHead>
-                <TableHead className="min-w-[120px]">Prioridade</TableHead>
+                <TableHead className="min-w-[120px]">
+                  <PrioridadeHeader />
+                </TableHead>
                 <TableHead className="min-w-[120px]">Tempo</TableHead>
                 <TableHead className="min-w-[80px]" />
               </TableRow>
@@ -310,29 +342,27 @@ export function OrdensTabela({
                 <TableSkeleton
                   rows={8}
                   columns={[
-                    { cellClass: "min-w-[96px]", barClass: "h-4 w-14" },   // #
-                    { cellClass: "min-w-[240px]", barClass: "h-4 w-56" },  // Cliente / Veículo
-                    { cellClass: "min-w-[220px]", barClass: "h-4 w-44" },  // Descrição
-                    { cellClass: "min-w-[140px]", barClass: "h-4 w-28" },  // Setor
-                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },  // Entrada
-                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },  // Saída
-                    { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },  // Status
-                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Prioridade
-                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },  // Tempo
-                    { cellClass: "min-w-[80px]", barClass: "h-8 w-6" },    // Ações
+                    { cellClass: "min-w-[96px]", barClass: "h-4 w-14" },
+                    { cellClass: "min-w-[240px]", barClass: "h-4 w-56" },
+                    { cellClass: "min-w-[220px]", barClass: "h-4 w-44" },
+                    { cellClass: "min-w-[140px]", barClass: "h-4 w-28" },
+                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
+                    { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
+                    { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
+                    { cellClass: "min-w-[80px]", barClass: "h-8 w-6" },
                   ]}
                 />
               )}
 
               {!isLoading &&
-                rows.map((r) => {
+                sortedRows.map((r) => {
                   const st = safeStatus(r.status);
                   const clienteNome = r.cliente?.nome ?? "—";
                   const veiculoStr = r.veiculo
                     ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
-
-                  const podeLink = st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO";
 
                   return (
                     <TableRow key={r.id}>
@@ -355,92 +385,40 @@ export function OrdensTabela({
                       <TableCell>
                         <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>
                       </TableCell>
-                      <TableCell>{renderPrio(r.prioridade)}</TableCell>
+                      <TableCell>
+                        {r.prioridade ? (
+                          <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>
+                            {r.prioridade}
+                          </Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                       <TableCell>{renderTempo(r)}</TableCell>
 
-                      {/* Ações via Dropdown */}
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon" className="px-2">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-60">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-
-                            <DropdownMenuItem onClick={() => onOpenOrcamento(r)}>
-                              <DollarSign className="mr-2 h-4 w-4" />
-                              <span>Orçamento</span>
-                            </DropdownMenuItem>
-
-                            {podeLink && (
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setLinkRow(r);
-                                  setLinkDialogOpen(true);
-                                }}
-                              >
-                                <Link2 className="mr-2 h-4 w-4" />
-                                <span>Link de aprovação…</span>
-                              </DropdownMenuItem>
-                            )}
-
-                            {st === "ORCAMENTO" && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setStatus(r.id, "APROVACAO_ORCAMENTO")}>
-                                  <Send className="mr-2 h-4 w-4" />
-                                  <span>Enviar p/ aprovação</span>
-                                </DropdownMenuItem>
-                              </>
-                            )}
-
-                            {st === "EM_ANDAMENTO" && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault(); // evita fechar e perder clique
-                                    setConfirmRow(r);
-                                    setTimeout(() => setConfirmOpen(true), 10);
-                                  }}
-                                >
-                                  <Wallet className="mr-2 h-4 w-4" />
-                                  <span>Finalizar e enviar p/ pagamento…</span>
-                                </DropdownMenuItem>
-                              </>
-                            )}
-
-                            {st === "PAGAMENTO" && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setPayRow(r);
-                                    setPayOpen(true);
-                                  }}
-                                >
-                                  <CreditCard className="mr-2 h-4 w-4" />
-                                  <span>Receber pagamento…</span>
-                                </DropdownMenuItem>
-                              </>
-                            )}
-
-                            <DropdownMenuSeparator />
-
-                            <DropdownMenuItem onClick={() => onEditar(r)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              <span>Editar OS</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <RowActions
+                          row={r}
+                          onOpenOrcamento={onOpenOrcamento}
+                          onEditar={onEditar}
+                          setStatus={setStatus}
+                          setLinkRow={setLinkRow}
+                          setLinkDialogOpen={setLinkDialogOpen}
+                          setConfirmRow={setConfirmRow}
+                          setConfirmOpen={setConfirmOpen}
+                          setPayRow={setPayRow}
+                          setPayOpen={setPayOpen}
+                          setDetailsId={setDetailsId}
+                          setDetailsOpen={setDetailsOpen}
+                          setDelRow={setDelRow}
+                          setDelOpen={setDelOpen}
+                        />
                       </TableCell>
                     </TableRow>
                   );
                 })}
 
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && sortedRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
                     Nenhuma OS encontrada.
@@ -456,14 +434,17 @@ export function OrdensTabela({
           <div className="flex flex-nowrap text-xs text-muted-foreground">
             <span>{start || 0}</span> - <span>{end || 0}</span>
             <span className="ml-1 hidden sm:block">de {total}</span>
-            <Loader className={`ml-2 h-full w-4 animate-spin transition-all ${isLoading ? "opacity-100" : "opacity-0"}`} />
+            <Loader
+              className={`ml-2 h-full w-4 animate-spin transition-all ${isLoading ? "opacity-100" : "opacity-0"}`}
+              aria-label="carregando"
+            />
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-            <Button variant="outline" size="icon" onClick={() => setPage(1)} disabled={page === 1}>
+            <Button variant="outline" size="icon" aria-label="Primeira página" onClick={() => setPage(1)} disabled={page === 1}>
               <ChevronsLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
+            <Button variant="outline" size="icon" aria-label="Página anterior" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
             <span className="text-xs font-medium text-nowrap">
@@ -472,6 +453,7 @@ export function OrdensTabela({
             <Button
               variant="outline"
               size="icon"
+              aria-label="Próxima página"
               onClick={() => setPage(Math.min(totalPages || 1, page + 1))}
               disabled={page === totalPages || totalPages === 0}
             >
@@ -480,6 +462,7 @@ export function OrdensTabela({
             <Button
               variant="outline"
               size="icon"
+              aria-label="Última página"
               onClick={() => setPage(totalPages || 1)}
               disabled={page === totalPages || totalPages === 0}
             >
@@ -495,7 +478,7 @@ export function OrdensTabela({
                 setLimit(Number(v));
               }}
             >
-              <SelectTrigger className="ml-2 hover:cursor-pointer">
+              <SelectTrigger className="ml-2 hover:cursor-pointer" aria-label="Itens por página">
                 <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
@@ -516,9 +499,10 @@ export function OrdensTabela({
           if (!v) setLinkRow(null);
         }}
         osId={linkRow?.id ?? 0}
+        clienteNome={linkRow?.cliente?.nome ?? null}
       />
 
-      {/* AlertDialog único: enviar p/ pagamento */}
+      {/* Alerta: enviar p/ pagamento */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -555,6 +539,44 @@ export function OrdensTabela({
         }}
         osId={payRow?.id ?? null}
       />
+
+      {/* Dialog: Detalhes */}
+      <OSDetalhesDialog
+        open={detailsOpen}
+        onOpenChange={(v) => {
+          setDetailsOpen(v);
+          if (!v) setDetailsId(null);
+        }}
+        osId={detailsId}
+      />
+
+      {/* Alerta: Excluir OS */}
+      <AlertDialog open={delOpen} onOpenChange={setDelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              Excluir OS #{delRow?.id}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação é irreversível. Tem certeza que deseja excluir a OS <b>#{delRow?.id}</b>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={async () => {
+                if (!delRow) return;
+                await deleteOS(delRow.id);
+                setDelOpen(false);
+                setDelRow(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
