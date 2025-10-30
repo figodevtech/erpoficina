@@ -239,7 +239,13 @@ export default function FinancialTable({
                     <div className="flex flex-col items-end">
                       {(t.tipo === "RECEITA" || t.tipo === "DEPOSITO") && "+ "}
                       {(t.tipo === "DESPESA" || t.tipo === "SAQUE") && "- "}
-                      {formatarEmReal(t.valor)}
+                      {formatarEmReal(t.valorLiquido)}
+                      {t.valorLiquido !== t.valor && (
+                        <span className="text-xs text-muted-foreground">
+                          Bruto: {formatarEmReal(t.valor)}
+                        </span>
+                      )}
+
                     </div>
                   </TableCell>
 

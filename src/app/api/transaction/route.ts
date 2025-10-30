@@ -9,6 +9,7 @@ const WRITABLE_FIELDS = new Set([
   "ordemservicoid",
   "descricao",
   "valor",
+  "valorLiquido",
   "data",
   "metodopagamento",
   "categoria",
@@ -22,7 +23,7 @@ const WRITABLE_FIELDS = new Set([
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
-  "id, descricao, valor, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at, ordemservicoid";
+  "id, descricao, valor, valorLiquido, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at, ordemservicoid";
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
 const BANCO_FIELDS =
@@ -61,6 +62,10 @@ function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
 
     switch (key) {
       case "valor": {
+        out[key] = toNumberOrNull(body[key]);
+        break;
+      }
+      case "valorLiquido": {
         out[key] = toNumberOrNull(body[key]);
         break;
       }
