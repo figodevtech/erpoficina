@@ -28,7 +28,7 @@ type Resumo = {
 type DadosBasicos = {
   osId: number;
   cliente: { nome: string };
-  statusOS: "ORCAMENTO" | "APROVACAO_ORCAMENTO" | "EM_ANDAMENTO" | "PAGAMENTO" | "CONCLUIDO" | "CANCELADO";
+  statusOS: "ORCAMENTO" | "APROVACAO_ORCAMENTO" | "EM_ANDAMENTO" | "ORCAMENTO_APROVADO" | "PAGAMENTO" | "CONCLUIDO" | "CANCELADO";
   statusToken: "valido" | "expirado" | "usado";
 };
 

@@ -11,14 +11,14 @@ const money = (v: number) =>
 export function AcoesAprovacao({
   token,
   totalGeral,
-  docConfirmado,            // <<<<<< recebe o doc validado
+  docConfirmado,            
   onAprovado,
   onReprovado,
   disabled,
 }: {
   token: string;
   totalGeral: number;
-  docConfirmado: string | null; // <<<<<<
+  docConfirmado: string | null;
   onAprovado: () => void;
   onReprovado: () => void;
   disabled?: boolean;
@@ -35,7 +35,7 @@ export function AcoesAprovacao({
       const r = await fetch(`/api/ordens/aprovacao/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acao, doc: docConfirmado }), // <<<<<< envia DOC
+        body: JSON.stringify({ acao, doc: docConfirmado }), 
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || "Falha ao enviar resposta");
