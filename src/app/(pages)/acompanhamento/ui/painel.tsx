@@ -1,47 +1,69 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { listarQuadro, QuadItem } from "../lib/api";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import OsTile from "./os-tile";
 import EmptyColumn from "./emply-column";
 
-function fmtNow(d = new Date()) {
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "full", timeStyle: "medium" }).format(d);
+function normStatus(s?: string | null) {
+  if (!s) return "";
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, "_")
+    .toUpperCase();
 }
+
+const IS_ORCAMENTO = (s?: string | null) => {
+  const ns = normStatus(s);
+  return (
+    ns === "ORCAMENTO" ||
+    ns === "ORCAMENTO_RECUSADO" ||
+    ns === "APROVACAO_ORCAMENTO" ||
+    ns === "ORCAMENTO_APROVADO"
+  );
+};
 
 export default function PainelAcompanhamento({
   finalizadas = "recentes",
   horasRecentes = 12,
 }: {
-  /** "hoje" para apenas as concluídas do dia, "recentes" para janela de horas */
   finalizadas?: "hoje" | "recentes";
   horasRecentes?: number;
 }) {
   const [loading, setLoading] = useState(true);
-  const [aguardando, setAguardando] = useState<QuadItem[]>([]);
-  const [andamento, setAndamento] = useState<QuadItem[]>([]);
-  const [aguardandoPg, setAguardandoPg] = useState<QuadItem[]>([]);
-  const [concluidas, setConcluidas] = useState<QuadItem[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [rawAguardando, setRawAguardando] = useState<QuadItem[]>([]);
+  const [execucao, setExecucao] = useState<QuadItem[]>([]);
+  const [faturamento, setFaturamento] = useState<QuadItem[]>([]);
+  const [finalizadasList, setFinalizadasList] = useState<QuadItem[]>([]);
 
   async function load() {
     setLoading(true);
+    setErr(null);
     try {
       const data = await listarQuadro({ finalizadas, horasRecentes });
-      setAguardando(data.aguardando);
-      setAndamento(data.emAndamento);
-      setAguardandoPg(data.aguardandoPagamento);
-      setConcluidas(data.concluidasRecentes);
+      setRawAguardando(data.aguardando);
+      setExecucao(data.emAndamento);
+      setFaturamento(data.aguardandoPagamento);
+      setFinalizadasList(data.concluidasRecentes);
+    } catch (e: any) {
+      setErr(e?.message || "Falha ao carregar painel");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, [finalizadas, horasRecentes]);
+  useEffect(() => {
+    void load();
+  }, [finalizadas, horasRecentes]);
 
-  // realtime: recarrega quando qualquer linha de ordemservico muda
+  // realtime (tabela ordemservico)
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -53,63 +75,64 @@ export default function PainelAcompanhamento({
       .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () => load())
       .subscribe();
 
-    return () => { try { void sb.removeChannel(ch); } catch {} };
+    return () => {
+      try {
+        void sb.removeChannel(ch);
+      } catch {}
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
+  // Divisão mais simples: Orçamento/Aprovação (juntos), Execução, Pagamento, Finalizadas
+  const orcAprov = useMemo(() => rawAguardando.filter((x) => IS_ORCAMENTO(x.status)), [rawAguardando]);
 
-  const Column = ({ title, items, highlight, emptyLabel }: {
-    title: string;
-    items: QuadItem[];
-    highlight?: boolean;
-    emptyLabel: string;
-  }) => (
+  const Column = ({ title, items, emptyLabel }: { title: string; items: QuadItem[]; emptyLabel: string }) => (
     <section className="flex flex-col min-h-0">
       <header className="mb-2 flex items-center justify-between">
-        <h2 className="text-lg md:text-xl font-bold">{title}</h2>
-        <Badge variant="outline">{items.length}</Badge>
+        <h2 className="text-xl md:text-2xl font-extrabold tracking-tight uppercase">{title}</h2>
+        <Badge variant="outline" className="text-sm md:text-base">{items.length}</Badge>
       </header>
-      <div className="grid gap-3 content-start grid-cols-1">
+      <div className="grid gap-4 content-start grid-cols-1">
         {loading
-          ? Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)
-          : (items.length
-              ? items.map((os) => <OsTile key={os.id} os={os} destaque={highlight} />)
-              : <EmptyColumn label={emptyLabel} />
-            )
-        }
+          ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28 md:h-32 w-full rounded-xl" />)
+          : items.length
+            ? items.map((os) => <OsTile key={os.id} os={os} />)
+            : <EmptyColumn label={emptyLabel} />}
       </div>
     </section>
   );
 
   return (
-    <div className="min-h-screen px-4 md:px-6 py-4 flex flex-col gap-4">
+    <div className="min-h-screen px-3 md:px-6 py-4 flex flex-col gap-4">
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Acompanhamento</h1>
           <p className="text-sm md:text-base text-muted-foreground">
-            Visão geral das ordens por status — {finalizadas === "hoje" ? "finalizadas hoje" : `finalizadas nas últimas ${horasRecentes}h`}
+            Visão resumida — leitura fácil à distância
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-base md:text-xl font-semibold">{fmtNow(now)}</div>
+        <div className="text-right text-sm md:text-base text-muted-foreground">
+          Atualizado: {new Date().toLocaleString()}
         </div>
       </div>
 
-      {/* Grelha responsiva: 4 colunas quando houver espaço; carrega muitos cards para TV */}
-      <div className="grid gap-4 grow grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4">
-        <Column title="Aguardando" items={aguardando} emptyLabel="Nenhuma OS aguardando" />
-        <Column title="Em atendimento" items={andamento} highlight emptyLabel="Nenhuma OS em atendimento" />
-        <Column title="Aguardando pagamento" items={aguardandoPg} emptyLabel="Sem OS aguardando pagamento" />
-        <Column
-          title={finalizadas === "hoje" ? "Finalizadas (hoje)" : "Finalizadas (recentes)"}
-          items={concluidas}
-          emptyLabel={finalizadas === "hoje" ? "Nenhuma OS finalizada hoje" : "Sem OS finalizadas recentes"}
-        />
+      {err && (
+        <Card className="p-4 border-red-700/30 bg-red-900/10 text-red-300">
+          <div className="font-semibold mb-1">Falha ao carregar painel</div>
+          <div className="text-sm opacity-90">{err}</div>
+        </Card>
+      )}
+
+      {/* Grid mais “placar”: menos colunas em telas pequenas, 4/5 em telas grandes */}
+    {/* era: grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 [@media(min-width:1800px)]:grid-cols-5 */}
+<div className="grid gap-5 grow grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+
+        <Column title="Orçamento / Aprovação" items={orcAprov}     emptyLabel="Sem OS em orçamento/aprovação" />
+        <Column title="Execução"              items={execucao}     emptyLabel="Sem OS em execução" />
+        <Column title="Pagamento"             items={faturamento}  emptyLabel="Sem OS aguardando pagamento" />
+        <Column title={finalizadas === "hoje" ? "Finalizadas (hoje)" : "Finalizadas (recentes)"}
+                items={finalizadasList}
+                emptyLabel={finalizadas === "hoje" ? "Nenhuma OS finalizada hoje" : "Sem OS finalizadas recentes"} />
       </div>
     </div>
   );

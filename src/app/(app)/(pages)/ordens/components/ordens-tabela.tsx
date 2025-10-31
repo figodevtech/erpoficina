@@ -214,7 +214,7 @@ export function OrdensTabela({
     return fmtDuration((endMs ?? now) - startMs);
   };
 
-  async function setStatus(id: number, status: Exclude<StatusOS, never>) {
+  async function setStatus(id: number, status: StatusOS) {
     const r = await fetch(`/api/ordens/${id}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -375,12 +375,22 @@ export function OrdensTabela({
                     ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
 
+                  // === Regras solicitadas ===
+                  // Editar OS e Orçamento → só em ORCAMENTO
+                  // Gerar link de aprovação → oculto em ORCAMENTO (visível nos demais que façam sentido)
+                  // Cancelar Orçamento e Aprovar Orçamento → em APROVACAO_ORCAMENTO
+                  // Iniciar → em ORCAMENTO_APROVADO
+                  // Enviar p/ pagamento → em EM_ANDAMENTO
+                  // Receber pagamento → em PAGAMENTO
                   const policy = {
-                    canEditBudget: st === "ORCAMENTO", // <- antes incluía ORCAMENTO_RECUSADO
-                    showEditOS: st === "ORCAMENTO", // <- novo: só mostra "Editar OS" em ORCAMENTO
+                    canEditBudget: st === "ORCAMENTO",
+                    showEditOS: st === "ORCAMENTO",
                     showLinkAprov: st !== "ORCAMENTO",
                     showCancelBudget: st === "APROVACAO_ORCAMENTO",
                     showApproveBudget: st === "APROVACAO_ORCAMENTO",
+                    showStart: st === "ORCAMENTO_APROVADO",
+                    showSendToPayment: st === "EM_ANDAMENTO",
+                    showReceivePayment: st === "PAGAMENTO",
                   };
 
                   return (
@@ -406,9 +416,7 @@ export function OrdensTabela({
                       </TableCell>
                       <TableCell>
                         {r.prioridade ? (
-                          <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>
-                            {r.prioridade}
-                          </Badge>
+                          <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>{r.prioridade}</Badge>
                         ) : (
                           "—"
                         )}
