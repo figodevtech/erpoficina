@@ -1,12 +1,16 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogShell } from "../dialogs/dialog-shell";
 import { OrdemEditForm } from "./ordem-edit-form";
+import { Loader2 } from "lucide-react";
 
 export function EditarOSDialog({
-  open, onOpenChange, defaultValues, onEdit,
+  open,
+  onOpenChange,
+  defaultValues,
+  onEdit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -14,6 +18,7 @@ export function EditarOSDialog({
   onEdit?: (dados: any) => Promise<void> | void;
 }) {
   const submitRef = useRef<null | (() => void)>(null);
+  const [saving, setSaving] = useState(false);
 
   const titulo = `Editar OS ${defaultValues?.numero ?? defaultValues?.id ?? ""}`;
   const desc = `${defaultValues?.cliente?.nome ?? ""}${
@@ -28,19 +33,23 @@ export function EditarOSDialog({
       description={desc}
       footer={
         <>
-          <Button variant="outline" className="bg-transparent" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="bg-transparent" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={() => submitRef.current?.()}>Salvar alterações</Button>
+          <Button onClick={() => submitRef.current?.()} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {saving ? "Salvando..." : "Salvar alterações"}
+          </Button>
         </>
       }
     >
       <OrdemEditForm
         defaultValues={defaultValues}
         exposeSubmit={(fn) => (submitRef.current = fn)}
+        onSavingChange={setSaving} // ⬅️ recebe o estado de salvamento do form
         onSubmit={async (dados) => {
-          await onEdit?.(dados);
-          onOpenChange(false);
+          await onEdit?.(dados); // se falhar, o form trata o toast de erro e não fecha
+          onOpenChange(false); // fecha apenas após sucesso
         }}
       />
     </DialogShell>

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, CarFront, User2, ClipboardList, Building2, Wrench } from "lucide-react";
+import { Loader2, CarFront, User2, ClipboardList, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 type Cliente = {
@@ -40,87 +40,76 @@ const CHECK_STATUS = ["OK", "NOK", "NA"] as const;
 type Marcacao = (typeof CHECK_STATUS)[number] | "";
 
 export type OrdemEditFormProps = {
-  /** Mínimo necessário: id da OS. Os demais campos são carregados da API. */
   defaultValues: { id: number } | null;
   exposeSubmit?: (fn: () => void) => void;
-  /** Se não passar, o form faz PUT /api/ordens/{id} internamente. */
   onSubmit?: (payload: any) => Promise<void> | void;
+  onSavingChange?: (saving: boolean) => void; // ⬅️ novo
 };
 
-// --- utils ---
 const NONE = "__none__";
-const mapStatusToDB = (s: Marcacao): "PENDENTE" | "OK" | "FALHA" => {
-  if (s === "OK") return "OK";
-  if (s === "NOK") return "FALHA";
-  return "PENDENTE";
-};
+
+const mapStatusToDB = (s: Marcacao): "PENDENTE" | "OK" | "FALHA" =>
+  s === "OK" ? "OK" : s === "NOK" ? "FALHA" : "PENDENTE";
+
 const mapDBToStatus = (db: string | null | undefined): Marcacao => {
-  if (!db) return "";
-  const up = db.toUpperCase();
-  if (up === "OK") return "OK";
-  if (up === "FALHA") return "NOK";
-  return "";
+  const up = (db || "").toUpperCase();
+  return up === "OK" ? "OK" : up === "FALHA" ? "NOK" : "";
 };
 
-export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEditFormProps) {
+function resolvePecaNome(src: any): string {
+  return src?.titulo ?? src?.nome ?? src?.peca?.titulo ?? src?.peca?.nome ?? "";
+}
+
+function resolvePecaDescricao(src: any): string {
+  return src?.descricao ?? src?.peca?.descricao ?? "";
+}
+
+export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingChange }: OrdemEditFormProps) {
   const osId = defaultValues?.id ?? null;
 
-  // ========= Estado base (espelha o criar) =========
-  // Setores
   const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
   const [loadingSetores, setLoadingSetores] = useState(false);
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
 
-  // Atendimento
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
   const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
 
-  // Cliente/Veículo existentes
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<Veiculo[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
 
-  // Avulso
-  const [avulsoNome, setAvulsoNome] = useState<string>("");
-  const [avulsoDoc, setAvulsoDoc] = useState<string>("");
-  const [avulsoTelefone, setAvulsoTelefone] = useState<string>("");
-  const [avulsoEmail, setAvulsoEmail] = useState<string>("");
+  const [avulsoNome, setAvulsoNome] = useState("");
+  const [avulsoDoc, setAvulsoDoc] = useState("");
+  const [avulsoTelefone, setAvulsoTelefone] = useState("");
+  const [avulsoEmail, setAvulsoEmail] = useState("");
 
-  // Descrição/Observações
-  const [descricao, setDescricao] = useState<string>("");
-  const [observacoes, setObservacoes] = useState<string>("");
+  const [descricao, setDescricao] = useState("");
+  const [observacoes, setObservacoes] = useState("");
 
-  // Checklist
   const [templates, setTemplates] = useState<ChecklistTemplateModel[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
-  const [templateId, setTemplateId] = useState<string>("");
+  const [templateId, setTemplateId] = useState("");
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateModel["itens"]>([]);
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
 
-  // Alvo do reparo
   type AlvoTipo = "VEICULO" | "PECA";
   const [alvoTipo, setAlvoTipo] = useState<AlvoTipo>("VEICULO");
 
-  // Veículo (dados livres)
   const [vPlaca, setVPlaca] = useState("");
   const [vModelo, setVModelo] = useState("");
   const [vMarca, setVMarca] = useState("");
-  const [vAno, setVAno] = useState<string>("");
+  const [vAno, setVAno] = useState("");
   const [vCor, setVCor] = useState("");
-  const [vKm, setVKm] = useState<string>("");
+  const [vKm, setVKm] = useState("");
 
-  // Peça (avulsa)
   const [pNome, setPNome] = useState("");
   const [pDesc, setPDesc] = useState("");
 
-  // Loading/saving
   const [initialLoading, setInitialLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // ========= Carregamentos =========
-  // Setores
   useEffect(() => {
     (async () => {
       try {
@@ -128,8 +117,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
         setSetoresError(null);
         const r = await fetch("/api/setores", { cache: "no-store" });
         const j = await r.json();
-        const items: Array<{ id: number; nome: string }> = Array.isArray(j) ? j : j?.items ?? [];
-        setSetores(items);
+        setSetores(Array.isArray(j) ? j : j?.items ?? []);
       } catch (e: any) {
         setSetoresError(e?.message ?? "Não foi possível carregar os setores.");
         setSetores([]);
@@ -139,7 +127,6 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
     })();
   }, []);
 
-  // Templates de checklist
   useEffect(() => {
     (async () => {
       try {
@@ -149,8 +136,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
         url.searchParams.set("ativos", "1");
         const r = await fetch(url.toString(), { cache: "no-store" });
         const j = await r.json();
-        const items: ChecklistTemplateModel[] = Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : [];
-        setTemplates(items);
+        setTemplates(Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : []);
       } catch (e: any) {
         setTemplatesError(e?.message ?? "Não foi possível carregar os modelos de checklist.");
       } finally {
@@ -159,23 +145,15 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
     })();
   }, []);
 
-  // Carregar dados da OS para preencher o formulário
   useEffect(() => {
     if (!osId) return;
     (async () => {
       try {
         setInitialLoading(true);
-
         const r = await fetch(`/api/ordens/${osId}`, { cache: "no-store" });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "Não foi possível carregar a OS.");
 
-        // Esperado do endpoint:
-        // j.os: { setorid, clienteid, veiculoid, prioridade, descricao, observacoes, alvo_tipo, checklist_modelo_id, ... }
-        // j.cliente: { id, nomerazaosocial, cpfcnpj, telefone, email }  (se cadastrado)  OU dados avulso
-        // j.veiculo: { id, placa, modelo, marca, ano, cor, kmatual }    (opcional)
-        // j.peca:    { titulo, descricao }                              (se alvo peça)
-        // j.checklist: [{ item, status }]
         const os = j?.os ?? {};
         const cli = j?.cliente ?? j?.os?.cliente ?? null;
         const vei = j?.veiculo ?? j?.os?.veiculo ?? null;
@@ -185,7 +163,6 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
         setDescricao(os?.descricao || "");
         setObservacoes(os?.observacoes || "");
 
-        // atendimento
         if (cli?.id) {
           setModoAtendimento("cadastrado");
           setCliente({
@@ -195,7 +172,6 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
             email: cli.email ?? null,
             telefone: cli.telefone ?? null,
           });
-          // carregar veículos do cliente (best-effort)
           try {
             const rv = await fetch(`/api/clientes/${cli.id}/veiculos`, { cache: "no-store" });
             if (rv.ok) {
@@ -211,9 +187,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
               }));
               setVeiculosDoCliente(arr);
             }
-          } catch {
-            // silencioso
-          }
+          } catch {}
         } else {
           setModoAtendimento("avulso");
           setCliente(null);
@@ -223,14 +197,11 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
           setAvulsoEmail(cli?.email ?? "");
         }
 
-        // vínculo de veículo existente
-        setVeiculoSelecionadoId(os?.veiculoid ?? vei?.id ?? null);
-
-        // alvo
         const alvo = (os?.alvo_tipo as "VEICULO" | "PECA") || "VEICULO";
         setAlvoTipo(alvo);
 
         if (alvo === "VEICULO") {
+          setVeiculoSelecionadoId(os?.veiculoid ?? vei?.id ?? null);
           setVPlaca(vei?.placa ?? os?.veiculo?.placa ?? "");
           setVModelo(vei?.modelo ?? os?.veiculo?.modelo ?? "");
           setVMarca(vei?.marca ?? os?.veiculo?.marca ?? "");
@@ -238,18 +209,17 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
           setVCor(vei?.cor ?? os?.veiculo?.cor ?? "");
           setVKm(vei?.kmatual ? String(vei.kmatual) : os?.veiculo?.kmatual ? String(os.veiculo.kmatual) : "");
         } else {
-          setPNome(j?.peca?.titulo ?? os?.peca?.nome ?? "");
-          setPDesc(j?.peca?.descricao ?? os?.peca?.descricao ?? "");
+          setPNome(resolvePecaNome(j?.peca ?? os?.peca));
+          setPDesc(resolvePecaDescricao(j?.peca ?? os?.peca));
+          setVeiculoSelecionadoId(null);
         }
 
-        // checklist
         const modeloId = os?.checklist_modelo_id ? String(os.checklist_modelo_id) : "";
         setTemplateId(modeloId);
 
         const itensOS: Array<{ item: string; status: string }> = Array.isArray(j?.checklist)
           ? j.checklist.map((c: any) => ({ item: c.item, status: c.status }))
           : [];
-        // pré-carrega marcações
         const marcacoes: Record<string, Marcacao> = {};
         for (const c of itensOS) marcacoes[c.item] = mapDBToStatus(c.status);
         setChecklist(marcacoes);
@@ -261,7 +231,6 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
     })();
   }, [osId]);
 
-  // veiculos options
   const veiculoOptions = useMemo(
     () =>
       veiculosDoCliente.map((v) => ({
@@ -271,28 +240,23 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
     [veiculosDoCliente]
   );
 
-  // aplicar template: espelha o criar
   const applyTemplate = useCallback(
     (id: string) => {
       setTemplateId(id);
       const tpl = templates.find((t) => t.id === id);
       const itens = tpl?.itens ?? [];
       setTemplateItems(itens);
-
-      // mantém marcações já existentes quando títulos coincidem
       const novo: Record<string, Marcacao> = {};
       itens.forEach((it) => {
         const key = it?.titulo ?? "";
         if (!key) return;
-        const prev = checklist[key];
-        novo[key] = prev ?? "";
+        novo[key] = checklist[key] ?? "";
       });
       setChecklist(novo);
     },
     [templates, checklist]
   );
 
-  // sincroniza itens exibidos com templateId quando templates chegam
   useEffect(() => {
     if (!templateId || templates.length === 0) return;
     const tpl = templates.find((t) => t.id === templateId);
@@ -306,28 +270,20 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, templates]);
 
-  // ========= Validação / Salvar =========
   function validar(): string | null {
     if (!osId) return "OS inválida.";
     if (!setor) return "Selecione o setor responsável.";
-
-    if (modoAtendimento === "cadastrado" && !cliente) {
-      return "Este registro aponta para cliente cadastrado, mas os dados do cliente não foram carregados.";
-    }
+    if (modoAtendimento === "cadastrado" && !cliente) return "Dados do cliente não carregados.";
     if (modoAtendimento === "avulso") {
       if (!avulsoNome || !avulsoDoc) return "Preencha Nome/Razão Social e CPF/CNPJ no atendimento avulso.";
-      if (!avulsoTelefone?.trim() || !avulsoEmail?.trim()) {
+      if (!avulsoTelefone?.trim() || !avulsoEmail?.trim())
         return "Para atendimento avulso, telefone e e-mail são obrigatórios.";
-      }
     }
-
     if (alvoTipo === "VEICULO") {
-      // se NÃO houver um veículo vinculado, exigimos mínimo de identificação (modelo ou placa)
-      if (!veiculoSelecionadoId && !vModelo.trim() && !vPlaca.trim()) {
-        return "Informe pelo menos o Modelo ou a Placa do veículo, ou vincule um veículo existente.";
-      }
-    } else {
-      if (!pNome.trim()) return "Informe o nome da peça.";
+      if (!veiculoSelecionadoId && !vModelo.trim() && !vPlaca.trim())
+        return "Informe Modelo ou Placa do veículo, ou vincule um veículo existente.";
+    } else if (!pNome.trim()) {
+      return "Informe o nome da peça.";
     }
     return null;
   }
@@ -335,74 +291,85 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
   const buildPayload = () => {
     const checklistArray = Object.entries(checklist).map(([item, status]) => ({
       item,
-      status: mapStatusToDB((status || "") as Marcacao),
+      status: mapStatusToDB((status || "") as Marcacao), // "OK" | "FALHA" | "PENDENTE"
     }));
 
-    const payload: any = {
+    const veiculoPayload =
+      alvoTipo === "VEICULO"
+        ? {
+            placa: vPlaca?.trim() || null,
+            modelo: vModelo?.trim() || null,
+            marca: vMarca?.trim() || null,
+            ano: vAno?.trim() ? Number(vAno) : null,
+            cor: vCor?.trim() || null,
+            kmatual: vKm?.trim() ? Number(vKm) : null,
+          }
+        : null;
+
+    const base: any = {
       id: osId,
       setorid: setor ? Number(setor) : null,
+      prioridade,
       descricao: (descricao || "").trim() || null,
       observacoes: (observacoes || "").trim() || null,
+
+      // mantenho o nome já usado no front; a API vai aceitar este e o snake_case
       checklistTemplateId: templateId || null,
-      prioridade,
-      cliente:
-        modoAtendimento === "cadastrado"
-          ? { id: cliente!.id }
-          : {
-              nome: avulsoNome,
-              documento: avulsoDoc,
-              telefone: avulsoTelefone || null,
-              email: avulsoEmail || null,
-            },
-      veiculoid: veiculoSelecionadoId, // pode ser null
       checklist: checklistArray,
-      alvo:
-        alvoTipo === "VEICULO"
-          ? {
-              tipo: "VEICULO",
-              veiculo: {
-                placa: vPlaca || null,
-                modelo: vModelo || null,
-                marca: vMarca || null,
-                ano: vAno ? Number(vAno) : null,
-                cor: vCor || null,
-                kmatual: vKm ? Number(vKm) : null,
-              },
-            }
-          : {
-              tipo: "PECA",
-              peca: {
-                nome: pNome.trim(),
-                descricao: pDesc?.trim() || null,
-              },
-            },
     };
 
-    return payload;
+    // cliente: { id } OU dados de avulso para atualizar o cliente da OS
+    base.cliente =
+      modoAtendimento === "cadastrado"
+        ? { id: cliente!.id }
+        : {
+            nome: avulsoNome?.trim(),
+            documento: avulsoDoc?.trim(),
+            telefone: avulsoTelefone?.trim() || null,
+            email: avulsoEmail?.trim() || null,
+          };
+
+    if (alvoTipo === "VEICULO") {
+      base.alvo = {
+        tipo: "VEICULO",
+        veiculoid: veiculoSelecionadoId ?? null,
+        veiculo: veiculoPayload, // <- NOVO: dados livres do veículo
+      };
+    } else {
+      base.alvo = {
+        tipo: "PECA",
+        peca: { nome: pNome.trim(), descricao: pDesc?.trim() || null },
+      };
+    }
+
+    return base;
   };
 
   const salvar = async () => {
+    if (initialLoading || saving) return;
     const err = validar();
     if (err) return toast.error(err);
 
     const payload = buildPayload();
 
-    if (onSubmit) {
-      await onSubmit(payload);
-      return;
-    }
-
+    setSaving(true);
     try {
-      setSaving(true);
-      const r = await fetch(`/api/ordens/${osId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || "Falha ao atualizar OS");
-      toast.success("OS atualizada com sucesso");
-      window.dispatchEvent(new CustomEvent("os:refresh"));
+      if (onSubmit) {
+        await onSubmit(payload); // pode lançar
+        toast.success("OS atualizada com sucesso");
+        window.dispatchEvent(new CustomEvent("os:refresh"));
+      } else {
+        const r = await fetch(`/api/ordens/${osId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j?.error || "Falha ao atualizar OS");
+
+        toast.success("OS atualizada com sucesso");
+        window.dispatchEvent(new CustomEvent("os:refresh"));
+      }
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar alterações");
     } finally {
@@ -410,7 +377,11 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
     }
   };
 
-  // expõe submit ao Dialog pai
+  useEffect(() => {
+  onSavingChange?.(saving);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [saving]);
+
   useEffect(() => {
     exposeSubmit?.(salvar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -441,10 +412,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
     pDesc,
   ]);
 
-  // ========= UI =========
-  if (!osId) {
-    return <div className="text-sm text-red-600">OS inválida para edição.</div>;
-  }
+  if (!osId) return <div className="text-sm text-red-600">OS inválida para edição.</div>;
 
   return (
     <div className="space-y-6">
@@ -507,7 +475,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
             </CardContent>
           </Card>
 
-          {/* Cliente (separado como em Nova OS) */}
+          {/* Cliente */}
           <Card className="border-border">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -516,64 +484,27 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
               </div>
               <CardDescription>
                 {modoAtendimento === "cadastrado"
-                  ? "Cliente cadastrado — dados exibidos para conferência; vínculo com veículo pode ser alterado."
+                  ? "Cliente cadastrado — dados exibidos somente para conferência."
                   : "Atendimento avulso — edite os dados abaixo."}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-5">
               {modoAtendimento === "cadastrado" ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>Nome/Razão Social</Label>
-                      <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Telefone</Label>
-                      <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>E-mail</Label>
-                      <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Nome/Razão Social</Label>
+                    <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
                   </div>
-
-                  {/* Vincular a um veículo existente */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Vincular a um veículo do cliente (opcional)</Label>
-                      <Badge variant="outline" className="font-normal">
-                        {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
-                      </Badge>
-                    </div>
-                    <Select
-                      value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
-                      onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
-                      disabled={!cliente || veiculoOptions.length === 0 || saving}
-                    >
-                      <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
-                        <SelectValue
-                          placeholder={
-                            !cliente
-                              ? "Carregando cliente…"
-                              : veiculoOptions.length
-                              ? "Selecione um veículo"
-                              : "Cliente sem veículos"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE}>Não vincular</SelectItem>
-                        {veiculoOptions.map((v) => (
-                          <SelectItem key={v.value} value={v.value}>
-                            {v.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-1.5">
+                    <Label>Telefone</Label>
+                    <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
                   </div>
-                </>
+                  <div className="space-y-1.5">
+                    <Label>E-mail</Label>
+                    <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
+                  </div>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -643,22 +574,78 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
 
               {alvoTipo === "VEICULO" ? (
                 <div className="space-y-4">
+                  {modoAtendimento === "cadastrado" && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Vincular a um veículo do cliente (opcional)</Label>
+                        <Badge variant="outline" className="font-normal">
+                          {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
+                        </Badge>
+                      </div>
+                      <Select
+                        value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
+                        onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
+                        disabled={!cliente || veiculoOptions.length === 0 || saving}
+                      >
+                        <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                          <SelectValue
+                            placeholder={
+                              !cliente
+                                ? "Carregando cliente…"
+                                : veiculoOptions.length
+                                ? "Selecione um veículo"
+                                : "Cliente sem veículos"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Não vincular</SelectItem>
+                          {veiculoOptions.map((v) => (
+                            <SelectItem key={v.value} value={v.value}>
+                              {v.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1.5">
                       <Label>Placa</Label>
-                      <Input value={vPlaca} onChange={(e) => setVPlaca(e.target.value)} placeholder="ABC1D23" disabled={saving} />
+                      <Input
+                        value={vPlaca}
+                        onChange={(e) => setVPlaca(e.target.value)}
+                        placeholder="ABC1D23"
+                        disabled={saving}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Modelo</Label>
-                      <Input value={vModelo} onChange={(e) => setVModelo(e.target.value)} placeholder="Ex.: i30 2.0" disabled={saving} />
+                      <Input
+                        value={vModelo}
+                        onChange={(e) => setVModelo(e.target.value)}
+                        placeholder="Ex.: i30 2.0"
+                        disabled={saving}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Marca</Label>
-                      <Input value={vMarca} onChange={(e) => setVMarca(e.target.value)} placeholder="Ex.: Hyundai" disabled={saving} />
+                      <Input
+                        value={vMarca}
+                        onChange={(e) => setVMarca(e.target.value)}
+                        placeholder="Ex.: Hyundai"
+                        disabled={saving}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Ano</Label>
-                      <Input value={vAno} onChange={(e) => setVAno(e.target.value)} inputMode="numeric" disabled={saving} />
+                      <Input
+                        value={vAno}
+                        onChange={(e) => setVAno(e.target.value)}
+                        inputMode="numeric"
+                        disabled={saving}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Cor</Label>
@@ -666,7 +653,12 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
                     </div>
                     <div className="space-y-1.5">
                       <Label>KM atual</Label>
-                      <Input value={vKm} onChange={(e) => setVKm(e.target.value)} inputMode="numeric" disabled={saving} />
+                      <Input
+                        value={vKm}
+                        onChange={(e) => setVKm(e.target.value)}
+                        inputMode="numeric"
+                        disabled={saving}
+                      />
                     </div>
                   </div>
                 </div>
@@ -674,11 +666,21 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Nome da peça</Label>
-                    <Input value={pNome} onChange={(e) => setPNome(e.target.value)} placeholder="Ex.: Bomba d’água" disabled={saving} />
+                    <Input
+                      value={pNome}
+                      onChange={(e) => setPNome(e.target.value)}
+                      placeholder="Ex.: Radiador, Bomba d’água…"
+                      disabled={saving}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Descrição (opcional)</Label>
-                    <Input value={pDesc} onChange={(e) => setPDesc(e.target.value)} placeholder="Detalhes da peça" disabled={saving} />
+                    <Input
+                      value={pDesc}
+                      onChange={(e) => setPDesc(e.target.value)}
+                      placeholder="Detalhes da peça"
+                      disabled={saving}
+                    />
                   </div>
                 </div>
               )}
@@ -770,7 +772,9 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="text-sm font-medium">{it.titulo}</div>
-                            {it.descricao ? <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div> : null}
+                            {it.descricao ? (
+                              <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div>
+                            ) : null}
                           </div>
                           {it.obrigatorio && (
                             <Badge variant="secondary" className="text-[11px]">
@@ -815,7 +819,9 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit }: OrdemEd
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {templateId ? "Este modelo não possui itens." : "Selecione um modelo para exibir os itens do checklist."}
+                  {templateId
+                    ? "Este modelo não possui itens."
+                    : "Selecione um modelo para exibir os itens do checklist."}
                 </p>
               )}
             </CardContent>

@@ -1,137 +1,155 @@
 "use client";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Pencil, Link2, DollarSign, Send, FileSignature, Undo2, ShieldCheck, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  MoreHorizontal,
-  DollarSign,
-  Link2,
-  Send,
-  Wallet,
-  CreditCard,
-  Pencil,
-  Eye,
-  Trash2,
-  Play,
-} from "lucide-react";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import type { StatusOS } from "./ordens-tabs";
 
-// Tipagem mínima do que o Row precisa (evita dependência circular)
-type RowLike = {
-  id: number;
-  status?: string | null;
-  cliente?: { nome?: string | null } | null;
-};
+type Row = any;
 
 export function RowActions({
   row,
+  policy,
   onOpenOrcamento,
   onEditar,
   setStatus,
-  setLinkRow, setLinkDialogOpen,
-  setConfirmRow, setConfirmOpen,
-  setPayRow, setPayOpen,
-  setDetailsId, setDetailsOpen,
-  setDelRow, setDelOpen,
+  setLinkRow,
+  setLinkDialogOpen,
+  setConfirmRow,
+  setConfirmOpen,
+  setPayRow,
+  setPayOpen,
+  setDetailsId,
+  setDetailsOpen,
+  setDelRow,
+  setDelOpen,
 }: {
-  row: RowLike;
-  onOpenOrcamento: (row: any) => void;
-  onEditar: (row: any) => void;
-  setStatus: (id: number, s: Exclude<StatusOS, "TODAS">) => Promise<void> | void;
-  setLinkRow: (r: any | null) => void;
+  row: Row;
+  policy: {
+    canEditBudget: boolean;
+    showEditOS: boolean;          // <- NOVO
+    showLinkAprov: boolean;
+    showCancelBudget: boolean;
+    showApproveBudget: boolean;
+  };
+  onOpenOrcamento: (row: Row) => void;
+  onEditar: (row: Row) => void;
+  setStatus: (id: number, status: Exclude<StatusOS, never>) => Promise<void>;
+  setLinkRow: (row: Row) => void;
   setLinkDialogOpen: (v: boolean) => void;
-  setConfirmRow: (r: any | null) => void;
+  setConfirmRow: (row: Row) => void;
   setConfirmOpen: (v: boolean) => void;
-  setPayRow: (r: any | null) => void;
+  setPayRow: (row: Row) => void;
   setPayOpen: (v: boolean) => void;
   setDetailsId: (id: number | null) => void;
   setDetailsOpen: (v: boolean) => void;
-  setDelRow: (r: any | null) => void;
+  setDelRow: (row: Row) => void;
   setDelOpen: (v: boolean) => void;
 }) {
-  const st = (row.status ?? "ORCAMENTO") as Exclude<StatusOS, "TODAS">;
-  const podeLink = st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO";
+  const { canEditBudget, showEditOS, showLinkAprov, showCancelBudget, showApproveBudget } = policy;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="px-2" aria-label="Ações da OS">
+        <Button size="icon" variant="ghost" className="h-8 w-8">
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Ações</DropdownMenuLabel>
 
+        {/* Detalhes */}
         <DropdownMenuItem onClick={() => { setDetailsId(row.id); setDetailsOpen(true); }}>
-          <Eye className="mr-2 h-4 w-4" /> <span>Detalhes</span>
+          <Eye className="mr-2 h-4 w-4" />
+          Detalhes
         </DropdownMenuItem>
 
-        <DropdownMenuItem onClick={() => onOpenOrcamento(row)}>
-          <DollarSign className="mr-2 h-4 w-4" /> <span>Orçamento</span>
-        </DropdownMenuItem>
-
-        {podeLink && (
-          <DropdownMenuItem onClick={() => { setLinkRow(row); setLinkDialogOpen(true); }}>
-            <Link2 className="mr-2 h-4 w-4" /> <span>Link de aprovação…</span>
+        {/* Editar OS — só em ORCAMENTO */}
+        {showEditOS && (
+          <DropdownMenuItem onClick={() => onEditar(row)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Editar OS
           </DropdownMenuItem>
         )}
 
-        {st === "ORCAMENTO" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setStatus(row.id, "APROVACAO_ORCAMENTO")}>
-              <Send className="mr-2 h-4 w-4" /> <span>Enviar p/ aprovação</span>
-            </DropdownMenuItem>
-          </>
+        {/* Editar Orçamento — só em ORCAMENTO */}
+        {canEditBudget && (
+          <DropdownMenuItem onClick={() => onOpenOrcamento(row)}>
+            <FileSignature className="mr-2 h-4 w-4" />
+            Editar Orçamento
+          </DropdownMenuItem>
         )}
 
-        {st === "ORCAMENTO_APROVADO" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setStatus(row.id, "EM_ANDAMENTO")}>
-              <Play className="mr-2 h-4 w-4" /> <span>Iniciar OS</span>
-            </DropdownMenuItem>
-          </>
+        {/* Link de aprovação (oculto em ORCAMENTO) */}
+        {showLinkAprov && (
+          <DropdownMenuItem
+            onClick={() => {
+              setLinkRow(row);
+              setLinkDialogOpen(true);
+            }}
+          >
+            <Link2 className="mr-2 h-4 w-4" />
+            Link de aprovação
+          </DropdownMenuItem>
         )}
 
-        {st === "EM_ANDAMENTO" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => { e.preventDefault(); setConfirmRow(row); setTimeout(() => setConfirmOpen(true), 10); }}
-            >
-              <Wallet className="mr-2 h-4 w-4" /> <span>Finalizar e enviar p/ pagamento…</span>
-            </DropdownMenuItem>
-          </>
+        {/* Cancelar orçamento (voltar p/ ORCAMENTO) */}
+        {showCancelBudget && (
+          <DropdownMenuItem onClick={() => setStatus(row.id, "ORCAMENTO")}>
+            <Undo2 className="mr-2 h-4 w-4" />
+            Cancelar orçamento
+          </DropdownMenuItem>
         )}
 
-        {st === "PAGAMENTO" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { setPayRow(row); setPayOpen(true); }}>
-              <CreditCard className="mr-2 h-4 w-4" /> <span>Receber pagamento…</span>
-            </DropdownMenuItem>
-          </>
+        {/* Aprovar orçamento (ADM) -> ORCAMENTO_APROVADO */}
+        {showApproveBudget && (
+          <DropdownMenuItem onClick={() => setStatus(row.id, "ORCAMENTO_APROVADO")}>
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            Aprovar orçamento
+          </DropdownMenuItem>
         )}
 
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onEditar(row)}>
-          <Pencil className="mr-2 h-4 w-4" /> <span>Editar OS</span>
+
+        {/* Enviar p/ pagamento */}
+        <DropdownMenuItem
+          onClick={() => {
+            setConfirmRow(row);
+            setConfirmOpen(true);
+          }}
+        >
+          <Send className="mr-2 h-4 w-4" />
+          Enviar p/ pagamento
         </DropdownMenuItem>
 
+        {/* Receber Pagamento */}
         <DropdownMenuItem
-          className="text-red-600 focus:text-red-600"
-          onSelect={(e) => { e.preventDefault(); setDelRow(row); setTimeout(() => setDelOpen(true), 10); }}
+          onClick={() => {
+            setPayRow(row);
+            setPayOpen(true);
+          }}
         >
-          <Trash2 className="mr-2 h-4 w-4" /> <span>Excluir OS…</span>
+          <DollarSign className="mr-2 h-4 w-4" />
+          Receber pagamento
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* Excluir */}
+        <DropdownMenuItem
+          className="text-red-600 focus:text-red-700"
+          onClick={() => { setDelRow(row); setDelOpen(true); }}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Excluir OS
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

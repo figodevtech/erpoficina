@@ -253,7 +253,13 @@ export default function OsContent({ osId }: OsContentProps) {
                         {t.banco?.titulo} - {t.metodopagamento}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-col gap-1">
+<span>
+
                         {formatarEmReal(t.valor)}
+</span>
+<span className="text-xs text-muted-foreground">Líquido: {formatarEmReal(t.valorLiquido)}</span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
