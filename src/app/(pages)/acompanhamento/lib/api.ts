@@ -1,50 +1,47 @@
 export type QuadItem = {
   id: number;
   descricao: string | null;
-  status: "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "AGUARDANDO_PAGAMENTO" | "CONCLUIDA" | "CANCELADA";
+  status: string | null;
+  prioridade?: "BAIXA" | "NORMAL" | "ALTA" | null;
+  alvoTipo?: "VEICULO" | "PECA" | null;
   dataEntrada: string | null;
-  dataSaidaReal: string | null;
-  updatedAt: string | null;
+  dataSaida: string | null;
   cliente?: { id: number; nome: string } | null;
-  veiculo?: { id: number; placa: string; modelo: string; marca: string } | null;
   setor?: { id: number; nome: string } | null;
-  pagamentos?: { id: number; status: string }[] | null;
+  veiculo?: { id: number; modelo: string; placa: string; marca?: string | null; cor?: string | null } | null;
+  peca?: { id: number; titulo: string; descricao?: string | null } | null;
 };
 
-/** Converte o payload do servidor (snake_case / nomerazaosocial) para o formato do UI */
-function mapItem(s: any): QuadItem {
+function mapItem(r: any): QuadItem {
   return {
-    id: s.id,
-    descricao: s.descricao ?? null,
-    status: s.status,
-    dataEntrada: s.dataentrada ?? s.dataEntrada ?? null,
-    dataSaidaReal: s.datasaidareal ?? s.dataSaidaReal ?? null,
-    updatedAt: s.updatedat ?? s.updatedAt ?? null,
-    cliente: s.cliente
-      ? { id: s.cliente.id, nome: s.cliente.nomerazaosocial ?? s.cliente.nome ?? "—" }
+    id: r?.id,
+    descricao: r?.descricao ?? null,
+    status: r?.status ?? null,
+    prioridade: r?.prioridade ?? null,
+    alvoTipo: r?.alvo_tipo ?? null,
+    dataEntrada: r?.dataentrada ?? null,
+    dataSaida: r?.datasaida ?? null,
+    cliente: r?.cliente ? { id: r.cliente.id, nome: r.cliente.nomerazaosocial } : null,
+    setor: r?.setor ? { id: r.setor.id, nome: r.setor.nome } : null,
+    veiculo: r?.veiculo
+      ? {
+          id: r.veiculo.id,
+          modelo: r.veiculo.modelo,
+          placa: r.veiculo.placa,
+          marca: r.veiculo.marca ?? null,
+          cor: r.veiculo.cor ?? null,
+        }
       : null,
-    veiculo: s.veiculo
-      ? { id: s.veiculo.id, placa: s.veiculo.placa, modelo: s.veiculo.modelo, marca: s.veiculo.marca }
-      : null,
-    setor: s.setor ? { id: s.setor.id, nome: s.setor.nome } : null,
-    pagamentos: s.pagamentos ?? null,
+    peca: r?.peca ? { id: r.peca.id, titulo: r.peca.titulo, descricao: r.peca.descricao ?? null } : null,
   };
 }
 
-/**
- * Lista dados do quadro (aguardando, em atendimento, aguardando pagamento, finalizadas).
- * - finalizadas: "hoje" → apenas concluídas do dia (America/Fortaleza)
- * - finalizadas: "recentes" → janela de horas (horasRecentes, padrão 12h)
- */
-export async function listarQuadro(params?: {
-  horasRecentes?: number;
-  finalizadas?: "hoje" | "recentes";
-}) {
-  const url = new URL("/api/acompanhamento/ordens", window.location.origin);
-  if (params?.horasRecentes) url.searchParams.set("horasRecentes", String(params.horasRecentes));
-  if (params?.finalizadas) url.searchParams.set("finalizadas", params.finalizadas);
+export async function listarQuadro(params?: { finalizadas?: "hoje" | "recentes"; horasRecentes?: number }) {
+  const u = new URL("/api/acompanhamento/ordens", window.location.origin);
+  if (params?.finalizadas) u.searchParams.set("finalizadas", params.finalizadas);
+  if (params?.horasRecentes) u.searchParams.set("horasRecentes", String(params.horasRecentes));
 
-  const r = await fetch(url.toString(), { cache: "no-store" });
+  const r = await fetch(u.toString(), { cache: "no-store" });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error || "Falha ao carregar quadro");
 
@@ -53,13 +50,6 @@ export async function listarQuadro(params?: {
     emAndamento: Array.isArray(j.emAndamento) ? j.emAndamento.map(mapItem) : [],
     aguardandoPagamento: Array.isArray(j.aguardandoPagamento) ? j.aguardandoPagamento.map(mapItem) : [],
     concluidasRecentes: Array.isArray(j.concluidasRecentes) ? j.concluidasRecentes.map(mapItem) : [],
-    meta: j.meta ?? {},
+    meta: j?.meta ?? null,
   };
-}
-
-/** Lista setores (para filtros/indicadores, caso queira usar no board). */
-export async function listarSetores(): Promise<{ id: number; nome: string }[]> {
-  const r = await fetch("/api/setores", { cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  return Array.isArray(j) ? j : (j?.items ?? []);
 }
