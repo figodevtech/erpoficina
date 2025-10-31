@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner";
 
 import { Ordem } from "../types";
-import { StatusOS } from "./ordens-tabs";
+import type { StatusOS } from "./ordens-tabs";
 import TableSkeleton from "../components/table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { PagamentoDialog } from "./dialogs/pagamento-dialog";
@@ -53,10 +53,9 @@ type OrdemComDatas = Ordem & {
   prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
 };
 
-// ---- Ordenação (apenas prioridade, como pedido)
+// ---- Ordenação (apenas prioridade)
 type SortKey = "prioridade" | null;
 type SortDir = "asc" | "desc";
-const nextDir: Record<SortDir, SortDir> = { asc: "desc", desc: "asc" };
 
 // mapeia prioridade para número (para ordenar)
 const prioRank = (p?: OrdemComDatas["prioridade"]) => {
@@ -68,12 +67,13 @@ const prioRank = (p?: OrdemComDatas["prioridade"]) => {
 };
 
 export function OrdensTabela({
-  status,
+  statuses,
   onOpenOrcamento,
   onEditar,
   onNovaOS,
 }: {
-  status: StatusOS;
+  /** múltiplos status aceitos na aba atual */
+  statuses: StatusOS[];
   onOpenOrcamento: (row: OrdemComDatas) => void;
   onEditar: (row: OrdemComDatas) => void;
   onNovaOS: () => void;
@@ -96,22 +96,22 @@ export function OrdensTabela({
   const [isLoading, setIsLoading] = useState(true);
   const reqIdRef = useRef(0);
 
-  // tick para tempo correndo (5s para sensação de “contando”)
+  // tick para tempo correndo (5s)
   const now = useNowTick(5000);
 
-  // params atuais para realtime
-  const currentParamsRef = useRef({ status, q, page, limit });
+  // params atuais p/ realtime
+  const currentParamsRef = useRef({ statuses, q, page, limit });
   useEffect(() => {
-    currentParamsRef.current = { status, q, page, limit };
-  }, [status, q, page, limit]);
+    currentParamsRef.current = { statuses, q, page, limit };
+  }, [statuses, q, page, limit]);
 
   async function fetchNow({
-    status: st,
+    statuses: sts,
     q: search,
     page: pg,
     limit: lm,
   }: {
-    status: StatusOS;
+    statuses: StatusOS[];
     q: string;
     page: number;
     limit: number;
@@ -120,7 +120,12 @@ export function OrdensTabela({
     setIsLoading(true);
     try {
       const url = new URL("/api/ordens", window.location.origin);
-      url.searchParams.set("status", st);
+      if (sts.length === 1) {
+        url.searchParams.set("status", sts[0]);
+      } else if (sts.length > 1) {
+        // backend pode aceitar csv: ?statuses=A,B
+        url.searchParams.set("statuses", sts.join(","));
+      }
       if (search) url.searchParams.set("q", search);
       url.searchParams.set("page", String(pg));
       url.searchParams.set("limit", String(lm));
@@ -131,9 +136,14 @@ export function OrdensTabela({
       if (myId !== reqIdRef.current) return;
 
       if (r.ok) {
-        setRows(j.items ?? []);
+        let items: OrdemComDatas[] = j.items ?? [];
+        // filtro defensivo no client caso backend não suporte "statuses"
+        if (sts.length > 0) {
+          items = items.filter((row) => sts.includes(safeStatus(row.status) as StatusOS));
+        }
+        setRows(items);
         setTotalPages(j.totalPages ?? 1);
-        setTotal(j.total ?? j.totalItems ?? 0);
+        setTotal(j.total ?? j.totalItems ?? items.length);
       } else {
         toast.error(j?.error || "Falha ao carregar as ordens");
         setRows([]);
@@ -153,15 +163,15 @@ export function OrdensTabela({
 
   // carregar quando filtros/paginação mudarem (debounce simples do q)
   useEffect(() => {
-    const t = setTimeout(() => fetchNow({ status, q, page, limit }), 350);
+    const t = setTimeout(() => fetchNow({ statuses, q, page, limit }), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, q, page, limit]);
+  }, [statuses, q, page, limit]);
 
-  // reset página quando mudar status
+  // reset página quando mudar conjunto de status
   useEffect(() => {
     setPage(1);
-  }, [status]);
+  }, [statuses]);
 
   // realtime via supabase
   useEffect(() => {
@@ -171,7 +181,7 @@ export function OrdensTabela({
 
     const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
     const ch = supabase
-      .channel(`os-realtime-list-${status}`)
+      .channel(`os-realtime-list-${statuses.join("+")}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () =>
         fetchNow(currentParamsRef.current)
       )
@@ -184,7 +194,7 @@ export function OrdensTabela({
       window.removeEventListener("os:refresh", onLocalRefresh);
       supabase.removeChannel(ch);
     };
-  }, [status]);
+  }, [statuses]);
 
   // rodapé
   const pageCount = rows.length;
@@ -204,7 +214,7 @@ export function OrdensTabela({
     return fmtDuration((endMs ?? now) - startMs);
   };
 
-  async function setStatus(id: number, status: Exclude<StatusOS, "TODAS">) {
+  async function setStatus(id: number, status: Exclude<StatusOS, never>) {
     const r = await fetch(`/api/ordens/${id}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -263,14 +273,15 @@ export function OrdensTabela({
     return decorated.map((d) => d.r);
   }, [rows, sortKey, sortDir]);
 
-  // Componente do cabeçalho clicável para Prioridade
+  // Cabeçalho Prioridade clicável
   const PrioridadeHeader = () => {
-    const icon =
-      !sortKey
-        ? <ChevronsUpDown className="ml-1 h-3.5 w-3.5 opacity-60" />
-        : sortKey === "prioridade" && sortDir === "asc"
-          ? <ChevronUp className="ml-1 h-3.5 w-3.5" />
-          : <ChevronDown className="ml-1 h-3.5 w-3.5" />;
+    const icon = !sortKey ? (
+      <ChevronsUpDown className="ml-1 h-3.5 w-3.5 opacity-60" />
+    ) : sortKey === "prioridade" && sortDir === "asc" ? (
+      <ChevronUp className="ml-1 h-3.5 w-3.5" />
+    ) : (
+      <ChevronDown className="ml-1 h-3.5 w-3.5" />
+    );
 
     const handleClick = () => {
       // ciclo: none -> desc -> asc -> none
@@ -358,11 +369,19 @@ export function OrdensTabela({
 
               {!isLoading &&
                 sortedRows.map((r) => {
-                  const st = safeStatus(r.status);
+                  const st = safeStatus(r.status) as StatusOS;
                   const clienteNome = r.cliente?.nome ?? "—";
                   const veiculoStr = r.veiculo
                     ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
+
+                  const policy = {
+                    canEditBudget: st === "ORCAMENTO", // <- antes incluía ORCAMENTO_RECUSADO
+                    showEditOS: st === "ORCAMENTO", // <- novo: só mostra "Editar OS" em ORCAMENTO
+                    showLinkAprov: st !== "ORCAMENTO",
+                    showCancelBudget: st === "APROVACAO_ORCAMENTO",
+                    showApproveBudget: st === "APROVACAO_ORCAMENTO",
+                  };
 
                   return (
                     <TableRow key={r.id}>
@@ -399,6 +418,7 @@ export function OrdensTabela({
                       <TableCell className="text-right">
                         <RowActions
                           row={r}
+                          policy={policy}
                           onOpenOrcamento={onOpenOrcamento}
                           onEditar={onEditar}
                           setStatus={setStatus}
@@ -441,10 +461,22 @@ export function OrdensTabela({
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-            <Button variant="outline" size="icon" aria-label="Primeira página" onClick={() => setPage(1)} disabled={page === 1}>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Primeira página"
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+            >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" aria-label="Página anterior" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Página anterior"
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+            >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
             <span className="text-xs font-medium text-nowrap">
@@ -554,9 +586,7 @@ export function OrdensTabela({
       <AlertDialog open={delOpen} onOpenChange={setDelOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              Excluir OS #{delRow?.id}
-            </AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">Excluir OS #{delRow?.id}</AlertDialogTitle>
             <AlertDialogDescription>
               Essa ação é irreversível. Tem certeza que deseja excluir a OS <b>#{delRow?.id}</b>?
             </AlertDialogDescription>

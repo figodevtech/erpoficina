@@ -6,8 +6,12 @@ import { NovaOSDialog } from "../components/novaOS/ordem-dialog";
 import { EditarOSDialog } from "./editarOS/editar-ordem-dialog";
 import { OrcamentoDialog } from "../components/orcamento/orcamento-dialog";
 import { criarOrdem, editarOrdem } from "../lib/api";
+import type { StatusOS } from "../components/ordens-tabs";
+import { toast } from "sonner";
 
 type Ordem = any;
+
+const PODE_EDITAR_ORCAMENTO = new Set<StatusOS>(["ORCAMENTO", "ORCAMENTO_RECUSADO"]);
 
 export default function GerenciadorOS() {
   const [selecionada, setSelecionada] = useState<Ordem | null>(null);
@@ -20,6 +24,11 @@ export default function GerenciadorOS() {
       <OrdensTabs
         onNovaOS={() => setAbrirCriar(true)}
         onOpenOrcamento={(row) => {
+          const st = String(row?.status || "").toUpperCase().replaceAll(" ", "_") as StatusOS;
+          if (!PODE_EDITAR_ORCAMENTO.has(st)) {
+            toast.error("Orçamento só pode ser editado em ORÇAMENTO ou ORÇAMENTO RECUSADO.");
+            return;
+          }
           setSelecionada(row as Ordem);
           setAbrirOrcamento(true);
         }}
@@ -27,6 +36,7 @@ export default function GerenciadorOS() {
           setSelecionada(row as Ordem);
           setAbrirEditar(true);
         }}
+        data-testid="ordens-tabs"
       />
 
       {/* Nova OS */}
@@ -58,10 +68,7 @@ export default function GerenciadorOS() {
         onOpenChange={(v) => {
           setAbrirOrcamento(v);
           if (!v) {
-            // ao fechar, atualiza a lista (ex.: após salvar orçamento)
             window.dispatchEvent(new CustomEvent("os:refresh"));
-            // opcional: limpar seleção
-            // setSelecionada(null);
           }
         }}
         osSelecionada={selecionada}
