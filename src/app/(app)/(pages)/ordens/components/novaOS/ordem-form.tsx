@@ -36,8 +36,9 @@ type ChecklistTemplateModel = {
   itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
 };
 
-const CHECK_STATUS = ["OK", "NOK", "NA"] as const;
-type Marcacao = (typeof CHECK_STATUS)[number] | "";
+// Agora os status exibidos seguem o enum do banco
+const CHECK_STATUS = ["OK", "ALERTA", "FALHA"] as const;
+type Marcacao = (typeof CHECK_STATUS)[number] | ""; // "" = não marcado
 
 export type FormularioNovaOSProps = {
   onSubmit?: (payload: any) => Promise<void> | void;
@@ -45,6 +46,14 @@ export type FormularioNovaOSProps = {
 };
 
 const NONE = "__none__";
+
+// status visual -> status do banco (apenas quando marcado)
+function toDbStatus(sel: Marcacao): "OK" | "ALERTA" | "FALHA" | null {
+  if (sel === "OK") return "OK";
+  if (sel === "ALERTA") return "ALERTA";
+  if (sel === "FALHA") return "FALHA";
+  return null; // não marcado
+}
 
 export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSProps) {
   // Setores
@@ -83,7 +92,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateModel["itens"]>([]);
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
 
-  // === ALVO DO REPARO (somente UI; iremos anexar nas observações) ===
+  // === ALVO DO REPARO ===
   type AlvoTipo = "VEICULO" | "PECA";
   const [alvoTipo, setAlvoTipo] = useState<AlvoTipo>("VEICULO");
 
@@ -100,6 +109,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
   const [pDesc, setPDesc] = useState("");
 
   const veiculoVinculado = veiculoSelecionadoId !== null;
+
   // Carrega Setores
   useEffect(() => {
     (async () => {
@@ -147,7 +157,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
       setTemplateItems(itens);
       const novo: Record<string, Marcacao> = {};
       itens.forEach((it) => {
-        if (it?.titulo) novo[it.titulo] = "";
+        if (it?.titulo) novo[it.titulo] = ""; // começa sem marcação
       });
       setChecklist(novo);
     },
@@ -234,12 +244,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     pDesc,
   ]);
 
-  const mapStatusToDB = (s: Marcacao): "PENDENTE" | "OK" | "ALERTA" | "FALHA" => {
-    if (s === "OK") return "OK";
-    if (s === "NOK") return "FALHA";
-    return "PENDENTE";
-  };
-
   function validar(): string | null {
     if (!setor) return "Selecione o setor responsável.";
 
@@ -255,32 +259,47 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     }
 
     if (alvoTipo === "VEICULO") {
-      // ✅ se houver veículo vinculado, não exige dados de cadastro novo
+      // se não houver veículo vinculado, placa é necessária para criar (constraint do banco)
       if (!veiculoVinculado) {
-        // Sem veículo vinculado? então precisamos de dados mínimos para criar um.
-        if (!vModelo.trim() && !vPlaca.trim()) {
-          return "Informe pelo menos o Modelo ou a Placa do veículo (ou selecione um veículo já cadastrado).";
+        if (!vPlaca.trim()) {
+          return "Para criar um veículo novo, informe ao menos a PLACA (modelo/marca ajudam, mas placa é obrigatória).";
         }
       }
     } else {
-      // alvo = peça
       if (!pNome.trim()) return "Informe o nome da peça.";
     }
+    return null;
+  }
 
+  function validarChecklistObrigatorios(): string | null {
+    if (!templateItems?.length) return null;
+    const faltando = templateItems
+      .filter((it) => it.obrigatorio)
+      .filter((it) => !checklist[it.titulo]); // vazio/sem seleção
+    if (faltando.length) {
+      const nomes = faltando.slice(0, 3).map((f) => f.titulo).join(", ");
+      return `Marque todos os itens obrigatórios do checklist. Ex.: ${nomes}${faltando.length > 3 ? "…" : ""}`;
+    }
     return null;
   }
 
   const salvar = async () => {
-    const err = validar();
-    if (err) {
-      toast.error(err);
-      return;
-    }
+    const errBase = validar();
+    if (errBase) return toast.error(errBase);
 
-    const checklistArray = Object.entries(checklist).map(([item, status]) => ({
-      item,
-      status: mapStatusToDB((status || "") as Marcacao),
-    }));
+    const errChk = validarChecklistObrigatorios();
+    if (errChk) return toast.error(errChk);
+
+    // Apenas itens marcados (OK/ALERTA/FALHA). Não marcado -> não envia.
+    const checklistArray =
+      templateItems
+        .map((it) => {
+          const sel = checklist[it.titulo] ?? "";
+          const db = toDbStatus(sel as Marcacao);
+          if (!db) return null;
+          return { item: it.titulo, status: db };
+        })
+        .filter(Boolean) as Array<{ item: string; status: "OK" | "ALERTA" | "FALHA" }>;
 
     const payload: any = {
       setorid: setor ? Number(setor) : null,
@@ -299,7 +318,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
               email: avulsoEmail || null,
             },
 
-      // mantém o vínculo explicitamente
       veiculoid: veiculoSelecionadoId,
 
       checklist: checklistArray,
@@ -307,10 +325,8 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
       alvo:
         alvoTipo === "VEICULO"
           ? veiculoVinculado
-            ? // 🔽 com vínculo, não manda objeto de criação de veículo
-              { tipo: "VEICULO" }
-            : // 🔽 sem vínculo, manda dados para criar
-              {
+            ? { tipo: "VEICULO" }
+            : {
                 tipo: "VEICULO",
                 veiculo: {
                   placa: vPlaca || null,
@@ -323,20 +339,15 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
               }
           : {
               tipo: "PECA",
-              peca: {
-                nome: pNome.trim(),
-                descricao: pDesc?.trim() || null,
-              },
+              peca: { nome: pNome.trim(), descricao: pDesc?.trim() || null },
             },
     };
 
-    // ✅ Se o pai (Dialog) passou onSubmit, delega e sai.
     if (onSubmit) {
       await onSubmit(payload);
       return;
     }
 
-    // 🌐 Fluxo interno (quando o formulário é usado fora do Dialog)
     try {
       const r = await fetch("/api/ordens/criar", {
         method: "POST",
@@ -346,6 +357,8 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
       toast.success(`OS criada com sucesso!${j?.id ? ` ID: ${j.id}` : ""}`);
+      // você pode disparar um evento global para recarregar listas, se quiser:
+      window.dispatchEvent(new CustomEvent("os:refresh"));
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar OS");
     }
@@ -520,7 +533,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             </div>
           </div>
 
-          {/* ALVO DO REPARO (apenas UI; será escrito nas observações) */}
+          {/* ALVO DO REPARO */}
           <div className="rounded-lg border p-3">
             <div className="flex items-center gap-2 mb-2">
               <Wrench className="h-4 w-4 text-primary" />
@@ -556,7 +569,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                     onValueChange={(v) => {
                       const id = v === NONE ? null : Number(v);
                       setVeiculoSelecionadoId(id);
-                      // 🔽 se vinculou um veículo, limpamos os campos de cadastro manual
                       if (id !== null) {
                         setVPlaca("");
                         setVModelo("");
@@ -592,7 +604,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                   </Select>
                 </div>
 
-                {/* Dados básicos do veículo (sempre registrados nas observações) */}
+                {/* Dados básicos do veículo */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label>Placa</Label>
@@ -729,8 +741,17 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {(["OK", "NOK", "NA"] as const).map((status) => {
+                      {(["OK", "ALERTA", "FALHA"] as const).map((status) => {
                         const selected = marcado === status;
+                        const base =
+                          "px-3 py-1.5 rounded-md text-sm border transition disabled:opacity-50 disabled:cursor-not-allowed";
+                        const selectedClass =
+                          status === "OK"
+                            ? "bg-emerald-600 text-white border-emerald-600"
+                            : status === "ALERTA"
+                            ? "bg-amber-500 text-white border-amber-500"
+                            : "bg-red-600 text-white border-red-600";
+                        const unselectedClass = "bg-background hover:bg-muted border-border text-foreground";
                         return (
                           <button
                             key={status}
@@ -741,16 +762,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                                 [key]: selected ? "" : status,
                               }))
                             }
-                            className={[
-                              "px-3 py-1.5 rounded-md text-sm border transition",
-                              selected
-                                ? status === "OK"
-                                  ? "bg-emerald-600 text-white border-emerald-600"
-                                  : status === "NOK"
-                                  ? "bg-red-600 text-white border-red-600"
-                                  : "bg-zinc-700 text-white border-zinc-700"
-                                : "bg-background hover:bg-muted border-border text-foreground",
-                            ].join(" ")}
+                            className={[base, selected ? selectedClass : unselectedClass].join(" ")}
                           >
                             {status}
                           </button>

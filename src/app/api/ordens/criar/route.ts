@@ -3,13 +3,13 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** SOMENTE os enums do banco */
-type DBChecklistStatus = "PENDENTE" | "OK" | "ALERTA" | "FALHA";
+type DBChecklistStatus = "OK" | "ALERTA" | "FALHA";
 type DBAlvo = "VEICULO" | "PECA";
 type DBPrioridade = "BAIXA" | "NORMAL" | "ALTA";
 
 type Payload = {
   setorid: number | null;
-  veiculoid: number | null;                  // opcional: vínculo direto
+  veiculoid: number | null; // vínculo direto (opcional)
   descricao: string | null;
   observacoes: string | null;
   checklistTemplateId: string | null;
@@ -18,10 +18,16 @@ type Payload = {
     | { id: number }
     | { nome: string; documento: string; telefone?: string | null; email?: string | null };
 
-  // novo bloco:
   alvo?: {
     tipo: DBAlvo;
-    veiculo?: { placa?: string | null; modelo?: string | null; marca?: string | null; ano?: number | null; cor?: string | null; kmatual?: number | null };
+    veiculo?: {
+      placa?: string | null;
+      modelo?: string | null;
+      marca?: string | null;
+      ano?: number | null;
+      cor?: string | null;
+      kmatual?: number | null;
+    };
     peca?: { nome: string; descricao?: string | null };
   };
 
@@ -35,10 +41,10 @@ function deduzTipoPessoa(documento: string): "FISICA" | "JURIDICA" {
   const d = onlyDigits(documento);
   return d.length === 14 ? "JURIDICA" : "FISICA";
 }
-function normStatus(v: unknown): DBChecklistStatus {
+function toDbChecklistStatusOrNull(v: unknown): DBChecklistStatus | null {
   const t = String(v ?? "").trim().toUpperCase();
-  if (t === "OK" || t === "ALERTA" || t === "FALHA" || t === "PENDENTE") return t as DBChecklistStatus;
-  return "PENDENTE";
+  if (t === "OK" || t === "ALERTA" || t === "FALHA") return t as DBChecklistStatus;
+  return null;
 }
 function normPrioridade(v: any): DBPrioridade {
   const t = String(v ?? "").trim().toUpperCase();
@@ -101,19 +107,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ========= Resolve alvo (veículo/peça) e ids coerentes =========
+    // ========= Resolve alvo (veículo/peça) =========
     let alvo_tipo: DBAlvo = "VEICULO";
     let veiculoid: number | null = body?.veiculoid ? Number(body.veiculoid) : null;
     let pecaid: number | null = null;
 
+    // ids criados nesta chamada (para possível rollback)
+    let createdVeiculoId: number | null = null;
+    let createdPecaId: number | null = null;
+
     const alvo = body?.alvo;
     if (!alvo) {
-      // Sem alvo explícito: heurística simples para não quebrar
-      // Se veio veiculoid -> VEICULO; senão -> PECA (mas precisaria de pecaid)
-      // Para garantir a constraint, exigimos veiculoid nesse cenário.
+      // Sem alvo explícito: se não houver veiculoid, não sabemos como cumprir constraints
       if (!veiculoid) {
         return NextResponse.json(
-          { error: "Informe o 'alvo' (VEICULO/PECA). Quando VEICULO, selecione um veículo ou preencha dados mínimos." },
+          { error: "Informe o 'alvo' (VEICULO/PECA). Quando VEICULO, selecione um veículo ou informe placa, modelo e marca." },
           { status: 400 }
         );
       }
@@ -121,19 +129,20 @@ export async function POST(req: NextRequest) {
     } else if (alvo.tipo === "VEICULO") {
       alvo_tipo = "VEICULO";
 
-      // Se não veio veiculoid, tenta criar/reaproveitar por placa (mínimos: placa + modelo + marca)
+      // Se não veio veiculoid, tenta criar usando placa única
       if (!veiculoid) {
         const placa = (alvo.veiculo?.placa || "").trim();
         const modelo = (alvo.veiculo?.modelo || "").trim();
         const marca = (alvo.veiculo?.marca || "").trim();
-        if (!placa || !modelo || !marca) {
+        // No schema, placa é NOT NULL UNIQUE -> exigimos placa, e sugerimos modelo/marca
+        if (!placa) {
           return NextResponse.json(
-            { error: "Para alvo VEICULO, selecione um veículo cadastrado ou informe placa, modelo e marca." },
+            { error: "Para alvo VEICULO sem vínculo, informe ao menos a PLACA (modelo/marca recomendados)." },
             { status: 400 }
           );
         }
 
-        // Tenta reaproveitar por placa (única na tabela)
+        // Tenta reaproveitar por placa
         const { data: vExist, error: eFindV } = await supabaseAdmin
           .from("veiculo")
           .select("id, clienteid")
@@ -142,16 +151,15 @@ export async function POST(req: NextRequest) {
         if (eFindV) throw eFindV;
 
         if (vExist?.id) {
-          // Se a placa já existe, simplesmente usar esse veículo.
           veiculoid = vExist.id;
         } else {
           const { data: vNew, error: eVNew } = await supabaseAdmin
             .from("veiculo")
             .insert({
-              clienteid, // vincula ao cliente desta OS
+              clienteid,
               placa,
-              modelo,
-              marca,
+              modelo: modelo || "—",
+              marca: marca || "—",
               ano: alvo.veiculo?.ano ?? null,
               cor: (alvo.veiculo?.cor || null) as any,
               kmatual: alvo.veiculo?.kmatual ?? null,
@@ -160,9 +168,9 @@ export async function POST(req: NextRequest) {
             .single();
           if (eVNew) throw eVNew;
           veiculoid = vNew.id;
+          createdVeiculoId = vNew.id;
         }
       }
-      // para VEICULO, pecaid deve ser null
       pecaid = null;
     } else if (alvo.tipo === "PECA") {
       alvo_tipo = "PECA";
@@ -172,13 +180,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Para alvo PECA, informe o nome da peça." }, { status: 400 });
       }
 
-      // veiculoid pode vir ou não (peça avulsa é permitido)
-      // Criar a peça:
       const { data: pNew, error: eP } = await supabaseAdmin
         .from("peca")
         .insert({
           clienteid,
-          veiculoid: veiculoid || null, // ok ser null
+          veiculoid: veiculoid || null,
           titulo: nome,
           descricao: (alvo.peca?.descricao || null) as any,
         })
@@ -187,13 +193,13 @@ export async function POST(req: NextRequest) {
       if (eP) throw eP;
 
       pecaid = pNew.id;
-      // Para PECA, é mais seguro zerar veiculoid pra satisfazer a constraint (caso restritiva)
-      veiculoid = null;
+      createdPecaId = pNew.id;
+      veiculoid = null; // para PECA mantemos veiculoid nulo na OS (coerente)
     } else {
       return NextResponse.json({ error: "alvo.tipo inválido" }, { status: 400 });
     }
 
-    // ========= Cria OS (já coerente com a constraint) =========
+    // ========= Cria OS =========
     const checklistModeloId =
       body?.checklistTemplateId && /^\d+$/.test(String(body.checklistTemplateId))
         ? Number(body.checklistTemplateId)
@@ -220,18 +226,31 @@ export async function POST(req: NextRequest) {
     const osId = os.id as number;
 
     // ========= Checklist =========
-    const itens = (Array.isArray(body.checklist) ? body.checklist : [])
+    const reqItens = Array.isArray(body.checklist) ? body.checklist : [];
+    // Se vieram itens, apenas insere os marcados (OK/ALERTA/FALHA).
+    const itens = reqItens
       .filter((x) => x?.item && typeof x.item === "string")
-      .map((x) => ({
-        ordemservicoid: osId,
-        item: x.item.trim(),
-        status: normStatus(x.status),
-        observacao: null,
-      }));
+      .map((x) => {
+        const status = toDbChecklistStatusOrNull(x.status);
+        if (!status) return null; // ignorar não marcados
+        return {
+          ordemservicoid: osId,
+          item: String(x.item).trim(),
+          status, // enum válido
+          observacao: null,
+        };
+      })
+      .filter(Boolean) as Array<{ ordemservicoid: number; item: string; status: DBChecklistStatus; observacao: null }>;
 
     if (itens.length) {
       const { error: eCheck } = await supabaseAdmin.from("checklist").insert(itens);
-      if (eCheck) throw eCheck;
+      if (eCheck) {
+        // compensação: apaga tudo que foi criado nesta chamada
+        await supabaseAdmin.from("ordemservico").delete().eq("id", osId);
+        if (createdPecaId) await supabaseAdmin.from("peca").delete().eq("id", createdPecaId);
+        if (createdVeiculoId) await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
+        throw eCheck;
+      }
     }
 
     return NextResponse.json({ id: osId }, { status: 201 });
