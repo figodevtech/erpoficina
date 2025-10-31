@@ -14,9 +14,10 @@ import {
 import { OrdensTabela } from "./ordens-tabela";
 import { createClient } from "@supabase/supabase-js";
 
+/** Status que existem no banco */
 export type StatusOS =
-  | "TODAS"
   | "ORCAMENTO"
+  | "ORCAMENTO_RECUSADO"
   | "APROVACAO_ORCAMENTO"
   | "ORCAMENTO_APROVADO"
   | "EM_ANDAMENTO"
@@ -24,7 +25,28 @@ export type StatusOS =
   | "CONCLUIDO"
   | "CANCELADO";
 
-const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string; active: string }[] = [
+/** Chaves das abas da UI */
+type TabKey = "TODAS" | "ORCAMENTO" | "APROVACAO" | "EM_ANDAMENTO" | "PAGAMENTO" | "FINALIZADAS";
+
+const ALL_STATUSES: StatusOS[] = [
+  "ORCAMENTO",
+  "ORCAMENTO_RECUSADO",
+  "APROVACAO_ORCAMENTO",
+  "ORCAMENTO_APROVADO",
+  "EM_ANDAMENTO",
+  "PAGAMENTO",
+  "CONCLUIDO",
+  "CANCELADO",
+];
+
+const statusTabs: {
+  key: TabKey;
+  label: string;
+  icon: JSX.Element;
+  dot: string;
+  active: string;
+  statuses: StatusOS[];
+}[] = [
   {
     key: "TODAS",
     label: "Todas",
@@ -32,6 +54,7 @@ const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string
     dot: "bg-slate-400",
     active:
       "data-[state=active]:bg-slate-500/15 data-[state=active]:text-slate-200 data-[state=active]:ring-slate-500/30",
+    statuses: ALL_STATUSES,
   },
   {
     key: "ORCAMENTO",
@@ -40,14 +63,18 @@ const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string
     dot: "bg-fuchsia-500",
     active:
       "data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-200 data-[state=active]:ring-fuchsia-500/30",
+    /** ➜ ORÇAMENTO + ORÇAMENTO RECUSADO */
+    statuses: ["ORCAMENTO", "ORCAMENTO_RECUSADO"],
   },
   {
-    key: "APROVACAO_ORCAMENTO",
+    key: "APROVACAO",
     label: "Aprovação",
     icon: <ClipboardCheck className="h-4 w-4" />,
     dot: "bg-sky-500",
     active:
       "data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-200 data-[state=active]:ring-sky-500/30",
+    /** ➜ APROVAÇÃO + APROVADO */
+    statuses: ["APROVACAO_ORCAMENTO", "ORCAMENTO_APROVADO"],
   },
   {
     key: "EM_ANDAMENTO",
@@ -56,6 +83,7 @@ const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string
     dot: "bg-amber-500",
     active:
       "data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-200 data-[state=active]:ring-amber-500/30",
+    statuses: ["EM_ANDAMENTO"],
   },
   {
     key: "PAGAMENTO",
@@ -64,22 +92,17 @@ const statusTabs: { key: StatusOS; label: string; icon: JSX.Element; dot: string
     dot: "bg-indigo-500",
     active:
       "data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-200 data-[state=active]:ring-indigo-500/30",
+    statuses: ["PAGAMENTO"],
   },
   {
-    key: "CONCLUIDO",
-    label: "Concluído",
+    key: "FINALIZADAS",
+    label: "Finalizadas",
     icon: <CheckCircle2 className="h-4 w-4" />,
-    dot: "bg-emerald-500",
+    dot: "bg-emerald-600",
     active:
-      "data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-200 data-[state=active]:ring-emerald-500/30",
-  },
-  {
-    key: "CANCELADO",
-    label: "Cancelado",
-    icon: <XCircle className="h-4 w-4" />,
-    dot: "bg-rose-500",
-    active:
-      "data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-200 data-[state=active]:ring-rose-500/30",
+      "data-[state=active]:bg-emerald-600/15 data-[state=active]:text-emerald-200 data-[state=active]:ring-emerald-600/30",
+    /** ➜ CONCLUÍDO + CANCELADO */
+    statuses: ["CONCLUIDO", "CANCELADO"],
   },
 ];
 
@@ -92,7 +115,7 @@ export function OrdensTabs({
   onEditar: (row: any) => void;
   onNovaOS: () => void;
 }) {
-  const [active, setActive] = useState<StatusOS>("TODAS");
+  const [active, setActive] = useState<TabKey>("TODAS");
   const [stats, setStats] = useState<Record<string, number>>({
     ORCAMENTO: 0,
     APROVACAO_ORCAMENTO: 0,
@@ -137,15 +160,15 @@ export function OrdensTabs({
       {/* Resumo compacto */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
         <MiniCard accent="text-slate-300" title="Total" value={total} icon={<ClipboardList className="h-4 w-4" />} />
-        <MiniCard accent="text-fuchsia-300" title="Orçamento" value={stats.ORCAMENTO || 0} icon={<ClipboardList className="h-4 w-4" />} />
-        <MiniCard accent="text-sky-300" title="Aprovação" value={stats.APROVACAO_ORCAMENTO || 0} icon={<ClipboardCheck className="h-4 w-4" />} />
+        <MiniCard accent="text-fuchsia-300" title="Orçamento" value={(stats.ORCAMENTO || 0)} icon={<ClipboardList className="h-4 w-4" />} />
+        <MiniCard accent="text-sky-300" title="Aprovação" value={(stats.APROVACAO_ORCAMENTO || 0) + (stats.ORCAMENTO_APROVADO || 0)} icon={<ClipboardCheck className="h-4 w-4" />} />
         <MiniCard accent="text-amber-300" title="Em Andamento" value={stats.EM_ANDAMENTO || 0} icon={<Loader2 className="h-4 w-4" />} />
         <MiniCard accent="text-indigo-300" title="Pagamento" value={stats.PAGAMENTO || 0} icon={<CreditCard className="h-4 w-4" />} />
         <MiniCard accent="text-emerald-300" title="Concluído" value={stats.CONCLUIDO || 0} icon={<CheckCircle2 className="h-4 w-4" />} />
         <MiniCard accent="text-rose-300" title="Cancelado" value={stats.CANCELADO || 0} icon={<XCircle className="h-4 w-4" />} />
       </div>
 
-      <Tabs value={active} onValueChange={(v) => setActive(v as StatusOS)} className="w-full">
+      <Tabs value={active} onValueChange={(v) => setActive(v as TabKey)} className="w-full">
         <TabsList
           className={[
             "w-full overflow-x-auto justify-start gap-2",
@@ -176,7 +199,12 @@ export function OrdensTabs({
 
         {statusTabs.map((t) => (
           <TabsContent key={t.key} value={t.key} className="mt-3">
-            <OrdensTabela status={t.key} onOpenOrcamento={onOpenOrcamento} onEditar={onEditar} onNovaOS={onNovaOS} />
+            <OrdensTabela
+              statuses={t.statuses}
+              onOpenOrcamento={onOpenOrcamento}
+              onEditar={onEditar}
+              onNovaOS={onNovaOS}
+            />
           </TabsContent>
         ))}
       </Tabs>
