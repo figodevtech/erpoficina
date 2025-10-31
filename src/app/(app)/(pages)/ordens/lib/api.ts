@@ -13,7 +13,7 @@ export async function criarOrdem(payload: any): Promise<{ id: number }> {
 }
 
 export async function editarOrdem(id: number, payload: any) {
-  const r = await fetch(`/api/ordens/${id}`, { method: "PATCH", headers: JSONH, body: JSON.stringify(payload) });
+  const r = await fetch(`/api/ordens/${id}`, { method: "PUT", headers: JSONH, body: JSON.stringify(payload) });
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Falha ao salvar OS");
   return r.json();
 }
