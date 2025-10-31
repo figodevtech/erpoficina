@@ -273,10 +273,9 @@ export default function PainelAcompanhamento({
 
   return (
     <div className="min-h-screen px-3 md:px-6 py-4 flex flex-col gap-4">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-end justify-between gap-3 pb-5">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Acompanhamento</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Visão resumida — leitura fácil à distância</p>
         </div>
         <div className="text-right text-sm md:text-base text-muted-foreground flex items-center gap-2">
           {refreshing && <Loader2 className="h-4 w-4 animate-spin opacity-80" aria-hidden />}
