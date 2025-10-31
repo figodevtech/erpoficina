@@ -32,12 +32,8 @@ export async function GET(_req: NextRequest, ctx: { params: MaybePromise<Params>
     // OS + joins principais
     const { data: os, error: osErr } = await supabaseAdmin
       .from("ordemservico")
-<<<<<<< HEAD
-      .select(`
-=======
       .select(
         `
->>>>>>> c39630bc01fead96f807a30748800ba3c4fde926
         id, clienteid, veiculoid, usuariocriadorid, setorid,
         status, statusaprovacao,
         descricao, dataentrada, datasaida, orcamentototal,
