@@ -33,6 +33,9 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
 import { describe } from "node:test";
+import { Switch } from "@/components/ui/switch";
+import { set } from "nprogress";
+import formatarEmReal from "@/utils/formatarEmReal";
 
 interface RegisterContentProps {
   osId?: number | undefined;
@@ -60,6 +63,7 @@ export default function RegisterContent({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBanks, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
+  const [isChecked, setIsChecked] = useState(false);
   const handleChange = (
     field: keyof NewTransaction,
     value: string | number
@@ -218,11 +222,45 @@ export default function RegisterContent({
                 />
               </div>
               <div className="space-y-2 w-full">
-                <Label htmlFor="valor">Valor*</Label>
+                <div className="p-0 m-0 mb-1 flex flex-row justify-between items-center">
+
+                <Label htmlFor="valor">Valor* </Label>
+                <div className="flex flex-row gap-2">
+
+                <span className="text-xs text-muted-foreground">Taxa de recebimento</span>
+                <Switch 
+                checked={isChecked}
+                onCheckedChange={()=>
+                {
+                  setIsChecked(!isChecked)
+                  if(!isChecked){
+                    setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor})
+                  }
+                  else{
+                    setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor}) 
+                }
+
+              }}
+                />
+                </div>
+                </div>
                 <ValueInput
                   price={newTransaction.valor || 0}
                   setPrice={(v) => handleChange("valor", v)}
                 ></ValueInput>
+                {isChecked && (
+                <>
+                <div className="flex flex-row items-center justify-between">
+
+                <span className="text-xs text-muted-foreground">Valor líquido recebido:</span>
+                <span className="text-xs text-muted-foreground">Taxa: {newTransaction.valor && newTransaction.valorLiquido ? formatarEmReal(newTransaction.valor - newTransaction.valorLiquido)  : 0 }</span>
+                </div>
+                <ValueInput
+                  price={newTransaction.valorLiquido || 0}
+                  setPrice={(v) => handleChange("valorLiquido", v)}
+                ></ValueInput>
+                </>
+                )}
               </div>
               <div className="space-y-2 w-full">
                 <Label htmlFor="data">Data</Label>

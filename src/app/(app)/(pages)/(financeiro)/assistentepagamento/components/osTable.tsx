@@ -180,7 +180,9 @@ export default function OsTable({
                         aria-labelledby={triggerId}
                         className="space-y-1"
                       >
-                        <OsFinancialDialog osId={o.id}>
+                        <OsFinancialDialog
+                        handleGetOrdens={handleGetOrdens}
+                        osId={o.id}>
                           <Button disabled={o.orcamentototal <=0 } className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all">
                             <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
                             <span>Pagamento</span>

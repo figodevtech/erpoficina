@@ -209,13 +209,16 @@ export default function OsContent({ osId }: OsContentProps) {
 
         <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
           <div className="flex flex-row justify-end">
+            
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
               osId={ordem.id}
               open={open}
               setOpen={setOpen}
             >
-              <Button className="hover:cursor-pointer">Novo pagamento</Button>
+              <Button
+              disabled={ordem.status === "CONCLUIDO"}
+              className="hover:cursor-pointer">Novo pagamento</Button>
             </TransactionDialog>
           </div>
 

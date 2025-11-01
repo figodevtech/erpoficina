@@ -73,7 +73,8 @@ export interface Transaction {
 export interface NewTransaction {
   id?: number;
   descricao?: string;
-  valor?: number;
+  valor?: number | 0;
+  valorLiquido?: number | 0;
   data?: Date;
   metodopagamento?: Metodo_pagamento;
   categoria?: Categoria_transacao;
