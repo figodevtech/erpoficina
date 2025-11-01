@@ -40,7 +40,7 @@ export type Ordem = {
   cliente?: Cliente | null;
   veiculo?: Veiculo | null;
   checklistTemplateId?: string | null;
-  orcamentototal?:number;
+  orcamentototal:number;
   transacoes: Transaction[] | null
 };
 

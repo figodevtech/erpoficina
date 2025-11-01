@@ -98,7 +98,8 @@ export default function RegisterContent({
   const handleCreateTransaction = async () => {
   setIsSubmitting(true);
   try {
-    const response = await axios.post("/api/transaction", { newTransaction });
+    
+    const response = await axios.post("/api/transaction/os", { newTransaction });
 
     if (response.status === 201) {
       const created = response.data?.data ?? response.data;

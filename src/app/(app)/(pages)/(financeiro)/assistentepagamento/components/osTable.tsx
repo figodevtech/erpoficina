@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Ordem } from "../../../ordens/types";
+import { Ordem, StatusOS } from "../../../ordens/types";
 import { Pagination } from "../../fluxodecaixa/types";
 import {
   ChevronDown,
@@ -36,11 +36,14 @@ import {
 } from "@/components/ui/select";
 import OsFinancialDialog from "./osFinancialDialog/osFinancialDialog";
 import formatarEmReal from "@/utils/formatarEmReal";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useState } from "react";
 
 interface OsTableProps {
   ordens: Ordem[];
   pagination: Pagination;
   handleGetOrdens: (
+    status: StatusOS,
     pageNumber?: number,
     limit?: number,
     search?: string
@@ -57,12 +60,19 @@ export default function OsTable({
   search,
 }: OsTableProps) {
   // ID estável para o Select de "itens por página"
+  const [selectedStatus, setSelectedStatus] = useState<StatusOS>("PAGAMENTO");
   const limitUid = React.useId();
   const limitListboxId = `${limitUid}-os-limit-listbox`;
+  const tabTheme =
+    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+
+  useEffect(()=> {
+    handleGetOrdens(selectedStatus);
+  },[selectedStatus])
 
   return (
     <Card className="">
-      <CardHeader className="border-b-2 pb-4 flex flex-col">
+      <CardHeader className="border-b-2 flex flex-col">
         <div className="flex flex-row justify-between w-full">
           <CardTitle className="text-lg font-medium">
             Ordens de Serviço{" "}
@@ -73,12 +83,22 @@ export default function OsTable({
         </div>
 
         <div
-          onClick={() => handleGetOrdens()}
+          onClick={() => handleGetOrdens(selectedStatus, pagination.page)}
           className="flex flex-row space-x-1 items-center hover:cursor-pointer"
         >
           <Loader2 className="w-3 h-3" />
           <span className="text-xs text-muted-foreground"> Recarregar</span>
         </div>
+        <Tabs defaultValue="abertas" className="w-full items-center">
+          <TabsList  className="rounded-b-none">
+            <TabsTrigger onClick={()=>
+              setSelectedStatus("PAGAMENTO")
+            }  className={" rounded-b-none cursor-pointer" + tabTheme} value="abertas">Abertas</TabsTrigger>
+            <TabsTrigger onClick={()=>
+              setSelectedStatus("CONCLUIDO")
+            }  className={" rounded-b-none cursor-pointer" + tabTheme} value="concluidas">Concluídas</TabsTrigger>
+            </TabsList>
+        </Tabs>
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative flex flex-col justify-between">
@@ -161,7 +181,7 @@ export default function OsTable({
                         className="space-y-1"
                       >
                         <OsFinancialDialog osId={o.id}>
-                          <Button className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all">
+                          <Button disabled={o.orcamentototal <=0 } className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all">
                             <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
                             <span>Pagamento</span>
                           </Button>
@@ -189,7 +209,7 @@ export default function OsTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetOrdens(1, pagination.limit, search)}
+              onClick={() => handleGetOrdens(selectedStatus, 1, pagination.limit, search)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -200,7 +220,7 @@ export default function OsTable({
               size="icon"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetOrdens(pagination.page - 1, pagination.limit, search)
+                handleGetOrdens(selectedStatus, pagination.page - 1, pagination.limit, search)
               }
               disabled={pagination.page === 1}
             >
@@ -216,7 +236,7 @@ export default function OsTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetOrdens(pagination.page + 1, pagination.limit, search)
+                handleGetOrdens(selectedStatus, pagination.page + 1, pagination.limit, search)
               }
               disabled={
                 pagination.page === pagination.totalPages ||
@@ -231,7 +251,7 @@ export default function OsTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetOrdens(pagination.totalPages, pagination.limit, search)
+                handleGetOrdens(selectedStatus, pagination.totalPages, pagination.limit, search)
               }
               disabled={
                 pagination.page === pagination.totalPages ||

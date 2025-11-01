@@ -17,6 +17,7 @@ export default function AssistentePagamento (){
     
 
     const handleGetOrdens = async (
+      status: StatusOS,
     pageNumber?: number,
     limit?: number,
     search?: string,
@@ -28,7 +29,7 @@ export default function AssistentePagamento (){
           page: pageNumber || 1,
           limit: limit || pagination.limit,
           q: search || "",
-          status: "PAGAMENTO"
+          status: status,
         },
       });
       if (response.status === 200) {
@@ -47,7 +48,7 @@ export default function AssistentePagamento (){
   };
 
   useEffect(()=> {
-    handleGetOrdens();
+    handleGetOrdens("PAGAMENTO");
   },[])
 
     return (

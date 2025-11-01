@@ -186,14 +186,19 @@ export default function OsContent({ osId }: OsContentProps) {
         <DialogHeader className="shrink-0 px-6 py-4 border-b">
           <DialogTitle>
             OS #{ordem.id}{" "}
-            <span className="text-muted-foreground text-sm font-light"> | PAGAMENTOS </span>
+            <span className="text-muted-foreground text-sm font-light">
+              {" "}
+              | PAGAMENTOS{" "}
+            </span>
           </DialogTitle>
           <DialogDescription>Pagamentos da OS</DialogDescription>
         </DialogHeader>
 
         {/* Barra de progresso fina no topo */}
         <div
-          className={`transition-all ${isLoading ? "opacity-100" : "opacity-0"} h-0.5 bg-slate-400 w-full overflow-hidden left-0 right-0 top-0 relative`}
+          className={`transition-all ${
+            isLoading ? "opacity-100" : "opacity-0"
+          } h-0.5 bg-slate-400 w-full overflow-hidden left-0 right-0 top-0 relative`}
         >
           <div
             className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
@@ -242,23 +247,32 @@ export default function OsContent({ osId }: OsContentProps) {
                 {transactions.length > 0 ? (
                   transactions.map((t) => (
                     <TableRow key={t.id} className="hover:cursor-pointer">
-                      <TableCell className="whitespace-nowrap">{t.id}</TableCell>
-                      <TableCell className="truncate max-w-[140px] sm:max-w-[220px]" title={t.descricao || "-"}>
+                      <TableCell className="whitespace-nowrap">
+                        {t.id}
+                      </TableCell>
+                      <TableCell
+                        className="truncate max-w-[140px] sm:max-w-[220px]"
+                        title={t.descricao || "-"}
+                      >
                         {t.descricao}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(t.data)}
                       </TableCell>
-                      <TableCell className="truncate max-w-[160px] sm:max-w-[220px]" title={`${t.banco?.titulo ?? "-"} - ${t.metodopagamento ?? "-"}`}>
+                      <TableCell
+                        className="truncate max-w-[160px] sm:max-w-[220px]"
+                        title={`${t.banco?.titulo ?? "-"} - ${
+                          t.metodopagamento ?? "-"
+                        }`}
+                      >
                         {t.banco?.titulo} - {t.metodopagamento}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex flex-col gap-1">
-<span>
-
-                        {formatarEmReal(t.valor)}
-</span>
-<span className="text-xs text-muted-foreground">Líquido: {formatarEmReal(t.valorLiquido)}</span>
+                          <span>{formatarEmReal(t.valor)}</span>
+                          <span className="text-xs text-muted-foreground">
+                            Líquido: {formatarEmReal(t.valorLiquido)}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -272,7 +286,10 @@ export default function OsContent({ osId }: OsContentProps) {
                               <ChevronDown className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="space-y-1 w-40" align="end">
+                          <DropdownMenuContent
+                            className="space-y-1 w-40"
+                            align="end"
+                          >
                             <DeleteAlert
                               handleDeleteTransaction={handleDeleteTransaction}
                               isAlertOpen={isAlertOpen}
@@ -294,7 +311,9 @@ export default function OsContent({ osId }: OsContentProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell className="col-span-full">Sem Transações</TableCell>
+                    <TableCell className="col-span-full">
+                      Sem Transações
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -315,11 +334,12 @@ export default function OsContent({ osId }: OsContentProps) {
               <span className="text-nowrap">Total Pago:</span>
               <div className="w-full border-b h-full border-dashed"></div>
               <h1 className="text-blue-500 font-bold">
-                {
-                  formatarEmReal(
-                    transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0
-                  )
-                }
+                {formatarEmReal(
+                  transactions?.reduce(
+                    (acc, t) => acc + Number(t?.valor ?? 0),
+                    0
+                  ) ?? 0
+                )}
               </h1>
             </div>
             <div className="flex flex-row items-center space-x-1 w-full">
@@ -328,7 +348,10 @@ export default function OsContent({ osId }: OsContentProps) {
               <h1 className="font-bold text-gray-400">
                 {formatarEmReal(
                   (ordem.orcamentototal || 0) -
-                    (transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0)
+                    (transactions?.reduce(
+                      (acc, t) => acc + Number(t?.valor ?? 0),
+                      0
+                    ) ?? 0)
                 )}
               </h1>
             </div>
