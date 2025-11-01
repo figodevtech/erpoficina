@@ -123,7 +123,7 @@ export default function OsContent({ osId }: OsContentProps) {
       </div>
     );
     try {
-      const response = await axios.delete(`/api/transaction/${id}`);
+      const response = await axios.delete(`/api/transaction/${id}/os`);
       if (response.status === 204) {
         handleGetTransactions(pagination.page);
         toast.success("Transação deletada!");
@@ -294,6 +294,7 @@ export default function OsContent({ osId }: OsContentProps) {
                             align="end"
                           >
                             <DeleteAlert
+                              statusOs={ordem.status}
                               handleDeleteTransaction={handleDeleteTransaction}
                               isAlertOpen={isAlertOpen}
                               setIsAlertOpen={setIsAlertOpen}

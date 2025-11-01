@@ -1,3 +1,4 @@
+import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,6 +10,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { status } from "nprogress";
 import { ReactNode } from "react";
 
 interface DeleteAlertProps{
@@ -17,9 +19,10 @@ interface DeleteAlertProps{
     isAlertOpen: boolean
     setIsAlertOpen: (value: boolean)=>void
     idToDelete: number
+    statusOs?: StatusOS | null
   
 }
-export default function DeleteAlert({children, handleDeleteTransaction, isAlertOpen, setIsAlertOpen, idToDelete}: DeleteAlertProps) {
+export default function DeleteAlert({children, handleDeleteTransaction, isAlertOpen, setIsAlertOpen, idToDelete, statusOs}: DeleteAlertProps) {
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
       <AlertDialogTrigger asChild>
@@ -30,7 +33,12 @@ export default function DeleteAlert({children, handleDeleteTransaction, isAlertO
         <AlertDialogHeader>
           <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta ação não pode ser desfeita. Deletará a transação.
+            {statusOs === "CONCLUIDO" ?
+            
+            "Ordem de Serviço já conluída. Tem certeza que deseja deletar a transação? Está ação não pode ser desfeita e retornará a OS para o status de PAGAMENTO EM ABERTO."
+            :
+            "Esta ação não pode ser desfeita. Deletará a transação." 
+          }
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
