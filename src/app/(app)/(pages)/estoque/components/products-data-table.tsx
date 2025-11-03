@@ -61,7 +61,12 @@ interface ProductsDataTableProps {
   ) => void;
   fetchStatusCounts: () => void;
   status: Estoque_status;
+
+  // ✅ para edição via duplo clique (controlado no pai)
+  selectedProductId?: number | undefined;
   setSelectedProductId?: (value: number | undefined) => void;
+  isOpen: boolean;
+  setIsOpen: (value: boolean) => void;
 }
 
 const getStatusBadge = (status: Estoque_status) => {
@@ -73,7 +78,6 @@ const getStatusBadge = (status: Estoque_status) => {
       </Badge>
     );
   }
-
   if (status === "BAIXO") {
     return (
       <Badge
@@ -100,7 +104,10 @@ export default function ProductsDataTable({
   handleGetProducts,
   fetchStatusCounts,
   status,
+  selectedProductId,
   setSelectedProductId,
+  isOpen,
+  setIsOpen,
 }: ProductsDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -115,10 +122,7 @@ export default function ProductsDataTable({
     );
     try {
       const response = await axios.delete(`/api/products/${id}`, {});
-      console.log("teste2");
       if (response.status === 204) {
-        console.log("teste3");
-        console.log(response);
         toast("Produto deletado!");
         handleGetProducts(pagination.page, pagination.limit, search, status);
         fetchStatusCounts();
@@ -127,7 +131,6 @@ export default function ProductsDataTable({
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        // console.log(error)
         toast.error("Error", {
           description: error.response?.data.error,
         });
@@ -140,26 +143,47 @@ export default function ProductsDataTable({
 
   return (
     <Card>
-      <CardHeader className="border-b-2 pb-4 ">
-        <CardTitle>Lista de Produtos</CardTitle>
-        <CardDescription>
-          <div
-            onClick={() => {
-              handleGetProducts(
-                pagination.page,
-                pagination.limit,
-                search,
-                status
-              );
-              fetchStatusCounts();
-            }}
-            className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70"
-          >
-            <span>recarregar</span>
-            <Loader2 width={12} />
+      {/* Cabeçalho da tabela com botão Novo Produto no canto superior direito */}
+      <CardHeader className="border-b-2 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Lista de Produtos</CardTitle>
+            <CardDescription>
+              <button
+                onClick={() => {
+                  handleGetProducts(
+                    pagination.page,
+                    pagination.limit,
+                    search,
+                    status
+                  );
+                  fetchStatusCounts();
+                }}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+            </CardDescription>
           </div>
-        </CardDescription>
+
+          {/* 👉 Botão “Novo Produto” movido para cá */}
+          <div className="flex items-center gap-2">
+            <ProductDialog>
+              <Button className="hover:cursor-pointer">Novo Produto</Button>
+            </ProductDialog>
+          </div>
+        </div>
+
+        {/* ✅ Dialog controlado para edição (abre no duplo clique) */}
+        <ProductDialog
+          setSelectedProductId={setSelectedProductId}
+          productId={selectedProductId}
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+        />
       </CardHeader>
+
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
         <div
           className={`${
@@ -172,6 +196,7 @@ export default function ProductsDataTable({
             } `}
           ></div>
         </div>
+
         <Table className="mt-6">
           <TableHeader>
             <TableRow>
@@ -187,6 +212,7 @@ export default function ProductsDataTable({
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {products.map((p) => {
               const valorTotal = (p.estoque ?? 0) * p.precovenda;
@@ -215,41 +241,28 @@ export default function ProductsDataTable({
                     </div>
                   </TableCell>
 
-                  <TableCell className="font-mono text-xs">
-                    {p.referencia}
-                  </TableCell>
+                  <TableCell className="font-mono text-xs">{p.referencia}</TableCell>
                   <TableCell>{p.fabricante}</TableCell>
 
-                  <TableCell className="font-medium">
-                    {p.estoque ?? 0}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {p.estoqueminimo ?? 0}
-                  </TableCell>
+                  <TableCell className="font-medium">{p.estoque ?? 0}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.estoqueminimo ?? 0}</TableCell>
 
                   <TableCell>{getStatusBadge(p.status_estoque)}</TableCell>
 
                   <TableCell>
                     R{"$ "}
-                    {p.precovenda.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
+                    {p.precovenda.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </TableCell>
 
                   <TableCell>
                     R{"$ "}
-                    {valorTotal.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
+                    {valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </TableCell>
 
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -263,6 +276,7 @@ export default function ProductsDataTable({
                             <span>Editar</span>
                           </Button>
                         </ProductDialog>
+
                         <DeleteAlert
                           handleDeleteProduct={handleDeleteProduct}
                           isAlertOpen={isAlertOpen}
@@ -285,12 +299,12 @@ export default function ProductsDataTable({
             })}
           </TableBody>
         </Table>
+
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
             <span>
-              {pagination.limit * (pagination.page - 1) +
-                (pagination.pageCount || 0)}
+              {pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0)}
             </span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
             <Loader
@@ -305,9 +319,7 @@ export default function ProductsDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetProducts(1, pagination.limit, search, status)
-              }
+              onClick={() => handleGetProducts(1, pagination.limit, search, status)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -331,7 +343,6 @@ export default function ProductsDataTable({
             <span className="text-[10px] sm:text-xs font-medium text-nowrap">
               Pg. {pagination.page} de {pagination.totalPages || 1}
             </span>
-
             <Button
               className="hover:cursor-pointer"
               variant="outline"
@@ -371,15 +382,13 @@ export default function ProductsDataTable({
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
-          <div className="">
-            <Select
-            
-            >
-              <SelectTrigger
-              size="sm" className="hover:cursor-pointer ml-2 m">
+
+          <div>
+            <Select>
+              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={pagination.limit}></SelectValue>
               </SelectTrigger>
-              <SelectContent className="">
+              <SelectContent>
                 <SelectItem className="hover:cursor-pointer" value="20">
                   {pagination.limit}
                 </SelectItem>

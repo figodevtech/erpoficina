@@ -65,8 +65,9 @@ interface CustomerDataTableProps {
   customerItems: Customer[];
   setSeletedCustomerId: (value: number) => void;
   isAlertOpen: boolean;
-  setIsAlertOpen: (value: boolean)=>void
+  setIsAlertOpen: (value: boolean) => void;
 }
+
 export default function CustomersDataTable({
   handleGetCustomers,
   pagination,
@@ -77,62 +78,66 @@ export default function CustomersDataTable({
   customerItems,
   setSeletedCustomerId,
   isAlertOpen,
-  setIsAlertOpen
+  setIsAlertOpen,
 }: CustomerDataTableProps) {
-
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteUser = async (id: number) => {
-    setIsDeleting(true)
+    setIsDeleting(true);
     try {
-      const response = await axios.delete(`/api/customers/${id}`, {
-      })
-
-      if(response.status === 204){
-        console.log(response)
-        toast("Usuário deletado!")
-        handleGetCustomers(
-                pagination.page,
-                pagination.limit,
-                search,
-                status
-              );
-              fetchStatusCounts();
+      const response = await axios.delete(`/api/customers/${id}`);
+      if (response.status === 204) {
+        toast("Usuário deletado!");
+        handleGetCustomers(pagination.page, pagination.limit, search, status);
+        fetchStatusCounts();
       }
     } catch (error) {
-      if(isAxiosError(error)){
-        console.log(error)
+      if (isAxiosError(error)) {
         toast.error("Error", {
-          description: error.response?.data.error
-        })
+          description: error.response?.data.error,
+        });
       }
-    }finally{
-      setIsAlertOpen(false)
-      setIsDeleting(false)
+    } finally {
+      setIsAlertOpen(false);
+      setIsDeleting(false);
     }
-  }
+  };
+
   return (
     <Card>
-      <CardHeader className="border-b-2 pb-4 ">
-        <CardTitle>Lista de Clientes </CardTitle>
-        <CardDescription>
-          <div
-            onClick={() => {
-              handleGetCustomers(
-                pagination.page,
-                pagination.limit,
-                search,
-                status
-              );
-              fetchStatusCounts();
-            }}
-            className="flex flex-nowrap gap-1 hover:cursor-pointer w-fit text-foreground/50 hover:text-foreground/70]"
-          >
-            <span>recarregar</span>
-            <Loader2 width={12} />
+      {/* 🔁 Cabeçalho da tabela com botão Novo Cliente no canto superior direito */}
+      <CardHeader className="border-b-2 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Lista de Clientes</CardTitle>
+            <CardDescription>
+              <button
+                onClick={() => {
+                  handleGetCustomers(
+                    pagination.page,
+                    pagination.limit,
+                    search,
+                    status
+                  );
+                  fetchStatusCounts();
+                }}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+            </CardDescription>
           </div>
-        </CardDescription>
+
+          {/* 👉 Botão movido para cá */}
+          <div className="flex items-center gap-2">
+            <CustomerDialog>
+              <Button className="hover:cursor-pointer">Novo Cliente</Button>
+            </CustomerDialog>
+          </div>
+        </div>
       </CardHeader>
+
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
         <div
           className={`${
@@ -140,9 +145,12 @@ export default function CustomersDataTable({
           } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "} `}
+            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
+              isLoading && "animate-slideIn "
+            } `}
           ></div>
         </div>
+
         <Table className="mt-6 text-xs">
           <TableHeader>
             <TableRow>
@@ -155,7 +163,8 @@ export default function CustomersDataTable({
               <TableHead className="w-[50px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody >
+
+          <TableBody>
             {customerItems.map((customer) => (
               <TableRow
                 key={customer.id}
@@ -165,9 +174,7 @@ export default function CustomersDataTable({
                 <TableCell>{customer.id}</TableCell>
                 <TableCell>
                   <div>
-                    <div className="font-medium">
-                      {customer.nomerazaosocial}
-                    </div>
+                    <div className="font-medium">{customer.nomerazaosocial}</div>
                     <div className="text-sm text-muted-foreground">
                       {customer.tipopessoa === "FISICA" ? "PF" : "PJ"}
                     </div>
@@ -207,7 +214,6 @@ export default function CustomersDataTable({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="space-y-1" align="end">
                       <CustomerDialog customerId={customer.id}>
-                        {/* <DropdownMenuItem className="hover:cursor-pointer"> */}
                         <Button
                           variant={"ghost"}
                           className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
@@ -218,10 +224,10 @@ export default function CustomersDataTable({
                       </CustomerDialog>
 
                       <DeleteAlert
-                      idToDelete={customer.id}
-                      isAlertOpen={isAlertOpen}
-                      setIsAlertOpen={setIsAlertOpen}
-                      handleDeleteUser={handleDeleteUser}
+                        idToDelete={customer.id}
+                        isAlertOpen={isAlertOpen}
+                        setIsAlertOpen={setIsAlertOpen}
+                        handleDeleteUser={handleDeleteUser}
                       >
                         <Button
                           variant={"default"}
@@ -238,6 +244,7 @@ export default function CustomersDataTable({
             ))}
           </TableBody>
         </Table>
+
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
@@ -324,15 +331,13 @@ export default function CustomersDataTable({
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
-          <div className="">
-            <Select
-            
-            >
-              <SelectTrigger
-              size="sm" className="hover:cursor-pointer ml-2 m">
+
+          <div>
+            <Select>
+              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={pagination.limit}></SelectValue>
               </SelectTrigger>
-              <SelectContent className="">
+              <SelectContent>
                 <SelectItem className="hover:cursor-pointer" value="20">
                   {pagination.limit}
                 </SelectItem>
