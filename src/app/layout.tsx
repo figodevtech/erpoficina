@@ -28,7 +28,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {/* Providers inclui SessionProvider + ThemeProvider */}
         <Providers attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <NProgressHandler />
           {children}

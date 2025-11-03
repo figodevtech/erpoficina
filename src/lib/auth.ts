@@ -1,7 +1,6 @@
-// lib/auth.ts
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { supabase } from "@/lib/supabase";           // anon: login
+import { supabase } from "@/lib/supabase";          
 import { supabaseAdmin } from "@/lib/supabaseAdmin"; // service role: ler public.usuario
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
