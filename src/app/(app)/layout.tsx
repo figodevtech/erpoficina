@@ -5,37 +5,13 @@ import { AppSidebar } from "./components/sidebar/sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "./components/mode-toggle";
-import Clock from "@/app/(app)/components/clock";
+import DateTimeBadge from "./components/date-time-badge";
 import { Toaster } from "@/components/ui/sonner";
 import { usePathname } from "next/navigation";
 
-function DateLabel() {
-  const [dateStr, setDateStr] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const now = new Date();
-    // Usa timezone do navegador; evita cálculo no SSR
-    const s = now.toLocaleDateString("pt-BR", {
-      year: "numeric",
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      // opcional: garante coerência com o fuso local do usuário
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    });
-    setDateStr(s);
-  }, []);
-
-  // Enquanto não montar, não renderiza texto (evita mismatch)
-  if (!dateStr)
-    return (
-      <span className="hidden md:block text-sm text-gray-500" aria-hidden="true">
-        &nbsp;
-      </span>
-    );
-  return <span className="hidden md:block text-sm text-gray-500">{dateStr}</span>;
-}
-
+/* ============================
+ * Títulos por rota + fallback
+ * ============================ */
 const routeTitles: Record<string, string> = {
   "/": "Início",
   "/usuarios": "Gerenciamento de Usuários",
@@ -47,15 +23,33 @@ const routeTitles: Record<string, string> = {
   "/financeiro": "Financeiro",
   "/fluxodecaixa": "Fluxo de Caixa",
   "/assistentepagamento": "Assistente de Pagamento",
-  // adicione conforme necessário
+  "/acompanhamento": "Acompanhamento",
 };
 
 function humanize(path: string) {
-  // fallback simples: /produtos/123 -> "Produtos"
-  const seg = path.split("/").filter(Boolean)[0] ?? "";
-  return seg ? seg[0].toUpperCase() + seg.slice(1) : "Início";
+  const clean = path.split("?")[0].split("#")[0];
+  const seg = clean.split("/").filter(Boolean)[0] ?? "";
+  if (!seg) return "Início";
+
+  const dic: Record<string, string> = {
+    ordens: "Ordens de Serviço",
+    assistentepagamento: "Assistente de Pagamento",
+    fluxodecaixa: "Fluxo de Caixa",
+    usuarios: "Gerenciamento de Usuários",
+    estoque: "Gerenciamento de Estoque",
+    clientes: "Gerenciamento de Clientes",
+    equipes: "Acompanhamento de Equipes",
+    financeiro: "Financeiro",
+    acompanhamento: "Acompanhamento",
+    config: "Configurações",
+  };
+
+  return dic[seg] ?? seg.charAt(0).toUpperCase() + seg.slice(1);
 }
 
+/* ============================
+ * Layout
+ * ============================ */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const title = routeTitles[pathname] ?? humanize(pathname);
@@ -70,11 +64,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
 
-          <h2 className="text-lg font-normal italic text-muted-foreground not-dark:text-gray-600">{title}</h2>
+          <h2 className="text-base md:text-lg font-medium text-foreground/80">{title}</h2>
           <div className="flex-1" />
-       
-          <Clock />
-          <DateLabel />
+
+          <DateTimeBadge />
           <ModeToggle />
         </header>
 
