@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     // RECEITAS
     const { data: receitas, error: recErr } = await supabaseAdmin
       .from("transacao")
-      .select("valor")
+      .select("valorLiquido")
       .eq("tipo", TIPO_RECEITA)
       .gte("data", startISO)
       .lt("data", nextStartISO);
@@ -80,14 +80,14 @@ export async function GET(req: Request) {
     // DESPESAS
     const { data: despesas, error: despErr } = await supabaseAdmin
       .from("transacao")
-      .select("valor")
+      .select("valorLiquido")
       .eq("tipo", TIPO_DESPESA)
       .gte("data", startISO)
       .lt("data", nextStartISO);
     if (despErr) throw despErr;
 
-    const somaReceitas = (receitas ?? []).reduce((acc, r: any) => acc + (Number(r.valor) || 0), 0);
-    const somaDespesas = (despesas ?? []).reduce((acc, d: any) => acc + (Number(d.valor) || 0), 0);
+    const somaReceitas = (receitas ?? []).reduce((acc, r: any) => acc + (Number(r.valorLiquido) || 0), 0);
+    const somaDespesas = (despesas ?? []).reduce((acc, d: any) => acc + (Number(d.valorLiquido) || 0), 0);
 
     return NextResponse.json({ somaReceitas, somaDespesas, year, month });
   } catch (e: any) {

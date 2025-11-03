@@ -4,7 +4,14 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-type StatusOS = "TODAS" | "ABERTA" | "EM_ANDAMENTO" | "AGUARDANDO_PECA" | "CONCLUIDA" | "CANCELADA";
+type StatusOS =
+  | "TODAS"
+  | "ORCAMENTO"            // 👈 veja observação ao final
+  | "ABERTA"
+  | "EM_ANDAMENTO"
+  | "AGUARDANDO_PECA"
+  | "CONCLUIDA"
+  | "CANCELADA";
 
 export async function GET(req: Request) {
   try {
@@ -16,7 +23,6 @@ export async function GET(req: Request) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    // base
     let query = supabaseAdmin
       .from("ordemservico")
       .select(
@@ -24,17 +30,36 @@ export async function GET(req: Request) {
         id,
         descricao,
         prioridade,
+        orcamentototal,
         status,
         dataentrada,
         datasaida,
         cliente:clienteid ( id, nomerazaosocial ),
         veiculo:veiculoid ( id, placa, modelo, marca ),
-        setor:setorid ( id, nome )
+        setor:setorid ( id, nome ),
+        transacoes:transacao!transacao_ordemservicoid_fkey (
+          id,
+          descricao,
+          valor,
+          data,
+          metodopagamento,
+          categoria,
+          tipo,
+          banco_id,
+          nomepagador,
+          cpfcnpjpagador,
+          created_at,
+          updated_at
+        )
       `,
         { count: "exact" }
       )
-      .order("dataentrada", { ascending: false }) 
-      .range(from, to);
+      .order("dataentrada", { ascending: false }) // ordenação do pai
+      .range(from, to)
+      // ordenação do array filho (usa o alias "transacoes")
+      .order("data", { foreignTable: "transacoes", ascending: false })
+      // opcional: limitar quantidade de transações por OS
+      .limit(50, { foreignTable: "transacoes" });
 
     if (status && status !== "TODAS") query = query.eq("status", status);
     if (q) query = query.ilike("descricao", `%${q}%`);
@@ -48,12 +73,26 @@ export async function GET(req: Request) {
       prioridade: (r.prioridade as "ALTA" | "NORMAL" | "BAIXA" | null) ?? null,
       status: r.status as Exclude<StatusOS, "TODAS">,
       dataEntrada: r.dataentrada as string | null,
+      orcamentototal: r.orcamentototal as number | null, // atenção: numeric pode vir como string
       dataSaida: r.datasaida as string | null,
       cliente: r.cliente ? { id: r.cliente.id as number, nome: r.cliente.nomerazaosocial as string } : null,
       veiculo: r.veiculo
         ? { id: r.veiculo.id as number, placa: r.veiculo.placa as string, modelo: r.veiculo.modelo as string, marca: r.veiculo.marca as string }
         : null,
       setor: r.setor ? { id: r.setor.id as number, nome: r.setor.nome as string } : null,
+      transacoes: (r.transacoes ?? []).map((t: any) => ({
+        id: Number(t.id),
+        descricao: t.descricao as string,
+        valor: Number(t.valor), // pode vir como string dependendo da config do client
+        data: t.data as string,
+        metodoPagamento: t.metodopagamento as string,
+        categoria: t.categoria as string,
+        tipo: t.tipo as string, // p.ex. 'ENTRADA' | 'SAIDA'
+        bancoId: Number(t.banco_id),
+        pagador: { nome: t.nomepagador as string, cpfcnpj: t.cpfcnpjpagador as string },
+        createdAt: t.created_at as string,
+        updatedAt: t.updated_at as string,
+      })),
     }));
 
     const total = count ?? 0;

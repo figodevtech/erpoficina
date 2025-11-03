@@ -1,3 +1,5 @@
+import { Transaction } from "../(financeiro)/fluxodecaixa/types";
+
 export type ID = number | string;
 
 export type StatusOS =
@@ -38,6 +40,8 @@ export type Ordem = {
   cliente?: Cliente | null;
   veiculo?: Veiculo | null;
   checklistTemplateId?: string | null;
+  orcamentototal:number;
+  transacoes: Transaction[] | null
 };
 
 export type OrcamentoTotais = {

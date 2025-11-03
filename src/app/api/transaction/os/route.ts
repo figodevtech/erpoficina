@@ -18,7 +18,6 @@ const WRITABLE_FIELDS = new Set([
   "banco_id",
   "nomepagador",
   "cpfcnpjpagador",
-  
 ]);
 
 /** Campos retornados no select padrão (transacao) */
@@ -46,6 +45,24 @@ function toDateISOStringOrNull(v: any) {
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
+
+/** Converte monetário (string/number) para centavos inteiros */
+function moneyToCents(v: string | number | null | undefined): number | null {
+  if (v == null) return null;
+  if (typeof v === "number") return Math.round(v * 100);
+  const cleaned = v.replace(",", ".").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? Math.round(n * 100) : null;
+}
+
+/** Formata centavos para R$ X,XX sem depender de ICU */
+function brl(cents: number): string {
+  const s = (cents / 100).toFixed(2).replace(".", ",");
+  return `R$ ${s}`;
+}
+
+// Ajuste para o literal correto do seu enum (ex.: 'FINALIZADA')
+const TARGET_STATUS_CONCLUIDA = "CONCLUIDO";
 
 /**
  * Saneia e valida payload de transacao:
@@ -129,8 +146,9 @@ export async function GET(req: Request) {
     // Filtros opcionais
     const tipo = (searchParams.get("tipo") ?? "").trim(); // public.tipos_transacao
     const categoria = (searchParams.get("categoria") ?? "").trim(); // public.categoria_transacao
-    const ordemservicoid = (searchParams.get("ordemservicoid"))
-    const metodo = (searchParams.get("metodo") ??
+    const ordemservicoid = searchParams.get("ordemservicoid");
+    const metodo = (
+      searchParams.get("metodo") ??
       searchParams.get("metodopagamento") ??
       ""
     ).trim(); // public.metodo_pagamento
@@ -161,7 +179,7 @@ export async function GET(req: Request) {
     if (q) {
       query = query.ilike("descricao", `%${q}%`);
     }
-    if(ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
+    if (ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
     if (tipo) query = query.eq("tipo", tipo);
     if (categoria) query = query.eq("categoria", categoria);
     if (metodo) query = query.eq("metodopagamento", metodo);
@@ -217,12 +235,12 @@ export async function GET(req: Request) {
   }
 }
 
-/* ========================= POST (criar transacao) ========================= */
+/* ========================= POST (criar transacao + validação de pagamentos/OS) ========================= */
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as any;
-    console.log(body)
+
     // Aceita payload bruto ou { newTransaction: {...} }
     const json =
       body?.newTransaction && typeof body.newTransaction === "object"
@@ -236,10 +254,104 @@ export async function POST(req: Request) {
       );
     }
 
-
     const payload = sanitizeTransacaoPayload(json, { strict: true });
 
-    // 🔹 Após inserir, já retorna com o banco relacionado
+    // =================== Validações contra a OS (antes de inserir) ===================
+    let preSumCents: number | null = null;
+    let orcCents: number | null = null;
+    let osId: number | null = null;
+    const isReceita =
+      typeof payload?.tipo === "string" &&
+      payload.tipo.toUpperCase() === "RECEITA";
+
+    // valida valor > 0 (para qualquer transação; pedido do usuário)
+    const valorCents = moneyToCents(payload?.valor as any);
+    if (valorCents == null || valorCents <= 0) {
+      return NextResponse.json(
+        { error: "O valor da transação deve ser maior que zero." },
+        { status: 400 }
+      );
+    }
+
+    if (payload?.ordemservicoid != null && isReceita) {
+      osId = Number(payload.ordemservicoid);
+
+      // 1) Busca orcamentototal da OS
+      const { data: os, error: osErr } = await supabaseAdmin
+        .from("ordemservico")
+        .select("id, orcamentototal, status")
+        .eq("id", osId)
+        .maybeSingle();
+
+      if (osErr) {
+        return NextResponse.json(
+          { error: "Erro ao buscar a ordem de serviço vinculada." },
+          { status: 500 }
+        );
+      }
+      if (!os) {
+        return NextResponse.json(
+          { error: "Ordem de serviço não encontrada." },
+          { status: 404 }
+        );
+      }
+
+      orcCents = moneyToCents(os.orcamentototal as any);
+      if (orcCents == null || orcCents <= 0) {
+        return NextResponse.json(
+          { error: "A OS não possui orçamento válido para validação." },
+          { status: 409 }
+        );
+      }
+
+      // 2) Pagamento único não pode ultrapassar orçamento
+      if (valorCents > orcCents) {
+        return NextResponse.json(
+          {
+            error: `Pagamento único (${brl(
+              valorCents
+            )}) ultrapassa o valor da OS (${brl(orcCents)}).`,
+          },
+          { status: 409 }
+        );
+      }
+
+      // 3) Soma pagamentos existentes + novo não pode ultrapassar
+      const { data: transacoes, error: txErr } = await supabaseAdmin
+        .from("transacao")
+        .select("valor")
+        .eq("ordemservicoid", osId)
+        .eq("tipo", "RECEITA");
+
+      if (txErr) {
+        return NextResponse.json(
+          { error: "Erro ao somar pagamentos existentes da OS." },
+          { status: 500 }
+        );
+      }
+
+      preSumCents =
+        transacoes?.reduce((acc, t) => {
+          const cents = moneyToCents(t.valor as any) ?? 0;
+          return acc + cents;
+        }, 0) ?? 0;
+
+      const novoTotal = preSumCents + valorCents;
+      if (novoTotal > orcCents) {
+        const restante = orcCents - preSumCents;
+        return NextResponse.json(
+          {
+            error: `A soma dos pagamentos ultrapassa o valor da OS. Restante permitido: ${brl(
+              Math.max(restante, 0)
+            )}.`,
+          },
+          { status: 409 }
+        );
+      }
+    }
+    // =================== Fim validações pré-inserção ===================
+
+    // 🔹 Insere e retorna já com o banco relacionado
     const { data, error } = await supabaseAdmin
       .from("transacao")
       .insert(payload)
@@ -276,6 +388,26 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    // =================== Pós-inserção: fechar OS se bateu orçamento ===================
+    if (osId != null && preSumCents != null && orcCents != null) {
+      const novoTotal = preSumCents + valorCents!;
+      if (novoTotal === orcCents) {
+        const { error: updErr } = await supabaseAdmin
+          .from("ordemservico")
+          .update({
+            status: TARGET_STATUS_CONCLUIDA,
+            updatedat: new Date().toISOString(),
+          })
+          .eq("id", osId);
+
+        if (updErr) {
+          // não invalida a criação da transação; apenas loga
+          console.error("Falha ao atualizar status da OS:", updErr);
+        }
+      }
+    }
+    // ===================================================================
 
     return NextResponse.json({ data, id: data.id }, { status: 201 });
   } catch (e: any) {
