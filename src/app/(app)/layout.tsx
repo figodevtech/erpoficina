@@ -9,8 +9,6 @@ import Clock from "@/app/(app)/components/clock";
 import { Toaster } from "@/components/ui/sonner";
 import { usePathname } from "next/navigation";
 
-/** Renderiza a data SOMENTE após montar no cliente
- *  para evitar divergência entre SSR e cliente. */
 function DateLabel() {
   const [dateStr, setDateStr] = React.useState<string | null>(null);
 
@@ -63,8 +61,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   const title = routeTitles[pathname] ?? humanize(pathname);
 
   return (
-    // 🔒 Defina um default estável para o 1º render (igual no SSR e cliente)
-    // e deixe a responsividade (matchMedia) para dentro do próprio Provider via useEffect.
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
 
@@ -73,10 +69,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-          <Clock />-{" "}
+
           <h2 className="text-lg font-normal italic text-muted-foreground not-dark:text-gray-600">{title}</h2>
           <div className="flex-1" />
-          {/* ❌ REMOVIDO new Date() no render; ✅ usamos DateLabel */}
+       
+          <Clock />
           <DateLabel />
           <ModeToggle />
         </header>
