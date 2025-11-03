@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  GalleryVerticalEnd,
   LayoutDashboard,
   NotepadText,
   Tv,
@@ -17,29 +16,21 @@ import {
   SquareCheckBig,
   DollarSign,
   Calculator,
-  Speech,
   ArrowDownUp,
-  Receipt
+  Receipt,
 } from "lucide-react";
 
+import Image from "next/image";
+import logoDemir from "@/lib/images/demirLogo.png";
 import { NavMain } from "./components/nav-main";
 import { NavUser } from "./components/nav-user";
-import { TeamSwitcher } from "./components/team-switcher";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
 import { NavSettings } from "./components/nav-settings";
 
 import { useSession } from "next-auth/react";
 
 const data = {
-  teams: [
-    {
-      name: "EmpresaNome",
-      logo: GalleryVerticalEnd,
-      plan: "Plano Premium",
-    },
-  ],
   navOptions: [
-    
     {
       title: "Dashboard",
       url: "/dashboard",
@@ -58,12 +49,6 @@ const data = {
       icon: NotepadText,
       isActive: true,
     },
-    // {
-    //   title: "Equipes",
-    //   url: "/equipes",
-    //   icon: Speech,
-    //   isActive: true,
-    // },
     {
       title: "Estoque",
       url: "/estoque",
@@ -78,14 +63,14 @@ const data = {
         {
           title: "Fluxo de Caixa",
           url: "/fluxodecaixa",
-          icon: ArrowDownUp
+          icon: ArrowDownUp,
         },
         {
           title: "Assist. de Pagamentos",
           url: "/assistentepagamento",
-          icon: Calculator
-        }
-      ]
+          icon: Calculator,
+        },
+      ],
     },
     {
       title: "Acompanhamento",
@@ -109,7 +94,7 @@ const data = {
           url: "#",
           icon: Settings,
         },
-         {
+        {
           title: "Fiscal & Pagamentos",
           url: "/configuracoes/fiscal-pagamentos",
           icon: Receipt,
@@ -124,7 +109,7 @@ const data = {
           url: "/usuarios",
           icon: Users,
         },
-         {
+        {
           title: "Checklist",
           url: "/checklist",
           icon: SquareCheckBig,
@@ -144,8 +129,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+      <SidebarHeader className="items-center justify-center">
+        <Image src={logoDemir} alt="Logo" width={130} height={40} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navOptions} />
@@ -155,9 +140,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {session?.user && (
           <NavUser
             user={{
-              nome: session.user.name || "Usuário",
+              nome: session.user.nome || "",
               email: session.user.email || "",
-              avatar: session.user.image || "",
             }}
           />
         )}
