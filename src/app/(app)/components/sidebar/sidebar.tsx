@@ -129,9 +129,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="items-center justify-center">
+      {/* <SidebarHeader className="items-center justify-center">
         <Image src={logoDemir} alt="Logo" width={130} height={40} />
-      </SidebarHeader>
+      </SidebarHeader> */}
       <SidebarContent>
         <NavMain items={data.navOptions} />
         <NavSettings items={data.navSettings} />
