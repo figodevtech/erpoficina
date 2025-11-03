@@ -34,12 +34,13 @@ import { formatDate } from "@/utils/formatDate";
 
 interface OsContentProps {
   osId: number;
+  IsOpen?: boolean;
 }
 
 // Ajuste conforme a sua estrutura real
 interface ItemProduto {}
 
-export default function OsContent({ osId }: OsContentProps) {
+export default function OsContent({ osId, IsOpen }: OsContentProps) {
   interface ItemServico {
     ordemservicoid: number;
     servicoid: number;
@@ -59,9 +60,6 @@ export default function OsContent({ osId }: OsContentProps) {
     totalPages: 0,
   });
   const [ordem, setOrdem] = useState<Ordem | undefined>(undefined);
-  const [itensProduto, setItensProduto] = useState<ItemProduto[]>([]);
-  const [itensServico, setItensServico] = useState<ItemServico[]>([]);
-
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -79,8 +77,6 @@ export default function OsContent({ osId }: OsContentProps) {
       const response = await axios.get(`/api/ordens/${osId}`);
       if (response.status === 200) {
         setOrdem(response.data.os);
-        setItensProduto(response.data.itensProduto);
-        setItensServico(response.data.itensServico);
       }
     } catch (error) {
       console.log("Erro ao buscar Ordem:", error);
@@ -113,6 +109,13 @@ export default function OsContent({ osId }: OsContentProps) {
       setIsLoading(false);
     }
   };
+
+  useEffect(()=> {
+    if(!IsOpen){
+      setTransactions([]);
+      setOrdem(undefined);
+      }
+    },[IsOpen])
 
   const handleDeleteTransaction = async (id: number) => {
     setIsDeleting(true);
@@ -158,10 +161,7 @@ export default function OsContent({ osId }: OsContentProps) {
     }
   }, [osId]);
 
-  useEffect(() => {
-    // Debug opcional
-    // console.log("mudou itens", itensServico);
-  }, [itensServico]);
+
 
   // ====== RENDER
   if (isLoadingOs) {

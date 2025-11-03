@@ -8,7 +8,9 @@ import OsContent from "./osContent";
 import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
 
 interface OsFinancialDialogProps {
-  children: ReactNode;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  children?: ReactNode;
   osId: number;
     handleGetOrdens: (
       status: StatusOS,
@@ -19,14 +21,16 @@ interface OsFinancialDialogProps {
   
 }
 export default function OsFinancialDialog({
+  open,
+  onOpenChange,
   children,
   osId,
   handleGetOrdens,
 }: OsFinancialDialogProps) {
   return (
-    <Dialog onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <OsContent osId={osId} />
+      <OsContent IsOpen={open} osId={osId} />
     </Dialog>
   );
 }

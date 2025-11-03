@@ -44,6 +44,7 @@ import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 // utils & helpers
 import { statusClasses, prioClasses, fmtDate, fmtDuration, toMs, useNowTick, safeStatus } from "./ordens-utils";
 import { RowActions } from "./row-actions";
+import OsFinancialDialog from "../../(financeiro)/assistentepagamento/components/osFinancialDialog/osFinancialDialog";
 
 // ---- Tipos locais (datas amigas p/ tabela)
 type OrdemComDatas = Ordem & {
@@ -571,13 +572,14 @@ export function OrdensTabela({
       </AlertDialog>
 
       {/* Dialog: Receber pagamento */}
-      <PagamentoDialog
+      <OsFinancialDialog
         open={payOpen}
         onOpenChange={(v) => {
           setPayOpen(v);
           if (!v) setPayRow(null);
         }}
-        osId={payRow?.id ?? null}
+        
+        osId={payRow?.id || 0}
       />
 
       {/* Dialog: Detalhes */}
