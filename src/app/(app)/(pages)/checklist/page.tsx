@@ -1,42 +1,72 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { TemplateForm } from "./components/template-form";
-import { TemplatesList } from "./components/template-list";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import type { ChecklistTemplate } from "./components/types";
 import { categorias, novoTemplateVazio } from "./components/utils";
 import { listarModelos, criarModelo, atualizarModelo, excluirModelo } from "./components/api";
-import { Loader2 } from "lucide-react";
+
+import { TemplateForm } from "./components/template-form";
+import { TemplatesList } from "./components/template-list";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 export default function Page() {
-  const [checklists, setChecklists] = useState<ChecklistTemplate[]>([]);
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [modeloEmEdicao, setModeloEmEdicao] = useState<ChecklistTemplate>(novoTemplateVazio());
+  const [items, setItems] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Carrega da API ao montar
+  const [open, setOpen] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [modeloEmEdicao, setModeloEmEdicao] = useState<ChecklistTemplate>(novoTemplateVazio());
+
+  async function reload() {
+    try {
+      setErro(null);
+      setLoading(true);
+      const data = await listarModelos();
+      setItems(data);
+    } catch (e: any) {
+      setErro(e?.message || "Não foi possível carregar os modelos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    const ctrl = new AbortController();
-    (async () => {
-      try {
-        setErro(null);
-        setLoading(true);
-        const items = await listarModelos(ctrl.signal);
-        setChecklists(items);
-      } catch (e: any) {
-        setErro(e?.message || "Não foi possível carregar os modelos.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-    return () => ctrl.abort();
+    reload();
   }, []);
 
   const iniciarNovo = () => {
     setEditandoId(null);
     setModeloEmEdicao(novoTemplateVazio());
+    setOpen(true);
+  };
+
+  const editar = (tpl: ChecklistTemplate) => {
+    setEditandoId(tpl.id);
+    setModeloEmEdicao(JSON.parse(JSON.stringify(tpl)));
+    setOpen(true);
+  };
+
+  const excluir = async (id: string) => {
+    try {
+      setErro(null);
+      await excluirModelo(id);
+      setItems((lst) => lst.filter((c) => c.id !== id));
+      if (editandoId === id) {
+        setEditandoId(null);
+        setOpen(false);
+      }
+    } catch (e: any) {
+      setErro(e?.message || "Erro ao excluir modelo.");
+    }
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+    setOpen(false);
   };
 
   const salvar = async (tpl: ChecklistTemplate) => {
@@ -54,12 +84,12 @@ export default function Page() {
     try {
       if (editandoId) {
         const atualizado = await atualizarModelo(editandoId, payload);
-        setChecklists((lst) => lst.map((c) => (c.id === editandoId ? atualizado : c)));
+        setItems((lst) => lst.map((c) => (c.id === editandoId ? atualizado : c)));
       } else {
         const criado = await criarModelo(payload);
-        setChecklists((lst) => [criado, ...lst]);
+        setItems((lst) => [criado, ...lst]);
       }
-      iniciarNovo();
+      cancelarEdicao();
     } catch (e: any) {
       setErro(e?.message || "Erro ao salvar modelo.");
     } finally {
@@ -67,70 +97,49 @@ export default function Page() {
     }
   };
 
-  const editar = (tpl: ChecklistTemplate) => {
-    setEditandoId(tpl.id);
-    // clona para evitar mutação acidental
-    setModeloEmEdicao(JSON.parse(JSON.stringify(tpl)));
-  };
-
-  const excluir = async (id: string) => {
-    try {
-      setErro(null);
-      await excluirModelo(id);
-      setChecklists((lst) => lst.filter((c) => c.id !== id));
-      if (editandoId === id) iniciarNovo();
-    } catch (e: any) {
-      setErro(e?.message || "Erro ao excluir modelo.");
-    }
-  };
-
-  const cancelarEdicao = () => iniciarNovo();
-
-  const headerRight = useMemo(() => {
-    if (loading) {
-      return (
-        <span className="inline-flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Carregando modelos…
-        </span>
-      );
-    }
-    if (erro) {
-      return <span className="text-red-600 text-sm">{erro}</span>;
-    }
-    return null;
-  }, [loading, erro]);
-
   return (
-    <div className=" mx-auto  space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Criação de Checklists</h1>
-          <p className="text-muted-foreground">
-            Crie e gerencie modelos de checklist para aplicar nas Ordens de Serviço
-          </p>
-        </div>
-        {headerRight}
-      </div>
+    <div className="mx-auto space-y-6">
+      <TemplatesList
+        items={items}
+        loading={loading}
+        error={erro}
+        onReload={reload}
+        onNew={iniciarNovo}
+        onEdit={editar}
+        onDelete={excluir}
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TemplateForm
-          value={modeloEmEdicao}
-          categorias={categorias}
-          editando={!!editandoId}
-          onSave={salvar}
-          onCancel={cancelarEdicao}
-        />
+      {/* Dialog MAIOR + separador sob o título */}
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (!v) cancelarEdicao();
+          else setOpen(true);
+        }}
+      >
+        <DialogContent className="w-[98vw] max-w-6xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-4 pb-3">
+            <DialogTitle>{editandoId ? "Editar checklist" : "Novo checklist"}</DialogTitle>
+          </DialogHeader>
+          <Separator />
 
-        <TemplatesList items={checklists} onEdit={editar} onDelete={excluir} />
-      </div>
-
-      {salvando && (
-        <div className="fixed bottom-4 right-4 rounded-md bg-background border px-3 py-2 shadow">
-          <span className="inline-flex items-center gap-2 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Salvando…
-          </span>
-        </div>
-      )}
+          <div className="px-6 py-4">
+            <TemplateForm
+              value={modeloEmEdicao}
+              categorias={categorias}
+              editando={!!editandoId}
+              onSave={salvar}
+              onCancel={cancelarEdicao}
+              variant="bare"
+            />
+            {salvando && (
+              <div className="mt-3 text-sm text-muted-foreground inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Salvando…
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

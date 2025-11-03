@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Building2, Receipt, Landmark, CreditCard, Webhook, Loader2 } from "lucide-react";
+import { Building2, Receipt, Landmark, CreditCard, Webhook, Loader2 } from "lucide-react";
 
 import { EmpresaTab } from "./components/empresa-tab";
 import { NFeTab } from "./components/nfe-tab";
@@ -142,9 +141,6 @@ export default function ConfigFiscalPagamentosPage() {
     },
   });
 
-  const ambiente = watch("empresa.ambiente");
-
-  // Helpers para aplicar dados vindos do backend no form:
   function applyEmpresa(e: any) {
     if (!e) return;
     setValue("empresa.empresaId", Number(e.id ?? 1));
@@ -158,7 +154,6 @@ export default function ConfigFiscalPagamentosPage() {
     setValue("empresa.regimetributario", (e.regimetributario as any) ?? "SIMPLES_NACIONAL");
     setValue("empresa.ambiente", (e.ambiente as any) ?? "HOMOLOGACAO");
   }
-
   function applyNfe(n: any) {
     if (!n) return;
     setValue("nfe.serieNFe", n.serieNFe ?? n.serienfe ?? "1");
@@ -168,7 +163,6 @@ export default function ConfigFiscalPagamentosPage() {
     setValue("nfe.idCSC", n.idCSC ?? "");
     setValue("nfe.naturezaOperacao", n.naturezaOperacao ?? "Venda de mercadoria");
   }
-
   function applyNfse(n: any) {
     if (!n) return;
     setValue("nfse.provedor", n.provedor ?? "");
@@ -180,10 +174,8 @@ export default function ConfigFiscalPagamentosPage() {
     setValue("nfse.certificadoA1Base64", n.certificadoA1Base64 ?? "");
     setValue("nfse.senhaCertificado", n.senhaCertificado ?? "");
   }
-
   function applyPagamentos(p: any) {
     if (!p) return;
-    // Cartão
     setValue("pagamentos.cartao.habilitado", p.cartao?.habilitado ?? true);
     setValue("pagamentos.cartao.provider", p.cartao?.provider ?? "stone");
     setValue("pagamentos.cartao.merchantId", p.cartao?.merchantId ?? "");
@@ -192,8 +184,6 @@ export default function ConfigFiscalPagamentosPage() {
     setValue("pagamentos.cartao.parcelasMax", Number(p.cartao?.parcelasMax ?? 1));
     setValue("pagamentos.cartao.capturaAutomatica", !!p.cartao?.capturaAutomatica);
     setValue("pagamentos.cartao.terminalIds", Array.isArray(p.cartao?.terminalIds) ? p.cartao.terminalIds : []);
-
-    // Pix
     setValue("pagamentos.pix.habilitado", p.pix?.habilitado ?? true);
     setValue("pagamentos.pix.provider", p.pix?.provider ?? "stone");
     setValue("pagamentos.pix.chave", p.pix?.chave ?? "");
@@ -201,12 +191,9 @@ export default function ConfigFiscalPagamentosPage() {
     setValue("pagamentos.pix.clientSecret", p.pix?.clientSecret ?? "");
     setValue("pagamentos.pix.webhookUrl", p.pix?.webhookUrl ?? "");
     setValue("pagamentos.pix.expiracaoSegundos", Number(p.pix?.expiracaoSegundos ?? 1800));
-
-    // Dinheiro
     setValue("pagamentos.dinheiro.habilitado", p.dinheiro?.habilitado ?? true);
   }
 
-  // Carrega dados atuais do backend e aplica no form:
   async function carregarTudo() {
     setCarregando(true);
     try {
@@ -216,31 +203,26 @@ export default function ConfigFiscalPagamentosPage() {
         fetch("/api/config/nfse", { cache: "no-store" }),
         fetch("/api/config/pagamentos", { cache: "no-store" }),
       ]);
-
       const jEmp = await rEmp.json().catch(() => ({}));
       const jNfe = await rNfe.json().catch(() => ({}));
       const jNfse = await rNfse.json().catch(() => ({}));
       const jPay = await rPay.json().catch(() => ({}));
-
       if (rEmp.ok && jEmp?.empresa) applyEmpresa(jEmp.empresa);
       if (rNfe.ok && jNfe?.nfe) applyNfe(jNfe.nfe);
       if (rNfse.ok && jNfse?.nfse) applyNfse(jNfse.nfse);
       if (rPay.ok && jPay?.pagamentos) applyPagamentos(jPay.pagamentos);
     } catch (e) {
-      // silencioso pra não poluir; use toast se preferir
       console.warn(e);
     } finally {
       setCarregando(false);
     }
   }
-
   useEffect(() => {
     carregarTudo();
   }, []);
 
   function validar(v: FormValues, tab: string) {
     const errs: string[] = [];
-
     if (tab === "empresa") {
       const cnpj = limparDigitos(v.empresa.cnpj);
       if (cnpj.length < 14) errs.push("CNPJ inválido.");
@@ -250,11 +232,9 @@ export default function ConfigFiscalPagamentosPage() {
       if (ibge.length !== 7) errs.push("Código do Município (IBGE) deve ter 7 dígitos.");
       if (!v.empresa.regimetributario?.trim()) errs.push("Regime tributário obrigatório.");
     }
-
     if (tab === "nfe") {
       if (!v.nfe.naturezaOperacao?.trim()) errs.push("Natureza de operação (NF-e) obrigatória.");
     }
-
     if (tab === "pagamentos") {
       if (v.pagamentos.cartao.habilitado) {
         if (!v.pagamentos.cartao.merchantId?.trim()) errs.push("Merchant ID (Cartão) é obrigatório quando habilitado.");
@@ -264,12 +244,10 @@ export default function ConfigFiscalPagamentosPage() {
         if (!v.pagamentos.pix.chave?.trim()) errs.push("Chave Pix é obrigatória quando habilitado.");
       }
     }
-
     return errs;
   }
 
   async function onSalvar(values: FormValues) {
-    // normalizações
     if (activeTab === "empresa") {
       values.empresa.cnpj = limparDigitos(values.empresa.cnpj);
       values.empresa.codigomunicipio = limparDigitos(values.empresa.codigomunicipio);
@@ -296,7 +274,6 @@ export default function ConfigFiscalPagamentosPage() {
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || "Falha ao salvar Empresa");
       }
-
       if (activeTab === "nfe") {
         const r = await fetch("/api/config/nfe", {
           method: "PUT",
@@ -306,7 +283,6 @@ export default function ConfigFiscalPagamentosPage() {
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || "Falha ao salvar NFe");
       }
-
       if (activeTab === "nfse") {
         const r = await fetch("/api/config/nfse", {
           method: "PUT",
@@ -316,7 +292,6 @@ export default function ConfigFiscalPagamentosPage() {
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || "Falha ao salvar NFS-e");
       }
-
       if (activeTab === "pagamentos") {
         const r = await fetch("/api/config/pagamentos", {
           method: "PUT",
@@ -326,7 +301,6 @@ export default function ConfigFiscalPagamentosPage() {
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || "Falha ao salvar Pagamentos");
       }
-
       if (activeTab === "webhooks") {
         const { pagamentos } = values;
         const r = await fetch("/api/config/webhooks", {
@@ -342,7 +316,6 @@ export default function ConfigFiscalPagamentosPage() {
       }
 
       toast.success("Configurações salvas!");
-      // recarrega para garantir que o form fique 100% sincronizado com o DB
       await carregarTudo();
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar");
@@ -353,30 +326,9 @@ export default function ConfigFiscalPagamentosPage() {
 
   return (
     <div className="min-h-screen w-full">
-      <header className="">
-        <div className="w-full  flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-semibold">Configurações fiscais & pagamentos</h1>
-              <Badge variant="outline" className="ml-2">
-                {ambiente}
-              </Badge>
-            </div>
-          </div>
-          <Button onClick={handleSubmit(onSalvar)} disabled={salvando || carregando}>
-            {salvando || carregando ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> {carregando ? "Carregando…" : "Salvando…"}
-              </>
-            ) : (
-              "Salvar alterações"
-            )}
-          </Button>
-        </div>
-      </header>
+      {/* header local removido */}
 
-      <main className="w-full  py-6 sm:py-8">
+      <main className="w-full">
         <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5 rounded-xl bg-muted/60 p-1">
             <TabsTrigger value="empresa" className="flex items-center gap-2">
@@ -401,12 +353,10 @@ export default function ConfigFiscalPagamentosPage() {
           </TabsContent>
 
           <TabsContent value="nfe" className="mt-6">
-            {/* >>> AQUI PASSAMOS setValue (e watch, se quiser) <<< */}
             <NFeTab register={register} setValue={setValue} watch={watch} />
           </TabsContent>
 
           <TabsContent value="nfse" className="mt-6">
-            {/* >>> AQUI PASSAMOS setValue <<< */}
             <NFSeTab register={register} setValue={setValue} />
           </TabsContent>
 
@@ -415,9 +365,27 @@ export default function ConfigFiscalPagamentosPage() {
           </TabsContent>
 
           <TabsContent value="webhooks" className="mt-6">
-            {/* se quiser controlar via form, pode passar register também */}
             <WebhooksTab />
           </TabsContent>
+
+          {/* ⬇️ Botão abaixo do conteúdo das abas */}
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={handleSubmit(onSalvar)}
+              disabled={salvando || carregando}
+              aria-label="Salvar alterações"
+              title="Salvar alterações"
+            >
+              {salvando || carregando ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {carregando ? "Carregando…" : "Salvando…"}
+                </>
+              ) : (
+                "Salvar alterações"
+              )}
+            </Button>
+          </div>
         </Tabs>
       </main>
     </div>
