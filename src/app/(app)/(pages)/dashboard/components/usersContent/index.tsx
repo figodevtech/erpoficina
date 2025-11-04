@@ -15,8 +15,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Tooltip,
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -25,9 +23,14 @@ import {
   LabelList,
   AreaChart,
   Area,
-  Legend,
 } from "recharts";
-import type { TooltipProps } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from "@/components/ui/chart";
 import { RefreshCcw, Users, TrendingUp, Activity, MapPin } from "lucide-react";
 
 /** ============================
@@ -66,6 +69,9 @@ const STATUS_COLOR: Record<StatusKey, string> = {
   INATIVO: "hsl(var(--chart-3))",
   NULL: "hsl(var(--muted-foreground))",
 };
+
+/** contraste preto no light / branco no dark (usado para barras e legendas) */
+const CONTRAST_TEXT = "text-black dark:text-white";
 
 /** ============================
  *  Hooks de dados
@@ -179,7 +185,6 @@ export default function CustomersDashboard({
       value: insights?.countsByTipo?.JURIDICA ?? 0,
     },
   ];
-  const tipoColors = ["hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
   const monthly = (insights?.monthlyNew ?? []).map((m) => ({
     ...m,
@@ -249,132 +254,207 @@ export default function CustomersDashboard({
           ) : (
             <div className="gap-6 w-full flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3">
               {/* Tendência 12 meses */}
-              <div className="rounded-xl border p-3 md:col-span-2 xl:col-span-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium">
-                    Novos clientes por mês (12m)
-                  </p>
+              <div className="rounded-xl border bg-card p-4 md:col-span-2 xl:col-span-3">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">
+                      Novos clientes por mês
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Últimos 12 meses
+                    </p>
+                  </div>
                   <Badge variant="outline" className="gap-1">
                     <TrendingUp className="h-3.5 w-3.5" /> Tendência
                   </Badge>
                 </div>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={monthly}
-                      margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient
-                          id="areaFill"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="hsl(var(--chart-1))"
-                            stopOpacity={0.4}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="hsl(var(--chart-1))"
-                            stopOpacity={0.05}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="label"
-                        axisLine={false}
-                        tickLine={false}
-                        fontSize={12}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        axisLine={false}
-                        tickLine={false}
-                        fontSize={12}
-                      />
-                      <Tooltip content={<ChartTooltipSimple />} />
-                      <Area
-                        type="monotone"
-                        dataKey="count"
-                        stroke="hsl(var(--chart-1))"
-                        fill="url(#areaFill)"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                <ChartContainer
+                  config={{
+                    count: {
+                      label: "Novos clientes",
+                      color: "hsl(var(--chart-1))",
+                    },
+                  }}
+                  className="h-[280px] w-full text-primary dark:text-primary" // << força cor a herdar (preto/light, branco/dark)
+                >
+                  <AreaChart
+                    data={monthly}
+                    margin={{ top: 12, right: 12, left: 12, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="80%"
+                          stopColor="currentColor"
+                          stopOpacity={0.3}
+                        />{" "}
+                        {/* << */}
+                        <stop
+                          offset="95%"
+                          stopColor="currentColor"
+                          stopOpacity={0}
+                        />{" "}
+                        {/* << */}
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent indicator="line" />}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="count"
+                      stroke="currentColor" // << traço preto/light, branco/dark
+                      fill="url(#areaFill)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ChartContainer>
               </div>
 
               {/* Top UFs */}
-              <div className="rounded-xl border p-3 col-span-2">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium">Top UFs por clientes</p>
+              <div className="rounded-xl border bg-card p-4 col-span-2">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Top UFs por clientes</p>
+                    <p className="text-xs text-muted-foreground">
+                      Estados com mais clientes
+                    </p>
+                  </div>
                   <Badge variant="outline">Barras</Badge>
                 </div>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={topUFs(insights?.byEstado ?? {}, 8)}
-                      margin={{ top: 32, right: 12, left: 8, bottom: 8 }} // <- era top: 8
+                <ChartContainer
+                  config={{
+                    count: {
+                      label: "Clientes",
+                      color: "hsl(var(--chart-2))",
+                    },
+                  }}
+                    className="h-[280px] text-primary dark:text-primary/60" // barras e textos em preto/branco
+                >
+                  <BarChart
+                    data={topUFs(insights?.byEstado ?? {}, 8)}
+                    margin={{ top: 20, right: 12, left: 12, bottom: 12 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="uf"
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent indicator="dashed" />}
+                    />
+                    <Bar
+                      dataKey="count"
+                      fill="currentColor" // << barras na cor primary
+                      radius={[6, 6, 0, 0]}
                     >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="uf"
-                        axisLine={false}
-                        tickLine={false}
+                      <LabelList
+                        dataKey="count"
+                        position="top"
+                        className="fill-foreground"
                         fontSize={12}
                       />
-                      <YAxis
-  allowDecimals={false}
-  axisLine={false}
-  tickLine={false}
-  fontSize={12}
-  domain={[0, (dataMax: number) => dataMax + Math.max(2, Math.round(dataMax * 0.1))]}
-/>
-                      <Tooltip content={<ChartTooltipSimple />} />
-                      <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                        <LabelList dataKey="count" position="top" />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
               </div>
 
               {/* Tipo de pessoa */}
-              <div className="rounded-xl border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium">Tipo de pessoa</p>
+              <div className="rounded-xl border bg-card p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Tipo de pessoa</p>
+                    <p className="text-xs text-muted-foreground">
+                      Física vs Jurídica
+                    </p>
+                  </div>
                   <Badge variant="outline">Pizza</Badge>
                 </div>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={tipoData}
+                <ChartContainer
+                  config={{
+                    FISICA: {
+                      label: "Pessoa Física",
+                      color: "hsl(var(--chart-4))",
+                    },
+                    JURIDICA: {
+                      label: "Pessoa Jurídica",
+                      color: "hsl(var(--chart-5))",
+                    },
+                  }}
+                  className="h-[280px] text-primary dark:text-primary/60"
+                >
+                  <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                    <Pie
+                      data={tipoData}
+                      dataKey="value"
+                      nameKey="key"
+                      innerRadius={60}
+                      outerRadius={95}
+                      paddingAngle={4}
+                      strokeWidth={2}
+                    >
+                      {tipoData.map((entry) => (
+                        <Cell
+                          key={entry.key}
+                          fill={"currentColor"} // << usa cor primária
+                          className="stroke-background"
+                        />
+                      ))}
+                      <LabelList
                         dataKey="value"
-                        nameKey="name"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                      >
-                        {tipoData.map((entry, i) => (
-                          <Cell
-                            key={String(entry.key)}
-                            fill={tipoColors[i % tipoColors.length]}
-                          />
-                        ))}
-                        <LabelList dataKey="value" position="outside" />
-                      </Pie>
-                      <Legend />
-                      <Tooltip content={<ChartTooltipSimple />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                        position="outside"
+                        className="fill-foreground"
+                        fontSize={12}
+                        formatter={(value: number) => (value > 0 ? value : "")}
+                      />
+                    </Pie>
+                    <ChartLegend
+                      content={<ChartLegendContent nameKey="key" />}
+                      className={clsx(
+                        "-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+                        
+                      )}
+                    />
+                  </PieChart>
+                </ChartContainer>
               </div>
 
               {/* Status (card) */}
@@ -425,7 +505,6 @@ export function CustomersStatusCard({
   })).filter((s) => s.value > 0 || keyIsKnown(s.key));
 
   const empty = total === 0;
-  const percent = (v: number) => (total ? Math.round((v / total) * 100) : 0);
 
   return (
     <Card className={clsx("w-full", className)}>
@@ -495,80 +574,145 @@ export function CustomersStatusCard({
             <EmptyState />
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-xl border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium">Distribuição (%)</p>
+              {/* Status distribution Pie Chart */}
+              <div className="rounded-xl border bg-card p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Distribuição (%)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Por status de cliente
+                    </p>
+                  </div>
                   <Badge variant="outline" className="gap-1">
                     <TrendingUp className="h-3.5 w-3.5" /> Pizza
                   </Badge>
                 </div>
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={series}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                      >
-                        {series.map((entry) => (
-                          <Cell key={entry.key} fill={entry.fill} />
-                        ))}
-                        <LabelList
-                          dataKey="value"
-                          position="outside"
-                          formatter={(value: any) =>
-                            `${percent(Number(value))}%`
-                          }
+                <ChartContainer
+                  config={{
+                    ATIVO: {
+                      label: STATUS_LABEL.ATIVO,
+                      color: STATUS_COLOR.ATIVO,
+                    },
+                    PENDENTE: {
+                      label: STATUS_LABEL.PENDENTE,
+                      color: STATUS_COLOR.PENDENTE,
+                    },
+                    INATIVO: {
+                      label: STATUS_LABEL.INATIVO,
+                      color: STATUS_COLOR.INATIVO,
+                    },
+                  }}
+                  className="h-[260px]"
+                >
+                  <PieChart>
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          hideLabel
+                          formatter={(value) => {
+                            const pct = percentOf(Number(value), total);
+                            return `${value} (${pct}%)`;
+                          }}
                         />
-                      </Pie>
-                      <Tooltip content={<ChartTooltip total={total} />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <LegendInline series={series as any} total={total} />
+                      }
+                    />
+                    <Pie
+                      data={series}
+                      dataKey="value"
+                      nameKey="key"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={4}
+                      strokeWidth={2}
+                    >
+                      {series.map((entry) => (
+                        <Cell
+                          key={entry.key}
+                          fill={entry.fill}
+                          className="stroke-background"
+                        />
+                      ))}
+                      <LabelList
+                        dataKey="value"
+                        position="outside"
+                        className="fill-foreground"
+                        fontSize={12}
+                        formatter={(value: number) => {
+                          const pct = percentOf(value, total);
+                          return `${pct}%`;
+                        }}
+                      />
+                    </Pie>
+                    <ChartLegend
+                      content={<ChartLegendContent nameKey="key" />}
+                      className={CONTRAST_TEXT}
+                    />
+                  </PieChart>
+                </ChartContainer>
               </div>
 
-              <div className="rounded-xl border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium">Contagem por status</p>
+              {/* Status count Bar Chart */}
+              <div className="rounded-xl border bg-card p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Contagem por status</p>
+                    <p className="text-xs text-muted-foreground">
+                      Quantidade absoluta
+                    </p>
+                  </div>
                   <Badge variant="outline">Barras</Badge>
                 </div>
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={series as any}
-                      margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+                <ChartContainer
+                  config={{
+                    value: {
+                      label: "Clientes",
+                      color: "hsl(var(--chart-1))",
+                    },
+                  }}
+                  className={clsx("h-[260px]", CONTRAST_TEXT)} // barras e legenda em preto/branco
+                >
+                  <BarChart
+                    data={series}
+                    margin={{ top: 20, right: 12, left: 12, bottom: 12 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                    />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent indicator="dashed" />}
+                    />
+                    <Bar
+                      dataKey="value"
+                      fill="currentColor"
+                      radius={[6, 6, 0, 0]}
                     >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
+                      <LabelList
+                        dataKey="value"
+                        position="top"
+                        className="fill-foreground"
                         fontSize={12}
                       />
-                      <YAxis
-                        allowDecimals={false}
-                        axisLine={false}
-                        tickLine={false}
-                        fontSize={12}
-                      />
-                      <Tooltip content={<ChartTooltip total={total} />} />
-                      <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                        {(series as any).map((entry: any) => (
-                          <Cell key={entry.key} fill={entry.fill} />
-                        ))}
-                        <LabelList
-                          dataKey="value"
-                          position="top"
-                          formatter={(v: any) => String(v)}
-                        />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
               </div>
             </div>
           ))}
@@ -605,66 +749,6 @@ function Kpi({
           aria-hidden
         />
       )}
-    </div>
-  );
-}
-
-function ChartTooltip(props: TooltipProps<number, string> & { total: number }) {
-  const { active, payload, total } = props as any;
-  if (!active || !payload || !payload.length) return null;
-  const item = (payload?.[0]?.payload ?? {}) as any;
-  const pct = total ? Math.round(((item?.value ?? 0) / total) * 100) : 0;
-  return (
-    <div className="rounded-md border bg-background/95 p-2 text-xs shadow">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded"
-            style={{ background: item?.fill }}
-          />
-          <span className="font-medium">{item?.name}</span>
-        </div>
-        <div>
-          <span className="font-mono">{item?.value ?? 0}</span>
-          <span className="text-muted-foreground"> · {pct}%</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ChartTooltipSimple(props: TooltipProps<number, string>) {
-  const { active, payload, label } = props as any;
-  if (!active || !payload || !payload.length) return null;
-  const p = payload[0];
-  return (
-    <div className="rounded-md border bg-background/95 p-2 text-xs shadow">
-      <div className="font-medium">{label}</div>
-      <div className="font-mono">{p?.value ?? 0}</div>
-    </div>
-  );
-}
-
-function LegendInline({
-  series,
-  total,
-}: {
-  series: { key: StatusKey; name: string; value: number; fill: string }[];
-  total: number;
-}) {
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-      {series.map((s) => (
-        <div key={s.key} className="flex items-center gap-2">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded"
-            style={{ background: s.fill }}
-            aria-hidden
-          />
-          <span className="text-muted-foreground">{s.name}</span>
-          <span className="font-medium">{percentOf(s.value, total)}%</span>
-        </div>
-      ))}
     </div>
   );
 }
