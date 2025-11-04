@@ -350,7 +350,7 @@ export default function CustomersDashboard({
                       color: "hsl(var(--chart-2))",
                     },
                   }}
-                    className="h-[280px] text-primary dark:text-primary/60" // barras e textos em preto/branco
+                    className="h-[280px] text-primary/30 not-dark:text-primary" // barras e textos em preto/branco
                 >
                   <BarChart
                     data={topUFs(insights?.byEstado ?? {}, 8)}
@@ -382,6 +382,8 @@ export default function CustomersDashboard({
                     />
                     <Bar
                       dataKey="count"
+                      stroke="oklch(0.623 0.214 259.815)"
+                      strokeWidth={2}
                       fill="currentColor" // << barras na cor primary
                       radius={[6, 6, 0, 0]}
                     >
@@ -418,7 +420,7 @@ export default function CustomersDashboard({
                       color: "hsl(var(--chart-5))",
                     },
                   }}
-                  className="h-[280px] text-primary dark:text-primary/60"
+                  className="h-[280px] text-primary dark:text-primary/30"
                 >
                   <PieChart>
                     <ChartTooltip content={<ChartTooltipContent hideLabel />} />
@@ -435,7 +437,7 @@ export default function CustomersDashboard({
                         <Cell
                           key={entry.key}
                           fill={"currentColor"} // << usa cor primária
-                          className="stroke-background"
+                          stroke="oklch(0.623 0.214 259.815)"
                         />
                       ))}
                       <LabelList
@@ -602,7 +604,7 @@ export function CustomersStatusCard({
                       color: STATUS_COLOR.INATIVO,
                     },
                   }}
-                  className="h-[260px]"
+                  className="h-[280px] text-primary dark:text-primary/30"
                 >
                   <PieChart>
                     <ChartTooltip
@@ -628,8 +630,8 @@ export function CustomersStatusCard({
                       {series.map((entry) => (
                         <Cell
                           key={entry.key}
-                          fill={entry.fill}
-                          className="stroke-background"
+                          fill={"currentColor"} // << usa cor primária
+                          stroke="oklch(0.623 0.214 259.815)"
                         />
                       ))}
                       <LabelList
@@ -651,69 +653,6 @@ export function CustomersStatusCard({
                 </ChartContainer>
               </div>
 
-              {/* Status count Bar Chart */}
-              <div className="rounded-xl border bg-card p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Contagem por status</p>
-                    <p className="text-xs text-muted-foreground">
-                      Quantidade absoluta
-                    </p>
-                  </div>
-                  <Badge variant="outline">Barras</Badge>
-                </div>
-                <ChartContainer
-                  config={{
-                    value: {
-                      label: "Clientes",
-                      color: "hsl(var(--chart-1))",
-                    },
-                  }}
-                  className={clsx("h-[260px]", CONTRAST_TEXT)} // barras e legenda em preto/branco
-                >
-                  <BarChart
-                    data={series}
-                    margin={{ top: 20, right: 12, left: 12, bottom: 12 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke="hsl(var(--border))"
-                    />
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      fontSize={12}
-                      tickMargin={8}
-                      stroke="hsl(var(--muted-foreground))"
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      axisLine={false}
-                      tickLine={false}
-                      fontSize={12}
-                      tickMargin={8}
-                      stroke="hsl(var(--muted-foreground))"
-                    />
-                    <ChartTooltip
-                      content={<ChartTooltipContent indicator="dashed" />}
-                    />
-                    <Bar
-                      dataKey="value"
-                      fill="currentColor"
-                      radius={[6, 6, 0, 0]}
-                    >
-                      <LabelList
-                        dataKey="value"
-                        position="top"
-                        className="fill-foreground"
-                        fontSize={12}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
-              </div>
             </div>
           ))}
       </CardContent>
