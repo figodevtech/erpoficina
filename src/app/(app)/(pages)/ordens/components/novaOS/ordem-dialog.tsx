@@ -2,22 +2,18 @@
 
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+// ajuste o caminho do DialogShell conforme seu projeto
 import { DialogShell } from "../dialogs/dialog-shell";
 import { FormularioNovaOS } from "./ordem-form";
-import { criarOrdem } from "../../lib/api";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
-export function NovaOSDialog({
-  open,
-  onOpenChange,
-  onCreate, // opcional
-}: {
+type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onCreate?: (dados: any) => Promise<void> | void;
-}) {
-  const submitRef = useRef<null | (() => void)>(null);
+};
+
+export function NovaOSDialog({ open, onOpenChange }: Props) {
+  const submitRef = useRef<null | (() => Promise<void>)>(null);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -25,7 +21,8 @@ export function NovaOSDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Nova Ordem de Serviço"
-      description="Preencha os dados para criar uma nova OS"
+      description="Preencha o formulario para criação da ordem de serviço."
+      maxW="lg:max-w-5xl xl:max-w-6xl"
       footer={
         <>
           <Button
@@ -52,22 +49,8 @@ export function NovaOSDialog({
     >
       <FormularioNovaOS
         exposeSubmit={(fn) => (submitRef.current = fn)}
-        onSubmit={async (payload) => {
-          setSaving(true);
-          try {
-            if (onCreate) {
-              await onCreate(payload);
-            } else {
-              await criarOrdem(payload);
-            }
-            toast.success("OS criada com sucesso!");
-            onOpenChange(false); // ✅ fecha o dialog no sucesso
-          } catch (e: any) {
-            toast.error(e?.message || "Erro ao criar OS"); // ✅ Sonner (sem alert)
-          } finally {
-            setSaving(false);
-          }
-        }}
+        onDone={() => onOpenChange(false)}
+        onSavingChange={setSaving}
       />
     </DialogShell>
   );
