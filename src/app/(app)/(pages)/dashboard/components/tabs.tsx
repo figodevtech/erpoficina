@@ -38,7 +38,7 @@ export default function TabsOptions() {
             </TabsTrigger>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Usuários</TooltipContent>
+        <TooltipContent>Clientes</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>

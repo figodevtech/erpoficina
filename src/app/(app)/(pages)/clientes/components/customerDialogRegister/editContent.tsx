@@ -317,7 +317,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       value={formatCpfCnpj(
                         selectedCustomer.cpfcnpj,
                         selectedCustomer.tipopessoa
-                      )}
+                      ) || ""}
                       onChange={(e) =>
                         handleInputChange("cpfcnpj", e.target.value)
                       }
@@ -345,7 +345,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                     <Input
                       id="nomerazaosocial"
                       className=""
-                      value={selectedCustomer.nomerazaosocial}
+                      value={selectedCustomer.nomerazaosocial || ""}
                       onChange={(e) =>
                         handleInputChange("nomerazaosocial", e.target.value)
                       }
@@ -372,7 +372,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       id="email"
                       type="email"
                       className=""
-                      value={selectedCustomer.email}
+                      value={selectedCustomer.email || ""}
                       onChange={(e) =>
                         handleInputChange("email", e.target.value)
                       }
@@ -392,7 +392,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       id="telefone"
                       inputMode="tel"
                       className=""
-                      value={formatTelefone(selectedCustomer.telefone)}
+                      value={formatTelefone(selectedCustomer.telefone) || ""}
                       onChange={(e) => {
                         const raw = e.target.value
                           .replace(/\D/g, "")
@@ -415,7 +415,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                     <Input
                       id="endereco"
                       className=""
-                      value={selectedCustomer.endereco}
+                      value={selectedCustomer.endereco || ""}
                       onChange={(e) =>
                         handleInputChange("endereco", e.target.value)
                       }
@@ -566,7 +566,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       <Input
                         id="cep"
                         className=""
-                        value={formatCep(selectedCustomer.cep)}
+                        value={formatCep(selectedCustomer.cep) || ""}
                         onChange={(e) =>
                           handleInputChange("cep", e.target.value)
                         }
@@ -600,7 +600,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                           <Input
                             id="inscricaoestadual"
                             className=""
-                            value={selectedCustomer.inscricaoestadual}
+                            value={selectedCustomer.inscricaoestadual || ""}
                             onChange={(e) =>
                               handleInputChange(
                                 "inscricaoestadual",
@@ -621,7 +621,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                           <Input
                             id="inscricaomunicipal"
                             className=""
-                            value={selectedCustomer.inscricaomunicipal}
+                            value={selectedCustomer.inscricaomunicipal || ""}
                             onChange={(e) =>
                               handleInputChange(
                                 "inscricaomunicipal",
