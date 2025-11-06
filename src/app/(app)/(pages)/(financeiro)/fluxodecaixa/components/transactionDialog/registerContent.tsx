@@ -225,6 +225,8 @@ export default function RegisterContent({
                 <div className="p-0 m-0 mb-1 flex flex-row justify-between items-center">
 
                 <Label htmlFor="valor">Valor* </Label>
+                {(newTransaction.tipo === Tipo_transacao.RECEITA || newTransaction.tipo === Tipo_transacao.SAQUE) && (
+
                 <div className="flex flex-row gap-2">
 
                 <span className="text-xs text-muted-foreground">Taxa de recebimento</span>
@@ -243,6 +245,7 @@ export default function RegisterContent({
               }}
                 />
                 </div>
+                )}
                 </div>
                 <ValueInput
                   price={newTransaction.valor || 0}
