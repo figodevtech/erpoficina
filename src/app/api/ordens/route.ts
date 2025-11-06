@@ -3,15 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-type StatusOS =
-  | "TODAS"
-  | "ORCAMENTO"            // 👈 veja observação ao final
-  | "ABERTA"
-  | "EM_ANDAMENTO"
-  | "AGUARDANDO_PECA"
-  | "CONCLUIDA"
-  | "CANCELADA";
+import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
 
 export async function GET(req: Request) {
   try {

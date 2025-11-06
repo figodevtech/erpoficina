@@ -9,108 +9,85 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, CarFront, User2, ClipboardList, Building2, Wrench } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Search, CarFront, User2, ClipboardList, Building2, Wrench, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
+import { uploadChecklistImages } from "../../lib/upload-checklist-images";
 
-type Cliente = {
-  id: number;
-  nomerazaosocial: string;
-  email?: string | null;
-  telefone?: string | null;
-  cpfcnpj: string;
-};
-
-type Veiculo = {
-  id: number;
-  placa: string;
-  modelo: string;
-  marca: string;
-  ano?: number | null;
-  cor?: string | null;
-  kmatual?: number | null;
-};
-
+/* ================== Tipos mínimos ================== */
 type ChecklistTemplateModel = {
   id: string;
   nome: string;
   itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
 };
-
-// Agora os status exibidos seguem o enum do banco
 const CHECK_STATUS = ["OK", "ALERTA", "FALHA"] as const;
-type Marcacao = (typeof CHECK_STATUS)[number] | ""; // "" = não marcado
+type Marcacao = (typeof CHECK_STATUS)[number] | "";
 
+/* ========== Props ========== */
 export type FormularioNovaOSProps = {
-  onSubmit?: (payload: any) => Promise<void> | void;
-  exposeSubmit?: (fn: () => void) => void;
+  exposeSubmit?: (fn: () => Promise<void>) => void;
+  onDone?: (osId?: number) => void;
+  onSavingChange?: (saving: boolean) => void;
 };
 
 const NONE = "__none__";
+const toDbStatus = (sel: Marcacao): "OK" | "ALERTA" | "FALHA" | null =>
+  sel === "OK" || sel === "ALERTA" || sel === "FALHA" ? sel : null;
 
-// status visual -> status do banco (apenas quando marcado)
-function toDbStatus(sel: Marcacao): "OK" | "ALERTA" | "FALHA" | null {
-  if (sel === "OK") return "OK";
-  if (sel === "ALERTA") return "ALERTA";
-  if (sel === "FALHA") return "FALHA";
-  return null; // não marcado
-}
+export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: FormularioNovaOSProps) {
+  const [saving, setSaving] = useState(false);
+  useEffect(() => onSavingChange?.(saving), [saving, onSavingChange]);
 
-export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSProps) {
   // Setores
   const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
   const [loadingSetores, setLoadingSetores] = useState(false);
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
 
-  // Atendimento
+  // Atendimento/cliente
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
   const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
-
-  // Cliente/Veículo existentes
   const [docBusca, setDocBusca] = useState("");
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [veiculosDoCliente, setVeiculosDoCliente] = useState<Veiculo[]>([]);
+  const [cliente, setCliente] = useState<any | null>(null);
+  const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState<string | null>(null);
 
-  // Avulso (obs: schema exige email e telefone)
-  const [avulsoNome, setAvulsoNome] = useState<string>("");
-  const [avulsoDoc, setAvulsoDoc] = useState<string>("");
-  const [avulsoTelefone, setAvulsoTelefone] = useState<string>("");
-  const [avulsoEmail, setAvulsoEmail] = useState<string>("");
+  // Avulso
+  const [avulsoNome, setAvulsoNome] = useState("");
+  const [avulsoDoc, setAvulsoDoc] = useState("");
+  const [avulsoTelefone, setAvulsoTelefone] = useState("");
+  const [avulsoEmail, setAvulsoEmail] = useState("");
 
-  // Descrição/Observações
-  const [descricao, setDescricao] = useState<string>("");
-  const [observacoes, setObservacoes] = useState<string>("");
+  // Texto
+  const [descricao, setDescricao] = useState("");
+  const [observacoes, setObservacoes] = useState("");
 
   // Checklist
   const [templates, setTemplates] = useState<ChecklistTemplateModel[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
-  const [templateId, setTemplateId] = useState<string>("");
+  const [templateId, setTemplateId] = useState("");
   const [templateItems, setTemplateItems] = useState<ChecklistTemplateModel["itens"]>([]);
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
+  const [obsByItem, setObsByItem] = useState<Record<string, string>>({});
+  const [imagesByItem, setImagesByItem] = useState<Record<string, File[]>>({});
 
-  // === ALVO DO REPARO ===
+  // Alvo
   type AlvoTipo = "VEICULO" | "PECA";
   const [alvoTipo, setAlvoTipo] = useState<AlvoTipo>("VEICULO");
-
-  // Veículo (dados básicos na OS, mesmo sem cadastro)
   const [vPlaca, setVPlaca] = useState("");
   const [vModelo, setVModelo] = useState("");
   const [vMarca, setVMarca] = useState("");
-  const [vAno, setVAno] = useState<string>("");
+  const [vAno, setVAno] = useState("");
   const [vCor, setVCor] = useState("");
-  const [vKm, setVKm] = useState<string>("");
-
-  // Peça (sem pesquisa, só nome e opcional descrição)
+  const [vKm, setVKm] = useState("");
   const [pNome, setPNome] = useState("");
   const [pDesc, setPDesc] = useState("");
-
   const veiculoVinculado = veiculoSelecionadoId !== null;
 
-  // Carrega Setores
+  /* ================== Data loading ================== */
   useEffect(() => {
     (async () => {
       try {
@@ -118,8 +95,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         setSetoresError(null);
         const r = await fetch("/api/setores", { cache: "no-store" });
         const j = await r.json();
-        const items: Array<{ id: number; nome: string }> = Array.isArray(j) ? j : j?.items ?? [];
-        setSetores(items);
+        setSetores(Array.isArray(j) ? j : j?.items ?? []);
       } catch (e: any) {
         setSetoresError(e?.message ?? "Não foi possível carregar os setores.");
         setSetores([]);
@@ -129,7 +105,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     })();
   }, []);
 
-  // Carrega Modelos de Checklist
   useEffect(() => {
     (async () => {
       try {
@@ -139,8 +114,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         url.searchParams.set("ativos", "1");
         const r = await fetch(url.toString(), { cache: "no-store" });
         const j = await r.json();
-        const items: ChecklistTemplateModel[] = Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : [];
-        setTemplates(items);
+        setTemplates(Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : []);
       } catch (e: any) {
         setTemplatesError(e?.message ?? "Não foi possível carregar os modelos de checklist.");
       } finally {
@@ -149,34 +123,29 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     })();
   }, []);
 
+  /* ================== Helpers enxutos ================== */
   const applyTemplate = useCallback(
     (id: string) => {
       setTemplateId(id);
-      const tpl = templates.find((t) => t.id === id);
-      const itens = tpl?.itens ?? [];
+      const itens = (templates.find((t) => t.id === id)?.itens ?? []).filter(Boolean);
       setTemplateItems(itens);
       const novo: Record<string, Marcacao> = {};
+      const imgs: Record<string, File[]> = {};
+      const obs: Record<string, string> = {};
       itens.forEach((it) => {
-        if (it?.titulo) novo[it.titulo] = ""; // começa sem marcação
+        if (it.titulo) {
+          novo[it.titulo] = "";
+          imgs[it.titulo] = imagesByItem[it.titulo] ?? [];
+          obs[it.titulo] = obsByItem[it.titulo] ?? "";
+        }
       });
       setChecklist(novo);
+      setImagesByItem(imgs);
+      setObsByItem(obs);
     },
-    [templates]
+    [templates, imagesByItem, obsByItem]
   );
 
-  useEffect(() => {
-    if (!templateId || templates.length === 0) return;
-    const tpl = templates.find((t) => t.id === templateId);
-    const itens = tpl?.itens ?? [];
-    setTemplateItems(itens);
-    const novo: Record<string, Marcacao> = {};
-    itens.forEach((it) => {
-      if (it?.titulo) novo[it.titulo] = "";
-    });
-    setChecklist(novo);
-  }, [templateId, templates]);
-
-  // Veículos existentes do cliente
   const veiculoOptions = useMemo(
     () =>
       veiculosDoCliente.map((v) => ({
@@ -186,13 +155,9 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     [veiculosDoCliente]
   );
 
-  // Buscar Cliente por Documento
   const buscarClientePorDocumento = async () => {
     const raw = docBusca.trim();
-    if (!raw) {
-      setErroCliente("Informe um CPF/CNPJ para buscar.");
-      return;
-    }
+    if (!raw) return setErroCliente("Informe um CPF/CNPJ para buscar.");
     setErroCliente(null);
     setBuscandoCliente(true);
     setCliente(null);
@@ -213,7 +178,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     }
   };
 
-  // Expor submit ao Dialog
+  // expõe submit
   useEffect(() => {
     exposeSubmit?.(salvar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,10 +193,8 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     templateId,
     templateItems,
     checklist,
-    avulsoNome,
-    avulsoDoc,
-    avulsoTelefone,
-    avulsoEmail,
+    imagesByItem,
+    obsByItem,
     prioridade,
     alvoTipo,
     vPlaca,
@@ -244,111 +207,89 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
     pDesc,
   ]);
 
-  function validar(): string | null {
+  // validações (unificadas)
+  const validateAll = (): string | null => {
     if (!setor) return "Selecione o setor responsável.";
-
-    if (modoAtendimento === "cadastrado" && !cliente) {
-      return "Busque o cliente pelo CPF/CNPJ.";
-    }
-
+    if (modoAtendimento === "cadastrado" && !cliente) return "Busque o cliente pelo CPF/CNPJ.";
     if (modoAtendimento === "avulso") {
       if (!avulsoNome || !avulsoDoc) return "Preencha Nome/Razão Social e CPF/CNPJ para atendimento avulso.";
-      if (!avulsoTelefone?.trim() || !avulsoEmail?.trim()) {
+      if (!avulsoTelefone?.trim() || !avulsoEmail?.trim())
         return "Para atendimento avulso, telefone e e-mail são obrigatórios.";
-      }
     }
-
     if (alvoTipo === "VEICULO") {
-      // se não houver veículo vinculado, placa é necessária para criar (constraint do banco)
-      if (!veiculoVinculado) {
-        if (!vPlaca.trim()) {
-          return "Para criar um veículo novo, informe ao menos a PLACA (modelo/marca ajudam, mas placa é obrigatória).";
-        }
-      }
+      if (!veiculoVinculado && !vPlaca.trim()) return "Para criar um veículo novo, informe ao menos a PLACA.";
     } else {
       if (!pNome.trim()) return "Informe o nome da peça.";
     }
-    return null;
-  }
-
-  function validarChecklistObrigatorios(): string | null {
-    if (!templateItems?.length) return null;
-    const faltando = templateItems
-      .filter((it) => it.obrigatorio)
-      .filter((it) => !checklist[it.titulo]); // vazio/sem seleção
-    if (faltando.length) {
-      const nomes = faltando.slice(0, 3).map((f) => f.titulo).join(", ");
-      return `Marque todos os itens obrigatórios do checklist. Ex.: ${nomes}${faltando.length > 3 ? "…" : ""}`;
+    if (templateItems?.length) {
+      const faltando = templateItems.filter((it) => it.obrigatorio).filter((it) => !checklist[it.titulo]);
+      if (faltando.length) {
+        const nomes = faltando
+          .slice(0, 3)
+          .map((f) => f.titulo)
+          .join(", ");
+        return `Marque todos os itens obrigatórios do checklist. Ex.: ${nomes}${faltando.length > 3 ? "…" : ""}`;
+      }
+    }
+    const semStatusComImagem = Object.keys(imagesByItem).filter(
+      (k) => (imagesByItem[k]?.length ?? 0) > 0 && !toDbStatus(checklist[k] as Marcacao)
+    );
+    if (semStatusComImagem.length) {
+      return `Há imagens em itens sem status: ${semStatusComImagem.slice(0, 3).join(", ")}${
+        semStatusComImagem.length > 3 ? "…" : ""
+      }. Marque OK/ALERTA/FALHA antes de anexar imagens.`;
     }
     return null;
-  }
+  };
 
-  const salvar = async () => {
-    const errBase = validar();
-    if (errBase) return toast.error(errBase);
+  /* ================== Submit ================== */
+  const salvar = async (): Promise<void> => {
+    if (saving) return;
+    const err = validateAll();
+    if (err) return void toast.error(err);
 
-    const errChk = validarChecklistObrigatorios();
-    if (errChk) return toast.error(errChk);
-
-    // Apenas itens marcados (OK/ALERTA/FALHA). Não marcado -> não envia.
-    const checklistArray =
-      templateItems
+    setSaving(true);
+    try {
+      const checklistArray = templateItems
         .map((it) => {
           const sel = checklist[it.titulo] ?? "";
           const db = toDbStatus(sel as Marcacao);
           if (!db) return null;
-          return { item: it.titulo, status: db };
+          return { item: it.titulo, status: db, observacao: (obsByItem[it.titulo] || "").trim() || null };
         })
-        .filter(Boolean) as Array<{ item: string; status: "OK" | "ALERTA" | "FALHA" }>;
+        .filter(Boolean) as Array<{ item: string; status: "OK" | "ALERTA" | "FALHA"; observacao: string | null }>;
 
-    const payload: any = {
-      setorid: setor ? Number(setor) : null,
-      descricao: descricao || null,
-      observacoes: (observacoes || "").trim() || null,
-      checklistTemplateId: templateId || null,
-      prioridade,
+      const payload: any = {
+        setorid: setor ? Number(setor) : null,
+        descricao: descricao || null,
+        observacoes: (observacoes || "").trim() || null,
+        checklistTemplateId: templateId || null,
+        prioridade,
+        cliente:
+          modoAtendimento === "cadastrado"
+            ? { id: cliente!.id }
+            : { nome: avulsoNome, documento: avulsoDoc, telefone: avulsoTelefone || null, email: avulsoEmail || null },
+        veiculoid: veiculoSelecionadoId,
+        checklist: checklistArray,
+        alvo:
+          alvoTipo === "VEICULO"
+            ? veiculoVinculado
+              ? { tipo: "VEICULO" }
+              : {
+                  tipo: "VEICULO",
+                  veiculo: {
+                    placa: vPlaca || null,
+                    modelo: vModelo || null,
+                    marca: vMarca || null,
+                    ano: vAno ? Number(vAno) : null,
+                    cor: vCor || null,
+                    kmatual: vKm ? Number(vKm) : null,
+                  },
+                }
+            : { tipo: "PECA", peca: { nome: pNome.trim(), descricao: pDesc?.trim() || null } },
+      };
 
-      cliente:
-        modoAtendimento === "cadastrado"
-          ? { id: cliente!.id }
-          : {
-              nome: avulsoNome,
-              documento: avulsoDoc,
-              telefone: avulsoTelefone || null,
-              email: avulsoEmail || null,
-            },
-
-      veiculoid: veiculoSelecionadoId,
-
-      checklist: checklistArray,
-
-      alvo:
-        alvoTipo === "VEICULO"
-          ? veiculoVinculado
-            ? { tipo: "VEICULO" }
-            : {
-                tipo: "VEICULO",
-                veiculo: {
-                  placa: vPlaca || null,
-                  modelo: vModelo || null,
-                  marca: vMarca || null,
-                  ano: vAno ? Number(vAno) : null,
-                  cor: vCor || null,
-                  kmatual: vKm ? Number(vKm) : null,
-                },
-              }
-          : {
-              tipo: "PECA",
-              peca: { nome: pNome.trim(), descricao: pDesc?.trim() || null },
-            },
-    };
-
-    if (onSubmit) {
-      await onSubmit(payload);
-      return;
-    }
-
-    try {
+      // 1) cria OS
       const r = await fetch("/api/ordens/criar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -356,14 +297,45 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
-      toast.success(`OS criada com sucesso!${j?.id ? ` ID: ${j.id}` : ""}`);
-      // você pode disparar um evento global para recarregar listas, se quiser:
+
+      const osId: number = j?.id;
+      const created: Array<{ id: number; item: string }> = j?.checklistCreated ?? [];
+      const mapItemToChecklistId: Record<string, number> = {};
+      for (const row of created) if (row?.item && row?.id) mapItemToChecklistId[row.item] = row.id;
+
+      // 2) sobe imagens (em lote, com compressão e concorrência controlada)
+      const hasAnyImage = Object.values(imagesByItem).some((arr) => (arr?.length ?? 0) > 0);
+      if (osId && hasAnyImage) {
+        await uploadChecklistImages(osId, imagesByItem, mapItemToChecklistId, {
+          concurrency: 3,
+          compress: { maxWidth: 1600, maxHeight: 1600, targetMaxBytes: 800 * 1024, minQuality: 0.6, maxQuality: 0.95 },
+        });
+      }
+
+      toast.success(`OS criada com sucesso!${osId ? ` ID: ${osId}` : ""}`);
       window.dispatchEvent(new CustomEvent("os:refresh"));
+      onDone?.(osId);
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar OS");
+    } finally {
+      setSaving(false);
     }
   };
 
+  /* ================== Imagens (UI) ================== */
+  const onPickFiles = (itemTitle: string, files: FileList | null) => {
+    if (!files?.length) return;
+    setImagesByItem((prev) => ({ ...prev, [itemTitle]: [...(prev[itemTitle] ?? []), ...Array.from(files)] }));
+  };
+  const removeFile = (itemTitle: string, idx: number) => {
+    setImagesByItem((prev) => {
+      const list = [...(prev[itemTitle] ?? [])];
+      list.splice(idx, 1);
+      return { ...prev, [itemTitle]: list };
+    });
+  };
+
+  /* ===================== RENDER ===================== */
   return (
     <div className="space-y-6">
       {/* DADOS DO CLIENTE */}
@@ -403,7 +375,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
           {modoAtendimento === "cadastrado" ? (
             <>
-              {/* Busca por CPF/CNPJ */}
               <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
                 <div className="space-y-2">
                   <Label>CPF/CNPJ</Label>
@@ -418,13 +389,11 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                   <Button className="w-full md:w-auto" onClick={buscarClientePorDocumento} disabled={buscandoCliente}>
                     {buscandoCliente ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Buscando…
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Buscando…
                       </>
                     ) : (
                       <>
-                        <Search className="h-4 w-4 mr-2" />
-                        Buscar
+                        <Search className="h-4 w-4 mr-2" /> Buscar
                       </>
                     )}
                   </Button>
@@ -433,7 +402,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
 
               {erroCliente && <div className="text-sm text-red-600">{erroCliente}</div>}
 
-              {/* Resumo do cliente */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Nome/Razão Social</Label>
@@ -488,6 +456,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
           </div>
         </CardHeader>
+
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-3">
@@ -533,16 +502,18 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             </div>
           </div>
 
-          {/* ALVO DO REPARO */}
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center gap-2 mb-2">
+          <Separator />
+          
+          {/* === Alvo do reparo (SEM card aninhado) === */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
               <Wrench className="h-4 w-4 text-primary" />
               <Label className="font-medium">Alvo do reparo</Label>
             </div>
             <RadioGroup
               value={alvoTipo}
               onValueChange={(v: "VEICULO" | "PECA") => setAlvoTipo(v)}
-              className="flex flex-wrap gap-4 mb-4"
+              className="flex flex-wrap gap-4"
             >
               <label className="flex items-center gap-2 cursor-pointer">
                 <RadioGroupItem id="alvo-veic" value="VEICULO" />
@@ -555,8 +526,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
             </RadioGroup>
 
             {alvoTipo === "VEICULO" ? (
-              <div className="space-y-4">
-                {/* Vincular veículo já cadastrado (opcional) */}
+              <>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Vincular a um veículo já cadastrado (opcional)</Label>
@@ -604,7 +574,6 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                   </Select>
                 </div>
 
-                {/* Dados básicos do veículo */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label>Placa</Label>
@@ -631,7 +600,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                     <Input value={vKm} onChange={(e) => setVKm(e.target.value)} inputMode="numeric" />
                   </div>
                 </div>
-              </div>
+              </>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -678,13 +647,13 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <Label>Modelo de checklist</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
               <Select
                 value={templateId}
                 onValueChange={applyTemplate}
                 disabled={loadingTemplates || (!!templatesError && templates.length === 0)}
               >
-                <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                <SelectTrigger className="h-10 w-full sm:w-[380px] min-w-[220px] truncate">
                   <SelectValue
                     placeholder={
                       loadingTemplates
@@ -707,11 +676,13 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
               {templateId && (
                 <Button
                   variant="outline"
-                  className="shrink-0"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setTemplateId("");
                     setTemplateItems([]);
                     setChecklist({});
+                    setImagesByItem({});
+                    setObsByItem({});
                   }}
                 >
                   Limpar
@@ -726,6 +697,9 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
               {templateItems.map((it) => {
                 const key = it.titulo ?? "";
                 const marcado = checklist[key] ?? "";
+                const files = imagesByItem[key] ?? [];
+                const obs = obsByItem[key] ?? "";
+
                 return (
                   <div key={key} className="p-3 rounded-lg border bg-muted/50 border-border text-foreground">
                     <div className="flex items-start justify-between gap-2">
@@ -743,8 +717,7 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                     <div className="mt-3 flex flex-wrap gap-2">
                       {(["OK", "ALERTA", "FALHA"] as const).map((status) => {
                         const selected = marcado === status;
-                        const base =
-                          "px-3 py-1.5 rounded-md text-sm border transition disabled:opacity-50 disabled:cursor-not-allowed";
+                        const base = "px-3 py-1.5 rounded-md text-sm border transition";
                         const selectedClass =
                           status === "OK"
                             ? "bg-emerald-600 text-white border-emerald-600"
@@ -756,18 +729,66 @@ export function FormularioNovaOS({ onSubmit, exposeSubmit }: FormularioNovaOSPro
                           <button
                             key={status}
                             type="button"
-                            onClick={() =>
-                              setChecklist((prev) => ({
-                                ...prev,
-                                [key]: selected ? "" : status,
-                              }))
-                            }
+                            onClick={() => setChecklist((prev) => ({ ...prev, [key]: selected ? "" : status }))}
                             className={[base, selected ? selectedClass : unselectedClass].join(" ")}
                           >
                             {status}
                           </button>
                         );
                       })}
+                    </div>
+
+                    <div className="mt-3 space-y-1.5">
+                      <Label className="text-xs">Observação (opcional)</Label>
+                      <Textarea
+                        value={obs}
+                        onChange={(e) => setObsByItem((p) => ({ ...p, [key]: e.target.value }))}
+                        placeholder="Observações sobre o item…"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      <Label className="text-xs text-muted-foreground">Imagens do item (opcional)</Label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted">
+                          <UploadCloud className="h-4 w-4" />
+                          Adicionar imagens
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => onPickFiles(key, e.target.files)}
+                          />
+                        </label>
+                        {files.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {files.length} arquivo(s) selecionado(s)
+                          </span>
+                        )}
+                      </div>
+
+                      {files.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {files.map((f, idx) => (
+                            <div
+                              key={`${f.name}-${idx}`}
+                              className="inline-flex items-center gap-2 border rounded px-2 py-1 text-xs"
+                            >
+                              <span className="max-w-[180px] truncate">{f.name}</span>
+                              <button
+                                type="button"
+                                className="opacity-70 hover:opacity-100"
+                                onClick={() => removeFile(key, idx)}
+                                title="Remover"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

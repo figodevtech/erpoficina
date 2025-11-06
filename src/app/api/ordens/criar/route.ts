@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/** SOMENTE os enums do banco */
+/** enums do banco */
 type DBChecklistStatus = "OK" | "ALERTA" | "FALHA";
 type DBAlvo = "VEICULO" | "PECA";
 type DBPrioridade = "BAIXA" | "NORMAL" | "ALTA";
 
 type Payload = {
   setorid: number | null;
-  veiculoid: number | null; // vínculo direto (opcional)
+  veiculoid: number | null;
   descricao: string | null;
   observacoes: string | null;
   checklistTemplateId: string | null;
@@ -31,20 +31,17 @@ type Payload = {
     peca?: { nome: string; descricao?: string | null };
   };
 
-  checklist: Array<{ item: string; status?: DBChecklistStatus | string | null | undefined }>;
+  checklist: Array<{ item: string; status?: DBChecklistStatus | string | null | undefined; observacao?: string | null }>;
 };
 
-function onlyDigits(s: string) {
-  return (s || "").replace(/\D+/g, "");
-}
+function onlyDigits(s: string) { return (s || "").replace(/\D+/g, ""); }
 function deduzTipoPessoa(documento: string): "FISICA" | "JURIDICA" {
   const d = onlyDigits(documento);
   return d.length === 14 ? "JURIDICA" : "FISICA";
 }
 function toDbChecklistStatusOrNull(v: unknown): DBChecklistStatus | null {
   const t = String(v ?? "").trim().toUpperCase();
-  if (t === "OK" || t === "ALERTA" || t === "FALHA") return t as DBChecklistStatus;
-  return null;
+  return t === "OK" || t === "ALERTA" || t === "FALHA" ? (t as DBChecklistStatus) : null;
 }
 function normPrioridade(v: any): DBPrioridade {
   const t = String(v ?? "").trim().toUpperCase();
@@ -112,13 +109,12 @@ export async function POST(req: NextRequest) {
     let veiculoid: number | null = body?.veiculoid ? Number(body.veiculoid) : null;
     let pecaid: number | null = null;
 
-    // ids criados nesta chamada (para possível rollback)
+    // ids criados nesta chamada (rollback se der ruim)
     let createdVeiculoId: number | null = null;
     let createdPecaId: number | null = null;
 
     const alvo = body?.alvo;
     if (!alvo) {
-      // Sem alvo explícito: se não houver veiculoid, não sabemos como cumprir constraints
       if (!veiculoid) {
         return NextResponse.json(
           { error: "Informe o 'alvo' (VEICULO/PECA). Quando VEICULO, selecione um veículo ou informe placa, modelo e marca." },
@@ -129,12 +125,10 @@ export async function POST(req: NextRequest) {
     } else if (alvo.tipo === "VEICULO") {
       alvo_tipo = "VEICULO";
 
-      // Se não veio veiculoid, tenta criar usando placa única
       if (!veiculoid) {
         const placa = (alvo.veiculo?.placa || "").trim();
         const modelo = (alvo.veiculo?.modelo || "").trim();
         const marca = (alvo.veiculo?.marca || "").trim();
-        // No schema, placa é NOT NULL UNIQUE -> exigimos placa, e sugerimos modelo/marca
         if (!placa) {
           return NextResponse.json(
             { error: "Para alvo VEICULO sem vínculo, informe ao menos a PLACA (modelo/marca recomendados)." },
@@ -142,7 +136,6 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Tenta reaproveitar por placa
         const { data: vExist, error: eFindV } = await supabaseAdmin
           .from("veiculo")
           .select("id, clienteid")
@@ -194,7 +187,7 @@ export async function POST(req: NextRequest) {
 
       pecaid = pNew.id;
       createdPecaId = pNew.id;
-      veiculoid = null; // para PECA mantemos veiculoid nulo na OS (coerente)
+      veiculoid = null;
     } else {
       return NextResponse.json({ error: "alvo.tipo inválido" }, { status: 400 });
     }
@@ -209,9 +202,9 @@ export async function POST(req: NextRequest) {
       .from("ordemservico")
       .insert({
         clienteid,
-        veiculoid,               // pode ser null se alvo for PECA
-        pecaid,                  // setado se alvo for PECA
-        alvo_tipo,               // "VEICULO" | "PECA"
+        veiculoid,
+        pecaid,
+        alvo_tipo,
         usuariocriadorid,
         setorid,
         prioridade,
@@ -227,23 +220,29 @@ export async function POST(req: NextRequest) {
 
     // ========= Checklist =========
     const reqItens = Array.isArray(body.checklist) ? body.checklist : [];
-    // Se vieram itens, apenas insere os marcados (OK/ALERTA/FALHA).
     const itens = reqItens
-      .filter((x) => x?.item && typeof x.item === "string")
       .map((x) => {
-        const status = toDbChecklistStatusOrNull(x.status);
-        if (!status) return null; // ignorar não marcados
+        const label = (x?.item || "").trim();
+        const status = toDbChecklistStatusOrNull(x?.status);
+        if (!label || !status) return null;
         return {
           ordemservicoid: osId,
-          item: String(x.item).trim(),
-          status, // enum válido
-          observacao: null,
+          item: label,
+          status, // "OK" | "ALERTA" | "FALHA"
+          observacao: (x?.observacao ?? null) as string | null,
         };
       })
-      .filter(Boolean) as Array<{ ordemservicoid: number; item: string; status: DBChecklistStatus; observacao: null }>;
+      .filter(Boolean) as Array<{ ordemservicoid: number; item: string; status: DBChecklistStatus; observacao: string | null }>;
+
+    let checklistCreated:
+      | Array<{ id: number; item: string; status: DBChecklistStatus; observacao: string | null }>
+      | [] = [];
 
     if (itens.length) {
-      const { error: eCheck } = await supabaseAdmin.from("checklist").insert(itens);
+      const { data: inserted, error: eCheck } = await supabaseAdmin
+        .from("checklist")
+        .insert(itens)
+        .select("id, item, status, observacao");
       if (eCheck) {
         // compensação: apaga tudo que foi criado nesta chamada
         await supabaseAdmin.from("ordemservico").delete().eq("id", osId);
@@ -251,9 +250,10 @@ export async function POST(req: NextRequest) {
         if (createdVeiculoId) await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
         throw eCheck;
       }
+      checklistCreated = inserted ?? [];
     }
 
-    return NextResponse.json({ id: osId }, { status: 201 });
+    return NextResponse.json({ id: osId, checklistCreated }, { status: 201 });
   } catch (err: any) {
     console.error("POST /api/ordens/criar", err);
     return NextResponse.json({ error: err?.message || "Falha ao criar OS" }, { status: 500 });

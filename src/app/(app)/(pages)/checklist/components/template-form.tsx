@@ -217,8 +217,8 @@ export function TemplateForm({
             if (!v) setItemEditando(null);
           }}
           onSave={(novo) => atualizarItem({ ...novo, id: itemEditando.id })}
-          categorias={categorias}             // << readonly ok
-          initialValue={itemEditando}         // << agora suportado
+          categorias={categorias}            
+          initialValue={itemEditando}      
         />
       )}
     </div>

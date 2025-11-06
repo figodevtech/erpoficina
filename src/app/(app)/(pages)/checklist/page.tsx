@@ -110,36 +110,43 @@ export default function Page() {
       />
 
       {/* Dialog MAIOR + separador sob o título */}
-      <Dialog
-        open={open}
-        onOpenChange={(v) => {
-          if (!v) cancelarEdicao();
-          else setOpen(true);
-        }}
-      >
-        <DialogContent className="w-[98vw] max-w-6xl p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-4 pb-3">
-            <DialogTitle>{editandoId ? "Editar checklist" : "Novo checklist"}</DialogTitle>
-          </DialogHeader>
-          <Separator />
+     <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : cancelarEdicao())}>
+  <DialogContent
+    className="
+      p-0 w-[98vw] max-w-[98vw]
+      sm:max-w-[90vw] lg:max-w-[1200px] xl:max-w-[1400px]
+      max-h-[90vh] overflow-hidden
+    "
+  >
+    {/* layout fixo: header + separator + body rolável */}
+    <div className="flex h-[90vh] max-h-[90vh] flex-col">
+      <DialogHeader className="px-6 pt-4 pb-3 text-center shrink-0">
+        <DialogTitle className="text-lg font-semibold">
+          {editandoId ? "Editar checklist" : "Novo checklist"}
+        </DialogTitle>
+      </DialogHeader>
+      <div className="shrink-0 h-px bg-border" /> {/* Separator */}
 
-          <div className="px-6 py-4">
-            <TemplateForm
-              value={modeloEmEdicao}
-              categorias={categorias}
-              editando={!!editandoId}
-              onSave={salvar}
-              onCancel={cancelarEdicao}
-              variant="bare"
-            />
-            {salvando && (
-              <div className="mt-3 text-sm text-muted-foreground inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Salvando…
-              </div>
-            )}
+      {/* body com scroll, evita “muito alto” */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        <TemplateForm
+          value={modeloEmEdicao}
+          categorias={categorias}
+          editando={!!editandoId}
+          onSave={salvar}
+          onCancel={cancelarEdicao}
+          variant="bare"
+        />
+        {salvando && (
+          <div className="mt-3 text-sm text-muted-foreground inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Salvando…
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
+
     </div>
   );
 }

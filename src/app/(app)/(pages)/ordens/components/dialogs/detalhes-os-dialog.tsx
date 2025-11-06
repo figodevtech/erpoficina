@@ -1,4 +1,3 @@
-// src/app/(app)/(pages)/ordens/components/dialogs/os-detalhes-dialog.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -23,13 +22,11 @@ import {
   Building2,
   CheckSquare,
   Package,
+  ImageIcon,
 } from "lucide-react";
 
 // ===== Ajuste o prefixo da URL pública =====
-// Se o link público do orçamento for, por exemplo, "/orcamento/{token}",
-// troque a constante abaixo para "/orcamento".
 const PUBLIC_APPROVAL_BASE = "/aprovacao";
-
 function approvalUrlFromToken(token: string) {
   if (!token) return "";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -62,6 +59,20 @@ function fmtMoney(v: number | null | undefined) {
   if (v == null || isNaN(Number(v))) return "—";
   return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+function fileNameFromUrl(url: string) {
+  try {
+    const u = new URL(url);
+    const last = u.pathname.split("/").pop() || "imagem";
+    return decodeURIComponent(last);
+  } catch {
+    const last = url.split("/").pop() || "imagem";
+    try {
+      return decodeURIComponent(last);
+    } catch {
+      return last;
+    }
+  }
+}
 
 // ===== Tipos mínimos (compatíveis com sua API /api/ordens/[id]) =====
 type OS = {
@@ -78,7 +89,7 @@ type OS = {
   cliente?: { id: number; nomerazaosocial: string } | null;
   veiculo?: { id: number; placa?: string | null; modelo?: string | null; marca?: string | null } | null;
   alvo_tipo?: "VEICULO" | "PECA" | null;
-  peca?: { id: number; titulo: string } | null; // se sua API incluir peca populada
+  peca?: { id: number; titulo: string } | null;
 };
 
 type ItemProduto = {
@@ -99,12 +110,20 @@ type ItemServico = {
   servico?: { id: number; codigo?: string | null; descricao?: string | null; precohora?: number | null } | null;
 };
 
+type ChecklistImage = {
+  id: number;
+  url: string;
+  descricao?: string | null;
+  createdat?: string | null;
+};
+
 type ChecklistItem = {
   id: number;
   item: string;
   status: "PENDENTE" | "OK" | "ALERTA" | "FALHA";
   observacao?: string | null;
   createdat?: string | null;
+  imagens?: ChecklistImage[]; // <<==== NOVO
 };
 
 type Aprovacao = {
@@ -120,7 +139,7 @@ type OSDetalhesResponse = {
   itensProduto: ItemProduto[];
   itensServico: ItemServico[];
   checklist: ChecklistItem[];
-  aprovacoes?: Aprovacao[]; // a API mais nova pode retornar este campo
+  aprovacoes?: Aprovacao[];
 };
 
 export function OSDetalhesDialog({
@@ -185,10 +204,7 @@ export function OSDetalhesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-4xl p-0"
-        // Altura máxima e rolagem interna para não estourar a tela
-      >
+      <DialogContent className="sm:max-w-4xl p-0">
         <div className="flex flex-col max-h-[calc(100vh-6rem)]">
           <DialogHeader className="px-5 pt-5">
             <DialogTitle className="flex items-center gap-2">
@@ -362,87 +378,119 @@ export function OSDetalhesDialog({
                   </div>
                 </section>
 
-                {/* Checklist */}
+                {/* Checklist (com links de imagens) */}
                 <section className="rounded-lg border p-3">
                   <div className="text-sm font-medium mb-2">Checklist</div>
                   {(data.checklist ?? []).length === 0 ? (
                     <div className="text-sm text-muted-foreground">—</div>
                   ) : (
-                    <ul className="space-y-2 text-sm">
+                    <ul className="space-y-3 text-sm">
                       {data.checklist.map((c) => (
-                        <li key={c.id} className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{c.item}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {fmtDate(c.createdat)}
-                              {c.observacao ? ` • ${c.observacao}` : ""}
+                        <li key={c.id} className="rounded-md border p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{c.item}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {fmtDate(c.createdat)}
+                                {c.observacao ? ` • ${c.observacao}` : ""}
+                              </div>
                             </div>
+                            <Badge variant="outline">{c.status}</Badge>
                           </div>
-                          <Badge variant="outline">{c.status}</Badge>
+
+                          {/* Links das imagens */}
+                          {Array.isArray(c.imagens) && c.imagens.length > 0 && (
+                            <div className="mt-3 space-y-1.5">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                Imagens anexadas
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {c.imagens.map((img) => {
+                                  const name = fileNameFromUrl(img.url);
+                                  return (
+                                    <a
+                                      key={img.id}
+                                      href={img.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted"
+                                      title={img.descricao || name}
+                                    >
+                                      {name}
+                                      <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
                   )}
                 </section>
 
-                {/* Links de aprovação (AGORA com URL completa) */}
-                <section className="rounded-lg border p-3">
-                  <div className="text-sm font-medium mb-2">Links de aprovação</div>
-                  {(data.aprovacoes ?? []).length === 0 ? (
-                    <div className="text-sm text-muted-foreground">—</div>
-                  ) : (
-                    <ul className="space-y-2 text-sm">
-                      {data.aprovacoes!.map((a) => {
-                        const url = approvalUrlFromToken(a.token);
-                        return (
-                          <li key={a.id} className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="truncate">
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="underline break-all"
-                                  title={url}
+                {/* Links de aprovação */}
+                {Array.isArray(data.aprovacoes) && (
+                  <section className="rounded-lg border p-3">
+                    <div className="text-sm font-medium mb-2">Links de aprovação</div>
+                    {data.aprovacoes.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">—</div>
+                    ) : (
+                      <ul className="space-y-2 text-sm">
+                        {data.aprovacoes.map((a) => {
+                          const url = approvalUrlFromToken(a.token);
+                          return (
+                            <li key={a.id} className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="truncate">
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="underline break-all"
+                                    title={url}
+                                  >
+                                    {url}
+                                  </a>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado: {fmtDate(a.usado_em)}
+                                </div>
+                              </div>
+                              <div className="shrink-0 flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  title="Copiar link"
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(url);
+                                      toast.success("Link copiado");
+                                    } catch {
+                                      toast.error("Não foi possível copiar");
+                                    }
+                                  }}
                                 >
-                                  {url}
-                                </a>
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  title="Abrir link"
+                                  onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado: {fmtDate(a.usado_em)}
-                              </div>
-                            </div>
-                            <div className="shrink-0 flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                title="Copiar link"
-                                onClick={async () => {
-                                  try {
-                                    await navigator.clipboard.writeText(url);
-                                    toast.success("Link copiado");
-                                  } catch {
-                                    toast.error("Não foi possível copiar");
-                                  }
-                                }}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                title="Abrir link"
-                                onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </section>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </section>
+                )}
               </div>
             )}
           </div>
