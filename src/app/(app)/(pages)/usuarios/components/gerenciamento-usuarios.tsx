@@ -1,214 +1,213 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Loader2, Search } from "lucide-react";
-
-import type { UsuarioExpandido } from "@/types/usuario";
-import type { Setor } from "@/types/setor";
-import type { Perfil } from "@/types/perfil";
-import type { Permissao } from "@/types/permissao";
-import type { EnumPermissoes } from "@/types/enum";
+import { Search } from "lucide-react";
 
 import { TabelaUsuarios } from "./tabela-usuarios";
-import { DialogoCriarUsuario } from "./criar-usuario";
-import { DialogoEditarUsuario } from "./editar-usuario";
-import { PainelDetalhesUsuario } from "./detalhes-usuario";
+import { CriarUsuarioDialog } from "./criar-usuario";
+import { EditarUsuarioDialog } from "./editar-usuario";
+import { DetalhesUsuarioDialog } from "./detalhes-usuario";
 
-export default function PaginaGerenciamentoUsuarios() {
-  const [usuarios, setUsuarios] = useState<UsuarioExpandido[]>([]);
-  const [setores, setSetores] = useState<Setor[]>([]);
+import {
+  fetchLookup,
+  fetchUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  type Usuario,
+  type Perfil,
+  type Setor,
+} from "../lib/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+export default function GerenciamentoUsuarios() {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [perfis, setPerfis] = useState<Perfil[]>([]);
-  const [permissoes, setPermissoes] = useState<Permissao[]>([]);
+  const [setores, setSetores] = useState<Setor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
 
-  const [selectedUser, setSelectedUser] = useState<UsuarioExpandido | null>(null);
-  const [editingUser, setEditingUser] = useState<UsuarioExpandido | null>(null);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  // filtros
+  const [q, setQ] = useState("");
+  const [perfilFiltro, setPerfilFiltro] = useState<string>("ALL"); // 👈 sentinel
 
-  const loadAuxLists = useCallback(async () => {
-    const res = await fetch("/api/users/lookup", { cache: "no-store" });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || "Falha ao carregar listas auxiliares");
-    setSetores(json.setores as Setor[]);
-    setPermissoes(json.permissoes as Permissao[]);
-    setPerfis(json.perfis as Perfil[]);
-  }, []);
+  // dialogs
+  const [openCriar, setOpenCriar] = useState(false);
+  const [openEditar, setOpenEditar] = useState(false);
+  const [openDetalhes, setOpenDetalhes] = useState(false);
+  const [selected, setSelected] = useState<Usuario | null>(null);
 
-  const loadUsers = useCallback(async () => {
-    const res = await fetch("/api/users", { cache: "no-store" });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || "Falha ao carregar usuários");
-    setUsuarios(json.users as UsuarioExpandido[]);
-  }, []);
-
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const loadAll = useCallback(async () => {
     try {
-      await Promise.all([loadUsers(), loadAuxLists()]);
+      setLoading(true);
+      setErro(null);
+      const [lookup, users] = await Promise.all([fetchLookup(), fetchUsers()]);
+      setPerfis(lookup.perfis);
+      setSetores(lookup.setores);
+      setUsuarios(users);
     } catch (e: any) {
-      setError(e.message ?? "Erro ao carregar dados");
+      setErro(e?.message ?? "Falha ao carregar usuários");
+      setUsuarios([]);
     } finally {
       setLoading(false);
     }
-  }, [loadUsers, loadAuxLists]);
+  }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
-  const filteredUsers = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return usuarios;
-    return usuarios.filter((u) => {
-      const perfilNome = u.perfil?.nome ?? "";
-      const setorNome = u.setor?.nome ?? "";
-      return (
-        u.nome.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        perfilNome.toLowerCase().includes(q) ||
-        setorNome.toLowerCase().includes(q)
-      );
-    });
-  }, [usuarios, searchTerm]);
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
 
-  const handleCreateUser = useCallback(
-    async (payload: { nome: string; email: string; perfilId?: number; perfilNome?: string; setorId?: number }) => {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
+    let base = usuarios;
+
+    if (term) {
+      base = base.filter((u) => {
+        const perfilNome = u.perfil?.nome ?? "";
+        const setorNome = u.setor?.nome ?? "";
+        return (
+          u.nome?.toLowerCase().includes(term) ||
+          u.email?.toLowerCase().includes(term) ||
+          perfilNome.toLowerCase().includes(term) ||
+          setorNome.toLowerCase().includes(term)
+        );
       });
-      const json = await res.json();
-      if (!res.ok) { setError(json?.error || "Erro ao criar usuário"); return false; }
-      setUsuarios(json.users);
-      return true;
-    },
-    []
-  );
+    }
 
-  const handleEditUser = (user: UsuarioExpandido) => {
-    setEditingUser(user);
-    setIsEditOpen(true);
+    // 👇 aplica filtro só quando for diferente de "ALL"
+    if (perfilFiltro !== "ALL") {
+      const pid = Number(perfilFiltro);
+      base = base.filter((u) => {
+        const idNorm = u.perfilid ?? u.perfil?.id ?? null;
+        return idNorm === pid;
+      });
+    }
+
+    return base;
+  }, [usuarios, q, perfilFiltro]);
+
+  // ações
+  const onNew = () => setOpenCriar(true);
+
+  const onEdit = (u: Usuario) => {
+    setSelected(u);
+    setOpenEditar(true);
   };
 
-  const handleSaveUser = useCallback(
-    async (updated: UsuarioExpandido & { permissoes?: EnumPermissoes[] }) => {
-      const setorId = updated.setor?.id ?? (updated as any).setorId ?? (updated as any).setorid ?? null;
-      const body: any = {
-        nome: updated.nome,
-        email: updated.email,
-        setorId,
-        permissoes: updated.permissoes ?? [],
-      };
-      if (updated.perfil?.id) body.perfilId = updated.perfil.id;
-      else if (updated.perfil?.nome) body.perfilNome = updated.perfil.nome;
+  const onView = (u: Usuario) => {
+    setSelected(u);
+    setOpenDetalhes(true);
+  };
 
-      const res = await fetch(`/api/users/${updated.id}`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok) { setError(json?.error || "Erro ao salvar usuário"); return false; }
-      setUsuarios(json.users);
-      return true;
-    },
-    []
-  );
+  const onDelete = async (id: string | number) => {
+    try {
+      await deleteUser(id);
+      toast.success("Usuário removido.");
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao remover usuário.");
+    }
+  };
 
-  const handleDeleteUser = useCallback(async (user: UsuarioExpandido) => {
-    if (!confirm(`Remover ${user.nome}? Essa ação não pode ser desfeita.`)) return false;
-    const res = await fetch(`/api/users/${user.id}`, { method: "DELETE" });
-    const json = await res.json();
-    if (!res.ok) { setError(json?.error || "Erro ao remover usuário"); return false; }
-    setUsuarios(json.users);
-    if (selectedUser?.id === user.id) setSelectedUser(null);
-    return true;
-  }, [selectedUser]);
+  // criar/editar
+  const handleCreate = async (payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null }) => {
+    try {
+      await createUser(payload);
+      toast.success("Usuário criado.");
+      setOpenCriar(false);
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao criar usuário.");
+    }
+  };
+
+  const handleUpdate = async (
+    id: string | number,
+    payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null }
+  ) => {
+    try {
+      await updateUser(id, payload);
+      toast.success("Usuário atualizado.");
+      setOpenEditar(false);
+      setSelected(null);
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao atualizar usuário.");
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-2 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Usuários</CardTitle>
-            <CardDescription>Gerencie usuários, perfis e permissões (herdadas do perfil).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <div className="relative flex-1 min-w-[220px]">
-                <Search className="h-4 w-4 text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2" />
-                <Input
-                  className="pl-8"
-                  placeholder="Buscar por nome, e-mail, perfil ou setor"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+    <>
+      {/* Barra: busca + filtro de perfil */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2" />
+          <Input
+            className="pl-8"
+            placeholder="Buscar por nome, e-mail, perfil ou setor"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
 
-              <DialogoCriarUsuario
-                setores={setores}
-                perfis={perfis}
-                onCreateUser={async ({ nome, email, perfilId, perfilNome, setorId }) => {
-                  const ok = await handleCreateUser({ nome, email, perfilId, perfilNome, setorId });
-                  if (ok) setSelectedUser(null);
-                  return ok;
-                }}
-              />
-
-              <Button variant="outline" onClick={reload} disabled={loading}>
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Atualizando…
-                  </span>
-                ) : (
-                  "Atualizar"
-                )}
-              </Button>
-            </div>
-
-            {error && <div className="text-sm text-red-500 mb-2">{error}</div>}
-
-            {loading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Carregando…
-              </div>
-            ) : (
-              <TabelaUsuarios
-                usuarios={filteredUsers}
-                selectedUser={selectedUser}
-                onSelectUser={setSelectedUser}
-                onEditUser={handleEditUser}
-                onDeleteUser={handleDeleteUser}
-              />
-            )}
-          </CardContent>
-        </Card>
+        <Select value={perfilFiltro} onValueChange={setPerfilFiltro}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todos os perfis</SelectItem>
+            {perfis.map((p) => (
+              <SelectItem key={p.id} value={String(p.id)}>
+                {p.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="md:col-span-1">
-        <PainelDetalhesUsuario user={selectedUser} onEditUser={handleEditUser} />
-      </div>
-
-      <DialogoEditarUsuario
-        user={editingUser}
-        setores={setores}
-        perfis={perfis}
-        permissoes={permissoes}
-        isOpen={isEditOpen}
-        onClose={() => { setIsEditOpen(false); setEditingUser(null); }}
-        onSave={async (user) => {
-          const ok = await handleSaveUser(user);
-          if (ok) { setIsEditOpen(false); setEditingUser(null); }
-          return ok;
-        }}
+      <TabelaUsuarios
+        items={filtered}
+        loading={loading}
+        error={erro}
+        onReload={loadAll}
+        onNew={onNew}
+        onEdit={onEdit}
+        onView={onView}
+        onDelete={onDelete}
       />
-    </div>
+
+      {/* Dialogs */}
+      <CriarUsuarioDialog
+        open={openCriar}
+        onOpenChange={setOpenCriar}
+        perfis={perfis}
+        setores={setores}
+        onCreate={handleCreate}
+      />
+
+      <EditarUsuarioDialog
+        open={openEditar}
+        onOpenChange={(v) => {
+          setOpenEditar(v);
+          if (!v) setSelected(null);
+        }}
+        usuario={selected}
+        perfis={perfis}
+        setores={setores}
+        onSave={handleUpdate}
+      />
+
+      <DetalhesUsuarioDialog
+        open={openDetalhes}
+        onOpenChange={(v) => {
+          setOpenDetalhes(v);
+          if (!v) setSelected(null);
+        }}
+        usuario={selected}
+      />
+    </>
   );
 }

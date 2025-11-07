@@ -1,174 +1,118 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import type { Perfil, Setor } from "../lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import type { Setor } from "@/types/setor";
-import type { Perfil } from "@/types/perfil";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
-interface Props {
-  setores: Setor[];
+type Props = {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
   perfis: Perfil[];
-  onCreateUser: (payload: {
-    nome: string;
-    email: string;
-    perfilId?: number;   // preferido
-    perfilNome?: string; // alternativa
-    setorId?: number;
-  }) => Promise<boolean>;
-}
+  setores: Setor[];
+  onCreate: (payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null }) => void | Promise<void>;
+};
 
-export function DialogoCriarUsuario({ setores, perfis, onCreateUser }: Props) {
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCreate }: Props) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [perfilId, setPerfilId] = useState<number | undefined>(undefined);
-  const [setorId, setSetorId] = useState<number | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+  const [perfilid, setPerfilid] = useState<string>("");
+  const [setorid, setSetorid] = useState<string>("");
+  const [saving, setSaving] = useState(false);
 
-  const reset = () => {
-    setNome("");
-    setEmail("");
-    setPerfilId(undefined);
-    setSetorId(undefined);
-    setError(null);
-  };
+  const canSave = nome.trim() && email.trim();
 
-  const handleCreate = async () => {
-    setError(null);
-
-    if (!nome.trim() || !email.trim() || !perfilId || !setorId) {
-      setError("Preencha nome, e-mail, perfil e setor.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("E-mail inválido.");
-      return;
-    }
-
+  const handleSave = async () => {
+    if (!canSave || saving) return;
     setSaving(true);
-    const ok = await onCreateUser({
-      nome: nome.trim(),
-      email: email.trim().toLowerCase(),
-      perfilId,
-      setorId,
-    });
-    setSaving(false);
-
-    if (ok) {
-      reset();
-      setOpen(false);
+    try {
+      await onCreate({
+        nome: nome.trim(),
+        email: email.trim(),
+        perfilid: perfilid ? Number(perfilid) : null,
+        setorid: setorid ? Number(setorid) : null,
+      });
+      // limpa
+      setNome("");
+      setEmail("");
+      setPerfilid("");
+      setSetorid("");
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (saving) return;     // evita fechar/abrir no meio do save
-        setOpen(v);             // <-- agora abre e fecha
-        if (!v) reset();        // limpa ao fechar
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button>Novo Usuário</Button>
-      </DialogTrigger>
-
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(v) => !saving && onOpenChange(v)}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Novo Usuário</DialogTitle>
-          <DialogDescription>Crie um usuário vinculando um perfil e um setor.</DialogDescription>
+          <DialogTitle>Novo usuário</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Nome</Label>
-            <Input
-              className="col-span-3"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Nome completo"
-            />
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Nome</Label>
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>E-mail</Label>
+            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@dominio.com" />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">E-mail</Label>
-            <Input
-              className="col-span-3"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@exemplo.com"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Perfil</Label>
+              <Select value={perfilid} onValueChange={setPerfilid}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {perfis.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Setor</Label>
+              <Select value={setorid} onValueChange={setSetorid}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {setores.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Perfil</Label>
-            <Select
-              value={perfilId ? String(perfilId) : ""}
-              onValueChange={(v) => setPerfilId(Number(v))}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Selecione um perfil" />
-              </SelectTrigger>
-              <SelectContent>
-                {perfis.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={!canSave || saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando…
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
           </div>
-
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Setor</Label>
-            <Select
-              value={setorId ? String(setorId) : ""}
-              onValueChange={(v) => setSetorId(Number(v))}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Selecione um setor" />
-              </SelectTrigger>
-              <SelectContent>
-                {setores.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleCreate} disabled={saving}>
-            {saving ? "Criando..." : "Criar Usuário"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

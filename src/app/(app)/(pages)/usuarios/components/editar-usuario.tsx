@@ -1,147 +1,79 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
+import type { Perfil, Setor, Usuario } from "../lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
-import type { UsuarioExpandido } from "@/types/usuario";
-import type { Setor } from "@/types/setor";
-import type { Perfil } from "@/types/perfil";
-import type { Permissao } from "@/types/permissao";
-import type { EnumPermissoes } from "@/types/enum";
-
-interface Props {
-  user: UsuarioExpandido | null;
-  setores: Setor[];
+type Props = {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  usuario: Usuario | null;
   perfis: Perfil[];
-  permissoes: Permissao[]; // catálogo (todas)
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (user: UsuarioExpandido & { permissoes?: string[] }) => Promise<boolean>;
-}
+  setores: Setor[];
+  onSave: (id: string | number, payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null }) => void | Promise<void>;
+};
 
-export function DialogoEditarUsuario({ user, setores, perfis, permissoes, isOpen, onClose, onSave }: Props) {
-  const [editingUser, setEditingUser] = useState<UsuarioExpandido | null>(null);
-  const [perfilPerms, setPerfilPerms] = useState<EnumPermissoes[]>([]);
+export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setores, onSave }: Props) {
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [perfilid, setPerfilid] = useState<string>("");
+  const [setorid, setSetorid] = useState<string>("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // inicializa estado quando abrir ou mudar usuário
   useEffect(() => {
-    if (user && isOpen) {
-      setEditingUser({ ...user });
-      setPerfilPerms([...(user.permissoes ?? [])]);
-      setError(null);
-    }
-  }, [user, isOpen]);
+    if (!usuario) return;
+    setNome(usuario.nome ?? "");
+    setEmail(usuario.email ?? "");
+    setPerfilid(usuario.perfilid != null ? String(usuario.perfilid) : "");
+    setSetorid(usuario.setorid != null ? String(usuario.setorid) : "");
+  }, [usuario]);
 
-  const perfisById = useMemo(() => {
-    const m = new Map<number, Perfil>();
-    for (const p of perfis) m.set(p.id, p);
-    return m;
-  }, [perfis]);
-
-  // ------- handlers -------
-  const togglePerm = (nome: string, checked: boolean) => {
-    const value = nome as EnumPermissoes;
-    setPerfilPerms((prev) => (checked ? Array.from(new Set([...prev, value])) : prev.filter((n) => n !== value)));
-  };
+  const canSave = !!usuario && nome.trim() && email.trim();
 
   const handleSave = async () => {
-    if (!editingUser) return;
-    setError(null);
-
-    // validação simples
-    if (!editingUser.nome?.trim()) {
-      setError("Informe o nome.");
-      return;
-    }
-    if (!editingUser.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editingUser.email)) {
-      setError("E-mail inválido.");
-      return;
-    }
-    if (!editingUser.perfil?.id) {
-      setError("Selecione um perfil.");
-      return;
-    }
-    if (!editingUser.setor?.id && !(editingUser as any).setorid && !(editingUser as any).setorId) {
-      setError("Selecione um setor.");
-      return;
-    }
-
+    if (!canSave || !usuario || saving) return;
     setSaving(true);
-    const ok = await onSave({ ...editingUser, permissoes: perfilPerms });
-    setSaving(false);
-
-    if (ok) onClose();
+    try {
+      await onSave(usuario.id, {
+        nome: nome.trim(),
+        email: email.trim(),
+        perfilid: perfilid ? Number(perfilid) : null,
+        setorid: setorid ? Number(setorid) : null,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={open} onOpenChange={(v) => !saving && onOpenChange(v)}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Editar Usuário</DialogTitle>
-          <DialogDescription>Atualize dados, perfil e permissões (herdadas do perfil).</DialogDescription>
+          <DialogTitle>Editar usuário</DialogTitle>
         </DialogHeader>
 
-        {editingUser ? (
-          <Tabs defaultValue="dados">
-            <TabsList>
-              <TabsTrigger value="dados">Dados</TabsTrigger>
-              <TabsTrigger value="permissoes">Permissões do Perfil</TabsTrigger>
-            </TabsList>
+        {!usuario ? null : (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome</Label>
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>E-mail</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@dominio.com" />
+            </div>
 
-            {/* Aba: Dados */}
-            <TabsContent value="dados" className="space-y-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Nome</Label>
-                <Input
-                  className="col-span-3"
-                  value={editingUser.nome}
-                  onChange={(e) => setEditingUser({ ...editingUser, nome: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">E-mail</Label>
-                <Input
-                  className="col-span-3"
-                  type="email"
-                  value={editingUser.email}
-                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Perfil</Label>
-                <Select
-                  value={editingUser.perfil?.id ? String(editingUser.perfil.id) : ""}
-                  onValueChange={(val) => {
-                    const id = Number(val);
-                    const p = perfisById.get(id);
-                    if (!p) return;
-                    setEditingUser({
-                      ...editingUser,
-                      perfil: { id: p.id, nome: p.nome },
-                    });
-                    // opcional: ao trocar de perfil, você pode limpar/redefinir permissões
-                    // setPerfilPerms([]);
-                  }}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecione um perfil" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Perfil</Label>
+                <Select value={perfilid} onValueChange={setPerfilid}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
                     {perfis.map((p) => (
@@ -153,33 +85,11 @@ export function DialogoEditarUsuario({ user, setores, perfis, permissoes, isOpen
                 </Select>
               </div>
 
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Setor</Label>
-                <Select
-                  value={
-                    editingUser.setor?.id
-                      ? String(editingUser.setor.id)
-                      : (editingUser as any).setorId
-                      ? String((editingUser as any).setorId)
-                      : (editingUser as any).setorid
-                      ? String((editingUser as any).setorid)
-                      : ""
-                  }
-                  onValueChange={(val) => {
-                    const id = Number(val);
-                    const s = setores.find((x) => x.id === id);
-                    if (!s) return;
-                    setEditingUser({
-                      ...editingUser,
-                      setor: { id: s.id, nome: s.nome },
-                      // mantemos compat com handlers que leem setorId
-                      ...(editingUser as any),
-                      setorId: s.id,
-                    } as any);
-                  }}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecione um setor" />
+              <div className="space-y-1.5">
+                <Label>Setor</Label>
+                <Select value={setorid} onValueChange={setSetorid}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
                     {setores.map((s) => (
@@ -190,41 +100,25 @@ export function DialogoEditarUsuario({ user, setores, perfis, permissoes, isOpen
                   </SelectContent>
                 </Select>
               </div>
-            </TabsContent>
+            </div>
 
-            {/* Aba: Permissões do Perfil */}
-            <TabsContent value="permissoes" className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                As permissões selecionadas serão aplicadas ao <b>perfil</b> deste usuário. Isso impacta todos que usam o
-                mesmo perfil.
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {permissoes.map((perm) => (
-                  <label key={perm.id} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={perfilPerms.includes(perm.nome)}
-                      onCheckedChange={(c) => togglePerm(perm.nome, Boolean(c))}
-                    />
-                    <span>{perm.nome}</span>
-                  </label>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="text-sm text-muted-foreground">Selecione um usuário para editar.</div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={!canSave || saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando…
+                  </>
+                ) : (
+                  "Salvar"
+                )}
+              </Button>
+            </div>
+          </div>
         )}
-
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving || !editingUser}>
-            {saving ? "Salvando..." : "Salvar alterações"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import {
   SidebarGroup,
@@ -12,42 +14,47 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { useRouter } from "next/navigation";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
+type SubItem = { title: string; url: string; icon?: LucideIcon };
 type Item = {
   title: string;
-  url: string;
+  url: string; // pode ser "#" quando for agrupador
   icon?: LucideIcon;
   isActive?: boolean;
-  items?: { title: string; url: string; icon: LucideIcon }[];
+  items?: SubItem[];
 };
 
-// 🔧 Subcomponente para poder usar useId com segurança (e dar IDs estáveis)
-function NavMainCollapsibleItem({
-  item,
-}: {
-  item: Item & { items: NonNullable<Item["items"]> };
-}) {
+function pathActive(href: string, pathname: string) {
+  if (!href || href === "#") return false;
+  if (pathname === href) return true;
+  return pathname.startsWith(href.endsWith("/") ? href : href + "/");
+}
+
+function NavMainCollapsibleItem({ item }: { item: Item & { items: NonNullable<Item["items"]> } }) {
   const uid = React.useId();
   const contentId = `${uid}-content`;
-  const router = useRouter();
+  const pathname = usePathname();
+
+  const isGroupActive = React.useMemo(
+    () => item.items?.some((s) => pathActive(s.url, pathname)) ?? false,
+    [item.items, pathname]
+  );
+
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (isGroupActive) setOpen(true);
+  }, [isGroupActive]);
 
   return (
-    <Collapsible asChild defaultOpen={false} className="group/collapsible">
+    <Collapsible asChild open={open} onOpenChange={setOpen} className="group/collapsible">
       <SidebarMenuItem>
-        <CollapsibleTrigger
-          className="data-[state=open]:bg-primary data-[state=open]:hover:bg-primary"
-          asChild
-        >
+        <CollapsibleTrigger asChild>
           <SidebarMenuButton
-            tooltip={item.title}
+            // ⚠️ sem tooltip aqui para evitar wrapper do Radix e mismatch
+            isActive={isGroupActive}
             className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-            aria-controls={contentId} // <- estável
+            aria-controls={contentId}
           >
             {item.icon ? <item.icon /> : null}
             <span>{item.title}</span>
@@ -56,23 +63,25 @@ function NavMainCollapsibleItem({
         </CollapsibleTrigger>
 
         <CollapsibleContent id={contentId}>
-          {" "}
-          {/* <- estável */}
           <SidebarMenuSub>
-            {item.items.map((sub) => (
-              <SidebarMenuSubItem key={sub.title}>
-                <SidebarMenuSubButton
-                  onClick={() => router.push(sub.url)}
-                  
-                  className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-                >
-                  
-                  
-                  {sub.icon ? <sub.icon /> : null}
-                  <span>{sub.title}</span>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
+            {item.items.map((sub) => {
+              const subActive = pathActive(sub.url, pathname);
+              return (
+                <SidebarMenuSubItem key={sub.title}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={subActive as any}
+                    data-active={subActive || undefined}
+                    className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
+                  >
+                    <Link href={sub.url} aria-current={subActive ? "page" : undefined} title={sub.title}>
+                      {sub.icon ? <sub.icon /> : null}
+                      <span>{sub.title}</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>
@@ -81,30 +90,35 @@ function NavMainCollapsibleItem({
 }
 
 export function NavMain({ items }: { items: Item[] }) {
-  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Módulos</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) =>
-          item.items ? (
-            <NavMainCollapsibleItem key={item.title} item={item as any} />
-          ) : (
-            <SidebarMenuItem
-              onClick={() => router.push(item.url)}
-              key={item.title}
-            >
+        {items.map((item) => {
+          if (item.items?.length) {
+            return <NavMainCollapsibleItem key={item.title} item={item as any} />;
+          }
+
+          const isActive = pathActive(item.url, pathname);
+
+          return (
+            <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
+                asChild
+                // ⚠️ sem tooltip aqui também
+                isActive={isActive}
                 className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-                tooltip={item.title}
               >
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
+                <Link href={item.url} aria-current={isActive ? "page" : undefined} title={item.title}>
+                  {item.icon ? <item.icon /> : null}
+                  <span>{item.title}</span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          )
-        )}
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

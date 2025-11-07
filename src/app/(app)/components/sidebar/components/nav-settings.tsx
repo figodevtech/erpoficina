@@ -1,12 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronRight, type LucideIcon } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -18,26 +16,45 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 
+type SubItem = { title: string; url: string; icon?: LucideIcon };
 type Item = {
   title: string;
-  url: string;
+  url: string; // pode ser "#"
   icon?: LucideIcon;
   isActive?: boolean;
-  items?: { title: string; url: string; icon?: LucideIcon }[];
+  items?: SubItem[];
 };
+
+function pathActive(href: string, pathname: string) {
+  if (!href || href === "#") return false;
+  if (pathname === href) return true;
+  return pathname.startsWith(href.endsWith("/") ? href : href + "/");
+}
 
 function NavSettingsCollapsibleItem({ item }: { item: Item & { items: NonNullable<Item["items"]> } }) {
   const uid = React.useId();
   const contentId = `${uid}-content`;
+  const pathname = usePathname();
+
+  const isGroupActive = React.useMemo(
+    () => item.items?.some((s) => pathActive(s.url, pathname)) ?? false,
+    [item.items, pathname]
+  );
+
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (isGroupActive) setOpen(true);
+  }, [isGroupActive]);
 
   return (
-    <Collapsible asChild defaultOpen={false} className="group/collapsible">
+    <Collapsible asChild open={open} onOpenChange={setOpen} className="group/collapsible">
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
-            tooltip={item.title}
+            // ⚠️ sem tooltip aqui
+            isActive={isGroupActive}
             className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-            aria-controls={contentId}              // <- estável
+            aria-controls={contentId}
           >
             {item.icon ? <item.icon /> : null}
             <span>{item.title}</span>
@@ -45,21 +62,26 @@ function NavSettingsCollapsibleItem({ item }: { item: Item & { items: NonNullabl
           </SidebarMenuButton>
         </CollapsibleTrigger>
 
-        <CollapsibleContent id={contentId}>      {/* <- estável */}
+        <CollapsibleContent id={contentId}>
           <SidebarMenuSub>
-            {item.items.map((sub) => (
-              <SidebarMenuSubItem key={sub.title}>
-                <SidebarMenuSubButton
-                  asChild
-                  className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
-                >
-                  <a href={sub.url}>
-                    {sub.icon && <sub.icon />}
-                    <span>{sub.title}</span>
-                  </a>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
+            {item.items.map((sub) => {
+              const subActive = pathActive(sub.url, pathname);
+              return (
+                <SidebarMenuSubItem key={sub.title}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={subActive as any}
+                    data-active={subActive || undefined}
+                    className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
+                  >
+                    <Link href={sub.url} aria-current={subActive ? "page" : undefined} title={sub.title}>
+                      {sub.icon ? <sub.icon /> : null}
+                      <span>{sub.title}</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>
@@ -68,28 +90,35 @@ function NavSettingsCollapsibleItem({ item }: { item: Item & { items: NonNullabl
 }
 
 export function NavSettings({ items }: { items: Item[] }) {
+  const pathname = usePathname();
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Ajustes</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) =>
-          item.items ? (
-            <NavSettingsCollapsibleItem key={item.title} item={item as any} />
-          ) : (
+        {items.map((item) => {
+          if (item.items?.length) {
+            return <NavSettingsCollapsibleItem key={item.title} item={item as any} />;
+          }
+
+          const isActive = pathActive(item.url, pathname);
+
+          return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
-                tooltip={item.title}
+                // ⚠️ sem tooltip aqui
+                isActive={isActive}
                 className="hover:text-white transition-all hover:cursor-pointer hover:bg-primary"
               >
-                <a href={item.url}>
+                <Link href={item.url} aria-current={isActive ? "page" : undefined} title={item.title}>
                   {item.icon ? <item.icon /> : null}
                   <span>{item.title}</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          )
-        )}
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );
