@@ -5,6 +5,7 @@ import { StatusInfo, Tipo_transacao, Transaction } from "./types";
 import Cards from "./components/cards";
 import SearchFilter from "./components/searchFilter";
 import FinancialTable from "./components/financialTable";
+import { date } from "zod";
 
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -21,10 +22,14 @@ export default function FinanceiroPage() {
     totalPages: 0,
   });
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const handleGetTransactions = async (
     pageNumber?: number,
     limit?: number,
     search?: string,
+    dateFrom?: string,
+    dateTo?: string,
     tipo?: Tipo_transacao | ""
   ) => {
     setIsLoading(true);
@@ -35,6 +40,8 @@ export default function FinanceiroPage() {
           limit: pagination.limit,
           search: search || undefined,
           tipo: tipo,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
         },
       });
       if (response.status === 200) {
@@ -76,8 +83,8 @@ export default function FinanceiroPage() {
   };
 
   useEffect(() => {
-    handleGetTransactions(pagination.page, pagination.limit, search, tipo);
-  }, [tipo, search]);
+    handleGetTransactions( pagination.page, pagination.limit, search,dateFrom, dateTo, tipo,);
+  }, [tipo, search, dateFrom, dateTo]);
 
   useEffect(() => {
     handleGetTransactions(1, pagination.limit);
@@ -95,6 +102,10 @@ export default function FinanceiroPage() {
         setSearch={setSearch}
         search={search}
         setTipo={setTipo}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        setDateFrom={setDateFrom}
+        setDateTo={setDateTo}
       />
       <FinancialTable
         handleGetStatusCounter={handleGetStatusCounter}

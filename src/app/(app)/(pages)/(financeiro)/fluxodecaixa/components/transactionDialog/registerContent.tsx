@@ -34,7 +34,6 @@ import { toast } from "sonner";
 import { Upload } from "lucide-react";
 import { describe } from "node:test";
 import { Switch } from "@/components/ui/switch";
-import { set } from "nprogress";
 import formatarEmReal from "@/utils/formatarEmReal";
 
 interface RegisterContentProps {
@@ -159,6 +158,12 @@ export default function RegisterContent({
     console.log("osId:", osId);
     handleGetBanks();
   }, []);
+
+  useEffect((
+  )=> { 
+    setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor})
+    setIsChecked(false)
+  }, [newTransaction.tipo])
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">

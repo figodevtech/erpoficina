@@ -14,8 +14,6 @@ interface SearchFilterProps {
 }
 export default function SearchFilter ({setSearch, setStatus, status}: SearchFilterProps) {
     return(
-        <Card>
-        <CardContent className="pt-6">
           <div className="flex gap-6 flex-col md:flex-row">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -60,7 +58,6 @@ export default function SearchFilter ({setSearch, setStatus, status}: SearchFilt
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        
     )
 }

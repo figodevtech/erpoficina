@@ -49,6 +49,7 @@ import DeleteAlert from "./deleteAlert";
 import { useState } from "react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
+import { ExportCustomersButton } from "./ExportCustomersButton";
 
 interface CustomerDataTableProps {
   handleGetCustomers: (
@@ -110,7 +111,7 @@ export default function CustomersDataTable({
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle>Lista de Clientes</CardTitle>
-            <CardDescription>
+            <CardDescription className="flex flex-col">
               <button
                 onClick={() => {
                   handleGetCustomers(
@@ -131,6 +132,8 @@ export default function CustomersDataTable({
 
           {/* 👉 Botão movido para cá */}
           <div className="flex items-center gap-2">
+                          <ExportCustomersButton search={search} status={status} />
+
             <CustomerDialog>
               <Button className="hover:cursor-pointer">Novo Cliente</Button>
             </CustomerDialog>
