@@ -50,6 +50,7 @@ import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
 import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { getCategoryIcon, getTypeColor } from "../utils";
+import { ExportTransactionsButton } from "./ExportTransactionsButton";
 
 interface FinancialTableProps {
   transactions: Transaction[];
@@ -129,6 +130,10 @@ export default function FinancialTable({
               |LISTA
             </span>
           </CardTitle>
+          <div className="flex flex-row gap-4 items-center">
+
+            <ExportTransactionsButton/>
+
           <TransactionDialog
             open={isOpen}
             setOpen={setIsOpen}
@@ -143,6 +148,7 @@ export default function FinancialTable({
               Nova Transação
             </Button>
           </TransactionDialog>
+          </div>
         </div>
 
         <div

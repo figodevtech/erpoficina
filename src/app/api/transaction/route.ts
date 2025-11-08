@@ -1,4 +1,5 @@
 // src/app/api/v1/transacoes/route.ts
+
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -20,6 +21,18 @@ const WRITABLE_FIELDS = new Set([
   "cpfcnpjpagador",
   
 ]);
+const FORTALEZA_OFFSET = "-03:00";
+
+// Converte "YYYY-MM-DD" 00:00 (Fortaleza) -> ISO UTC
+function localDayStartToUtcIso(dateStr: string) {
+  return new Date(`${dateStr}T00:00:00${FORTALEZA_OFFSET}`).toISOString();
+}
+
+// Converte início do dia seguinte local -> ISO UTC
+function localNextDayStartToUtcIso(dateStr: string) {
+  const d = new Date(`${dateStr}T00:00:00${FORTALEZA_OFFSET}`);
+  return new Date(d.getTime() + 24 * 60 * 60 * 1000).toISOString();
+} 
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
@@ -169,13 +182,12 @@ export async function GET(req: Request) {
     if (clienteId != null) query = query.eq("cliente_id", clienteId);
 
     if (dateFrom) {
-      const iso = toDateISOStringOrNull(dateFrom);
-      if (iso) query = query.gte("data", iso);
-    }
-    if (dateTo) {
-      const iso = toDateISOStringOrNull(dateTo);
-      if (iso) query = query.lte("data", iso);
-    }
+  query = query.gte("data", localDayStartToUtcIso(dateFrom));
+}
+if (dateTo) {
+  // intervalo semiaberto: < início do dia seguinte
+  query = query.lt("data", localNextDayStartToUtcIso(dateTo));
+}
 
     const { data, error, count } = await query;
     if (error) throw error;
