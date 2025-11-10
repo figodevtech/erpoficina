@@ -79,7 +79,7 @@ const data = {
     },
     {
       title: "Relatórios",
-      url: "#",
+      url: "/relatorios",
       icon: ClipboardList,
     },
   ],

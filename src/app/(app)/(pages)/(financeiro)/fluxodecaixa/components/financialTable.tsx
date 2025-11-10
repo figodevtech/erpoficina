@@ -53,6 +53,8 @@ import { getCategoryIcon, getTypeColor } from "../utils";
 import { ExportTransactionsButton } from "./ExportTransactionsButton";
 
 interface FinancialTableProps {
+  dateTo: string,
+  dateFrom: string,
   transactions: Transaction[];
   pagination: Pagination;
   handleGetTransactions: (
@@ -75,6 +77,8 @@ export default function FinancialTable({
   tipo,
   isLoading,
   handleGetStatusCounter,
+  dateTo,
+  dateFrom,
 }: FinancialTableProps) {
   const [selectedTransactionId, setSelectedTransactionId] = useState<
     number | undefined
@@ -132,7 +136,12 @@ export default function FinancialTable({
           </CardTitle>
           <div className="flex flex-row gap-4 items-center">
 
-            <ExportTransactionsButton/>
+            <ExportTransactionsButton
+             search={search}
+             tipo={tipo}
+             dateFrom={dateFrom}
+             dateTo={dateTo}
+            />
 
           <TransactionDialog
             open={isOpen}

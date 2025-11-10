@@ -108,6 +108,8 @@ export default function FinanceiroPage() {
         setDateTo={setDateTo}
       />
       <FinancialTable
+        dateFrom={dateFrom}
+        dateTo={dateTo}
         handleGetStatusCounter={handleGetStatusCounter}
         isLoading={isLoading}
         search={search}

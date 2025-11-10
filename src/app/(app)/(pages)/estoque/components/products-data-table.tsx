@@ -47,6 +47,7 @@ import DeleteAlert from "./deleteAlert";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useState } from "react";
+import { ExportProductsButton } from "./exportProductsButton";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -169,6 +170,7 @@ export default function ProductsDataTable({
 
           {/* 👉 Botão “Novo Produto” movido para cá */}
           <div className="flex items-center gap-2">
+              <ExportProductsButton/>
             <ProductDialog>
               <Button className="hover:cursor-pointer">Novo Produto</Button>
             </ProductDialog>
