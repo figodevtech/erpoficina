@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,13 +11,14 @@ import {
   ChevronRight as ChevronRightIcon,
   ChevronsLeft,
   ChevronsRight,
-  Search,
   Loader,
+  Loader2,
   Car,
   AlertTriangle,
   ChevronsUpDown,
   ChevronUp,
   ChevronDown,
+  Plus,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -33,12 +32,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
 import { Ordem } from "../types";
 import type { StatusOS } from "./ordens-tabs";
 import TableSkeleton from "../components/table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
-import { PagamentoDialog } from "./dialogs/pagamento-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 
 // utils & helpers
@@ -68,13 +65,16 @@ const prioRank = (p?: OrdemComDatas["prioridade"]) => {
 };
 
 export function OrdensTabela({
-  statuses,
+  statuses = [],
+  search = "",
   onOpenOrcamento,
   onEditar,
   onNovaOS,
 }: {
   /** múltiplos status aceitos na aba atual */
-  statuses: StatusOS[];
+  statuses?: StatusOS[];
+  /** termo de busca, controlado fora (separado da tabela) */
+  search?: string;
   onOpenOrcamento: (row: OrdemComDatas) => void;
   onEditar: (row: OrdemComDatas) => void;
   onNovaOS: () => void;
@@ -82,12 +82,11 @@ export function OrdensTabela({
   // dados
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
 
-  // paginação/filtro
+  // paginação
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [q, setQ] = useState("");
 
   // ordenação
   const [sortKey, setSortKey] = useState<SortKey>(null);
@@ -101,19 +100,19 @@ export function OrdensTabela({
   const now = useNowTick(5000);
 
   // params atuais p/ realtime
-  const currentParamsRef = useRef({ statuses, q, page, limit });
+  const currentParamsRef = useRef({ statuses, search, page, limit });
   useEffect(() => {
-    currentParamsRef.current = { statuses, q, page, limit };
-  }, [statuses, q, page, limit]);
+    currentParamsRef.current = { statuses, search, page, limit };
+  }, [statuses, search, page, limit]);
 
   async function fetchNow({
     statuses: sts,
-    q: search,
+    search: q,
     page: pg,
     limit: lm,
   }: {
     statuses: StatusOS[];
-    q: string;
+    search: string;
     page: number;
     limit: number;
   }) {
@@ -127,7 +126,7 @@ export function OrdensTabela({
         // backend pode aceitar csv: ?statuses=A,B
         url.searchParams.set("statuses", sts.join(","));
       }
-      if (search) url.searchParams.set("q", search);
+      if (q) url.searchParams.set("q", q);
       url.searchParams.set("page", String(pg));
       url.searchParams.set("limit", String(lm));
 
@@ -162,17 +161,17 @@ export function OrdensTabela({
     }
   }
 
-  // carregar quando filtros/paginação mudarem (debounce simples do q)
+  // carregar quando filtros/paginação mudarem (debounce simples do search)
   useEffect(() => {
-    const t = setTimeout(() => fetchNow({ statuses, q, page, limit }), 350);
+    const t = setTimeout(() => fetchNow({ statuses, search, page, limit }), 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statuses, q, page, limit]);
+  }, [statuses, search, page, limit]);
 
   // reset página quando mudar conjunto de status
   useEffect(() => {
     setPage(1);
-  }, [statuses]);
+  }, [statuses.join("|")]); // stringify conjunto para detectar troca real
 
   // realtime via supabase
   useEffect(() => {
@@ -181,8 +180,9 @@ export function OrdensTabela({
     if (!url || !anon) return;
 
     const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const channelName = `os-realtime-list-${(statuses ?? []).join("+") || "all"}`;
     const ch = supabase
-      .channel(`os-realtime-list-${statuses.join("+")}`)
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () =>
         fetchNow(currentParamsRef.current)
       )
@@ -195,7 +195,7 @@ export function OrdensTabela({
       window.removeEventListener("os:refresh", onLocalRefresh);
       supabase.removeChannel(ch);
     };
-  }, [statuses]);
+  }, [statuses.join("|")]);
 
   // rodapé
   const pageCount = rows.length;
@@ -311,24 +311,32 @@ export function OrdensTabela({
 
   return (
     <Card className="bg-card">
-      <CardContent className="p-3 sm:p-4">
-        {/* Top bar: busca + Nova OS */}
-        <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center justify-between">
-          <div className="relative w-full sm:max-w-sm flex-1">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 opacity-60" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por descrição, cliente, veículo…"
-              className="pl-8"
-            />
+      {/* Header padronizado + refresh no próprio card */}
+      <CardHeader className="border-b-2 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Ordens de Serviço</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={() => fetchNow(currentParamsRef.current)}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+            </CardDescription>
           </div>
 
-          <Button onClick={onNovaOS} className="whitespace-nowrap sm:self-auto">
-            + Nova OS
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={onNovaOS} size="sm" className="hover:cursor-pointer">
+              <Plus className="h-4 w-4 mr-1" />
+              Nova OS
+            </Button>
+          </div>
         </div>
+      </CardHeader>
 
+      <CardContent className="p-3 sm:p-4">
         {/* Tabela */}
         <div className="overflow-x-auto rounded-md border">
           <Table>
@@ -376,17 +384,12 @@ export function OrdensTabela({
                     ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
 
-                  // === Regras solicitadas ===
-                  // Editar OS e Orçamento → só em ORCAMENTO
-                  // Gerar link de aprovação → oculto em ORCAMENTO (visível nos demais que façam sentido)
-                  // Cancelar Orçamento e Aprovar Orçamento → em APROVACAO_ORCAMENTO
-                  // Iniciar → em ORCAMENTO_APROVADO
-                  // Enviar p/ pagamento → em EM_ANDAMENTO
-                  // Receber pagamento → em PAGAMENTO
+                  // Regras de visibilidade consolidada (iguais às pedidas)
                   const policy = {
                     canEditBudget: st === "ORCAMENTO",
                     showEditOS: st === "ORCAMENTO",
-                    showLinkAprov: st !== "ORCAMENTO",
+                    showLinkAprov:
+                      st !== "EM_ANDAMENTO" && st !== "PAGAMENTO" && st !== "CONCLUIDO" && st !== "CANCELADO",
                     showCancelBudget: st === "APROVACAO_ORCAMENTO",
                     showApproveBudget: st === "APROVACAO_ORCAMENTO",
                     showStart: st === "ORCAMENTO_APROVADO",
@@ -417,7 +420,9 @@ export function OrdensTabela({
                       </TableCell>
                       <TableCell>
                         {r.prioridade ? (
-                          <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>{r.prioridade}</Badge>
+                          <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>
+                            {r.prioridade}
+                          </Badge>
                         ) : (
                           "—"
                         )}
@@ -578,8 +583,8 @@ export function OrdensTabela({
           setPayOpen(v);
           if (!v) setPayRow(null);
         }}
-        
         osId={payRow?.id || 0}
+        handleGetOrdens={() => fetchNow(currentParamsRef.current)}
       />
 
       {/* Dialog: Detalhes */}
@@ -589,7 +594,7 @@ export function OrdensTabela({
           setDetailsOpen(v);
           if (!v) setDetailsId(null);
         }}
-        osId={detailsId}
+        osId={detailsId ?? 0}
       />
 
       {/* Alerta: Excluir OS */}
