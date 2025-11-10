@@ -10,8 +10,11 @@ import {
   CreditCard,
   CheckCircle2,
   XCircle,
+  BarChart3,
+  ChevronDown,
 } from "lucide-react";
 import { OrdensTabela } from "./ordens-tabela";
+import { Button } from "@/components/ui/button";
 import { createClient } from "@supabase/supabase-js";
 
 /** Status que existem no banco */
@@ -63,7 +66,6 @@ const statusTabs: {
     dot: "bg-fuchsia-500",
     active:
       "data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-200 data-[state=active]:ring-fuchsia-500/30",
-    /** ➜ ORÇAMENTO + ORÇAMENTO RECUSADO */
     statuses: ["ORCAMENTO", "ORCAMENTO_RECUSADO"],
   },
   {
@@ -73,7 +75,6 @@ const statusTabs: {
     dot: "bg-sky-500",
     active:
       "data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-200 data-[state=active]:ring-sky-500/30",
-    /** ➜ APROVAÇÃO + APROVADO */
     statuses: ["APROVACAO_ORCAMENTO", "ORCAMENTO_APROVADO"],
   },
   {
@@ -101,7 +102,6 @@ const statusTabs: {
     dot: "bg-emerald-600",
     active:
       "data-[state=active]:bg-emerald-600/15 data-[state=active]:text-emerald-200 data-[state=active]:ring-emerald-600/30",
-    /** ➜ CONCLUÍDO + CANCELADO */
     statuses: ["CONCLUIDO", "CANCELADO"],
   },
 ];
@@ -125,6 +125,8 @@ export function OrdensTabs({
     CANCELADO: 0,
   });
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
+
+  const [showSummaryMobile, setShowSummaryMobile] = useState(false);
 
   const loadStats = async () => {
     try {
@@ -157,15 +159,39 @@ export function OrdensTabs({
 
   return (
     <div className="space-y-4">
-      {/* Resumo compacto */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
-        <MiniCard accent="text-slate-300" title="Total" value={total} icon={<ClipboardList className="h-4 w-4" />} />
-        <MiniCard accent="text-fuchsia-300" title="Orçamento" value={(stats.ORCAMENTO || 0)} icon={<ClipboardList className="h-4 w-4" />} />
-        <MiniCard accent="text-sky-300" title="Aprovação" value={(stats.APROVACAO_ORCAMENTO || 0) + (stats.ORCAMENTO_APROVADO || 0)} icon={<ClipboardCheck className="h-4 w-4" />} />
-        <MiniCard accent="text-amber-300" title="Em Andamento" value={stats.EM_ANDAMENTO || 0} icon={<Loader2 className="h-4 w-4" />} />
-        <MiniCard accent="text-indigo-300" title="Pagamento" value={stats.PAGAMENTO || 0} icon={<CreditCard className="h-4 w-4" />} />
-        <MiniCard accent="text-emerald-300" title="Concluído" value={stats.CONCLUIDO || 0} icon={<CheckCircle2 className="h-4 w-4" />} />
-        <MiniCard accent="text-rose-300" title="Cancelado" value={stats.CANCELADO || 0} icon={<XCircle className="h-4 w-4" />} />
+      {/* Botão para mostrar/ocultar resumo no mobile */}
+      <div className="sm:hidden">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-between"
+          aria-controls="os-summary-grid"
+          aria-expanded={showSummaryMobile}
+          onClick={() => setShowSummaryMobile((s) => !s)}
+        >
+          <span className="inline-flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Resumo
+          </span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${showSummaryMobile ? "rotate-180" : ""}`} />
+        </Button>
+
+        {showSummaryMobile && (
+          <div id="os-summary-grid" className="mt-2">
+            <SummaryGrid
+              total={total}
+              stats={stats}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Resumo sempre visível em sm+ */}
+      <div className="hidden sm:block">
+        <SummaryGrid
+          total={total}
+          stats={stats}
+        />
       </div>
 
       <Tabs value={active} onValueChange={(v) => setActive(v as TabKey)} className="w-full">
@@ -212,6 +238,26 @@ export function OrdensTabs({
   );
 }
 
+function SummaryGrid({
+  total,
+  stats,
+}: {
+  total: number;
+  stats: Record<string, number>;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+      <MiniCard accent="text-slate-300" title="Total" value={total} icon={<ClipboardList className="h-4 w-4" />} />
+      <MiniCard accent="text-fuchsia-300" title="Orçamento" value={stats.ORCAMENTO || 0} icon={<ClipboardList className="h-4 w-4" />} />
+      <MiniCard accent="text-sky-300" title="Aprovação" value={(stats.APROVACAO_ORCAMENTO || 0) + (stats.ORCAMENTO_APROVADO || 0)} icon={<ClipboardCheck className="h-4 w-4" />} />
+      <MiniCard accent="text-amber-300" title="Em Andamento" value={stats.EM_ANDAMENTO || 0} icon={<Loader2 className="h-4 w-4" />} />
+      <MiniCard accent="text-indigo-300" title="Pagamento" value={stats.PAGAMENTO || 0} icon={<CreditCard className="h-4 w-4" />} />
+      <MiniCard accent="text-emerald-300" title="Concluído" value={stats.CONCLUIDO || 0} icon={<CheckCircle2 className="h-4 w-4" />} />
+      <MiniCard accent="text-rose-300" title="Cancelado" value={stats.CANCELADO || 0} icon={<XCircle className="h-4 w-4" />} />
+    </div>
+  );
+}
+
 function MiniCard({
   title,
   value,
@@ -225,12 +271,14 @@ function MiniCard({
 }) {
   return (
     <Card className="bg-card">
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{title}</span>
-          <span className={["[&>svg]:h-4 [&>svg]:w-4", accent].filter(Boolean).join(" ")}>{icon}</span>
+      <CardContent className="p-2 sm:p-3">
+        <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground">
+          <span className="truncate leading-tight">{title}</span>
+          <span className={["shrink-0", accent, "[&>svg]:h-3 [&>svg]:w-3 sm:[&>svg]:h-4 sm:[&>svg]:w-4"].filter(Boolean).join(" ")}>
+            {icon}
+          </span>
         </div>
-        <div className="text-xl font-semibold">{value}</div>
+        <div className="text-lg sm:text-xl font-semibold tabular-nums leading-snug">{value}</div>
       </CardContent>
     </Card>
   );
