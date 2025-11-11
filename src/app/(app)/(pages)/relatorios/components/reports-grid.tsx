@@ -7,42 +7,22 @@ import { Button } from "@/components/ui/button";
 import {
   FileText,
   DollarSign,
-  Users,
   Package,
   TrendingUp,
-  ShoppingCart,
-  BarChart3,
-  FileBarChart,
   Wallet,
-  CalendarDays,
-  Receipt,
-  Boxes,
-  UserCheck,
-  CreditCard,
-  Archive,
-  ListChecks,
-  PieChart,
-  Activity,
+  User,
+  Users,
+
 } from "lucide-react";
-import { useState } from "react";
-import { Dialog } from "@radix-ui/react-dialog";
 import DialogFluxo from "./dialogs/dialog-fluxo";
 import DialogDespesaCategoria from "./dialogs/dialog-despesa-categoria";
+import DialogReceitaCategoria from "./dialogs/dialog-receita-categoria";
+import { ProdutosEstoqueBaixo } from "./produtosEstoqueBaixo";
+import { ProdutosEstoqueCritico } from "./produtosEstoqueCrítico";
 
 export function ReportsGrid() {
-  const [loadingReport, setLoadingReport] = useState<string | null>(null);
 
-  const handleGenerateReport = async (reportId: string, reportName: string) => {
-    setLoadingReport(reportId);
-
-    // Simulação de geração de relatório
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // Aqui você implementaria a lógica real de geração do relatório
-    console.log(`Gerando relatório: ${reportName} (${reportId})`);
-
-    setLoadingReport(null);
-  };
+ 
 
   return (
     <div className="space-y-8">
@@ -62,22 +42,10 @@ export function ReportsGrid() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* <Button
-            variant="outline"
-            className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
-          >
-            <div className="flex w-full items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
-                <Wallet />
-              </div>
-              <span className="flex-1 font-medium">Fluxo de Caixa</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Movimentações financeiras detalhadas
-            </p>
-          </Button> */}
+          
           <DialogFluxo/>
           <DialogDespesaCategoria/>
+          <DialogReceitaCategoria/>
           
         </div>
       </Card>
@@ -101,14 +69,15 @@ export function ReportsGrid() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Button
+          disabled
             variant="outline"
-            className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
+            className="h-auto hover:cursor-not-allowed flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
           >
             <div className="flex w-full items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
                 <Wallet />
               </div>
-              <span className="flex-1 font-medium">Vendas por Produto</span>
+              <span className="flex-1 font-medium">Vendas por Produto </span>
             </div>
             <p className="text-xs text-muted-foreground">
               Produtos mais vendidos
@@ -135,20 +104,8 @@ export function ReportsGrid() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Button
-            variant="outline"
-            className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
-          >
-            <div className="flex w-full items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
-                <Boxes />
-              </div>
-              <span className="flex-1 font-medium">Produtos Abaixo do Mínimo </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Itens que precisam de remosição.
-            </p>
-          </Button>
+          <ProdutosEstoqueBaixo/>
+          <ProdutosEstoqueCritico/>
         </div>
       </Card>
 
@@ -157,7 +114,7 @@ export function ReportsGrid() {
       <Card className="p-6">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Package />
+            <Users />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-card-foreground">
