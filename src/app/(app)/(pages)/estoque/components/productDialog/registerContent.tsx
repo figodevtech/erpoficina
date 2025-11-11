@@ -23,12 +23,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Upload } from "lucide-react";
-import { Grupo_produto, Produto, Unidade_medida } from "../types";
-import { Estoque_status } from "../types";
+import { Grupo_produto, Produto, Unidade_medida } from "../../types";
+import { Estoque_status } from "../../types";
 import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "./valueInput";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
 
 // --- Helper data ---
 
@@ -416,6 +417,26 @@ export default function RegisterContent({
                     <SelectItem value="DESCONHECIDO">DESCONHECIDO</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <Separator />
+              <div className="text-xs text-muted-foreground">
+                <span>Regra de estoque:</span>
+                <ul className="mt-2 list-disc list-inside">
+                  <li>
+                    <strong>OK:</strong> Estoque acima do estoque mínimo.
+                  </li>
+                  <li>
+                    <strong>BAIXO:</strong> Estoque igual ou abaixo do estoque
+                    mínimo.
+                  </li>
+                  <li>
+                    <strong>CRÍTICO:</strong> Estoque atingiu a metade do
+                    estoque mínimo.
+                  </li>
+                  <li>
+                    <strong>SEM ESTOQUE:</strong> Estoque indisponível.
+                  </li>
+                </ul>
               </div>
             </div>
           </TabsContent>

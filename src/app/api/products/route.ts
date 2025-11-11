@@ -5,8 +5,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 /** Status de estoque (para filtros do GET) */
-type Status = 'OK' | 'CRITICO' | 'BAIXO';
-const STATUS_SET = new Set<Status>(['OK', 'CRITICO', 'BAIXO']);
+type Status = 'OK' | 'CRITICO' | 'BAIXO' | 'SEM_ESTOQUE';
+const STATUS_SET = new Set<Status>(['OK', 'CRITICO', 'BAIXO', 'SEM_ESTOQUE']);
 
 /** Campos graváveis em produto */
 const WRITABLE_FIELDS = new Set([

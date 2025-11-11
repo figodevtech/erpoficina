@@ -65,6 +65,12 @@ export default function SearchFilter({search, setSearch, setStatus, status}: Sea
               >
                 Crítico
               </SelectItem>
+              <SelectItem
+                className="hover:cursor-pointer"
+                value={Estoque_status.SEM_ESTOQUE}
+              >
+                Sem Estoque
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -18,6 +18,7 @@ import {
   Calculator,
   ArrowDownUp,
   Receipt,
+  Store,
 } from "lucide-react";
 
 import Image from "next/image";
@@ -53,6 +54,11 @@ const data = {
       title: "Estoque",
       url: "/estoque",
       icon: Package,
+    },
+    {
+      title: "Ponto de Venda",
+      url: "/pdv",
+      icon: Store,
     },
     {
       title: "Financeiro",

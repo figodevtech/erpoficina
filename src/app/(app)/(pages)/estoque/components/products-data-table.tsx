@@ -28,6 +28,7 @@ import {
   Loader2,
   Edit,
   Loader,
+  CircleOff,
 } from "lucide-react";
 import {
   Select,
@@ -42,7 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Estoque_status, Pagination, Produto } from "../types";
-import { ProductDialog } from "../productDialog/productDialog";
+import { ProductDialog } from "./productDialog/productDialog";
 import DeleteAlert from "./deleteAlert";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
@@ -87,6 +88,17 @@ const getStatusBadge = (status: Estoque_status) => {
       >
         <Clock className="h-3 w-3 mr-1" />
         Baixo
+      </Badge>
+    );
+  }
+  if (status === "SEM_ESTOQUE") {
+    return (
+      <Badge
+        variant="secondary"
+        className="text-xs bg-purple-800 not-dark:text-white"
+      >
+        <CircleOff className="h-3 w-3 mr-1" />
+        Sem Estoque
       </Badge>
     );
   }

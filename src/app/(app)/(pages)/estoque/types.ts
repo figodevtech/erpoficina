@@ -2,6 +2,7 @@ export enum Estoque_status {
   CRITICO = "CRITICO",
   OK = "OK",
   BAIXO = "BAIXO",
+  SEM_ESTOQUE ="SEM_ESTOQUE",
   TODOS = "TODOS",
 }
 

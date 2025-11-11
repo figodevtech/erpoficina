@@ -4,7 +4,7 @@ import type React from "react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import RegisterContent from "./registerContent";
 import { ReactNode, useState } from "react";
-import { Estoque_status, Produto, Unidade_medida } from "../types";
+import { Estoque_status, Produto, Unidade_medida } from "../../types";
 import EditContent from "./editContent";
 
 interface ProductDialogProps {
