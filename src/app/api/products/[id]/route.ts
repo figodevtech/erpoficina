@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse, NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-type Params = { params: { id: string } };
+type Params = { id: string };
 
 const PRODUTO_FIELDS = `
   id, descricao, precovenda, estoque, estoqueminimo, ncm, cfop, unidade,
@@ -140,18 +140,18 @@ function sanitizePayload(body: any, { strict }: { strict: boolean }) {
   return out;
 }
 
-async function parseId(ctx: Params) {
-  const idStr = (ctx.params?.id ?? "").trim();
-  const id = Number(idStr);
+async function parseId(context: { params: Promise<Params> }) {
+  const { id: idStr } = await context.params;
+  const id = Number((idStr ?? "").trim());
   if (!Number.isInteger(id) || id <= 0) throw new Error("ID inválido.");
   return id;
 }
 
 /* ========================= GET ========================= */
 
-export async function GET(_: Request, ctx: Params) {
+export async function GET(_req: NextRequest, context: { params: Promise<Params> }) {
   try {
-    const id = await parseId(ctx);
+    const id = await parseId(context);
 
     const { data, error } = await supabaseAdmin
       .from("produto")
@@ -176,9 +176,9 @@ export async function GET(_: Request, ctx: Params) {
 
 /* ========================= PATCH ========================= */
 
-export async function PATCH(req: NextRequest, ctx: Params) {
+export async function PATCH(req: NextRequest, context: { params: Promise<Params> }) {
   try {
-    const id = await parseId(ctx);
+    const id = await parseId(context);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: false });
 
@@ -217,9 +217,9 @@ export async function PATCH(req: NextRequest, ctx: Params) {
 
 /* ========================= PUT ========================= */
 
-export async function PUT(req: NextRequest, ctx: Params) {
+export async function PUT(req: NextRequest, context: { params: Promise<Params> }) {
   try {
-    const id = await parseId(ctx);
+    const id = await parseId(context);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: true });
 
@@ -254,9 +254,9 @@ export async function PUT(req: NextRequest, ctx: Params) {
 
 /* ========================= DELETE ========================= */
 
-export async function DELETE(_: Request, ctx: Params) {
+export async function DELETE(_req: NextRequest, context: { params: Promise<Params> }) {
   try {
-    const id = await parseId(ctx);
+    const id = await parseId(context);
 
     const { data, error } = await supabaseAdmin
       .from("produto")
@@ -270,8 +270,11 @@ export async function DELETE(_: Request, ctx: Params) {
       return NextResponse.json({ error: "Produto não encontrado." }, { status: 404 });
     }
 
+    // 204: sem corpo
     return new NextResponse(null, { status: 204 });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Erro ao deletar produto." }, { status: 500 });
+    const msg = e?.message ?? "Erro ao deletar produto.";
+    const status = msg.includes("ID inválido") ? 400 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }

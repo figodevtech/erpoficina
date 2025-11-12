@@ -1,46 +1,45 @@
-// app/api/checklists/[checklistId]/images/route.ts
+// src/app/api/checklists/[checklistId]/images/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+// Se você autentica aqui também, descomente a linha abaixo
+// import { auth } from "@/lib/auth";
 
 type Params = { checklistId: string };
 
-export async function GET(_req: NextRequest, { params }: { params: Params }) {
-  const checklistId = Number(params.checklistId);
-  if (!Number.isFinite(checklistId)) {
-    return NextResponse.json({ error: "checklistId inválido" }, { status: 400 });
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<Params> } // Next 15: params é Promise
+) {
+  try {
+    // Se usar auth, descomente:
+    // const session = await auth();
+    // if (!session?.user) {
+    //   return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    // }
+
+    const { checklistId } = await context.params;
+
+    const idNum = Number(checklistId);
+    if (!Number.isFinite(idNum)) {
+      return NextResponse.json({ error: "checklistId inválido" }, { status: 400 });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("imagemvistoria")
+      .select("id, url, descricao, createdat")
+      .eq("checklistid", idNum)
+      .order("createdat", { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ images: data ?? [] });
+  } catch (err: any) {
+    console.error("[GET] /api/checklists/[checklistId]/images", err);
+    return NextResponse.json(
+      { error: err?.message ?? "Erro inesperado" },
+      { status: 500 }
+    );
   }
-
-  const { data, error } = await supabaseAdmin
-    .from("imagemvistoria")
-    .select("id, url, descricao, createdat")
-    .eq("checklistid", checklistId)
-    .order("createdat", { ascending: false });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ images: data ?? [] });
-}
-
-export async function POST(req: NextRequest, { params }: { params: Params }) {
-  const checklistId = Number(params.checklistId);
-  if (!Number.isFinite(checklistId)) {
-    return NextResponse.json({ error: "checklistId inválido" }, { status: 400 });
-  }
-
-  const { url, descricao } = (await req.json().catch(() => ({}))) as {
-    url?: string;
-    descricao?: string | null;
-  };
-
-  if (!url || typeof url !== "string") {
-    return NextResponse.json({ error: "Campo 'url' é obrigatório" }, { status: 400 });
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("imagemvistoria")
-    .insert({ checklistid: checklistId, url, descricao: descricao ?? null })
-    .select("id, url, descricao, createdat")
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ image: data }, { status: 201 });
 }

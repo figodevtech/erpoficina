@@ -1,4 +1,4 @@
-// src/app/api/checklists/images/bulk/route.ts
+// src/app/api/checklists/[checklistId]/images/bulk/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -22,10 +22,10 @@ export async function POST(req: NextRequest) {
     const sane = items
       .map((r) => ({
         checklistid: Number(r?.checklistid),
-        url: String(r?.url || "").trim(),
+        url: String(r?.url ?? "").trim(),
         descricao: (r?.descricao ?? null) as string | null,
       }))
-      .filter((r) => Number.isFinite(r.checklistid) && r.url);
+      .filter((r) => Number.isFinite(r.checklistid) && !!r.url);
 
     if (sane.length === 0) {
       return NextResponse.json({ error: "Nenhuma linha válida" }, { status: 400 });
@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
     if (error) throw error;
     return NextResponse.json({ items: data ?? [] }, { status: 201 });
   } catch (err: any) {
-    console.error("[POST] /api/checklists/images/bulk", err);
-    return NextResponse.json({ error: err?.message || "Falha ao salvar imagens" }, { status: 500 });
+    console.error("[POST] /api/checklists/[checklistId]/images/bulk", err);
+    return NextResponse.json(
+      { error: err?.message || "Falha ao salvar imagens" },
+      { status: 500 }
+    );
   }
 }
