@@ -1,548 +1,461 @@
-// src/app/api/ordens/[id]/route.ts
+// /src/app/api/ordens/[id]/route.ts
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireOSAccess } from "../../_authz/perms";
+import { createClient } from "@supabase/supabase-js";
 
-type Params = { id: string };
-type MaybePromise<T> = T | Promise<T>;
-async function resolveParams(p: MaybePromise<Params>) {
-  return await Promise.resolve(p);
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false, autoRefreshToken: false } }
+);
 
-function httpError(err: any, fallbackMsg: string, code = 500) {
-  const msg = err?.message || fallbackMsg;
-  return NextResponse.json({ error: msg }, { status: err?.statusCode || code });
-}
+type Prioridade = "BAIXA" | "NORMAL" | "ALTA";
+type AlvoTipo = "VEICULO" | "PECA";
+type CkStatus = "OK" | "ALERTA" | "FALHA";
 
-/* ===========================
- * GET /api/ordens/[id]
- * =========================== */
-export async function GET(_req: NextRequest, ctx: { params: MaybePromise<Params> }) {
+const toNum = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const sanitizeCkStatus = (s?: string): CkStatus => {
+  const up = String(s || "").toUpperCase();
+  return (["OK", "ALERTA", "FALHA"] as const).includes(up as CkStatus) ? (up as CkStatus) : "OK";
+};
+
+/* =========================================
+ * GET: OS + setor + peça + checklist (+imagens) + itens + aprovações
+ * ========================================= */
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
-    await requireOSAccess();
-
-    const { id } = await resolveParams(ctx.params);
+    const { id } = await ctx.params;
     const osId = Number(id);
-    if (!Number.isFinite(osId)) {
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-    }
+    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
-    // OS + joins principais
-    const { data: os, error: osErr } = await supabaseAdmin
+    // OS base
+    const os_res = await supabase
       .from("ordemservico")
       .select(
-        `
-        id, clienteid, veiculoid, usuariocriadorid, setorid,
-        status, statusaprovacao,
-        descricao, dataentrada, datasaida, orcamentototal,
-        observacoes, createdat, updatedat,
-        checklist_modelo_id, prioridade, alvo_tipo, pecaid,
-        setor:setorid ( id, nome ),
-        cliente:clienteid ( id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, cidade, estado ),
-        veiculo:veiculoid ( id, placa, modelo, marca, ano, cor, kmatual ),
-        peca:pecaid ( id, titulo, descricao, fabricante, modelo, codigo, veiculoid )
-      `
+        [
+          "id",
+          "clienteid",
+          "veiculoid",
+          "usuariocriadorid",
+          "setorid",
+          "status",
+          "statusaprovacao",
+          "descricao",
+          "dataentrada",
+          "datasaida",
+          "orcamentototal",
+          "observacoes",
+          "createdat",
+          "updatedat",
+          "checklist_modelo_id",
+          "prioridade",
+          "alvo_tipo",
+          "pecaid",
+        ].join(",")
       )
       .eq("id", osId)
       .maybeSingle();
 
-    if (osErr) throw osErr;
-    if (!os) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
+    if (os_res.error) throw os_res.error;
 
-    // Carregamentos em paralelo
-    const [
-      itensProdutoRes,
-      itensServicoRes,
-      checklistRes,
-      pagamentosRes,
-      notasFiscaisRes,
-      aprovacoesRes,
-      transacoesRes,
-    ] = await Promise.all([
-      // Produtos
-      supabaseAdmin
-        .from("osproduto")
-        .select(
-          `
-          ordemservicoid, produtoid, quantidade, precounitario, subtotal,
-          produto:produtoid (
-            id, titulo, descricao, precovenda, unidade, ncm, cfop,
-            referencia, fabricante, fornecedor, grupo
-          )
-        `
-        )
-        .eq("ordemservicoid", osId)
-        .order("produtoid", { ascending: true }),
+    type OrdemRow = {
+      id: number;
+      clienteid: number;
+      veiculoid: number | null;
+      usuariocriadorid: string;
+      setorid: number | null;
+      status: string | null;
+      statusaprovacao: string | null;
+      descricao: string | null;
+      dataentrada: string | null;
+      datasaida: string | null;
+      orcamentototal: number | null;
+      observacoes: string | null;
+      createdat: string | null;
+      updatedat: string | null;
+      checklist_modelo_id: number | null;
+      prioridade: Prioridade | null;
+      alvo_tipo: AlvoTipo | null;
+      pecaid: number | null;
+    };
 
-      // Serviços
-      supabaseAdmin
-        .from("osservico")
-        .select(
-          `
-          ordemservicoid, servicoid, quantidade, precounitario, subtotal, idusuariorealizador,
-          servico:servicoid ( id, codigo, descricao, precohora, itemlistaservico )
-        `
-        )
-        .eq("ordemservicoid", osId)
-        .order("servicoid", { ascending: true }),
+    const osRow = (os_res.data as OrdemRow | null);
+    if (!osRow) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
 
-      // Checklist (imagens serão anexadas logo abaixo)
-      supabaseAdmin
-        .from("checklist")
-        .select("id, ordemservicoid, item, status, observacao, createdat")
-        .eq("ordemservicoid", osId)
-        .order("id", { ascending: true }),
+    // Setor
+    const setor_res = await supabase
+      .from("setor")
+      .select("id, nome, descricao")
+      .eq("id", osRow.setorid)
+      .maybeSingle();
+    if (setor_res.error) throw setor_res.error;
+    const setor = setor_res.data as { id: number; nome: string; descricao: string | null } | null;
 
-      // Pagamentos (eventos serão anexados logo abaixo)
-      supabaseAdmin
-        .from("pagamento")
-        .select(
-          `
-          id, ordemservicoid, metodo, valor, status,
-          provider_tx_id, nsu, autorizacao, bandeira, parcelas,
-          comprovante, criado_em, atualizado_em
-        `
-        )
-        .eq("ordemservicoid", osId)
-        .order("id", { ascending: true }),
+    // Cliente
+    const cli_res = await supabase
+      .from("cliente")
+      .select("id, nomerazaosocial")
+      .eq("id", osRow.clienteid)
+      .maybeSingle();
+    if (cli_res.error) throw cli_res.error;
+    const cliente = cli_res.data as { id: number; nomerazaosocial: string } | null;
 
-      // Notas fiscais da OS
-      supabaseAdmin
-        .from("notafiscal")
-        .select(
-          `
-          id, ordemservicoid, tipo, numero, serie,
-          dataemissao, xml, protocolo, status, createdat, updatedat
-        `
-        )
-        .eq("ordemservicoid", osId)
-        .order("id", { ascending: true }),
+    // Veículo
+    let veiculo: { id: number; placa: string | null; modelo: string | null; marca: string | null } | null = null;
+    if (osRow.veiculoid) {
+      const v_res = await supabase
+        .from("veiculo")
+        .select("id, placa, modelo, marca")
+        .eq("id", osRow.veiculoid)
+        .maybeSingle();
+      if (v_res.error) throw v_res.error;
+      if (v_res.data) {
+        veiculo = {
+          id: v_res.data.id,
+          placa: v_res.data.placa ?? null,
+          modelo: v_res.data.modelo ?? null,
+          marca: v_res.data.marca ?? null,
+        };
+      }
+    }
 
-      // Tokens de aprovação
-      supabaseAdmin
-        .from("osaprovacao")
-        .select(`id, ordemservicoid, token, expira_em, usado_em, created_at`)
-        .eq("ordemservicoid", osId)
-        .order("id", { ascending: true }),
+    // Peça (opcional)
+    let peca: { id: number; titulo: string; descricao: string | null } | null = null;
+    if (osRow.pecaid) {
+      const pc_res = await supabase
+        .from("peca")
+        .select("id, titulo, descricao")
+        .eq("id", osRow.pecaid)
+        .maybeSingle();
+      if (pc_res.error) throw pc_res.error;
+      if (pc_res.data) {
+        peca = { id: pc_res.data.id, titulo: pc_res.data.titulo, descricao: pc_res.data.descricao ?? null };
+      }
+    }
 
-      // Transações vinculadas
-      supabaseAdmin
-        .from("transacao")
-        .select(
-          `
-          id, descricao, valor, data, metodopagamento, categoria, tipo,
-          cliente_id, banco_id, nomepagador, cpfcnpjpagador, ordemservicoid,
-          created_at, updated_at
-        `
-        )
-        .eq("ordemservicoid", osId)
-        .order("id", { ascending: true }),
-    ]);
+    // Checklist + imagens (com id/createdat)
+    const ck_res = await supabase
+      .from("checklist")
+      .select("id, item, status, observacao, createdat")
+      .eq("ordemservicoid", osId);
+    if (ck_res.error) throw ck_res.error;
 
-    if (itensProdutoRes.error) throw itensProdutoRes.error;
-    if (itensServicoRes.error) throw itensServicoRes.error;
-    if (checklistRes.error) throw checklistRes.error;
-    if (pagamentosRes.error) throw pagamentosRes.error;
-    if (notasFiscaisRes.error) throw notasFiscaisRes.error;
-    if (aprovacoesRes.error) throw aprovacoesRes.error;
-    if (transacoesRes.error) throw transacoesRes.error;
+    const ckRows = (ck_res.data ?? []) as Array<{
+      id: number;
+      item: string;
+      status: CkStatus;
+      observacao: string | null;
+      createdat: string | null;
+    }>;
 
-    const itensProduto = itensProdutoRes.data ?? [];
-    const itensServico = itensServicoRes.data ?? [];
-    const checklist = checklistRes.data ?? [];
-    const pagamentos = pagamentosRes.data ?? [];
-    const notasFiscais = notasFiscaisRes.data ?? [];
-    const aprovacoes = aprovacoesRes.data ?? [];
-    const transacoes = transacoesRes.data ?? [];
-
-    // Imagens do checklist por "checklistid"
-    let checklistComImagens = checklist as Array<any>;
-    if (checklist.length) {
-      const chkIds = checklist.map((c) => c.id);
-      const { data: imgs, error: imgsErr } = await supabaseAdmin
+    const ckIds = ckRows.map((r) => r.id);
+    let imgsMap = new Map<number, Array<{ id: number; url: string; descricao: string | null; createdat: string | null }>>();
+    if (ckIds.length) {
+      const img_res = await supabase
         .from("imagemvistoria")
         .select("id, checklistid, url, descricao, createdat")
-        .in("checklistid", chkIds)
-        .order("id", { ascending: true });
+        .in("checklistid", ckIds);
+      if (img_res.error) throw img_res.error;
 
-      if (imgsErr) throw imgsErr;
-
-      const byChk: Record<number, any[]> = {};
-      (imgs ?? []).forEach((img) => {
-        byChk[img.checklistid] = byChk[img.checklistid] || [];
-        byChk[img.checklistid].push(img);
-      });
-
-      checklistComImagens = checklist.map((c) => ({
-        ...c,
-        imagens: byChk[c.id] ?? [],
-      }));
-    }
-
-    // Eventos por pagamento
-    let pagamentosComEventos = pagamentos as Array<any>;
-    if (pagamentos.length) {
-      const payIds = pagamentos.map((p) => p.id);
-      const { data: eventos, error: evErr } = await supabaseAdmin
-        .from("pagamento_evento")
-        .select("id, pagamentoid, tipo, payload, criado_em")
-        .in("pagamentoid", payIds)
-        .order("id", { ascending: true });
-
-      if (evErr) throw evErr;
-
-      const byPay: Record<number, any[]> = {};
-      (eventos ?? []).forEach((ev) => {
-        byPay[ev.pagamentoid] = byPay[ev.pagamentoid] || [];
-        byPay[ev.pagamentoid].push(ev);
-      });
-
-      pagamentosComEventos = pagamentos.map((p) => ({
-        ...p,
-        eventos: byPay[p.id] ?? [],
-      }));
-    }
-
-    return NextResponse.json({
-      os,
-      itensProduto,
-      itensServico,
-      checklist: checklistComImagens,
-      pagamentos: pagamentosComEventos,
-      notasFiscais,
-      aprovacoes,
-      transacoes,
-    });
-  } catch (err: any) {
-    return httpError(err, "Erro ao carregar OS");
-  }
-}
-
-/* ===========================
- * DELETE /api/ordens/[id]
- * (limpa dependências antes)
- * =========================== */
-export async function DELETE(_req: NextRequest, ctx: { params: MaybePromise<Params> }) {
-  try {
-    await requireOSAccess();
-
-    const { id } = await resolveParams(ctx.params);
-    const osId = Number(id);
-    if (!Number.isFinite(osId)) {
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-    }
-
-    // Confirma existência
-    const { data: exists, error: exErr } = await supabaseAdmin
-      .from("ordemservico")
-      .select("id")
-      .eq("id", osId)
-      .maybeSingle();
-    if (exErr) throw exErr;
-    if (!exists) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
-
-    // Pagamentos + eventos
-    const { data: pays, error: pErr } = await supabaseAdmin.from("pagamento").select("id").eq("ordemservicoid", osId);
-    if (pErr) throw pErr;
-    if (pays?.length) {
-      const ids = pays.map((p) => p.id);
-      const { error: peDel } = await supabaseAdmin.from("pagamento_evento").delete().in("pagamentoid", ids);
-      if (peDel) throw peDel;
-      const { error: pDel } = await supabaseAdmin.from("pagamento").delete().eq("ordemservicoid", osId);
-      if (pDel) throw pDel;
-    }
-
-    // Notas
-    const { error: nfDel } = await supabaseAdmin.from("notafiscal").delete().eq("ordemservicoid", osId);
-    if (nfDel) throw nfDel;
-
-    // Itens
-    const { error: ospDel } = await supabaseAdmin.from("osproduto").delete().eq("ordemservicoid", osId);
-    if (ospDel) throw ospDel;
-    const { error: ossDel } = await supabaseAdmin.from("osservico").delete().eq("ordemservicoid", osId);
-    if (ossDel) throw ossDel;
-
-    // Checklist + imagens
-    const { data: chks, error: chkIdsErr } = await supabaseAdmin
-      .from("checklist")
-      .select("id")
-      .eq("ordemservicoid", osId);
-    if (chkIdsErr) throw chkIdsErr;
-    if (chks?.length) {
-      const ids = chks.map((c) => c.id);
-      const { error: imgDel } = await supabaseAdmin.from("imagemvistoria").delete().in("checklistid", ids);
-      if (imgDel) throw imgDel;
-      const { error: chkDel } = await supabaseAdmin.from("checklist").delete().eq("ordemservicoid", osId);
-      if (chkDel) throw chkDel;
-    }
-
-    // Aprovação e transações
-    const { error: apDel } = await supabaseAdmin.from("osaprovacao").delete().eq("ordemservicoid", osId);
-    if (apDel) throw apDel;
-    const { error: trDel } = await supabaseAdmin.from("transacao").delete().eq("ordemservicoid", osId);
-    if (trDel) throw trDel;
-
-    // Por fim, a OS
-    const { error: osDel } = await supabaseAdmin.from("ordemservico").delete().eq("id", osId);
-    if (osDel) throw osDel;
-
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    return httpError(err, "Erro ao excluir OS");
-  }
-}
-
-/* ===========================
- * PUT /api/ordens/[id]
- * Atualizar dados básicos + alvo (VEICULO|PECA)
- * =========================== */
-// src/app/api/ordens/[id]/route.ts (apenas o handler PUT)
-export async function PUT(req: NextRequest, ctx: { params: MaybePromise<Params> }) {
-  try {
-    await requireOSAccess();
-
-    const { id } = await resolveParams(ctx.params);
-    const osId = Number(id);
-    if (!Number.isFinite(osId)) {
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-    }
-
-    const body = (await req.json().catch(() => ({}))) as {
-      setorid?: number | null;
-      prioridade?: "BAIXA" | "NORMAL" | "ALTA" | null;
-      descricao?: string | null;
-      observacoes?: string | null;
-
-      // aceitamos os dois nomes
-      checklistTemplateId?: string | null;
-      checklist_modelo_id?: string | null;
-
-      checklist?: Array<{ item: string; status: "PENDENTE" | "OK" | "FALHA" }>;
-
-      alvo?:
-        | {
-            tipo: "VEICULO";
-            veiculoid?: number | null;
-            veiculo?: {
-              placa?: string | null;
-              modelo?: string | null;
-              marca?: string | null;
-              ano?: number | null;
-              cor?: string | null;
-              kmatual?: number | null;
-            } | null;
-          }
-        | {
-            tipo: "PECA";
-            peca: { id?: number | null; nome: string; descricao?: string | null; veiculoid?: number | null };
-          };
-
-      // atualizar dados do cliente já vinculado (modo avulso)
-      cliente?:
-        | { id: number } // ignoramos troca de cliente
-        | { nome: string; documento: string; telefone?: string | null; email?: string | null };
-    };
-
-    // Carrega OS atual
-    const { data: atual, error: exErr } = await supabaseAdmin
-      .from("ordemservico")
-      .select("id, clienteid, veiculoid, pecaid, observacoes, checklist_modelo_id")
-      .eq("id", osId)
-      .maybeSingle();
-    if (exErr) throw exErr;
-    if (!atual) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
-
-    // Helpers p/ Observações (remove e insere a linha 'Alvo: ...')
-    const stripAlvoLine = (s?: string | null) => (s || "").replace(/^Alvo: .*$/gim, "").trim();
-    const addAlvoLine = (obs: string, line: string | null) => {
-      const base = (obs || "").trim();
-      return line ? (base ? `${line}\n${base}` : line) : base;
-    };
-
-    // Monta objeto de update básico
-    const upd: any = {};
-    if ("setorid" in body) upd.setorid = body.setorid ?? null;
-    if ("prioridade" in body) upd.prioridade = body.prioridade ?? null;
-    if ("descricao" in body) upd.descricao = (body.descricao ?? "") || null;
-
-    // Observações: começamos removendo a antiga linha "Alvo: ..."
-    let novasObs = stripAlvoLine("observacoes" in body ? body.observacoes : atual.observacoes);
-
-    // ========== CLIENTE (avulso): atualiza o cliente já vinculado ==========
-    if (body.cliente && "id" in body.cliente === false) {
-      const nome = (body.cliente as any).nome?.trim();
-      const documento = (body.cliente as any).documento?.trim();
-      const telefone = (body.cliente as any).telefone ?? null;
-      const email = (body.cliente as any).email ?? null;
-
-      if (!nome || !documento) {
-        return NextResponse.json({ error: "Para atendimento avulso, nome e documento são obrigatórios." }, { status: 400 });
+      for (const it of img_res.data ?? []) {
+        const arr = imgsMap.get(it.checklistid) ?? [];
+        arr.push({
+          id: Number(it.id),
+          url: String(it.url),
+          descricao: it.descricao ?? null,
+          createdat: it.createdat ?? null,
+        });
+        imgsMap.set(it.checklistid, arr);
       }
-
-      const { error: upCliErr } = await supabaseAdmin
-        .from("cliente")
-        .update({
-          nomerazaosocial: nome,
-          cpfcnpj: documento,
-          telefone,
-          email,
-        })
-        .eq("id", atual.clienteid);
-      if (upCliErr) throw upCliErr;
     }
+    const checklist = ckRows.map((ck) => ({
+      id: ck.id,
+      item: ck.item,
+      status: ck.status,
+      observacao: ck.observacao ?? null,
+      createdat: ck.createdat ?? null,
+      imagens: imgsMap.get(ck.id) ?? [],
+    }));
 
-    // ========== ALVO ==========
-    if (body.alvo?.tipo === "VEICULO") {
-      upd.alvo_tipo = "VEICULO";
-      upd.pecaid = null;
+    // Itens do orçamento — produtos
+    const prod_res = await supabase
+      .from("osproduto")
+      .select(
+        "ordemservicoid, produtoid, quantidade, precounitario, subtotal, produto:produtoid (id, titulo, descricao, referencia, codigobarras, precovenda, unidade)"
+      )
+      .eq("ordemservicoid", osId);
+    if (prod_res.error) throw prod_res.error;
 
-      let veiculoId: number | null = body.alvo.veiculoid ?? atual.veiculoid ?? null;
-
-      // Se veio dados do veículo no payload, atualiza/cria
-      const v = body.alvo.veiculo || null;
-      const temDadosLivres =
-        !!(v?.placa?.trim() || v?.modelo?.trim() || v?.marca?.trim() || v?.ano || v?.cor?.trim() || v?.kmatual);
-
-      if (temDadosLivres) {
-        const fields = {
-          placa: v?.placa?.trim() || null,
-          modelo: v?.modelo?.trim() || null,
-          marca: v?.marca?.trim() || null,
-          ano: v?.ano ?? null,
-          cor: v?.cor?.trim() || null,
-          kmatual: v?.kmatual ?? null,
-          clienteid: atual.clienteid,
-        };
-
-        if (veiculoId) {
-          const { error: upVErr } = await supabaseAdmin.from("veiculo").update(fields).eq("id", veiculoId);
-          if (upVErr) throw upVErr;
-        } else {
-          // cria novo se não houver veiculoid e há dados suficientes
-          if (!fields.modelo && !fields.placa) {
-            return NextResponse.json(
-              { error: "Informe ao menos Modelo ou Placa para criar o veículo." },
-              { status: 400 }
-            );
+    const itensProduto = (prod_res.data ?? []).map((r: any) => ({
+      ordemservicoid: osId,
+      produtoid: Number(r.produtoid),
+      quantidade: toNum(r.quantidade),
+      precounitario: toNum(r.precounitario),
+      subtotal: toNum(r.subtotal),
+      produto: r.produto
+        ? {
+            id: Number(r.produto.id),
+            codigo: String(r.produto.referencia ?? r.produto.codigobarras ?? "") || null,
+            descricao: String(r.produto.descricao ?? r.produto.titulo ?? ""),
+            precounitario: r.produto.precovenda ?? null,
+            unidade: r.produto.unidade ?? null,
           }
-          const { data: novoV, error: inVErr } = await supabaseAdmin
-            .from("veiculo")
-            .insert(fields)
-            .select("id")
-            .single();
-          if (inVErr) throw inVErr;
-          veiculoId = novoV.id;
+        : null,
+    }));
+
+    // Itens do orçamento — serviços
+    const serv_res = await supabase
+      .from("osservico")
+      .select("ordemservicoid, servicoid, quantidade, precounitario, subtotal, servico:servicoid (id, codigo, descricao, precohora)")
+      .eq("ordemservicoid", osId);
+    if (serv_res.error) throw serv_res.error;
+
+    const itensServico = (serv_res.data ?? []).map((r: any) => ({
+      ordemservicoid: osId,
+      servicoid: Number(r.servicoid),
+      quantidade: toNum(r.quantidade),
+      precounitario: toNum(r.precounitario),
+      subtotal: toNum(r.subtotal),
+      servico: r.servico
+        ? {
+            id: Number(r.servico.id),
+            codigo: r.servico.codigo ?? null,
+            descricao: r.servico.descricao ?? null,
+            precohora: r.servico.precohora ?? null,
+          }
+        : null,
+    }));
+
+    // Aprovações (tokens)
+    const ap_res = await supabase
+      .from("osaprovacao")
+      .select("id, token, expira_em, usado_em, created_at")
+      .eq("ordemservicoid", osId);
+    if (ap_res.error) throw ap_res.error;
+
+    const aprovacoes =
+      (ap_res.data as Array<{ id: number; token: string; expira_em: string | null; usado_em: string | null; created_at: string | null }>) ??
+      [];
+
+    // OS agregada no formato que o Dialog espera
+    const os = {
+      id: osRow.id,
+      descricao: osRow.descricao ?? null,
+      observacoes: osRow.observacoes ?? null,
+      status: osRow.status ?? null,
+      statusaprovacao: osRow.statusaprovacao ?? null,
+      prioridade: (osRow.prioridade ?? "NORMAL") as Prioridade,
+      dataentrada: osRow.dataentrada ?? null,
+      datasaidaprevista: null as string | null, // não há no schema — mantemos nulo
+      datasaidareal: osRow.datasaida ?? null, // mapeamos datasaida -> datasaidareal
+      alvo_tipo: (osRow.alvo_tipo ?? "VEICULO") as AlvoTipo,
+      setor: setor ? { id: setor.id, nome: setor.nome } : null,
+      cliente: cliente ? { id: cliente.id, nomerazaosocial: cliente.nomerazaosocial } : null,
+      veiculo,
+      peca,
+    };
+
+    // Compat: também manter "orcamento" antigo
+    const orcamento = {
+      produtos: itensProduto.map((p) => ({
+        produtoid: p.produtoid,
+        descricao: p.produto?.descricao ?? "Produto",
+        quantidade: p.quantidade,
+        precounitario: p.precounitario,
+        subtotal: p.subtotal,
+      })),
+      servicos: itensServico.map((s) => ({
+        servicoid: s.servicoid,
+        descricao: s.servico?.descricao ?? "Serviço",
+        quantidade: s.quantidade,
+        precounitario: s.precounitario,
+        subtotal: s.subtotal,
+      })),
+    };
+
+    return NextResponse.json(
+      { os, itensProduto, itensServico, checklist, aprovacoes, orcamento },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (e: any) {
+    console.error("GET /api/ordens/[id]", e);
+    return NextResponse.json({ error: e?.message ?? "Erro ao carregar OS" }, { status: 500 });
+  }
+}
+
+/* =====================================================
+ * PUT: atualiza campos básicos + substitui checklist
+ * (aceita 'descricao' OU 'descriacao'; 'pecaid' OU 'pecaId')
+ * ===================================================== */
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctx.params;
+    const osId = Number(id);
+    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
+    const body: any = await req.json().catch(() => ({}));
+
+    const pickNum = (...keys: string[]) => {
+      for (const k of keys) {
+        if (body[k] !== undefined && body[k] !== null) {
+          const n = Number(body[k]);
+          return Number.isFinite(n) ? n : null;
         }
       }
+      return undefined;
+    };
+    const pickStr = (...keys: string[]) => {
+      for (const k of keys) {
+        if (body[k] !== undefined) {
+          const v = body[k];
+          if (v === null) return null;
+          const s = String(v);
+          return s.length ? s : null;
+        }
+      }
+      return undefined;
+    };
 
-      upd.veiculoid = veiculoId ?? null;
+    const setorid = pickNum("setorid", "setorId");
+    const prioridade = pickStr("prioridade") as Prioridade | undefined;
+    const descricao = pickStr("descricao", "descriacao");
+    const observacoes = pickStr("observacoes");
+    const alvo_tipoStr = pickStr("alvo_tipo", "alvoTipo");
+    const alvo_tipo = ((): AlvoTipo | undefined => {
+      const up = (alvo_tipoStr || "").toUpperCase();
+      return up === "VEICULO" || up === "PECA" ? (up as AlvoTipo) : undefined;
+    })();
+    const pecaid = pickNum("pecaid", "pecaId");
 
-      const alvoLine =
-        veiculoId || temDadosLivres
-          ? `Alvo: VEÍCULO${v?.modelo ? ` | Modelo: ${v.modelo}` : ""}${v?.placa ? ` | Placa: ${v.placa}` : ""}`
-          : "Alvo: VEÍCULO";
-      novasObs = addAlvoLine(novasObs, alvoLine);
+    const patch: Record<string, unknown> = {};
+    if (setorid !== undefined) patch.setorid = setorid;
+    if (prioridade !== undefined) patch.prioridade = prioridade || "NORMAL";
+    if (descricao !== undefined) patch.descricao = descricao;
+    if (observacoes !== undefined) patch.observacoes = observacoes;
+    if (alvo_tipo !== undefined) patch.alvo_tipo = alvo_tipo;
+    if (pecaid !== undefined) patch.pecaid = pecaid;
+
+    if (Object.keys(patch).length) {
+      const upd_res = await supabase.from("ordemservico").update(patch).eq("id", osId);
+      if (upd_res.error) throw upd_res.error;
     }
 
-    if (body.alvo?.tipo === "PECA") {
-      const nome = (body.alvo.peca?.nome || "").trim();
-      if (!nome) return NextResponse.json({ error: "Nome da peça é obrigatório" }, { status: 400 });
+    // Substituição do checklist (itens + imagens)
+    if (Array.isArray(body.checklist)) {
+      const antigos_res = await supabase.from("checklist").select("id").eq("ordemservicoid", osId);
+      if (antigos_res.error) throw antigos_res.error;
 
-      const desc = (body.alvo.peca?.descricao || "").trim() || null;
-      const veicId = body.alvo.peca?.veiculoid ?? null;
+      const ids = (antigos_res.data ?? []).map((r: any) => r.id as number);
+      if (ids.length) {
+        const delImgs_res = await supabase.from("imagemvistoria").delete().in("checklistid", ids);
+        if (delImgs_res.error) throw delImgs_res.error;
+      }
+      const delCk_res = await supabase.from("checklist").delete().eq("ordemservicoid", osId);
+      if (delCk_res.error) throw delCk_res.error;
 
-      let pecaId = body.alvo.peca?.id ?? atual.pecaid ?? null;
-
-      if (pecaId) {
-        const { error: upErr } = await supabaseAdmin
-          .from("peca")
-          .update({ titulo: nome, descricao: desc, veiculoid: veicId })
-          .eq("id", pecaId);
-        if (upErr) throw upErr;
-      } else {
-        const { data: nova, error: inErr } = await supabaseAdmin
-          .from("peca")
-          .insert({ clienteid: atual.clienteid, veiculoid: veicId, titulo: nome, descricao: desc })
+      for (const it of body.checklist) {
+        const ins_res = await supabase
+          .from("checklist")
+          .insert({
+            ordemservicoid: osId,
+            item: String(it?.item || "").slice(0, 255),
+            status: sanitizeCkStatus(it?.status),
+            observacao: it?.observacao ?? null,
+          })
           .select("id")
           .single();
-        if (inErr) throw inErr;
-        pecaId = nova.id;
-      }
+        if (ins_res.error) throw ins_res.error;
 
-      upd.alvo_tipo = "PECA";
-      upd.pecaid = pecaId;
-      upd.veiculoid = null;
+        const checklistid = ins_res.data.id as number;
+        const imagens = Array.isArray(it?.imagens) ? it.imagens : [];
+        const imgs = imagens
+          .map((img: any) => ({
+            checklistid,
+            url: String(img?.url || "").trim(),
+            descricao: img?.descricao ?? null,
+          }))
+          .filter((x: any) => x.url.length > 0);
 
-      const alvoLine = `Alvo: PEÇA | Nome: ${nome}${desc ? ` | Desc.: ${desc}` : ""}`;
-      novasObs = addAlvoLine(novasObs, alvoLine);
-    }
-
-    // Observações: seta por último se veio no body ou se mexemos no alvo
-    if ("observacoes" in body || body.alvo) {
-      upd.observacoes = novasObs || null;
-    }
-
-    // Template do checklist
-    const novoModeloId = body.checklistTemplateId ?? body.checklist_modelo_id ?? null;
-    if (typeof novoModeloId !== "undefined") {
-      upd.checklist_modelo_id = novoModeloId;
-    }
-
-    // Aplica update da OS
-    if (Object.keys(upd).length > 0) {
-      const { error: updErr } = await supabaseAdmin.from("ordemservico").update(upd).eq("id", osId);
-      if (updErr) throw updErr;
-    }
-
-    // Checklist (upsert item-a-item; não apagamos para não perder imagens antigas)
-    if (Array.isArray(body.checklist)) {
-      // valida payload
-      const sane = body.checklist
-        .filter((c) => (c?.item || "").trim().length > 0)
-        .map((c) => ({
-          item: c.item.trim(),
-          status: (c.status || "PENDENTE") as "PENDENTE" | "OK" | "FALHA",
-        }));
-
-      // pega já existentes
-      const { data: existentes, error: ckErr } = await supabaseAdmin
-        .from("checklist")
-        .select("id, item")
-        .eq("ordemservicoid", osId);
-      if (ckErr) throw ckErr;
-
-      const byItem = new Map<string, number>();
-      (existentes || []).forEach((r) => byItem.set(r.item, r.id));
-
-      // upsert simples: update se existe, insert se não existe
-      for (const c of sane) {
-        const exId = byItem.get(c.item);
-        if (exId) {
-          const { error } = await supabaseAdmin.from("checklist").update({ status: c.status }).eq("id", exId);
-          if (error) throw error;
-        } else {
-          const { error } = await supabaseAdmin
-            .from("checklist")
-            .insert({ ordemservicoid: osId, item: c.item, status: c.status });
-          if (error) throw error;
-        }
-      }
-
-      // Se você quiser “sumir” com itens removidos do modelo:
-      // em vez de deletar (risco de perder imagens), apenas define como PENDENTE:
-      const vivos = new Set(sane.map((c) => c.item));
-      for (const r of existentes || []) {
-        if (!vivos.has(r.item)) {
-          const { error } = await supabaseAdmin.from("checklist").update({ status: "PENDENTE" }).eq("id", r.id);
-          if (error) throw error;
+        if (imgs.length) {
+          const insImgs_res = await supabase.from("imagemvistoria").insert(imgs);
+          if (insImgs_res.error) throw insImgs_res.error;
         }
       }
     }
 
-    return NextResponse.json({ ok: true, id: osId });
-  } catch (err: any) {
-    return httpError(err, "Erro ao atualizar OS");
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error("PUT /api/ordens/[id]", e);
+    return NextResponse.json({ error: e?.message ?? "Erro ao salvar OS" }, { status: 500 });
+  }
+}
+
+/* =========================================
+ * DELETE: apaga anexos, itens, tokens, OS
+ * (triggers devolvem estoque quando preciso)
+ * ========================================= */
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctx.params;
+    const osId = Number(id);
+    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
+    // existe?
+    const exists_res = await supabase.from("ordemservico").select("id").eq("id", osId).maybeSingle();
+    if (exists_res.error) throw exists_res.error;
+    if (!exists_res.data) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
+
+    // checklist: imagens -> itens
+    const checks_res = await supabase.from("checklist").select("id").eq("ordemservicoid", osId);
+    if (checks_res.error) throw checks_res.error;
+
+    const ckIds = (checks_res.data ?? []).map((c: any) => c.id as number);
+    if (ckIds.length) {
+      const delImgs_res = await supabase.from("imagemvistoria").delete().in("checklistid", ckIds);
+      if (delImgs_res.error) throw delImgs_res.error;
+
+      const delChecks_res = await supabase.from("checklist").delete().eq("ordemservicoid", osId);
+      if (delChecks_res.error) throw delChecks_res.error;
+    }
+
+    // controle de baixa (se existir)
+    const baixa_res = await supabase.from("osproduto_baixa").delete().eq("ordemservicoid", osId);
+    if (baixa_res.error && baixa_res.error.code !== "PGRST116") throw baixa_res.error;
+
+    // orçamento (triggers devolvem estoque ao deletar osproduto)
+    const delP_res = await supabase.from("osproduto").delete().eq("ordemservicoid", osId);
+    if (delP_res.error) throw delP_res.error;
+
+    const delS_res = await supabase.from("osservico").delete().eq("ordemservicoid", osId);
+    if (delS_res.error) throw delS_res.error;
+
+    // tokens aprovação
+    const tok_res = await supabase.from("osaprovacao").delete().eq("ordemservicoid", osId);
+    if (tok_res.error) throw tok_res.error;
+
+    // pagamentos/eventos (tolerante)
+    const pays_res = await supabase.from("pagamento").select("id").eq("ordemservicoid", osId);
+    if (pays_res.error) throw pays_res.error;
+
+    const payIds = (pays_res.data ?? []).map((p: any) => p.id as number);
+    if (payIds.length) {
+      const evt_res = await supabase.from("pagamento_evento").delete().in("pagamentoid", payIds);
+      if (evt_res.error && evt_res.error.code !== "PGRST116") throw evt_res.error;
+
+      const delPay_res = await supabase.from("pagamento").delete().eq("ordemservicoid", osId);
+      if (delPay_res.error && delPay_res.error.code !== "PGRST116") throw delPay_res.error;
+    }
+
+    // OS
+    const delOS_res = await supabase.from("ordemservico").delete().eq("id", osId);
+    if (delOS_res.error) throw delOS_res.error;
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error("DELETE /api/ordens/[id]", e);
+    return NextResponse.json({ error: e?.message ?? "Erro ao excluir OS" }, { status: 500 });
   }
 }

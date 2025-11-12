@@ -3,7 +3,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Link as LinkIcon } from "lucide-react";
 import { DialogShell } from "../dialogs/dialog-shell";
 import { OrcamentoForm } from "./orcamento-form";
 import type { OrcamentoFormHandle } from "./tipos";
@@ -24,6 +24,7 @@ export function OrcamentoDialog({
   onOpenChange,
   osSelecionada,
   onSalvarOrcamento,
+  onGerarLinkAprovacao,
 }: OrcamentoDialogProps) {
   const formRef = useRef<OrcamentoFormHandle | null>(null);
 
@@ -71,6 +72,23 @@ export function OrcamentoDialog({
     }
   }
 
+  async function handleGerarLink() {
+    if (!onGerarLinkAprovacao) return; // só aparece se vier por props
+    if (salvando || gerandoLink) return;
+    setGerandoLink(true);
+    try {
+      // garantimos que está salvo antes de gerar o link
+      if (onSalvarOrcamento) {
+        await onSalvarOrcamento();
+      } else {
+        await formRef.current?.salvarOrcamento();
+      }
+      await onGerarLinkAprovacao();
+    } finally {
+      setGerandoLink(false);
+    }
+  }
+
   return (
     <DialogShell
       open={open}
@@ -92,7 +110,6 @@ export function OrcamentoDialog({
               variant="outline"
               onClick={handleSalvar}
               className="bg-transparent"
-              // sempre habilitado; só desabilita durante uma ação
               disabled={salvando || gerandoLink}
             >
               {salvando ? (
@@ -105,7 +122,21 @@ export function OrcamentoDialog({
               )}
             </Button>
 
-           
+            {onGerarLinkAprovacao && (
+              <Button onClick={handleGerarLink} disabled={salvando || gerandoLink}>
+                {gerandoLink ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Gerando link…
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="mr-2 h-4 w-4" />
+                    Salvar & gerar link
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       }
