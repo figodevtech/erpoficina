@@ -29,6 +29,8 @@ import {
   Edit,
   Loader,
   CircleOff,
+  Check,
+  Store,
 } from "lucide-react";
 import {
   Select,
@@ -49,6 +51,7 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ExportProductsButton } from "./exportProductsButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -183,7 +186,9 @@ export default function ProductsDataTable({
           {/* 👉 Botão “Novo Produto” movido para cá */}
           <div className="flex items-center gap-2">
               <ExportProductsButton/>
-            <ProductDialog>
+            <ProductDialog
+            setSelectedProductId={setSelectedProductId}
+            >
               <Button className="hover:cursor-pointer">Novo Produto</Button>
             </ProductDialog>
           </div>
@@ -241,7 +246,19 @@ export default function ProductsDataTable({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div>
+                        <div className="flex flex-row gap-2 items-center">
+
                         <p className="font-medium">{p.titulo}</p>
+                        {p.exibirPdv && (
+                         <Tooltip>
+                          <TooltipTrigger asChild>
+
+                          <Store className="w-4 h-4 text-primary/80 not-dark:text-primary" />
+                          </TooltipTrigger>
+                          <TooltipContent>Exibindo no Marketplace</TooltipContent>
+                         </Tooltip>
+                        )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {p.unidade}
                           {p.fabricante ? ` • ${p.fabricante}` : ""}

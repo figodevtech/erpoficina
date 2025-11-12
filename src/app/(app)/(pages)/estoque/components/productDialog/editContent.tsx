@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "./valueInput";
 import axios from "axios";
 import { formatDate } from "@/utils/formatDate";
+import { Switch } from "@/components/ui/switch";
 
 // --- Helper data ---
 
@@ -50,11 +51,12 @@ const CSOSN_OPTIONS = [
 // Se o seu enum tiver valores diferentes, ajuste abaixo para casar com o banco.
 const ESTOQUE_STATUS: {
   value: Estoque_status;
-  badge?: "default" | "secondary" | "destructive";
+  badge?: "default" | "secondary" | "destructive" | "outline";
 }[] = [
-  { value: Estoque_status.OK, badge: "default" },
+  { value: Estoque_status.OK, badge: "outline" },
   { value: Estoque_status.BAIXO, badge: "secondary" },
   { value: Estoque_status.CRITICO, badge: "destructive" },
+  { value: Estoque_status.SEM_ESTOQUE, badge: "default" },
 ];
 
 function onlyDigits(v: string) {
@@ -168,6 +170,12 @@ export default function EditContent({ productId }: EditContentProps) {
                 Geral
               </TabsTrigger>
               <TabsTrigger
+                value="MarketPlace"
+                className={"hover:cursor-pointer" + tabTheme}
+              >
+                MarketPlace
+              </TabsTrigger>
+              <TabsTrigger
                 value="Fiscal"
                 className={"hover:cursor-pointer" + tabTheme}
               >
@@ -235,7 +243,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   <Label htmlFor="descricao">Descrição *</Label>
                   <Textarea
                     id="descricao"
-                    value={selectedProduct.descricao}
+                    value={selectedProduct.descricao || ""}
                     onChange={(e) => handleChange("descricao", e.target.value)}
                     placeholder="Descrição do produto"
                   />
@@ -287,18 +295,7 @@ export default function EditContent({ productId }: EditContentProps) {
                       price={selectedProduct.precovenda}
                       setPrice={(v) => handleChange("precovenda", v)}
                     />
-                    {/* <Input
-                        id="precovenda"
-                        value={newProduct.precovenda}
-                        onChange={(e) =>
-                          handleChange(
-                            "precovenda",
-                            formatCurrencyInput(e.target.value)
-                          )
-                        }
-                        placeholder="R$ 0,00"
-                        inputMode="decimal"
-                      /> */}
+                   
                   </div>
 
                   <div className="space-y-2">
@@ -338,6 +335,36 @@ export default function EditContent({ productId }: EditContentProps) {
               </div>
             </TabsContent>
 
+            {/* --- Aba: MarketPlace --- */}
+            <TabsContent
+              value="MarketPlace"
+              className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+            >
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+                <div className="flex flex-row gap-2">
+                  <Label htmlFor="exibirPdv">Exibir no Marketplace:</Label>
+                <Switch checked={selectedProduct.exibirPdv} onCheckedChange={(v)=>setSelectedProduct({...selectedProduct, exibirPdv: v})}></Switch>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tituloMarketplace">Título no Marketplace *</Label>
+                  <Input
+                    id="tituloMarketplace"
+                    value={selectedProduct.tituloMarketplace || ""}
+                    onChange={(e) => handleChange("tituloMarketplace", e.target.value)}
+                    placeholder="Nome comercial / Site"
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="descricaoMarketplace">Descrição no Marketplace *</Label>
+                  <Textarea
+                    id="descricaoMarketplace"
+                    value={selectedProduct.descricaoMarketplace || ""}
+                    onChange={(e) => handleChange("descricaoMarketplace", e.target.value)}
+                    placeholder="Descrição do produto"
+                  />
+                </div>
+              </div>
+            </TabsContent>
             {/* --- Aba: Fiscal --- */}
             <TabsContent
               value="Fiscal"
@@ -349,7 +376,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     <Label htmlFor="ncm">NCM *</Label>
                     <Input
                       id="ncm"
-                      value={selectedProduct.ncm}
+                      value={selectedProduct.ncm || ""}
                       onChange={(e) =>
                         handleChange("ncm", onlyDigits(e.target.value))
                       }
@@ -363,7 +390,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     <Label htmlFor="cfop">CFOP *</Label>
                     <Input
                       id="cfop"
-                      value={selectedProduct.cfop}
+                      value={selectedProduct.cfop || ""}
                       onChange={(e) =>
                         handleChange("cfop", onlyDigits(e.target.value))
                       }
@@ -376,13 +403,14 @@ export default function EditContent({ productId }: EditContentProps) {
                   <div className="space-y-2">
                     <Label htmlFor="csosn">CSOSN *</Label>
                     <Select
-                      value={selectedProduct.csosn}
+                      value={selectedProduct.csosn || "Selecione"}
                       onValueChange={(v) => handleChange("csosn", v)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
+                      <SelectItem value="Selecione">Selecione</SelectItem>
                         {CSOSN_OPTIONS.map((c) => (
                           <SelectItem key={c} value={c}>
                             {c}
@@ -392,24 +420,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="origem">Fornecedor *</Label>
-                    <Select
-                      value={String(selectedProduct.fornecedor)}
-                      onValueChange={(v) =>
-                        handleChange("fornecedor", Number(v))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DESCONHECIDO">
-                          DESCONHECIDO
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -454,7 +465,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     <Label htmlFor="estoque">Estoque (Qtd)</Label>
                     <Input
                       id="estoque"
-                      value={selectedProduct.estoque}
+                      value={selectedProduct.estoque || ""}
                       onChange={(e) =>
                         handleChange("estoque", onlyDigits(e.target.value))
                       }
@@ -467,7 +478,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     <Label htmlFor="estoqueminimo">Estoque Mínimo</Label>
                     <Input
                       id="estoqueminimo"
-                      value={selectedProduct.estoqueminimo}
+                      value={selectedProduct.estoqueminimo || ""}
                       onChange={(e) =>
                         handleChange(
                           "estoqueminimo",

@@ -83,18 +83,27 @@ export default function RegisterContent({
 
   const handleCreateProduct = async () => {
     setIsSubmitting(true);
+    if(!newProduct.tituloMarketplace){
+      newProduct.tituloMarketplace = newProduct.titulo;
+    }
     try {
       const response = await axios.post("/api/products", {
         newProduct,
       });
+      console.log("trese")
+      console.log(response.status)
 
-      if (response.status === 201 && setSelectedProductId) {
-        console.log(response.data.data);
+      if (response.status === 201) {
+        console.log(response.data.data.id);
         toast("Sucesso!", {
           description: "Produto cadastrado.",
           duration: 2000,
         });
-        setSelectedProductId(response.data.id);
+        if(setSelectedProductId){
+
+          setSelectedProductId(response.data.data.id);
+        }
+        console.log("criado:", response.data);
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -193,14 +202,14 @@ export default function RegisterContent({
                   id="titulo"
                   value={newProduct.titulo || ""}
                   onChange={(e) => handleChange("titulo", e.target.value)}
-                  placeholder="Nome comercial / vitrine"
+                  placeholder="Título interno"
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="descricao">Descrição *</Label>
                 <Textarea
                   id="descricao"
-                  value={newProduct.descricao}
+                  value={newProduct.descricao || ""}
                   onChange={(e) => handleChange("descricao", e.target.value)}
                   placeholder="Descrição do produto"
                 />
@@ -295,7 +304,7 @@ export default function RegisterContent({
                   <Label htmlFor="ncm">NCM *</Label>
                   <Input
                     id="ncm"
-                    value={newProduct.ncm}
+                    value={newProduct.ncm || ""}
                     onChange={(e) =>
                       handleChange("ncm", onlyDigits(e.target.value))
                     }
@@ -309,7 +318,7 @@ export default function RegisterContent({
                   <Label htmlFor="cfop">CFOP *</Label>
                   <Input
                     id="cfop"
-                    value={newProduct.cfop}
+                    value={newProduct.cfop || ""}
                     onChange={(e) =>
                       handleChange("cfop", onlyDigits(e.target.value))
                     }
@@ -322,13 +331,14 @@ export default function RegisterContent({
                 <div className="space-y-2">
                   <Label htmlFor="csosn">CSOSN *</Label>
                   <Select
-                    value={newProduct.csosn}
+                    value={newProduct.csosn || "Selecione"}
                     onValueChange={(v) => handleChange("csosn", v)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Selecione">Selecione</SelectItem>
                       {CSOSN_OPTIONS.map((c) => (
                         <SelectItem key={c} value={c}>
                           {c}
@@ -381,7 +391,7 @@ export default function RegisterContent({
                   <Label htmlFor="estoque">Estoque (Qtd)</Label>
                   <Input
                     id="estoque"
-                    value={newProduct.estoque}
+                    value={newProduct.estoque || ""}
                     onChange={(e) =>
                       handleChange("estoque", onlyDigits(e.target.value))
                     }
@@ -394,7 +404,7 @@ export default function RegisterContent({
                   <Label htmlFor="estoqueminimo">Estoque Mínimo</Label>
                   <Input
                     id="estoqueminimo"
-                    value={newProduct.estoqueminimo}
+                    value={newProduct.estoqueminimo || ""}
                     onChange={(e) =>
                       handleChange("estoqueminimo", onlyDigits(e.target.value))
                     }

@@ -4,12 +4,13 @@ export const runtime = "nodejs";
 import { NextResponse, NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { params: { id: string } };
 
 const PRODUTO_FIELDS = `
   id, descricao, precovenda, estoque, estoqueminimo, ncm, cfop, unidade,
   cest, csosn, aliquotaicms, codigobarras, createdat, updatedat, referencia,
-  titulo, status_estoque, fornecedor, fabricante, grupo
+  titulo, status_estoque, fornecedor, fabricante, grupo, exibirPdv,
+  tituloMarketplace, descricaoMarketplace
 `;
 
 const WRITABLE_FIELDS = new Set([
@@ -29,6 +30,9 @@ const WRITABLE_FIELDS = new Set([
   "fornecedor",
   "fabricante",
   "grupo",
+  "exibirPdv",
+  "tituloMarketplace",
+  "descricaoMarketplace",
 ]);
 
 function toNullIfEmpty(v: unknown) {
@@ -42,54 +46,104 @@ function toNumberOrNull(v: any) {
 }
 
 /**
- * - Converte strings vazias para null
- * - Coerce campos numéricos para number (ou null)
- * - No PUT (strict=true) exige campos obrigatórios
+ * - Converte strings vazias para null (com exceções)
+ * - Coerce campos numéricos para number
+ * - No PUT (strict=true) exige campos obrigatórios de acordo com o schema
+ * - Evita enviar `null` para colunas NOT NULL (ex.: unidade, tituloMarketplace, descricaoMarketplace)
  */
 function sanitizePayload(body: any, { strict }: { strict: boolean }) {
   const out: Record<string, any> = {};
 
+  const setOrOmit = (k: string, v: any) => {
+    if (v === undefined) return;
+
+    // NOT NULL com DEFAULT '' → nunca enviar null
+    if (k === "tituloMarketplace" || k === "descricaoMarketplace") {
+      if (typeof v === "string") {
+        out[k] = v; // mantém '' se vier vazio
+      } else {
+        const t = toNullIfEmpty(v);
+        if (t == null) return; // omite para preservar/usar default
+        out[k] = t;
+      }
+      return;
+    }
+
+    // enum NOT NULL (unidade) → se vazio, omite (preserva valor atual)
+    if (k === "unidade") {
+      const t = toNullIfEmpty(v);
+      if (t != null) out[k] = t;
+      return;
+    }
+
+    // grupo possui DEFAULT 'OUTROS' → se vazio, omite
+    if (k === "grupo") {
+      const t = toNullIfEmpty(v);
+      if (t != null) out[k] = t;
+      return;
+    }
+
+    // boolean coerção
+    if (k === "exibirPdv") {
+      out[k] = v === true || v === "true" || v === 1 || v === "1";
+      return;
+    }
+
+    out[k] = toNullIfEmpty(v);
+  };
+
   for (const key of Object.keys(body ?? {})) {
     if (!WRITABLE_FIELDS.has(key)) continue;
 
-    // Mapeia conversões por tipo esperado
     switch (key) {
-      case "precovenda":
-      case "aliquotaicms":
+      case "precovenda": {
+        const n = toNumberOrNull(body[key]);
+        if (n == null) {
+          if (strict) out[key] = null; // PUT: validation pega adiante
+          // PATCH: omite para não violar NOT NULL
+        } else {
+          out[key] = n;
+        }
+        break;
+      }
+      case "aliquotaicms": {
+        // Campo nullable: pode enviar null
         out[key] = toNumberOrNull(body[key]);
         break;
+      }
       case "estoque":
-      case "estoqueminimo":
-        // inteiros
-        out[key] = toNumberOrNull(body[key]);
-        if (out[key] != null) out[key] = Math.trunc(out[key]);
+      case "estoqueminimo": {
+        const n = toNumberOrNull(body[key]);
+        if (n == null) {
+          // PATCH/PUT: omite para não violar NOT NULL
+        } else {
+          out[key] = Math.max(0, Math.trunc(n));
+        }
         break;
-      default:
-        out[key] = toNullIfEmpty(body[key]);
+      }
+      default: {
+        setOrOmit(key, body[key]);
+      }
     }
   }
 
-  // Valida obrigatórios no PUT
   if (strict) {
-    const required = ["descricao", "precovenda", "ncm", "cfop", "csosn"];
-    const missing = required.filter((k) => out[k] == null);
+    // Para PUT (substituição completa), alinhar com NOT NULL do schema
+    const required = ["titulo", "precovenda", "estoque", "estoqueminimo", "unidade"];
+    const missing = required.filter((k) => body[k] == null || String(body[k]).trim() === "");
     if (missing.length) {
-      throw new Error(
-        `Campos obrigatórios ausentes no PUT: ${missing.join(", ")}`
-      );
+      throw new Error(`Campos obrigatórios ausentes no PUT: ${missing.join(", ")}`);
     }
   }
 
-  // Deixa que os enums (unidade, grupo etc.) sejam validados pelo Postgres
-  // Atualiza timestamp
   out.updatedat = new Date().toISOString();
   return out;
 }
 
 async function parseId(ctx: Params) {
-  const { id: idParam } = await ctx.params;
-  const id = Number((idParam ?? "").trim());
-  if (!id) throw new Error("ID inválido.");
+  const idStr = (ctx.params?.id ?? "").trim();
+  const id = Number(idStr);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("ID inválido.");
   return id;
 }
 
@@ -107,10 +161,7 @@ export async function GET(_: Request, ctx: Params) {
 
     if (error) {
       if ((error as any).code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Produto não encontrado." },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Produto não encontrado." }, { status: 404 });
       }
       throw error;
     }
@@ -131,11 +182,9 @@ export async function PATCH(req: NextRequest, ctx: Params) {
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: false });
 
+    // Se só veio updatedat (porque tudo foi omitido), não há mudanças
     if (Object.keys(payload).length === 1 && "updatedat" in payload) {
-      return NextResponse.json(
-        { error: "Nada para atualizar." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Nada para atualizar." }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin
@@ -147,17 +196,13 @@ export async function PATCH(req: NextRequest, ctx: Params) {
 
     if (error) {
       if ((error as any).code === "23505") {
-        // Caso exista alguma UNIQUE (ex.: codigobarras), trate aqui:
         return NextResponse.json(
           { error: "Violação de unicidade (já cadastrado)." },
           { status: 409 }
         );
       }
       if ((error as any).code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Produto não encontrado." },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Produto não encontrado." }, { status: 404 });
       }
       throw error;
     }
@@ -193,10 +238,7 @@ export async function PUT(req: NextRequest, ctx: Params) {
         );
       }
       if ((error as any).code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Produto não encontrado." },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Produto não encontrado." }, { status: 404 });
       }
       throw error;
     }
@@ -205,9 +247,7 @@ export async function PUT(req: NextRequest, ctx: Params) {
   } catch (e: any) {
     const msg = e?.message ?? "Erro ao atualizar produto.";
     const status =
-      msg.includes("ID inválido") || msg.includes("Campos obrigatórios")
-        ? 400
-        : 500;
+      msg.includes("ID inválido") || msg.includes("Campos obrigatórios") ? 400 : 500;
     return NextResponse.json({ error: msg }, { status });
   }
 }
@@ -216,13 +256,8 @@ export async function PUT(req: NextRequest, ctx: Params) {
 
 export async function DELETE(_: Request, ctx: Params) {
   try {
-    const { id: idParam } = await ctx.params;
-    const id = Number((idParam ?? "").trim());
-    if (!id) {
-      return NextResponse.json({ error: "ID inválido." }, { status: 400 });
-    }
+    const id = await parseId(ctx);
 
-    // Com ON DELETE CASCADE em dependências (se houver), basta deletar o produto.
     const { data, error } = await supabaseAdmin
       .from("produto")
       .delete()
@@ -232,17 +267,11 @@ export async function DELETE(_: Request, ctx: Params) {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "Produto não encontrado." },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Produto não encontrado." }, { status: 404 });
     }
 
     return new NextResponse(null, { status: 204 });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao deletar produto." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message ?? "Erro ao deletar produto." }, { status: 500 });
   }
 }
