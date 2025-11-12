@@ -1,12 +1,12 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Boxes, CircleAlert } from "lucide-react";
+import { Boxes, CircleOff } from "lucide-react";
 
 import { useState } from "react";
 import { Download, LoaderCircle } from "lucide-react";
 
 // Ajuste se já tiver esse tipo em algum lugar do seu projeto:
-type ProductStatus = "OK" | "CRITICO" | "BAIXO" | "TODOS";
+type ProductStatus = "OK" | "CRITICO" | "BAIXO" | "TODOS" | "SEM_ESTOQUE";
 
 type Props = {
   search?: string | null;
@@ -16,9 +16,9 @@ type Props = {
   filename?: string; // opcional: força o nome do arquivo
 };
 
-export function ProdutosEstoqueBaixo({
+export function ProdutosSemEstoque({
   search,
-  status = "BAIXO",
+  status = "SEM_ESTOQUE",
   chunk,
   className = "hover:cursor-pointer",
   filename,
@@ -71,10 +71,10 @@ export function ProdutosEstoqueBaixo({
       className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
     >
       <div className="flex w-full items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-yellow-700 not-dark:bg-yellow-200">
-          <CircleAlert />
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-purple-800 not-dark:bg-purple-200">
+          <CircleOff />
         </div>
-        <span className="flex-1 font-medium">Produtos com Estoque Baixo </span>
+        <span className="flex-1 font-medium">Produtos Sem Estoque </span>
       </div>
       {loading ? (
         <div className="flex flex-row flex-nowrap text-primary text-xs gap-2">
@@ -88,7 +88,7 @@ export function ProdutosEstoqueBaixo({
         
       ) : (
         <p className="text-xs text-muted-foreground">
-          Itens que precisam de reposição.
+          Itens que precisam de reposição urgente.
         </p>
       )}
     </Button>

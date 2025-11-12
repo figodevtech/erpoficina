@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Boxes } from "lucide-react";
+import { Boxes, TriangleAlert } from "lucide-react";
 
 import { useState } from "react";
 import { Download, LoaderCircle } from "lucide-react";
@@ -72,7 +72,7 @@ export function ProdutosEstoqueCritico({
     >
       <div className="flex w-full items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-red-800 not-dark:bg-red-200">
-          <Boxes />
+          <TriangleAlert />
         </div>
         <span className="flex-1 font-medium">Produtos com Estoque Crítico </span>
       </div>

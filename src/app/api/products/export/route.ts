@@ -6,8 +6,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import * as XLSX from "xlsx";
 
 /** Status de estoque (para filtros) */
-type Status = "OK" | "CRITICO" | "BAIXO";
-const STATUS_SET = new Set<Status>(["OK", "CRITICO", "BAIXO"]);
+type Status = "OK" | "CRITICO" | "BAIXO" | "SEM_ESTOQUE";
+const STATUS_SET = new Set<Status>(["OK", "CRITICO", "BAIXO", "SEM_ESTOQUE"]);
 
 /** Campos a exportar (podem ser ajustados) */
 const EXPORT_FIELDS = `

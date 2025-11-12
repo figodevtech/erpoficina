@@ -19,6 +19,7 @@ import DialogDespesaCategoria from "./dialogs/dialog-despesa-categoria";
 import DialogReceitaCategoria from "./dialogs/dialog-receita-categoria";
 import { ProdutosEstoqueBaixo } from "./produtosEstoqueBaixo";
 import { ProdutosEstoqueCritico } from "./produtosEstoqueCrítico";
+import { ProdutosSemEstoque } from "./produtosSemEstoque";
 
 export function ReportsGrid() {
 
@@ -106,6 +107,7 @@ export function ReportsGrid() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <ProdutosEstoqueBaixo/>
           <ProdutosEstoqueCritico/>
+          <ProdutosSemEstoque/>
         </div>
       </Card>
 
