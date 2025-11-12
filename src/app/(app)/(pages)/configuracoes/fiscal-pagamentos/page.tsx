@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -141,60 +141,75 @@ export default function ConfigFiscalPagamentosPage() {
     },
   });
 
-  function applyEmpresa(e: any) {
-    if (!e) return;
-    setValue("empresa.empresaId", Number(e.id ?? 1));
-    setValue("empresa.cnpj", e.cnpj ?? "");
-    setValue("empresa.razaosocial", e.razaosocial ?? "");
-    setValue("empresa.nomefantasia", e.nomefantasia ?? "");
-    setValue("empresa.inscricaoestadual", e.inscricaoestadual ?? "");
-    setValue("empresa.inscricaomunicipal", e.inscricaomunicipal ?? "");
-    setValue("empresa.endereco", e.endereco ?? "");
-    setValue("empresa.codigomunicipio", e.codigomunicipio ?? "");
-    setValue("empresa.regimetributario", (e.regimetributario as any) ?? "SIMPLES_NACIONAL");
-    setValue("empresa.ambiente", (e.ambiente as any) ?? "HOMOLOGACAO");
-  }
-  function applyNfe(n: any) {
-    if (!n) return;
-    setValue("nfe.serieNFe", n.serieNFe ?? n.serienfe ?? "1");
-    setValue("nfe.serieNFCe", n.serieNFCe ?? n.serienfce ?? "");
-    setValue("nfe.cscHomologacao", n.cscHomologacao ?? "");
-    setValue("nfe.cscProducao", n.cscProducao ?? "");
-    setValue("nfe.idCSC", n.idCSC ?? "");
-    setValue("nfe.naturezaOperacao", n.naturezaOperacao ?? "Venda de mercadoria");
-  }
-  function applyNfse(n: any) {
-    if (!n) return;
-    setValue("nfse.provedor", n.provedor ?? "");
-    setValue("nfse.inscricaoMunicipal", n.inscricaoMunicipal ?? "");
-    setValue("nfse.serieRPS", n.serieRPS ?? "");
-    setValue("nfse.usuario", n.usuario ?? "");
-    setValue("nfse.senha", n.senha ?? "");
-    setValue("nfse.token", n.token ?? "");
-    setValue("nfse.certificadoA1Base64", n.certificadoA1Base64 ?? "");
-    setValue("nfse.senhaCertificado", n.senhaCertificado ?? "");
-  }
-  function applyPagamentos(p: any) {
-    if (!p) return;
-    setValue("pagamentos.cartao.habilitado", p.cartao?.habilitado ?? true);
-    setValue("pagamentos.cartao.provider", p.cartao?.provider ?? "stone");
-    setValue("pagamentos.cartao.merchantId", p.cartao?.merchantId ?? "");
-    setValue("pagamentos.cartao.apiKey", p.cartao?.apiKey ?? "");
-    setValue("pagamentos.cartao.webhookUrl", p.cartao?.webhookUrl ?? "");
-    setValue("pagamentos.cartao.parcelasMax", Number(p.cartao?.parcelasMax ?? 1));
-    setValue("pagamentos.cartao.capturaAutomatica", !!p.cartao?.capturaAutomatica);
-    setValue("pagamentos.cartao.terminalIds", Array.isArray(p.cartao?.terminalIds) ? p.cartao.terminalIds : []);
-    setValue("pagamentos.pix.habilitado", p.pix?.habilitado ?? true);
-    setValue("pagamentos.pix.provider", p.pix?.provider ?? "stone");
-    setValue("pagamentos.pix.chave", p.pix?.chave ?? "");
-    setValue("pagamentos.pix.clientId", p.pix?.clientId ?? "");
-    setValue("pagamentos.pix.clientSecret", p.pix?.clientSecret ?? "");
-    setValue("pagamentos.pix.webhookUrl", p.pix?.webhookUrl ?? "");
-    setValue("pagamentos.pix.expiracaoSegundos", Number(p.pix?.expiracaoSegundos ?? 1800));
-    setValue("pagamentos.dinheiro.habilitado", p.dinheiro?.habilitado ?? true);
-  }
+  const applyEmpresa = useCallback(
+    (e: any) => {
+      if (!e) return;
+      setValue("empresa.empresaId", Number(e.id ?? 1));
+      setValue("empresa.cnpj", e.cnpj ?? "");
+      setValue("empresa.razaosocial", e.razaosocial ?? "");
+      setValue("empresa.nomefantasia", e.nomefantasia ?? "");
+      setValue("empresa.inscricaoestadual", e.inscricaoestadual ?? "");
+      setValue("empresa.inscricaomunicipal", e.inscricaomunicipal ?? "");
+      setValue("empresa.endereco", e.endereco ?? "");
+      setValue("empresa.codigomunicipio", e.codigomunicipio ?? "");
+      setValue("empresa.regimetributario", (e.regimetributario as any) ?? "SIMPLES_NACIONAL");
+      setValue("empresa.ambiente", (e.ambiente as any) ?? "HOMOLOGACAO");
+    },
+    [setValue]
+  );
 
-  async function carregarTudo() {
+  const applyNfe = useCallback(
+    (n: any) => {
+      if (!n) return;
+      setValue("nfe.serieNFe", n.serieNFe ?? n.serienfe ?? "1");
+      setValue("nfe.serieNFCe", n.serieNFCe ?? n.serienfce ?? "");
+      setValue("nfe.cscHomologacao", n.cscHomologacao ?? "");
+      setValue("nfe.cscProducao", n.cscProducao ?? "");
+      setValue("nfe.idCSC", n.idCSC ?? "");
+      setValue("nfe.naturezaOperacao", n.naturezaOperacao ?? "Venda de mercadoria");
+    },
+    [setValue]
+  );
+
+  const applyNfse = useCallback(
+    (n: any) => {
+      if (!n) return;
+      setValue("nfse.provedor", n.provedor ?? "");
+      setValue("nfse.inscricaoMunicipal", n.inscricaoMunicipal ?? "");
+      setValue("nfse.serieRPS", n.serieRPS ?? "");
+      setValue("nfse.usuario", n.usuario ?? "");
+      setValue("nfse.senha", n.senha ?? "");
+      setValue("nfse.token", n.token ?? "");
+      setValue("nfse.certificadoA1Base64", n.certificadoA1Base64 ?? "");
+      setValue("nfse.senhaCertificado", n.senhaCertificado ?? "");
+    },
+    [setValue]
+  );
+
+  const applyPagamentos = useCallback(
+    (p: any) => {
+      if (!p) return;
+      setValue("pagamentos.cartao.habilitado", p.cartao?.habilitado ?? true);
+      setValue("pagamentos.cartao.provider", p.cartao?.provider ?? "stone");
+      setValue("pagamentos.cartao.merchantId", p.cartao?.merchantId ?? "");
+      setValue("pagamentos.cartao.apiKey", p.cartao?.apiKey ?? "");
+      setValue("pagamentos.cartao.webhookUrl", p.cartao?.webhookUrl ?? "");
+      setValue("pagamentos.cartao.parcelasMax", Number(p.cartao?.parcelasMax ?? 1));
+      setValue("pagamentos.cartao.capturaAutomatica", !!p.cartao?.capturaAutomatica);
+      setValue("pagamentos.cartao.terminalIds", Array.isArray(p.cartao?.terminalIds) ? p.cartao.terminalIds : []);
+      setValue("pagamentos.pix.habilitado", p.pix?.habilitado ?? true);
+      setValue("pagamentos.pix.provider", p.pix?.provider ?? "stone");
+      setValue("pagamentos.pix.chave", p.pix?.chave ?? "");
+      setValue("pagamentos.pix.clientId", p.pix?.clientId ?? "");
+      setValue("pagamentos.pix.clientSecret", p.pix?.clientSecret ?? "");
+      setValue("pagamentos.pix.webhookUrl", p.pix?.webhookUrl ?? "");
+      setValue("pagamentos.pix.expiracaoSegundos", Number(p.pix?.expiracaoSegundos ?? 1800));
+      setValue("pagamentos.dinheiro.habilitado", p.dinheiro?.habilitado ?? true);
+    },
+    [setValue]
+  );
+
+  const carregarTudo = useCallback(async () => {
     setCarregando(true);
     try {
       const [rEmp, rNfe, rNfse, rPay] = await Promise.all([
@@ -216,10 +231,11 @@ export default function ConfigFiscalPagamentosPage() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, [applyEmpresa, applyNfe, applyNfse, applyPagamentos]);
+
   useEffect(() => {
     carregarTudo();
-  }, []);
+  }, [carregarTudo]);
 
   function validar(v: FormValues, tab: string) {
     const errs: string[] = [];
