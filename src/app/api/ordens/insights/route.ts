@@ -168,7 +168,6 @@ export async function GET(req: Request) {
       : 0;
 
     const avgTicketAll = totalOrders ? totalBudget / totalOrders : 0;
-    const avgTicketCompleted = ordersCompleted ? revenue30d /* not ideal */ : 0; // manteremos só avgTicketAll no front
 
     // serialização dos buckets
     const monthlyNewArr = monthKeys.map((k) => ({ month: k, count: monthlyNew[k] ?? 0 }));

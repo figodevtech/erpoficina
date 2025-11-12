@@ -65,7 +65,7 @@ function resolvePecaDescricao(src: any): string {
   return src?.descricao ?? src?.peca?.descricao ?? "";
 }
 
-export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingChange }: OrdemEditFormProps) {
+export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: OrdemEditFormProps) {
   const osId = defaultValues?.id ?? null;
 
   const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);

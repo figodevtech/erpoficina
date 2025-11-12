@@ -32,7 +32,6 @@ type DadosBasicos = {
   statusToken: "valido" | "expirado" | "usado";
 };
 
-type DadosComResumo = DadosBasicos & { resumo: Resumo };
 
 /* ------------------------------- Componente ------------------------------- */
 export default function AprovacaoCliente({ token }: { token: string }) {

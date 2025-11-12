@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ClipboardList, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import type { DetalheOS } from "../types";
 
 interface DialogChecklistProps {

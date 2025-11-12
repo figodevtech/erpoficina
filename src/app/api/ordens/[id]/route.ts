@@ -152,7 +152,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     }>;
 
     const ckIds = ckRows.map((r) => r.id);
-    let imgsMap = new Map<number, Array<{ id: number; url: string; descricao: string | null; createdat: string | null }>>();
+    const imgsMap = new Map<number, Array<{ id: number; url: string; descricao: string | null; createdat: string | null }>>();
     if (ckIds.length) {
       const img_res = await supabase
         .from("imagemvistoria")

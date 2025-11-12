@@ -5,7 +5,7 @@ import { OrdensTabs } from "../components/ordens-tabs";
 import { NovaOSDialog } from "../components/novaOS/ordem-dialog";
 import { EditarOSDialog } from "./editarOS/editar-ordem-dialog";
 import { OrcamentoDialog } from "../components/orcamento/orcamento-dialog";
-import { criarOrdem, editarOrdem } from "../lib/api";
+import { editarOrdem } from "../lib/api";
 
 type Ordem = any;
 

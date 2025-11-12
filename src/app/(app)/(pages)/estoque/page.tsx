@@ -22,7 +22,6 @@ export default function EstoquePage() {
     statusCounts,
     loadingStatusCounter,
     totalProducts,
-    error,
     fetchStatusCounts,
   } = useStatusCounter();
 

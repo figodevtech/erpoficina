@@ -21,11 +21,9 @@ import {
   Store,
 } from "lucide-react";
 
-import Image from "next/image";
-import logoDemir from "@/lib/images/demirLogo.png";
 import { NavMain } from "./components/nav-main";
 import { NavUser } from "./components/nav-user";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from "@/components/ui/sidebar";
 import { NavSettings } from "./components/nav-settings";
 
 import { useSession } from "next-auth/react";

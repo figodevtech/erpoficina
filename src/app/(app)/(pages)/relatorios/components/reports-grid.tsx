@@ -10,7 +10,6 @@ import {
   Package,
   TrendingUp,
   Wallet,
-  User,
   Users,
 
 } from "lucide-react";

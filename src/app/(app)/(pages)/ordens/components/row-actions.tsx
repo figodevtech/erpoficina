@@ -51,7 +51,6 @@ type Policy = {
 
 export function RowActions<TRow extends RowBase>({
   row,
-  policy, // visibilidade calculada aqui; mantido por compat.
   onOpenOrcamento,
   onEditar,
   setStatus,

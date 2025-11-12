@@ -191,7 +191,7 @@ export function OSDetalhesDialog({
 
   useEffect(() => {
     if (canFetch) fetchDetails();
-  }, [canFetch, osId]);
+  }, [canFetch, osId, fetchDetails]);
 
   const titulo = useMemo(() => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"), [data?.os?.id]);
 

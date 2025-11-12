@@ -73,14 +73,7 @@ type Insights = {
   last7DaysNew: { date: string; count: number }[];
 };
 
-type RechartsValue = string | number | Array<string | number>;
-type RechartsName = string | number;
-type RechartsFormatter = (
-  value: RechartsValue,
-  name: RechartsName,
-  item: any,
-  index: number
-) => React.ReactNode;
+
 
 /** ============================
  *  Baseline de 12 meses zerados (evita piscada)
@@ -544,13 +537,6 @@ function formatCurrencyBRL(v: number) {
   }).format(v || 0);
 }
 
-function formatCurrencyShort(v: number) {
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}b`;
-  if (abs >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `R$ ${(v / 1_000).toFixed(1)}k`;
-  return formatCurrencyBRL(v);
-}
 
 function formatDurationHours(h: number) {
   if (!h || h <= 0) return "—";

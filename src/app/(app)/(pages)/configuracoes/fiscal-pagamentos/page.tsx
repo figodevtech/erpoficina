@@ -82,7 +82,7 @@ export default function ConfigFiscalPagamentosPage() {
   const [carregando, setCarregando] = useState(true);
   const [activeTab, setActiveTab] = useState("empresa");
 
-  const { register, handleSubmit, setValue, watch, getValues, reset } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, getValues } = useForm<FormValues>({
     defaultValues: {
       empresa: {
         empresaId: 1,

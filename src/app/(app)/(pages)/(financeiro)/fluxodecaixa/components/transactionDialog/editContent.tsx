@@ -40,9 +40,9 @@ export default function EditContent({
   const [selectedTransaction, setSelectedTransaction] = useState<
     Transaction | undefined
   >(undefined);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting,] = useState(false);
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
-  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+  const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
 
   const formatForInput = (date?: string | Date) => {
@@ -105,7 +105,7 @@ export default function EditContent({
         cpfcnpjpagador: selectedCustomer.cpfcnpj,
       });
     }
-  }, [selectedCustomer]);
+  }, [selectedCustomer, selectedTransaction]);
 
   if (isLoading) {
     return (

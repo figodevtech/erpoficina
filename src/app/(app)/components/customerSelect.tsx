@@ -16,7 +16,6 @@ import {
 import axios from "axios";
 import { ReactNode, useEffect, useState } from "react";
 import { Customer, Pagination } from "../(pages)/clientes/types";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -24,7 +23,6 @@ import {
   ChevronsRight,
   Loader,
   Search,
-  SendToBack,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,7 +89,7 @@ export default function CustomerSelect({
   }, []);
   useEffect(() => {
     handleGetCustomers(pagination.page, pagination.limit, search);
-  }, [search]);
+  }, [search, pagination.limit, pagination.page]);
 
   return (
     <Dialog

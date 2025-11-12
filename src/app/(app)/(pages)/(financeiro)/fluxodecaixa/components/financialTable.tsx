@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -31,7 +30,6 @@ import {
   ChevronRightIcon,
   ChevronsLeft,
   ChevronsRight,
-  Edit,
   Loader,
   Loader2,
   Plus,
@@ -85,7 +83,7 @@ export default function FinancialTable({
   >(undefined);
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (selectedTransactionId) setIsOpen(true);

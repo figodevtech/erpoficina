@@ -8,10 +8,7 @@ import * as XLSX from "xlsx";
 type Status = "ATIVO" | "INATIVO" | "PENDENTE";
 const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
 
-function normalizeString(v?: string | null) {
-  const s = (v ?? "").trim();
-  return s.length ? s : null;
-}
+
 
 export async function GET(req: Request) {
   try {
@@ -103,7 +100,6 @@ export async function GET(req: Request) {
     // 1ª chamada só para pegar o total
     const first = await buildQuery().range(0, 0);
     if (first.error) throw first.error;
-    const total = first.count ?? 0;
 
     // Busca tudo em blocos, anexando diretamente na planilha (memória mais estável)
     for (let from = 0; ; from += CHUNK) {

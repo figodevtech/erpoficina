@@ -1,6 +1,5 @@
 "use client";
 import * as React from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 // ✅ use sempre o Select do shadcn
 import {
@@ -40,9 +39,6 @@ export default function SearchFilter({
   dateTo,
   setDateFrom,
   setDateTo,
-  handleGetTransactions,
-  pagination,
-  search,
 }: SearchFilterProps) {
   // 👇 IDs estáveis para o Select
   const uid = React.useId();

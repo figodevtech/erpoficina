@@ -27,7 +27,7 @@ type FormValues = {
 
 export function NFSeTab({
   register,
-  setValue,
+  
 }: {
   register: UseFormRegister<FormValues>;
   setValue: UseFormSetValue<FormValues>;

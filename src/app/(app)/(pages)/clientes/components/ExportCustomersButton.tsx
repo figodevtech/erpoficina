@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Status } from "../types";
 import { Button } from "@/components/ui/button";
-import { Download, LoaderCircle, Upload } from "lucide-react";
+import { Download, LoaderCircle } from "lucide-react";
 
 type Props = {
   search?: string | null;

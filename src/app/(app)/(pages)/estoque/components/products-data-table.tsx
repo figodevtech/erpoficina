@@ -29,7 +29,6 @@ import {
   Edit,
   Loader,
   CircleOff,
-  Check,
   Store,
 } from "lucide-react";
 import {
@@ -126,7 +125,7 @@ export default function ProductsDataTable({
   setIsOpen,
 }: ProductsDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [, setIsDeleting] = useState(false);
 
   const handleDeleteProduct = async (id: number) => {
     setIsDeleting(true);

@@ -1,9 +1,9 @@
 "use client";
-import { Dialog, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
-import { Children, ReactNode, useEffect, useState } from "react";
+import { Dialog,  DialogTrigger } from "@/components/ui/dialog";
+import { ReactNode, useState } from "react";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
-import { Categoria_transacao, NewTransaction, Tipo_transacao, Transaction, TransactionCustomer } from "../../types";
+import { Categoria_transacao, NewTransaction, Tipo_transacao, TransactionCustomer } from "../../types";
 
 interface TransactionDialogProps {
   children?: ReactNode;

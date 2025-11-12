@@ -21,12 +21,12 @@ export default function EquipesPage() {
   const [totalItens, setTotalItens] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
-  const [carregandoLista, setCarregandoLista] = useState(false);
+  const [, setCarregandoLista] = useState(false);
   const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
 
   useEffect(() => {
     carregarOrdens();
-  }, [filtroStatus, busca, paginaAtual, itensPorPagina]);
+  }, [filtroStatus, busca, paginaAtual, itensPorPagina, carregarOrdens]);
 
   async function carregarOrdens() {
     try {
@@ -73,12 +73,7 @@ export default function EquipesPage() {
     // setOrdemSelecionada(undefined);
   }
 
-  function aoMudarItensPorPagina(novosItens: number) {
-    setItensPorPagina(novosItens);
-    setPaginaAtual(1);
-    // idem acima
-    // setOrdemSelecionada(undefined);
-  }
+ 
 
   async function aoAssumirOrdem(ordemId: number) {
     try {

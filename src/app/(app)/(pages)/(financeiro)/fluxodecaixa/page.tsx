@@ -5,7 +5,6 @@ import { StatusInfo, Tipo_transacao, Transaction } from "./types";
 import Cards from "./components/cards";
 import SearchFilter from "./components/searchFilter";
 import FinancialTable from "./components/financialTable";
-import { date } from "zod";
 
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -84,7 +83,7 @@ export default function FinanceiroPage() {
 
   useEffect(() => {
     handleGetTransactions( pagination.page, pagination.limit, search,dateFrom, dateTo, tipo,);
-  }, [tipo, search, dateFrom, dateTo]);
+  }, [tipo, search, dateFrom, dateTo, handleGetTransactions]);
 
   useEffect(() => {
     handleGetTransactions(1, pagination.limit);

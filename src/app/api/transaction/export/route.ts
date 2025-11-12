@@ -146,7 +146,6 @@ export async function GET(req: Request) {
     // Primeira chamada só para obter o total
     const first = await buildQuery().range(0, 0);
     if (first.error) throw first.error;
-    const total = first.count ?? 0;
 
     // Varrendo em blocos
     for (let from = 0; ; from += CHUNK) {

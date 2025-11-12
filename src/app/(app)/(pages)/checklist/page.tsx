@@ -9,7 +9,6 @@ import { listarModelos, criarModelo, atualizarModelo, excluirModelo } from "./co
 import { TemplateForm } from "./components/template-form";
 import { TemplatesList } from "./components/template-list";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 
 export default function Page() {
   const [items, setItems] = useState<ChecklistTemplate[]>([]);

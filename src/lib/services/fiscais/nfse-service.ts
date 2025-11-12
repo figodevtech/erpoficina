@@ -23,7 +23,7 @@ export type NFSeEmitirParams = {
 };
 
 export class NFSeService {
-  async emitir(params: NFSeEmitirParams) {
+  async emitir() {
     // TODO: integrar com provedor municipal (Ginfes/WebISS/Betha/etc)
     return {
       ok: true,

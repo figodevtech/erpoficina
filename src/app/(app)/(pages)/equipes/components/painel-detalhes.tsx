@@ -66,12 +66,6 @@ export function PainelDetalhes({
     [ordem]
   );
 
-  const tempoAbertura = useMemo(() => {
-    if (!dataEntrada) return "—";
-    const end = dataSaida ?? new Date();
-    return humanizeDuration(end.getTime() - dataEntrada.getTime());
-  }, [dataEntrada, dataSaida]);
-
   const clienteNome =
     (ordem as any)?.cliente?.nome ??
     (ordem as any)?.cliente?.nomerazaosocial ??

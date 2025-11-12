@@ -1,9 +1,9 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Boxes, CircleOff } from "lucide-react";
+import { CircleOff } from "lucide-react";
 
 import { useState } from "react";
-import { Download, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 
 // Ajuste se já tiver esse tipo em algum lugar do seu projeto:
 type ProductStatus = "OK" | "CRITICO" | "BAIXO" | "TODOS" | "SEM_ESTOQUE";
@@ -20,7 +20,6 @@ export function ProdutosSemEstoque({
   search,
   status = "SEM_ESTOQUE",
   chunk,
-  className = "hover:cursor-pointer",
   filename,
 }: Props) {
   const [loading, setLoading] = useState(false);

@@ -129,7 +129,7 @@ export default function EditContent({ productId }: EditContentProps) {
     if (productId) {
       handleGetProduct(productId);
     }
-  }, []);
+  }, [ productId]);
 
   if (isLoading) {
     return (

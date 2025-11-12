@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
-import { PieChart, Wallet } from "lucide-react";
+import { PieChart } from "lucide-react";
 import { ExportTransactionsButton } from "../../../(financeiro)/fluxodecaixa/components/ExportTransactionsButton";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";

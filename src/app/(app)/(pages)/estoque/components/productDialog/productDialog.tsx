@@ -26,10 +26,9 @@ export function ProductDialog({
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
 
-  const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(
+  const [, setSelectedProduct] = useState<Produto | undefined>(
     undefined
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [newProduct, setNewProduct] = useState<Produto>({
     id: 0,
     precovenda: 0,

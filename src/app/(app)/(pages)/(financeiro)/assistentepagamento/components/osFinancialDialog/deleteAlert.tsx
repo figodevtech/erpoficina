@@ -10,7 +10,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { status } from "nprogress";
 import { ReactNode } from "react";
 
 interface DeleteAlertProps{

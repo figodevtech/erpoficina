@@ -15,8 +15,6 @@ import { TabelaItensProduto } from "./components/tabela-itens-produto";
 import { TabelaItensServico } from "./components/tabela-tens-servico";
 import { SelecaoItensTabs } from "./components/selecao-itens-tabs";
 
-const money = (n: number | string | null | undefined) =>
-  (typeof n === "number" ? n : Number(n ?? 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
   { ordemServico, onTotaisChange },
@@ -27,8 +25,6 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
   const {
     itensProduto,
     itensServico,
-    totalProdutos,
-    totalServicos,
     carregarItensDaOS,
     adicionarProduto,
     adicionarServico,

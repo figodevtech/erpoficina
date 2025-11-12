@@ -98,7 +98,7 @@ export function ExportExcelButton({
       const url = URL.createObjectURL(blob);
 
       // nome de arquivo padrão coerente com o tipo
-      let suggested =
+      const suggested =
         kind === "customers"
           ? `clientes_${(rest as CustomerProps).status || "TODOS"}`
           : buildTxnFilename(rest as TransactionProps);

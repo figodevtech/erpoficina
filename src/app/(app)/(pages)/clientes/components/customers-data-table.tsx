@@ -81,7 +81,7 @@ export default function CustomersDataTable({
   isAlertOpen,
   setIsAlertOpen,
 }: CustomerDataTableProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [, setIsDeleting] = useState(false);
 
   const handleDeleteUser = async (id: number) => {
     setIsDeleting(true);

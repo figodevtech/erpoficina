@@ -32,7 +32,6 @@ import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
-import { describe } from "node:test";
 import { Switch } from "@/components/ui/switch";
 import formatarEmReal from "@/utils/formatarEmReal";
 
@@ -60,7 +59,7 @@ export default function RegisterContent({
 }: RegisterContentProps) {
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+  const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const [isChecked, setIsChecked] = useState(false);
   const handleChange = (
@@ -96,7 +95,7 @@ export default function RegisterContent({
         cliente_id: selectedCustomer.id,
       });
     }
-  }, [setNewTransaction, selectedCustomer]);
+  }, [setNewTransaction, selectedCustomer, newTransaction]);
 
   const handleCreateTransaction = async () => {
   setIsSubmitting(true);

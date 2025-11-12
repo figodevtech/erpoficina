@@ -25,7 +25,6 @@ export default function OsFinancialDialog({
   onOpenChange,
   children,
   osId,
-  handleGetOrdens,
 }: OsFinancialDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

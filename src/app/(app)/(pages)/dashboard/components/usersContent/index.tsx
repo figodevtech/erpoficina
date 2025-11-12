@@ -252,7 +252,6 @@ function useStatusCounter(endpoint: string, autoRefreshMs?: number) {
 export default function CustomersDashboard({
   className,
   insightsEndpoint = "/api/customers/insights",
-  statusEndpoint = "/api/customers/status-counter",
   autoRefreshMs,
 }: CustomersDashboardProps) {
   const {
@@ -620,7 +619,6 @@ export function CustomersStatusCard({
     autoRefreshMs
   );
 
-  const total = data.totalClients;
   const counts = data.countsByStatus ?? { ATIVO: 0, INATIVO: 0, PENDENTE: 0 };
 
   const series = (STATUS_ORDER.concat(["NULL"]) as StatusKey[])
@@ -795,14 +793,6 @@ function Kpi({
   );
 }
 
-function EmptyState() {
-  return (
-    <div className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border p-3 text-center text-xs text-muted-foreground sm:min-h-48 sm:p-4 md:p-6 md:text-sm">
-      Nenhum cliente encontrado ainda. Cadastre clientes para ver os gráficos
-      aqui.
-    </div>
-  );
-}
 
 function keyIsKnown(key: StatusKey) {
   return key === "ATIVO" || key === "INATIVO" || key === "PENDENTE";

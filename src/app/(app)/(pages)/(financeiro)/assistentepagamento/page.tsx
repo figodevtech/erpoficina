@@ -13,7 +13,7 @@ export default function AssistentePagamento (){
     totalPages: 0,
   });
     const [isLoading, setIsLoading] = useState(false)
-    const[search, setSearch] = useState("")
+    const[search, ] = useState("")
     
 
     const handleGetOrdens = async (

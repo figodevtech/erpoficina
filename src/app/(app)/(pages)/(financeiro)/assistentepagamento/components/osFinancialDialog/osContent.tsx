@@ -16,10 +16,9 @@ import {
   TableHead,
 } from "@/components/ui/table";
 import formatarEmReal from "@/utils/formatarEmReal";
-import { Tipo_transacao, Transaction } from "../../../fluxodecaixa/types";
+import {  Transaction } from "../../../fluxodecaixa/types";
 import { useEffect, useState } from "react";
 import axios, { isAxiosError } from "axios";
-import { Servico } from "@/types/servico";
 import TransactionDialog from "../../../fluxodecaixa/components/transactionDialog/transactionDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,17 +37,9 @@ interface OsContentProps {
 }
 
 // Ajuste conforme a sua estrutura real
-interface ItemProduto {}
 
 export default function OsContent({ osId, IsOpen }: OsContentProps) {
-  interface ItemServico {
-    ordemservicoid: number;
-    servicoid: number;
-    quantidade: number;
-    precounitario: number;
-    subtotal: number;
-    servico: Servico;
-  }
+
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,17 +51,13 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     totalPages: 0,
   });
   const [ordem, setOrdem] = useState<Ordem | undefined>(undefined);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
   // ====== DATA LOADERS
   const handleGetOrdem = async (
     osId: number,
-    pageNumber?: number,
-    limit?: number,
-    search?: string,
-    tipo?: Tipo_transacao | ""
   ) => {
     setIsLoadingOs(true);
     try {

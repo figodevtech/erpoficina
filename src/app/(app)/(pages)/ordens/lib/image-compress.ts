@@ -29,7 +29,7 @@ async function readExifOrientation(file: File): Promise<number> {
         const get32 = (o: number) => view.getUint32(o, bigEnd);
         if (get16(tiffOffset + 2) !== 0x002a) return 1;
         const ifdOffset = get32(tiffOffset + 4);
-        let dirStart = tiffOffset + ifdOffset;
+        const dirStart = tiffOffset + ifdOffset;
         const entries = get16(dirStart);
         for (let i = 0; i < entries; i++) {
           const entry = dirStart + 2 + i * 12;

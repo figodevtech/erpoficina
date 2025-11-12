@@ -29,10 +29,10 @@ export function CustomerDialog({
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
 
-  const [selectedCustomer, setSelectedCustomer] = useState<
+  const [, setSelectedCustomer] = useState<
     Customer | undefined
   >(undefined);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [newCustomer, setNewCustomer] = useState<NewCustomer>({
     tipopessoa: "FISICA",
     cpfcnpj: "",

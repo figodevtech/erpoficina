@@ -1,9 +1,9 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Boxes, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 import { useState } from "react";
-import { Download, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 
 // Ajuste se já tiver esse tipo em algum lugar do seu projeto:
 type ProductStatus = "OK" | "CRITICO" | "BAIXO" | "TODOS";
@@ -20,7 +20,6 @@ export function ProdutosEstoqueCritico({
   search,
   status = "CRITICO",
   chunk,
-  className = "hover:cursor-pointer",
   filename,
 }: Props) {
   const [loading, setLoading] = useState(false);

@@ -4,7 +4,6 @@ import type { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Info } from "lucide-react";
 
 type NFeCfg = {
@@ -25,8 +24,6 @@ type FormValues = {
 
 export function NFeTab({
   register,
-  setValue,
-  watch,
 }: {
   register: UseFormRegister<FormValues>;
   setValue: UseFormSetValue<FormValues>;

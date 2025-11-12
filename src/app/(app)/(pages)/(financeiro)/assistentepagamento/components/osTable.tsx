@@ -23,7 +23,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -68,7 +67,7 @@ export default function OsTable({
 
   useEffect(()=> {
     handleGetOrdens(selectedStatus);
-  },[selectedStatus])
+  },[selectedStatus, handleGetOrdens])
 
   return (
     <Card className="">

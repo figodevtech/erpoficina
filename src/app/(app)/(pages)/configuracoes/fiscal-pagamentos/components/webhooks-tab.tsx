@@ -23,8 +23,6 @@ type FormValues = {
 
 export function WebhooksTab({
   register,
-  setValue,
-  watch,
 }: {
   register?: UseFormRegister<FormValues>;
   setValue?: UseFormSetValue<FormValues>;
