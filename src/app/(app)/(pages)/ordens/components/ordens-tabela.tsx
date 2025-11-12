@@ -165,13 +165,14 @@ export function OrdensTabela({
   useEffect(() => {
     const t = setTimeout(() => fetchNow({ statuses, search, page, limit }), 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statuses, search, page, limit]);
+
+  const statusesKey = useMemo(() => (statuses?.length ? statuses.join("|") : ""), [statuses]);
 
   // reset página quando mudar conjunto de status
   useEffect(() => {
     setPage(1);
-  }, [statuses.join("|")]); // stringify conjunto para detectar troca real
+  }, [statusesKey]);
 
   // realtime via supabase
   useEffect(() => {
@@ -180,7 +181,8 @@ export function OrdensTabela({
     if (!url || !anon) return;
 
     const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
-    const channelName = `os-realtime-list-${(statuses ?? []).join("+") || "all"}`;
+    const suffix = statusesKey ? statusesKey.replace(/\|/g, "+") : "all";
+    const channelName = `os-realtime-list-${suffix}`;
     const ch = supabase
       .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () =>
@@ -195,7 +197,7 @@ export function OrdensTabela({
       window.removeEventListener("os:refresh", onLocalRefresh);
       supabase.removeChannel(ch);
     };
-  }, [statuses.join("|")]);
+  }, [statusesKey]);
 
   // rodapé
   const pageCount = rows.length;

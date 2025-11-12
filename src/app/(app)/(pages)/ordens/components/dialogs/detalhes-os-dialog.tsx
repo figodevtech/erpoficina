@@ -1,3 +1,4 @@
+// ./src/app/(app)/(pages)/ordens/components/dialogs/detalhes-os-dialog.tsx
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -145,16 +146,12 @@ type OSDetalhesResponse = {
 function badgeClassForChecklistStatus(status?: string) {
   switch ((status || "").toUpperCase()) {
     case "OK":
-      // verde
       return "bg-emerald-600/15 text-emerald-500 border-emerald-700/30";
     case "ALERTA":
-      // amarelo
       return "bg-amber-500/15 text-amber-500 border-amber-700/30";
     case "FALHA":
-      // vermelho
       return "bg-red-600/15 text-red-500 border-red-700/30";
     default:
-      // neutro (pendente / desconhecido)
       return "bg-muted/30 text-muted-foreground border-muted";
   }
 }
@@ -173,25 +170,29 @@ export function OSDetalhesDialog({
 
   const canFetch = open && !!osId;
 
-  async function fetchDetails() {
-    if (!osId) return;
-    setLoading(true);
-    try {
-      const r = await fetch(`/api/ordens/${osId}`, { cache: "no-store" });
-      const j = (await r.json()) as any;
-      if (!r.ok) throw new Error(j?.error || "Falha ao carregar OS");
-      setData(j as OSDetalhesResponse);
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao carregar detalhes");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  // ✅ Sem warning: lógica de fetch dentro do useEffect
   useEffect(() => {
-    if (canFetch) fetchDetails();
-  }, [canFetch, osId, fetchDetails]);
+    if (!canFetch || !osId) return;
+
+    const ac = new AbortController();
+    (async () => {
+      setLoading(true);
+      try {
+        const r = await fetch(`/api/ordens/${osId}`, { cache: "no-store", signal: ac.signal });
+        const j = (await r.json()) as OSDetalhesResponse | { error?: string };
+        if (!r.ok) throw new Error((j as any)?.error || "Falha ao carregar OS");
+        if (!ac.signal.aborted) setData(j as OSDetalhesResponse);
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
+        toast.error(e?.message || "Erro ao carregar detalhes");
+        if (!ac.signal.aborted) setData(null);
+      } finally {
+        if (!ac.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
+  }, [canFetch, osId]);
 
   const titulo = useMemo(() => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"), [data?.os?.id]);
 
@@ -264,7 +265,7 @@ export function OSDetalhesDialog({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Resumo — gap-6 para casar com space-y-6 das seções */}
+              {/* Resumo */}
               <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
@@ -406,7 +407,7 @@ export function OSDetalhesDialog({
                 </div>
               </section>
 
-              {/* Checklist */}
+              {/* Checklist com badges personalizados e separadores */}
               <section className="rounded-lg border p-4">
                 <div className="flex items-center gap-2 mb-1.5">
                   <ListChecks className="h-4 w-4 text-primary" />
@@ -480,19 +481,12 @@ export function OSDetalhesDialog({
                           <li key={a.id} className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <div className="truncate">
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="underline break-all"
-                                  title={url}
-                                >
+                                <a href={url} target="_blank" rel="noreferrer" className="underline break-all" title={url}>
                                   {url}
                                 </a>
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado:{" "}
-                                {fmtDate(a.usado_em)}
+                                criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado: {fmtDate(a.usado_em)}
                               </div>
                             </div>
                             <div className="shrink-0 flex gap-2">

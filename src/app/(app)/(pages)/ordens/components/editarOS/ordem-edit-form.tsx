@@ -37,8 +37,10 @@ type ChecklistTemplateModel = {
   itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
 };
 
-const CHECK_STATUS = ["OK", "NOK", "NA"] as const;
-type Marcacao = (typeof CHECK_STATUS)[number] | "";
+// 🔧 RESOLUÇÃO DO WARNING:
+// Removemos a constante CHECK_STATUS que era usada apenas para tipo
+// e declaramos o tipo diretamente como união literal:
+type Marcacao = "OK" | "NOK" | "NA" | "";
 
 export type OrdemEditFormProps = {
   defaultValues: { id: number } | null;
@@ -163,9 +165,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
         const cli = j?.cliente ?? j?.os?.cliente ?? null;
         const vei = j?.veiculo ?? j?.os?.veiculo ?? null;
 
-        // 🔧 Ajuste principal: considerar tanto os.setorid quanto os.setor?.id
-        const setorIdResolvido =
-          os?.setorid != null ? os.setorid : os?.setor?.id != null ? os.setor.id : null;
+        const setorIdResolvido = os?.setorid != null ? os.setorid : os?.setor?.id != null ? os.setor.id : null;
         setSetor(setorIdResolvido != null ? String(setorIdResolvido) : "");
 
         setPrioridade((os?.prioridade as any) || "NORMAL");
@@ -240,14 +240,11 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
     })();
   }, [osId]);
 
-  // Se o setor veio definido mas (ainda) não existe na lista carregada, mantém o value mesmo assim
-  // (o Select do shadcn aceita value sem option visível; após carregar, ele seleciona).
-  // Opcionalmente poderíamos adicionar um "fantasma" caso deseje exibir o nome.
   useEffect(() => {
     if (!setor) return;
     const exists = setores.some((s) => String(s.id) === setor);
     if (!exists && setores.length > 0) {
-      // nada a fazer; deixamos o value até a lista real chegar ou ser atualizada.
+      // mantém o value até a lista real chegar
     }
   }, [setor, setores]);
 
@@ -651,12 +648,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                     </div>
                     <div className="space-y-1.5">
                       <Label>Ano</Label>
-                      <Input
-                        value={vAno}
-                        onChange={(e) => setVAno(e.target.value)}
-                        inputMode="numeric"
-                        disabled={saving}
-                      />
+                      <Input value={vAno} onChange={(e) => setVAno(e.target.value)} inputMode="numeric" disabled={saving} />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Cor</Label>
@@ -664,12 +656,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                     </div>
                     <div className="space-y-1.5">
                       <Label>KM atual</Label>
-                      <Input
-                        value={vKm}
-                        onChange={(e) => setVKm(e.target.value)}
-                        inputMode="numeric"
-                        disabled={saving}
-                      />
+                      <Input value={vKm} onChange={(e) => setVKm(e.target.value)} inputMode="numeric" disabled={saving} />
                     </div>
                   </div>
                 </div>
@@ -783,9 +770,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="text-sm font-medium">{it.titulo}</div>
-                            {it.descricao ? (
-                              <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div>
-                            ) : null}
+                            {it.descricao ? <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div> : null}
                           </div>
                           {it.obrigatorio && (
                             <Badge variant="secondary" className="text-[11px]">
@@ -830,9 +815,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {templateId
-                    ? "Este modelo não possui itens."
-                    : "Selecione um modelo para exibir os itens do checklist."}
+                  {templateId ? "Este modelo não possui itens." : "Selecione um modelo para exibir os itens do checklist."}
                 </p>
               )}
             </CardContent>

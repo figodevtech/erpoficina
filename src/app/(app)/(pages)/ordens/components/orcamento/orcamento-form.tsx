@@ -1,7 +1,7 @@
 // src/app/(app)/(pages)/ordens/components/orcamento/orcamento-form.tsx
 "use client";
 
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ClipboardList, ShoppingCart, Wrench } from "lucide-react";
@@ -14,7 +14,6 @@ import { salvarOrcamentoAPI, EstoqueInsuficienteError } from "./servicos/api-orc
 import { TabelaItensProduto } from "./components/tabela-itens-produto";
 import { TabelaItensServico } from "./components/tabela-tens-servico";
 import { SelecaoItensTabs } from "./components/selecao-itens-tabs";
-
 
 export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
   { ordemServico, onTotaisChange },
@@ -50,7 +49,7 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
     })();
   }, [osId, carregarItensDaOS]);
 
-  async function salvarOrcamento() {
+  const salvarOrcamento = useCallback(async () => {
     if (!osId) return;
     try {
       setErrosEstoque({});
@@ -78,7 +77,7 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
       }
       toast.error(e?.message ?? "Erro ao salvar orçamento");
     }
-  }
+  }, [osId, itensProduto, itensServico]);
 
   useImperativeHandle(ref, () => ({ salvarOrcamento }), [salvarOrcamento]);
 
@@ -88,18 +87,21 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
     if (prod) {
       setErrosEstoque((prev) => {
         if (!prev[prod.produtoid]) return prev;
-        const { [prod.produtoid]: _, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[prod.produtoid];
         return rest;
       });
     }
     atualizarProduto(index, patch);
   };
+
   const removerProdutoComReset = (index: number) => {
     const prod = itensProduto[index];
     if (prod) {
       setErrosEstoque((prev) => {
         if (!prev[prod.produtoid]) return prev;
-        const { [prod.produtoid]: _, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[prod.produtoid];
         return rest;
       });
     }
@@ -132,7 +134,11 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
           <CardDescription>Pesquise e inclua produtos e serviços no orçamento.</CardDescription>
         </CardHeader>
         <CardContent>
-          <SelecaoItensTabs onAdicionarProduto={adicionarProduto} onAdicionarServico={adicionarServico} abaInicial="produtos" />
+          <SelecaoItensTabs
+            onAdicionarProduto={adicionarProduto}
+            onAdicionarServico={adicionarServico}
+            abaInicial="produtos"
+          />
         </CardContent>
       </Card>
 

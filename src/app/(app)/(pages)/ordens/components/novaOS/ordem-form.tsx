@@ -20,8 +20,8 @@ type ChecklistTemplateModel = {
   nome: string;
   itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
 };
-const CHECK_STATUS = ["OK", "ALERTA", "FALHA"] as const;
-type Marcacao = (typeof CHECK_STATUS)[number] | "";
+const CHECK_OPTIONS = ["OK", "ALERTA", "FALHA"] as const;
+type Marcacao = (typeof CHECK_OPTIONS)[number] | "";
 
 /* ========== Props ========== */
 export type FormularioNovaOSProps = {
@@ -715,7 +715,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {(["OK", "ALERTA", "FALHA"] as const).map((status) => {
+                     {CHECK_OPTIONS.map((status) => {
                         const selected = marcado === status;
                         const base = "px-3 py-1.5 rounded-md text-sm border transition";
                         const selectedClass =
