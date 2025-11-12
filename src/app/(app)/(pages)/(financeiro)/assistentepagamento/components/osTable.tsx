@@ -67,7 +67,7 @@ export default function OsTable({
 
   useEffect(()=> {
     handleGetOrdens(selectedStatus);
-  },[selectedStatus, handleGetOrdens])
+  },[selectedStatus, ])
 
   return (
     <Card className="">

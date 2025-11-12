@@ -54,7 +54,7 @@ export function RowActions<TRow extends RowBase>({
   onOpenOrcamento,
   onEditar,
   setStatus,
-  // dialogs
+  // dialog
   setLinkRow,
   setLinkDialogOpen,
   setConfirmRow,
