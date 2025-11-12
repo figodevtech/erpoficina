@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -23,9 +25,13 @@ import {
   CheckSquare,
   Package,
   ImageIcon,
+  FileText,
+  StickyNote,
+  ListChecks,
+  Calculator,
+  X,
 } from "lucide-react";
 
-// ===== Ajuste o prefixo da URL pública =====
 const PUBLIC_APPROVAL_BASE = "/aprovacao";
 function approvalUrlFromToken(token: string) {
   if (!token) return "";
@@ -33,7 +39,6 @@ function approvalUrlFromToken(token: string) {
   return `${origin}${PUBLIC_APPROVAL_BASE}/${token}`;
 }
 
-// ===== Helpers visuais =====
 const statusClasses: Record<string, string> = {
   ORCAMENTO: "bg-fuchsia-600/15 text-fuchsia-400",
   APROVACAO_ORCAMENTO: "bg-sky-600/15 text-sky-400",
@@ -42,14 +47,12 @@ const statusClasses: Record<string, string> = {
   CONCLUIDO: "bg-green-600/15 text-green-400",
   CANCELADO: "bg-red-600/15 text-red-400",
 };
-
 const prioClasses: Record<string, string> = {
   ALTA: "bg-red-600/15 text-red-500",
   NORMAL: "bg-amber-600/15 text-amber-500",
   BAIXA: "bg-emerald-600/15 text-emerald-500",
 };
 
-// ===== Helpers de data/moeda =====
 function fmtDate(s?: string | null) {
   if (!s) return "—";
   const d = new Date(s);
@@ -74,7 +77,6 @@ function fileNameFromUrl(url: string) {
   }
 }
 
-// ===== Tipos mínimos (compatíveis com sua API /api/ordens/[id]) =====
 type OS = {
   id: number;
   descricao?: string | null;
@@ -98,9 +100,14 @@ type ItemProduto = {
   quantidade: number;
   precounitario: number;
   subtotal: number;
-  produto?: { id: number; codigo?: string | null; descricao?: string | null; precounitario?: number | null; unidade?: string | null } | null;
+  produto?: {
+    id: number;
+    codigo?: string | null;
+    descricao?: string | null;
+    precounitario?: number | null;
+    unidade?: string | null;
+  } | null;
 };
-
 type ItemServico = {
   ordemservicoid: number;
   servicoid: number;
@@ -110,22 +117,15 @@ type ItemServico = {
   servico?: { id: number; codigo?: string | null; descricao?: string | null; precohora?: number | null } | null;
 };
 
-type ChecklistImage = {
-  id: number;
-  url: string;
-  descricao?: string | null;
-  createdat?: string | null;
-};
-
+type ChecklistImage = { id: number; url: string; descricao?: string | null; createdat?: string | null };
 type ChecklistItem = {
   id: number;
   item: string;
   status: "PENDENTE" | "OK" | "ALERTA" | "FALHA";
   observacao?: string | null;
   createdat?: string | null;
-  imagens?: ChecklistImage[]; // <<==== NOVO
+  imagens?: ChecklistImage[];
 };
-
 type Aprovacao = {
   id: number;
   token: string;
@@ -141,6 +141,23 @@ type OSDetalhesResponse = {
   checklist: ChecklistItem[];
   aprovacoes?: Aprovacao[];
 };
+
+function badgeClassForChecklistStatus(status?: string) {
+  switch ((status || "").toUpperCase()) {
+    case "OK":
+      // verde
+      return "bg-emerald-600/15 text-emerald-500 border-emerald-700/30";
+    case "ALERTA":
+      // amarelo
+      return "bg-amber-500/15 text-amber-500 border-amber-700/30";
+    case "FALHA":
+      // vermelho
+      return "bg-red-600/15 text-red-500 border-red-700/30";
+    default:
+      // neutro (pendente / desconhecido)
+      return "bg-muted/30 text-muted-foreground border-muted";
+  }
+}
 
 export function OSDetalhesDialog({
   open,
@@ -174,13 +191,9 @@ export function OSDetalhesDialog({
 
   useEffect(() => {
     if (canFetch) fetchDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canFetch, osId]);
 
-  const titulo = useMemo(
-    () => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"),
-    [data?.os?.id]
-  );
+  const titulo = useMemo(() => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"), [data?.os?.id]);
 
   const statusBadge = useMemo(() => {
     const st = (data?.os?.status || "ORCAMENTO").toUpperCase();
@@ -200,193 +213,213 @@ export function OSDetalhesDialog({
     () => (data?.itensServico || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0),
     [data?.itensServico]
   );
-  const totalGeral = totalProdutos + totalServicos;
+  const totalGeral = useMemo(() => totalProdutos + totalServicos, [totalProdutos, totalServicos]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl p-0">
-        <div className="flex flex-col max-h-[calc(100vh-6rem)]">
-          <DialogHeader className="px-5 pt-5">
+      <DialogContent
+        className="
+          w-[95vw] sm:max-w-4xl
+          max-h-[85vh] sm:max-h-[85vh] supports-[height:100svh]:max-h-[85svh]
+          overflow-y-auto overscroll-contain
+          p-0
+        "
+      >
+        {/* Header sticky + botão fechar */}
+        <div className="top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b relative">
+          <DialogClose asChild>
+            <Button variant="ghost" size="icon" className="absolute right-2 top-2" aria-label="Fechar" title="Fechar">
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogClose>
+
+          <DialogHeader className="px-5 pt-5 pb-3">
             <DialogTitle className="flex items-center gap-2">
               <Link2 className="h-5 w-5 text-primary" />
               {titulo}
             </DialogTitle>
-            <DialogDescription>
-              Informações completas da OS, itens, checklist e links de aprovação.
-            </DialogDescription>
+            <DialogDescription>Informações completas da OS, itens, checklist e links de aprovação.</DialogDescription>
           </DialogHeader>
 
           {/* Barra de estado */}
-          <div className="px-5 pt-2 pb-3 flex items-center gap-2">
+          <div className="px-5 pb-3 flex items-center gap-2">
             {statusBadge}
             {prioBadge}
             <div className="ml-auto text-xs text-muted-foreground">
               Entrada: <b>{fmtDate(data?.os?.dataentrada)}</b>
-              {" · "}Saída prev.: <b>{fmtDate(data?.os?.datasaidaprevista)}</b>
               {" · "}Saída real: <b>{fmtDate(data?.os?.datasaidareal)}</b>
             </div>
           </div>
+        </div>
 
-          {/* CONTEÚDO SCROLLÁVEL */}
-          <div className="px-5 pb-5 overflow-y-auto">
-            {loading ? (
-              <div className="h-48 grid place-items-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : !data ? (
-              <div className="h-24 grid place-items-center text-sm text-muted-foreground">
-                Não foi possível carregar os detalhes.
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {/* Resumo */}
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-lg border p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <User2 className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Cliente</span>
-                    </div>
-                    <div className="text-sm">
-                      {data.os.cliente?.nomerazaosocial ?? "—"}
-                    </div>
+        {/* Conteúdo rolável */}
+        <div className="px-5 pb-5">
+          {loading ? (
+            <div className="h-48 grid place-items-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : !data ? (
+            <div className="h-24 grid place-items-center text-sm text-muted-foreground">
+              Não foi possível carregar os detalhes.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Resumo — gap-6 para casar com space-y-6 das seções */}
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <User2 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Cliente</span>
                   </div>
+                  <div className="text-sm">{data.os.cliente?.nomerazaosocial ?? "—"}</div>
+                </div>
 
-                  <div className="rounded-lg border p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Building2 className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Setor</span>
-                    </div>
-                    <div className="text-sm">
-                      {data.os.setor?.nome ?? "—"}
-                    </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Setor</span>
                   </div>
+                  <div className="text-sm">{data.os.setor?.nome ?? "—"}</div>
+                </div>
 
-                  <div className="rounded-lg border p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      {data.os.alvo_tipo === "PECA" ? (
-                        <Wrench className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Car className="h-4 w-4 text-primary" />
-                      )}
-                      <span className="text-sm font-medium">
-                        {data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}
-                      </span>
-                    </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
                     {data.os.alvo_tipo === "PECA" ? (
-                      <div className="text-sm">
-                        {data.os.peca?.titulo ?? "Peça (detalhes não informados)"}
-                      </div>
-                    ) : (
-                      <div className="text-sm">
-                        {data.os.veiculo
-                          ? `${data.os.veiculo.marca ?? ""} ${data.os.veiculo.modelo ?? ""} • ${data.os.veiculo.placa ?? ""}`.trim()
-                          : "—"}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-lg border p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckSquare className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Status de Aprovação</span>
-                    </div>
-                    <div className="text-sm">
-                      {data.os.statusaprovacao ?? "—"}
-                    </div>
-                  </div>
-                </section>
-
-                {/* Descrição / Observações */}
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-lg border p-3">
-                    <div className="text-sm font-medium mb-2">Descrição</div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {data.os.descricao || "—"}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border p-3">
-                    <div className="text-sm font-medium mb-2">Observações</div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {data.os.observacoes || "—"}
-                    </div>
-                  </div>
-                </section>
-
-                {/* Produtos / Serviços / Totais */}
-                <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="rounded-lg border p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Package className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Produtos</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        Total: <b>{fmtMoney(totalProdutos)}</b>
-                      </span>
-                    </div>
-                    {(data.itensProduto ?? []).length === 0 ? (
-                      <div className="text-sm text-muted-foreground">—</div>
-                    ) : (
-                      <ul className="space-y-2 text-sm">
-                        {data.itensProduto.map((it, idx) => (
-                          <li key={`${it.ordemservicoid}-${it.produtoid}-${idx}`} className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="font-medium truncate">
-                                {it.produto?.descricao || it.produto?.codigo || `Produto #${it.produtoid}`}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {it.quantidade} × {fmtMoney(it.precounitario)}
-                              </div>
-                            </div>
-                            <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div className="rounded-lg border p-3">
-                    <div className="flex items-center gap-2 mb-2">
                       <Wrench className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Serviços</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        Total: <b>{fmtMoney(totalServicos)}</b>
-                      </span>
-                    </div>
-                    {(data.itensServico ?? []).length === 0 ? (
-                      <div className="text-sm text-muted-foreground">—</div>
                     ) : (
-                      <ul className="space-y-2 text-sm">
-                        {data.itensServico.map((it, idx) => (
-                          <li key={`${it.ordemservicoid}-${it.servicoid}-${idx}`} className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="font-medium truncate">
-                                {it.servico?.descricao || it.servico?.codigo || `Serviço #${it.servicoid}`}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {it.quantidade} × {fmtMoney(it.precounitario)}
-                              </div>
-                            </div>
-                            <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
-                          </li>
-                        ))}
-                      </ul>
+                      <Car className="h-4 w-4 text-primary" />
                     )}
+                    <span className="text-sm font-medium">{data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</span>
                   </div>
+                  {data.os.alvo_tipo === "PECA" ? (
+                    <div className="text-sm">{data.os.peca?.titulo ?? "Peça (detalhes não informados)"}</div>
+                  ) : (
+                    <div className="text-sm">
+                      {data.os.veiculo
+                        ? `${data.os.veiculo.marca ?? ""} ${data.os.veiculo.modelo ?? ""} • ${
+                            data.os.veiculo.placa ?? ""
+                          }`.trim()
+                        : "—"}
+                    </div>
+                  )}
+                </div>
 
-                  <div className="lg:col-span-2 rounded-lg border p-3">
-                    <div className="text-sm font-medium">Total geral</div>
-                    <div className="text-lg font-semibold">{fmtMoney(totalGeral)}</div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Status de Aprovação</span>
                   </div>
-                </section>
+                  <div className="text-sm">{data.os.statusaprovacao ?? "—"}</div>
+                </div>
+              </section>
 
-                {/* Checklist (com links de imagens) */}
-                <section className="rounded-lg border p-3">
-                  <div className="text-sm font-medium mb-2">Checklist</div>
-                  {(data.checklist ?? []).length === 0 ? (
+              {/* Descrição / Observações */}
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Descrição</span>
+                  </div>
+                  <div className="text-sm whitespace-pre-wrap">{data.os.descricao || "—"}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <StickyNote className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Observações</span>
+                  </div>
+                  <div className="text-sm whitespace-pre-wrap">{data.os.observacoes || "—"}</div>
+                </div>
+              </section>
+
+              {/* Produtos / Serviços / Totais */}
+              <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Package className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Produtos</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Total: <b>{fmtMoney(totalProdutos)}</b>
+                    </span>
+                  </div>
+                  {(data.itensProduto ?? []).length === 0 ? (
                     <div className="text-sm text-muted-foreground">—</div>
                   ) : (
-                    <ul className="space-y-3 text-sm">
-                      {data.checklist.map((c) => (
-                        <li key={c.id} className="rounded-md border p-3">
+                    <ul className="space-y-2 text-sm">
+                      {data.itensProduto.map((it, idx) => (
+                        <li
+                          key={`${it.ordemservicoid}-${it.produtoid}-${idx}`}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">
+                              {it.produto?.descricao || it.produto?.codigo || `Produto #${it.produtoid}`}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {it.quantidade} × {fmtMoney(it.precounitario)}
+                            </div>
+                          </div>
+                          <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Wrench className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Serviços</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Total: <b>{fmtMoney(totalServicos)}</b>
+                    </span>
+                  </div>
+                  {(data.itensServico ?? []).length === 0 ? (
+                    <div className="text-sm text-muted-foreground">—</div>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {data.itensServico.map((it, idx) => (
+                        <li
+                          key={`${it.ordemservicoid}-${it.servicoid}-${idx}`}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">
+                              {it.servico?.descricao || it.servico?.codigo || `Serviço #${it.servicoid}`}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {it.quantidade} × {fmtMoney(it.precounitario)}
+                            </div>
+                          </div>
+                          <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="lg:col-span-2 rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Calculator className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Total geral</span>
+                  </div>
+                  <div className="text-lg font-semibold">{fmtMoney(totalGeral)}</div>
+                </div>
+              </section>
+
+              {/* Checklist */}
+              <section className="rounded-lg border p-4">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <ListChecks className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Checklist</span>
+                </div>
+                {(data.checklist ?? []).length === 0 ? (
+                  <div className="text-sm text-muted-foreground">—</div>
+                ) : (
+                  <ul className="text-sm">
+                    {data.checklist.map((c, idx) => (
+                      <Fragment key={c.id}>
+                        {idx > 0 && <Separator className="my-0" />}
+                        <li className="py-4">
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
                               <div className="font-medium truncate">{c.item}</div>
@@ -395,10 +428,11 @@ export function OSDetalhesDialog({
                                 {c.observacao ? ` • ${c.observacao}` : ""}
                               </div>
                             </div>
-                            <Badge variant="outline">{c.status}</Badge>
+                            <Badge variant="outline" className={badgeClassForChecklistStatus(c.status)}>
+                              {c.status}
+                            </Badge>
                           </div>
 
-                          {/* Links das imagens */}
                           {Array.isArray(c.imagens) && c.imagens.length > 0 && (
                             <div className="mt-3 space-y-1.5">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -414,7 +448,7 @@ export function OSDetalhesDialog({
                                       href={img.url}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted"
+                                      className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted break-all"
                                       title={img.descricao || name}
                                     >
                                       {name}
@@ -426,74 +460,75 @@ export function OSDetalhesDialog({
                             </div>
                           )}
                         </li>
-                      ))}
+                      </Fragment>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              {/* Links de aprovação */}
+              {Array.isArray(data.aprovacoes) && (
+                <section className="rounded-lg border p-4">
+                  <div className="text-sm font-medium mb-1.5">Links de aprovação</div>
+                  {data.aprovacoes.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">—</div>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {data.aprovacoes.map((a) => {
+                        const url = approvalUrlFromToken(a.token);
+                        return (
+                          <li key={a.id} className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="truncate">
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="underline break-all"
+                                  title={url}
+                                >
+                                  {url}
+                                </a>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado:{" "}
+                                {fmtDate(a.usado_em)}
+                              </div>
+                            </div>
+                            <div className="shrink-0 flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                title="Copiar link"
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(url);
+                                    toast.success("Link copiado");
+                                  } catch {
+                                    toast.error("Não foi possível copiar");
+                                  }
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                title="Abrir link"
+                                onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </section>
-
-                {/* Links de aprovação */}
-                {Array.isArray(data.aprovacoes) && (
-                  <section className="rounded-lg border p-3">
-                    <div className="text-sm font-medium mb-2">Links de aprovação</div>
-                    {data.aprovacoes.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">—</div>
-                    ) : (
-                      <ul className="space-y-2 text-sm">
-                        {data.aprovacoes.map((a) => {
-                          const url = approvalUrlFromToken(a.token);
-                          return (
-                            <li key={a.id} className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="truncate">
-                                  <a
-                                    href={url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="underline break-all"
-                                    title={url}
-                                  >
-                                    {url}
-                                  </a>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado: {fmtDate(a.usado_em)}
-                                </div>
-                              </div>
-                              <div className="shrink-0 flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  title="Copiar link"
-                                  onClick={async () => {
-                                    try {
-                                      await navigator.clipboard.writeText(url);
-                                      toast.success("Link copiado");
-                                    } catch {
-                                      toast.error("Não foi possível copiar");
-                                    }
-                                  }}
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  title="Abrir link"
-                                  onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </section>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

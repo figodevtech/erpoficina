@@ -1,3 +1,4 @@
+// src/app/(app)/(pages)/ordens/components/editarOS/ordem-edit-form.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -43,7 +44,7 @@ export type OrdemEditFormProps = {
   defaultValues: { id: number } | null;
   exposeSubmit?: (fn: () => void) => void;
   onSubmit?: (payload: any) => Promise<void> | void;
-  onSavingChange?: (saving: boolean) => void; // ⬅️ novo
+  onSavingChange?: (saving: boolean) => void;
 };
 
 const NONE = "__none__";
@@ -110,6 +111,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
   const [initialLoading, setInitialLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Carrega lista de setores
   useEffect(() => {
     (async () => {
       try {
@@ -117,7 +119,8 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
         setSetoresError(null);
         const r = await fetch("/api/setores", { cache: "no-store" });
         const j = await r.json();
-        setSetores(Array.isArray(j) ? j : j?.items ?? []);
+        const items: Array<{ id: number; nome: string }> = Array.isArray(j) ? j : j?.items ?? [];
+        setSetores(items);
       } catch (e: any) {
         setSetoresError(e?.message ?? "Não foi possível carregar os setores.");
         setSetores([]);
@@ -127,6 +130,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
     })();
   }, []);
 
+  // Carrega modelos de checklist
   useEffect(() => {
     (async () => {
       try {
@@ -145,6 +149,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
     })();
   }, []);
 
+  // Carrega dados da OS para edição
   useEffect(() => {
     if (!osId) return;
     (async () => {
@@ -158,7 +163,11 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
         const cli = j?.cliente ?? j?.os?.cliente ?? null;
         const vei = j?.veiculo ?? j?.os?.veiculo ?? null;
 
-        setSetor(os?.setorid ? String(os.setorid) : "");
+        // 🔧 Ajuste principal: considerar tanto os.setorid quanto os.setor?.id
+        const setorIdResolvido =
+          os?.setorid != null ? os.setorid : os?.setor?.id != null ? os.setor.id : null;
+        setSetor(setorIdResolvido != null ? String(setorIdResolvido) : "");
+
         setPrioridade((os?.prioridade as any) || "NORMAL");
         setDescricao(os?.descricao || "");
         setObservacoes(os?.observacoes || "");
@@ -231,6 +240,17 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
     })();
   }, [osId]);
 
+  // Se o setor veio definido mas (ainda) não existe na lista carregada, mantém o value mesmo assim
+  // (o Select do shadcn aceita value sem option visível; após carregar, ele seleciona).
+  // Opcionalmente poderíamos adicionar um "fantasma" caso deseje exibir o nome.
+  useEffect(() => {
+    if (!setor) return;
+    const exists = setores.some((s) => String(s.id) === setor);
+    if (!exists && setores.length > 0) {
+      // nada a fazer; deixamos o value até a lista real chegar ou ser atualizada.
+    }
+  }, [setor, setores]);
+
   const veiculoOptions = useMemo(
     () =>
       veiculosDoCliente.map((v) => ({
@@ -291,7 +311,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
   const buildPayload = () => {
     const checklistArray = Object.entries(checklist).map(([item, status]) => ({
       item,
-      status: mapStatusToDB((status || "") as Marcacao), // "OK" | "FALHA" | "PENDENTE"
+      status: mapStatusToDB((status || "") as Marcacao),
     }));
 
     const veiculoPayload =
@@ -312,13 +332,10 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
       prioridade,
       descricao: (descricao || "").trim() || null,
       observacoes: (observacoes || "").trim() || null,
-
-      // mantenho o nome já usado no front; a API vai aceitar este e o snake_case
       checklistTemplateId: templateId || null,
       checklist: checklistArray,
     };
 
-    // cliente: { id } OU dados de avulso para atualizar o cliente da OS
     base.cliente =
       modoAtendimento === "cadastrado"
         ? { id: cliente!.id }
@@ -333,7 +350,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
       base.alvo = {
         tipo: "VEICULO",
         veiculoid: veiculoSelecionadoId ?? null,
-        veiculo: veiculoPayload, // <- NOVO: dados livres do veículo
+        veiculo: veiculoPayload,
       };
     } else {
       base.alvo = {
@@ -354,22 +371,16 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
 
     setSaving(true);
     try {
-      if (onSubmit) {
-        await onSubmit(payload); // pode lançar
-        toast.success("OS atualizada com sucesso");
-        window.dispatchEvent(new CustomEvent("os:refresh"));
-      } else {
-        const r = await fetch(`/api/ordens/${osId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j?.error || "Falha ao atualizar OS");
+      const r = await fetch(`/api/ordens/${osId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "Falha ao atualizar OS");
 
-        toast.success("OS atualizada com sucesso");
-        window.dispatchEvent(new CustomEvent("os:refresh"));
-      }
+      toast.success("OS atualizada com sucesso");
+      window.dispatchEvent(new CustomEvent("os:refresh"));
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar alterações");
     } finally {
@@ -378,9 +389,9 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSubmit, onSavingC
   };
 
   useEffect(() => {
-  onSavingChange?.(saving);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [saving]);
+    onSavingChange?.(saving);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saving]);
 
   useEffect(() => {
     exposeSubmit?.(salvar);

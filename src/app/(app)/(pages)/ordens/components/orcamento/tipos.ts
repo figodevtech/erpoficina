@@ -31,10 +31,10 @@ export type ItemServico = {
 };
 
 export type OrcamentoFormProps = {
-  ordemServico: { id: number; numero?: string; cliente?: string; veiculo?: string };
-  onTotaisChange?: (tot: { totalProdutos: number; totalServicos: number }) => void;
+    ordemServico: { id: number; numero?: string; cliente?: string; veiculo?: string };
+  onTotaisChange?: (t: { totalProdutos: number; totalServicos: number }) => void;
 };
 
 export type OrcamentoFormHandle = {
-  salvarOrcamento: () => Promise<void>;
+  salvarOrcamento: (opts?: { baixarEstoque?: boolean }) => Promise<void>;
 };
