@@ -73,22 +73,33 @@ type Insights = {
   last7DaysNew: { date: string; count: number }[];
 };
 
-
-
 /** ============================
- *  Baseline de 12 meses zerados (evita piscada)
- *  ============================ */
-function makeZeroedMonthly(n = 12) {
-  const now = new Date();
+ *  Baseline estático (SSR-safe)
+ *  ============================
+ *
+ * Usamos meses "fakes" 0000-01..0000-12 no SSR
+ * e depois trocamos para os últimos 12 meses reais
+ * via useEffect (só no client).
+ */
+const STATIC_ZERO_MONTHS = Array.from({ length: 12 }, (_, i) => {
+  const month = String(i + 1).padStart(2, "0");
+  return `0000-${month}`;
+});
+
+function makeZeroedMonthlyFrom(date: Date, n = 12) {
   const months: string[] = [];
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const d = new Date(date.getFullYear(), date.getMonth() - i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
     months.push(ym);
   }
   return months;
 }
-const ZERO_MONTHS = makeZeroedMonthly(12);
+
+const MONTH_ABBR = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 /** ============================
  *  Hooks de dados
@@ -116,6 +127,7 @@ function useInsights(endpoint: string, autoRefreshMs?: number) {
   React.useEffect(() => {
     fetcher();
   }, [fetcher]);
+
   React.useEffect(() => {
     if (!autoRefreshMs) return;
     const id = setInterval(fetcher, autoRefreshMs);
@@ -138,30 +150,56 @@ export default function ServiceOrdersDashboard({
     autoRefreshMs
   );
 
-  // Labels de mês consistentes (sempre 12)
+  // Meses: baseline estático no SSR, reais no client após mount
+  const [zeroMonths, setZeroMonths] = React.useState<string[]>(STATIC_ZERO_MONTHS);
+
+  React.useEffect(() => {
+    const now = new Date();
+    setZeroMonths(makeZeroedMonthlyFrom(now, 12));
+  }, []);
+
+  // Labels de mês consistentes (sem usar Date.now / timezone)
   const formatLabel = React.useCallback((ym: string) => {
     const [yStr, mStr] = ym.split("-");
-    const y = Number(yStr);
     const m = Number(mStr);
-    const monthIndex = Number.isFinite(m) && m >= 1 && m <= 12 ? m - 1 : 0;
-    const yearNum = Number.isFinite(y) ? y : new Date().getFullYear();
-    const d = new Date(yearNum, monthIndex, 1);
-    return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+    if (Number.isFinite(m) && m >= 1 && m <= 12) {
+      const monthLabel = MONTH_ABBR[m - 1];
+      const shortYear =
+        yStr && /^\d{4}$/.test(yStr) ? yStr.slice(2) : "";
+      return shortYear ? `${monthLabel} ${shortYear}` : monthLabel;
+    }
+    // fallback: mostra string original se não bater o formato
+    return ym;
   }, []);
 
   // Monta séries SEMPRE com 12 pontos (0s inicialmente)
   const monthly = React.useMemo(() => {
-    const newMap = new Map((data?.monthlyNew ?? []).map((x) => [x.month, x.count]));
-    const doneMap = new Map((data?.monthlyCompleted ?? []).map((x) => [x.month, x.count]));
-    const revMap = new Map((data?.monthlyRevenue ?? []).map((x) => [x.month, x.amount]));
+    const newMap = new Map(
+      (data?.monthlyNew ?? []).map((x) => [x.month, x.count])
+    );
+    const doneMap = new Map(
+      (data?.monthlyCompleted ?? []).map((x) => [x.month, x.count])
+    );
+    const revMap = new Map(
+      (data?.monthlyRevenue ?? []).map((x) => [x.month, x.amount])
+    );
 
-    const base = ZERO_MONTHS.map((m) => ({ month: m, label: formatLabel(m) }));
+    const base = zeroMonths.map((m) => ({ month: m, label: formatLabel(m) }));
     return {
-      new: base.map(({ month, label }) => ({ label, count: newMap.get(month) ?? 0 })),
-      done: base.map(({ month, label }) => ({ label, count: doneMap.get(month) ?? 0 })),
-      rev: base.map(({ month, label }) => ({ label, amount: revMap.get(month) ?? 0 })),
+      new: base.map(({ month, label }) => ({
+        label,
+        count: newMap.get(month) ?? 0,
+      })),
+      done: base.map(({ month, label }) => ({
+        label,
+        count: doneMap.get(month) ?? 0,
+      })),
+      rev: base.map(({ month, label }) => ({
+        label,
+        amount: revMap.get(month) ?? 0,
+      })),
     };
-  }, [data, formatLabel]);
+  }, [data, zeroMonths, formatLabel]);
 
   const seriesNewDone = (monthly.new ?? []).map((n, i) => ({
     label: n.label,
@@ -172,7 +210,7 @@ export default function ServiceOrdersDashboard({
   // Barras e pizza renderizam mesmo sem dados (0), evitando mount/unmount
   const statusKeys = React.useMemo(() => {
     const keys = Object.keys(data?.countsByStatus ?? {});
-    return keys.length ? keys : []; // se quiser keys fixas, definir aqui
+    return keys.length ? keys : [];
   }, [data?.countsByStatus]);
 
   const statusItems = statusKeys.map((name) => ({
@@ -290,15 +328,35 @@ export default function ServiceOrdersDashboard({
               >
                 <defs>
                   <linearGradient id="areaNew" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="rgb(43, 127, 255)" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="rgb(43, 127, 255)" stopOpacity={0} />
+                    <stop
+                      offset="5%"
+                      stopColor="rgb(43, 127, 255)"
+                      stopOpacity={0.25}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor="rgb(43, 127, 255)"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                   <linearGradient id="areaDone" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="rgba(255, 210, 0, 0.8)" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="rgba(255, 210, 0, 0.8)" stopOpacity={0} />
+                    <stop
+                      offset="5%"
+                      stopColor="rgba(255, 210, 0, 0.8)"
+                      stopOpacity={0.25}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor="rgba(255, 210, 0, 0.8)"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="hsl(var(--border))"
+                />
                 <XAxis
                   dataKey="label"
                   axisLine={false}
@@ -315,7 +373,9 @@ export default function ServiceOrdersDashboard({
                   tickMargin={8}
                   stroke="hsl(var(--muted-foreground))"
                 />
-                <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                <ChartTooltip
+                  content={<ChartTooltipContent indicator="line" />}
+                />
                 <Area
                   type="monotone"
                   dataKey="new"
@@ -344,7 +404,10 @@ export default function ServiceOrdersDashboard({
           >
             <ChartContainer
               config={{
-                value: { label: "Ordens das Ordens", color: "hsl(var(--chart-1))" },
+                value: {
+                  label: "Quantidade de Ordens",
+                  color: "hsl(var(--chart-1))",
+                },
               }}
               className="h-[280px]"
             >
@@ -352,7 +415,11 @@ export default function ServiceOrdersDashboard({
                 data={statusItems}
                 margin={{ top: 20, right: 12, left: 12, bottom: 12 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="hsl(var(--border))"
+                />
                 <XAxis
                   dataKey="name"
                   axisLine={false}
@@ -369,7 +436,9 @@ export default function ServiceOrdersDashboard({
                   tickMargin={8}
                   stroke="hsl(var(--muted-foreground))"
                 />
-                <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
+                <ChartTooltip
+                  content={<ChartTooltipContent indicator="dashed" />}
+                />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                   {statusItems.map((s) => (
                     <Cell
@@ -526,7 +595,8 @@ function EmptyState() {
  *  Utilidades de formatação
  *  ============================ */
 function formatNumber(n: number) {
-  return new Intl.NumberFormat().format(n || 0);
+  // Locale explícito para não variar entre server/client
+  return new Intl.NumberFormat("pt-BR").format(n || 0);
 }
 
 function formatCurrencyBRL(v: number) {
@@ -536,7 +606,6 @@ function formatCurrencyBRL(v: number) {
     maximumFractionDigits: 0,
   }).format(v || 0);
 }
-
 
 function formatDurationHours(h: number) {
   if (!h || h <= 0) return "—";

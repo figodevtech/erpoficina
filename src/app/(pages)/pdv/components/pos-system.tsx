@@ -29,9 +29,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-
-
-
 interface CartItem {
   id: number;
   titulo: string;
@@ -80,7 +77,7 @@ export function POSSystem() {
     return matchesText && matchesCategory;
   });
   const addToCart = (product: Produto) => {
-    if(product.estoque === undefined) return;
+    if (product.estoque === undefined) return;
     if (product.estoque <= 0) return;
 
     const existingItem = cart.find((item) => item.id === product.id);
@@ -117,7 +114,7 @@ export function POSSystem() {
       removeFromCart(productId);
     } else {
       const product = produtos.find((p) => p.id === productId);
-      if(product?.estoque === undefined) return;
+      if (product?.estoque === undefined) return;
       if (product && quantity <= product.estoque) {
         setCart(
           cart.map((item) =>
@@ -214,11 +211,12 @@ export function POSSystem() {
             {/* Products Grid */}
             <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
               {filteredProducts.map((product) => (
-                
                 <Card
                   key={product.id}
                   className={`bg-card border-border hover:border-primary/50 transition-all ${
-                    product.estoque && product.estoque <= 0 ? "opacity-60" : "cursor-pointer group"
+                    product.estoque && product.estoque <= 0
+                      ? "opacity-60"
+                      : "cursor-pointer group"
                   }`}
                 >
                   <CardContent className="p-4 space-y-3">
@@ -252,7 +250,9 @@ export function POSSystem() {
                       </span>
                       <Button
                         onClick={() => addToCart(product)}
-                        disabled={product.estoque && product.estoque <= 0 ? true : false}
+                        disabled={
+                          product.estoque && product.estoque <= 0 ? true : false
+                        }
                         size="sm"
                         className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-2 disabled:opacity-50"
                       >
@@ -269,12 +269,22 @@ export function POSSystem() {
           <div className="lg:col-span-1">
             <Card className="bg-card border-border h-fit sticky top-4">
               <CardHeader className="border-b border-border">
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <ShoppingCart className="h-5 w-5 text-primary" />
-                  Carrinho
-                  <span className="ml-auto text-sm font-normal text-muted-foreground">
-                    ({cart.length})
-                  </span>
+                <CardTitle className="flex flex-col items-center gap-2 text-foreground">
+                  <div className="flex flex-row justify-between w-full items-center gap-2">
+                    <ShoppingCart className="h-5 w-5 text-primary" />
+                    Carrinho
+                    <span className="ml-auto text-sm font-normal text-muted-foreground">
+                      ({cart.length})
+                    </span>
+                  </div>
+                  <div className="flex w-full justify-start">
+                    <span
+                      onClick={() => setCart([])}
+                      className="text-xs text-red-700 not-dark:text-red-500 hover:cursor-pointer hover:underline"
+                    >
+                      Esvaziar carrinho
+                    </span>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-4">
@@ -361,15 +371,14 @@ export function POSSystem() {
 
                     {/* Action Buttons */}
                     <div className="space-y-2 pt-2">
-                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-                        Finalizar Venda
-                      </Button>
                       <Button
-                        onClick={() => setCart([])}
                         variant="outline"
-                        className="w-full text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                        className="w-full text-muted-foreground hover:bg-destructive/20 hover:text-green-500 hover:cursor-pointer"
                       >
-                        Limpar Carrinho
+                        Iniciar Pagamento
+                      </Button>
+                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold hover:cursor-pointer">
+                        Finalizar Venda
                       </Button>
                     </div>
                   </>
