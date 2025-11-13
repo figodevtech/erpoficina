@@ -3,7 +3,8 @@ import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/theme-provider";
 import NProgressHandler from "@/components/NProgressHandler";
-
+import { Toaster } from "sonner";
+import { RouteAwareToaster } from "@/components/route-aware-toaster";
 
 export const metadata: Metadata = {
   title: "ERP",
@@ -20,17 +21,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <Providers attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <NProgressHandler />
           {children}
+          <RouteAwareToaster />
         </Providers>
       </body>
     </html>
