@@ -28,6 +28,10 @@ import { NavSettings } from "./components/nav-settings";
 
 import { useSession } from "next-auth/react";
 
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  user?: { nome: string; email: string };
+};
+
 const data = {
   navOptions: [
     {
@@ -128,7 +132,7 @@ const data = {
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const { data: session } = useSession();
 
   return (
