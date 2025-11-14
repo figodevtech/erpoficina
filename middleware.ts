@@ -3,33 +3,44 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-// Liste aqui rotas realmente públicas (login, recovery e APIs públicas)
+// Rotas realmente públicas (login, recovery e APIs públicas)
 const PUBLIC_PATHS = [
   "/login",
   "/recuperar-senha",
+  "/api/auth",
   "/api/auth/check-email",
   "/api/auth/send-recovery",
 ];
 
-function isPublicPath(pathname: string) {
+function isStaticAsset(pathname: string) {
   if (
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/images")
-  ) return true;
+  ) {
+    return true;
+  }
 
   if (/\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map)$/.test(pathname)) {
     return true;
   }
 
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return false;
+}
+
+function isPublicPath(pathname: string) {
+  if (isStaticAsset(pathname)) return true;
+
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
 }
 
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
 
-  // 🔐 Lê o token da sessão (requer NEXTAUTH_SECRET definido)
+  // 🔐 Lê o token da sessão
   const token = await getToken({ req });
   const isLoggedIn = !!token;
 
@@ -39,18 +50,16 @@ export async function middleware(req: NextRequest) {
   }
 
   // 2) Bloqueia tudo que não é público quando não está logado
-  if (!isPublicPath(pathname) && !isLoggedIn) {
+  if (!isLoggedIn && !isPublicPath(pathname)) {
     const url = new URL("/login", nextUrl);
     url.searchParams.set("callbackUrl", pathname + nextUrl.search);
     return NextResponse.redirect(url);
   }
 
+  // 3) Segue normal
   return NextResponse.next();
 }
 
-// ✅ Sem grupos de captura no matcher
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|images|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map)$).*)",
-  ],
+  matcher: ["/:path*"],
 };

@@ -27,6 +27,7 @@ const routeTitles: Record<string, string> = {
   "/acompanhamento": "Acompanhamento",
   "/configuracoes/fiscal-pagamentos": "Configurações Fiscais e de Pagamentos",
   "/checklist": "Gerenciamento de Checklists",
+  "/nao-autorizado": "Acesso não autorizado",
 };
 
 function humanize(path: string) {
@@ -53,9 +54,11 @@ function humanize(path: string) {
 export default function ClientAppShell({
   user,
   children,
+  hideHeader = false,
 }: {
   user: { nome: string; email: string };
   children: React.ReactNode;
+  hideHeader?: boolean;
 }) {
   const pathname = usePathname();
   const title = routeTitles[pathname] ?? humanize(pathname);
@@ -64,24 +67,29 @@ export default function ClientAppShell({
     <SidebarProvider defaultOpen>
       <AppSidebar user={user} />
 
-      {/* ✅ min-w-0 evita overflow no conteúdo flex */}
       <SidebarInset className="flex min-h-screen min-w-0">
-        <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+        {/* Header só aparece se NÃO for para esconder */}
+        {!hideHeader && (
+          <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
 
-          <h2 className="text-base md:text-lg font-medium text-foreground/80">{title}</h2>
-          <div className="flex-1" />
+            <h2 className="text-base md:text-lg font-medium text-foreground/80">
+              {title}
+            </h2>
+            <div className="flex-1" />
 
-          <DateTimeBadge />
-          <ModeToggle />
-        </header>
+            <DateTimeBadge />
+            <ModeToggle />
+          </header>
+        )}
 
-        {/* ✅ min-w-0 permite o main encolher; container centralizado e paddings */}
         <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
           <div className="mx-auto w-full px-4 md:px-6 py-4 md:py-6">
             {children}
-            {/* Monte o Toaster apenas no layout privado para evitar duplicidade */}
             <Toaster richColors position="bottom-right" />
           </div>
         </main>
