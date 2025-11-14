@@ -28,6 +28,11 @@ import {
   SelectContent,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CartItem {
   id: number;
@@ -145,7 +150,7 @@ export function POSSystem() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-blue-50 dark:bg-background p-4">
       <div className="mx-auto ">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -216,20 +221,30 @@ export function POSSystem() {
                   className={`bg-card border-border hover:border-primary/50 transition-all ${
                     product.estoque && product.estoque <= 0
                       ? "opacity-60"
-                      : "cursor-pointer group"
+                      : "cursor-default group"
                   }`}
                 >
                   <CardContent className="p-4 space-y-3">
                     <div className="h-24 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-all relative">
                       <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                       {product.status_estoque === Estoque_status.CRITICO && (
-                        <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
-                          <AlertCircle className="h-4 w-4" />
-                        </div>
+                            <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
+                        <Tooltip>
+                          <TooltipTrigger>
+                              <AlertCircle className="h-4 w-4" />
+                          </TooltipTrigger>
+                          <TooltipContent>Estoque Crítico</TooltipContent>
+                        </Tooltip>
+                            </div>
                       )}
                       {product.status_estoque === Estoque_status.BAIXO && (
                         <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
+                          <Tooltip>
+                          <TooltipTrigger>
                           <AlertTriangle className="h-4 w-4" />
+                           </TooltipTrigger>
+                          <TooltipContent>Estoque Baixo</TooltipContent>
+                        </Tooltip>
                         </div>
                       )}
                     </div>
@@ -254,7 +269,7 @@ export function POSSystem() {
                           product.estoque && product.estoque <= 0 ? true : false
                         }
                         size="sm"
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-2 disabled:opacity-50"
+                        className="bg-primary hover:cursor-pointer hover:bg-primary/90 text-primary-foreground h-8 px-2 disabled:opacity-50"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -362,6 +377,11 @@ export function POSSystem() {
                         <span>Subtotal:</span>
                         <span>R$ {subtotal.toFixed(2)}</span>
                       </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Desconto:</span>
+                        <span>R$ 0,00</span>
+                      </div>
+
                       <div className="flex justify-between text-sm text-muted-foreground"></div>
                       <div className="flex justify-between text-lg font-bold text-primary-foreground bg-primary p-2 rounded">
                         <span>Total:</span>
