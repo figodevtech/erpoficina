@@ -5,50 +5,59 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import PatioDemir from "@/lib/images/Patio_Demir-Injecao-Eletronica-Diesel-scaled.jpg";
-import DemirLogo from "@/lib/images/demirLogo.png";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
+import ForgotPasswordDialog from "./forgot-password-dialog";
+import PatioDemir from "@/lib/images/Patio_Demir-Injecao-Eletronica-Diesel-scaled.jpg";
+import DemirLogo from "@/lib/images/demirLogo.png";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // components/LoginForm.tsx
+  const [forgotOpen, setForgotOpen] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email.trim() || !password.trim()) {
+      toast.error("Por favor, preencha e-mail e senha.");
+      return;
+    }
+
     setLoading(true);
-    setError(null);
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false });
 
-    setLoading(false);
-
-    if (res?.error) {
-      switch (res.error) {
-        case "Por favor, forneça e-mail e senha.":
-          setError("Por favor, preencha todos os campos.");
-          break;
-        case "E-mail ou senha inválidos":
-          setError("E-mail ou senha inválidos.");
-          break;
-        case "Usuário não encontrado no sistema.":
-          setError("Usuário não encontrado. Solicite um cadastro.");
-          break;
-        default:
-          setError("Ocorreu um erro ao fazer login. Tente novamente.");
+      if (res?.error) {
+        switch (res.error) {
+          case "Por favor, forneça e-mail e senha.":
+            toast.error("Por favor, preencha todos os campos.");
+            break;
+          case "E-mail ou senha inválidos":
+            toast.error("E-mail ou senha inválidos.");
+            break;
+          case "Usuário não encontrado no sistema.":
+            toast.error("Usuário não encontrado. Solicite um cadastro.");
+            break;
+          default:
+            toast.error("Ocorreu um erro ao fazer login. Tente novamente.");
+        }
+        return;
       }
-    } else {
+
+      toast.success("Login efetuado!");
       router.push("/dashboard");
+    } catch (e: any) {
+      toast.error(e?.message || "Falha de login.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -62,7 +71,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 <h1 className="text-2xl font-bold">Bem-vindo de volta</h1>
                 <p className="text-muted-foreground text-balance">Conectar ao ERP</p>
               </div>
-              {error && <p className="text-destructive text-center">{error}</p>}
+
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -72,10 +81,12 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
                 />
               </div>
+
               <div className="grid gap-3">
-                <div className="flex items-center">
+                <div className="flex items-center justify-between">
                   <Label htmlFor="password">Senha</Label>
                 </div>
                 <Input
@@ -85,19 +96,24 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                 />
               </div>
+
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Entrando..." : "Entrar"}
               </Button>
-              <div className="text-center text-sm">
-                Não tem uma conta?{" "}
-                <a href="/register" className="underline underline-offset-4">
-                  Solicite um cadastro.
-                </a>
-              </div>
+
+              <button
+                type="button"
+                className="text-xs underline underline-offset-4 text-muted-foreground hover:text-primary"
+                onClick={() => setForgotOpen(true)}
+              >
+                Esqueci minha senha
+              </button>
             </div>
           </form>
+
           <div className="bg-muted relative hidden overflow-hidden md:block group">
             <div className="w-full absolute z-20 h-full flex p-6 justify-center">
               <Image
@@ -115,10 +131,13 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
           </div>
         </CardContent>
       </Card>
-      <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-        Clicando em continuar você estará sujeito aos <a href="#">Termos de Serviço</a> e a{" "}
-        <a href="#">Política de Privacidade</a>.
+
+      <div className="text-muted-foreground text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
+        Ao continuar você concorda com os <a href="#">Termos de Serviço</a> e a <a href="#">Política de Privacidade</a>.
       </div>
+
+      {/* Dialog Esqueci minha senha */}
+      <ForgotPasswordDialog open={forgotOpen} onOpenChange={setForgotOpen} />
     </div>
   );
 }

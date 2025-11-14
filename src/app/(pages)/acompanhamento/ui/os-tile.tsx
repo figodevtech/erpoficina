@@ -29,7 +29,6 @@ function prioridadeBorder(p?: "BAIXA" | "NORMAL" | "ALTA" | null) {
 
 export default function OsTile({ os }: { os: QuadItem }) {
   const isPeca = os.alvoTipo === "PECA";
-  const isVeiculo = !isPeca; // padrão VEICULO caso não venha o campo
 
   const tituloPrincipal = isPeca
     ? os.peca?.titulo || "Peça"
