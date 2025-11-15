@@ -7,15 +7,20 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
  * Mantemos tudo em CAIXA ALTA e tipado.
  */
 export const PERMS = {
-  ORDENS: "ORDENS_ACESSO",
   DASHBOARD: "DASHBOARD_ACESSO",
   CLIENTES: "CLIENTES_ACESSO",
-  USUARIOS: "USUARIOS_ACESSO",
-  CONFIG: "CONFIG_ACESSO",
+  ORDENS: "ORDENS_ACESSO",
   ESTOQUE: "ESTOQUE_ACESSO",
-  ACOMPANHAMENTO: "ACOMPANHAMENTO_ACESSO",
+  FINANCEIRO: "FINANCEIRO_ACESSO",
   RELATORIOS: "RELATORIOS_ACESSO",
-  EQUIPES: "EQUIPES_ACESSO",
+
+  
+  CONFIG: "CONFIG_ACESSO",
+  USUARIOS: "USUARIOS_ACESSO",
+
+  ACOMPANHAMENTO: "ACOMPANHAMENTO_ACESSO",
+  
+
 } as const;
 
 export type Permission = typeof PERMS[keyof typeof PERMS];
@@ -179,10 +184,9 @@ export async function requireRelatoriosAccess() {
   return requirePerm(PERMS.RELATORIOS);
 }
 
-// Equipes
-export async function hasEquipesAccess() {
-  return hasPerm(PERMS.EQUIPES);
+export async function hasFinanceiroAccess() {
+  return hasPerm(PERMS.FINANCEIRO);
 }
-export async function requireEquipesAccess() {
-  return requirePerm(PERMS.EQUIPES);
+export async function requireFinanceirosAccess() {
+  return requirePerm(PERMS.FINANCEIRO);
 }
