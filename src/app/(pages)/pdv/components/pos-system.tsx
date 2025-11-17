@@ -15,6 +15,7 @@ import {
   Loader2,
   AlertTriangle,
   Store,
+  UserRoundX,
 } from "lucide-react";
 import {
   Estoque_status,
@@ -33,6 +34,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import axios from "axios";
+import { toast } from "sonner";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { Customer } from "@/app/(app)/(pages)/clientes/types";
 
 interface CartItem {
   id: number;
@@ -49,6 +55,14 @@ export function POSSystem() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("TODOS");
+  const [creatingVenda, setCreatingVenda] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined)
+  const [discount, setDiscount] = useState(0)
+  const [discountType, setDiscountType] = useState<"POCENTAGEM" | "FIXO" | null>(null)
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
+
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -139,6 +153,69 @@ console.log(cart)
     0
   );
   const total = subtotal;
+
+  const createVenda = async () => {
+  try {
+    if (cart.length === 0) {
+      setErrorMessage(
+        "Carrinho vazio. Adicione produtos antes de finalizar a venda."
+      );
+      return;
+    }
+
+    if(!selectedCustomer){
+      toast.error("Erro ao cadastrar venda.", {description: "É necessário selecionar um cliente para continuar."})
+      return;
+    }
+
+    setCreatingVenda(true);
+    toast(<div className="flex flex-row flex-nowrap gap-2"><Loader2 className="animate-spin w-4 h-4"/> <span>Cadastrando Venda...</span></div>)
+
+    // TODO: substituir pelos valores reais
+    const usuarioCriadorId = "6e1c2b36-86d5-4bb9-95ce-d94e6550294e"; // UUID do usuário logado
+
+    const payload = {
+      clienteId: selectedCustomer?.id,
+      usuarioCriadorId,
+      status: "PAGAMENTO", // enum_status_venda
+      descontoTipo: undefined,
+      descontoValor: discount,
+      subTotal: subtotal,
+      valorTotal: total,
+      dataVenda: null,
+      itens: cart.map((item) => ({
+        produtoId: item.id,
+        quantidade: item.quantity,
+        subTotal: item.precovenda * item.quantity,
+        valorTotal: item.precovenda * item.quantity,
+        valorDesconto: 0,
+        tipoDesconto: null,
+      })),
+    };
+
+    // chamada com axios
+    const { data } = await axios.post("/api/venda", payload);
+
+
+    console.log("Venda criada com sucesso:", data);
+    toast.success("Venda cadastrada com sucesso.")
+
+    setCart([]);
+    // aqui você pode disparar um toast ou algo do tipo
+  } catch (error: any) {
+
+    if (axios.isAxiosError(error)) {
+      
+        toast.error("Erro código: " + error.status, {
+          description: error.response?.data.error
+        })
+    } else {
+      toast.error("Erro interno ao criar venda")
+    }
+  } finally {
+    setCreatingVenda(false);
+  }
+};
 
   if (loading) {
     return (
@@ -296,15 +373,29 @@ console.log(cart)
                       ({cart.length})
                     </span>
                   </div>
+                  
                   <div className="flex w-full justify-start">
-                    <span
-                      onClick={() => setCart([])}
-                      className="text-xs text-red-700 not-dark:text-red-500 hover:cursor-pointer hover:underline"
+                    {selectedCustomer ? 
+                    <div className="flex flex-row items-center gap-2 text-sm font-light">
+                      <span>Cliente:</span>
+                      <span className="">{selectedCustomer.nomerazaosocial}</span>
+                      <UserRoundX onClick={()=>setSelectedCustomer(undefined)} className="h-4 w-4 hover:cursor-pointer hover:text-red-500 "/>
+                    </div>
+                    : 
+                    <CustomerSelect
+                    open={isCustomerSelectOpen}
+                    setOpen={setIsCustomerSelectOpen}
+                    OnSelect={(c)=> setSelectedCustomer(c)}
                     >
-                      Esvaziar carrinho
-                    </span>
+
+                    <Button size={"sm"} variant={"outline"} className="text-xs hover:cursor-pointer"><Search className="size-4"/>Selecionar Cliente</Button>
+                    </CustomerSelect>
+                    }
+                    
                   </div>
+                  
                 </CardTitle>
+              
               </CardHeader>
               <CardContent className="p-4 space-y-4">
                 {cart.length === 0 ? (
@@ -316,6 +407,14 @@ console.log(cart)
                   </div>
                 ) : (
                   <>
+                  <div className="flex w-full justify-start">
+                    <span
+                      onClick={() => setCart([])}
+                      className="text-xs text-red-500 not-dark:text-red-500 hover:cursor-pointer hover:underline"
+                    >
+                      Esvaziar carrinho
+                    </span>
+                  </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {cart.map((item) => (
                         <div
@@ -335,7 +434,7 @@ console.log(cart)
                               onClick={() => removeFromCart(item.id)}
                               size="sm"
                               variant="ghost"
-                              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/20"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/20 hover:cursor-pointer"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -401,9 +500,25 @@ console.log(cart)
                       >
                         Iniciar Pagamento
                       </Button>
+                      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                        <AlertDialogTrigger asChild>
                       <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold hover:cursor-pointer">
                         Finalizar Venda
                       </Button>
+
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription> Ao selecionar esta opção, o pagamento da venda ficará em aberto</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="hover:cursor-pointer">Cancelar</AlertDialogCancel>
+                          <AlertDialogAction className="hover:cursor-pointer" onClick={()=> createVenda()}>Confirmar</AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </>
                 )}
