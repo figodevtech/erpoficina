@@ -130,6 +130,10 @@ export function POSSystem() {
     }
   };
 
+  useEffect(()=>{
+console.log(cart)
+  },[cart])
+
   const subtotal = cart.reduce(
     (sum, item) => sum + item.precovenda * item.quantity,
     0
