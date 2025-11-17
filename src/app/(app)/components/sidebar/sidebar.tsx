@@ -67,7 +67,7 @@ const data = {
       items: [
          {
           title: "Histórico",
-          url: "#",
+          url: "/historicovendas",
           icon: History,
         },
          {
