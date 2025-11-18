@@ -63,6 +63,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface EditContentProps {
   customerId: number;
@@ -114,6 +115,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
         const { data } = response;
         setselectedCustomer(data.data);
         console.log("Cliente atualizado:", data.data);
+        toast.success("Cliente Atualizado")
         handleGetCustomer(data.data.id)
       }
     } catch (error) {
