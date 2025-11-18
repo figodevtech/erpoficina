@@ -15,6 +15,7 @@ import {
   Loader2,
   AlertTriangle,
   Store,
+  UserRoundX,
 } from "lucide-react";
 import {
   Estoque_status,
@@ -28,9 +29,16 @@ import {
   SelectContent,
   SelectValue,
 } from "@/components/ui/select";
-
-
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import axios from "axios";
+import { toast } from "sonner";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { Customer } from "@/app/(app)/(pages)/clientes/types";
 
 interface CartItem {
   id: number;
@@ -47,6 +55,14 @@ export function POSSystem() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("TODOS");
+  const [creatingVenda, setCreatingVenda] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined)
+  const [discount, setDiscount] = useState(0)
+  const [discountType, setDiscountType] = useState<"POCENTAGEM" | "FIXO" | null>(null)
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
+
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -80,7 +96,7 @@ export function POSSystem() {
     return matchesText && matchesCategory;
   });
   const addToCart = (product: Produto) => {
-    if(product.estoque === undefined) return;
+    if (product.estoque === undefined) return;
     if (product.estoque <= 0) return;
 
     const existingItem = cart.find((item) => item.id === product.id);
@@ -117,7 +133,7 @@ export function POSSystem() {
       removeFromCart(productId);
     } else {
       const product = produtos.find((p) => p.id === productId);
-      if(product?.estoque === undefined) return;
+      if (product?.estoque === undefined) return;
       if (product && quantity <= product.estoque) {
         setCart(
           cart.map((item) =>
@@ -128,11 +144,78 @@ export function POSSystem() {
     }
   };
 
+  useEffect(()=>{
+console.log(cart)
+  },[cart])
+
   const subtotal = cart.reduce(
     (sum, item) => sum + item.precovenda * item.quantity,
     0
   );
   const total = subtotal;
+
+  const createVenda = async () => {
+  try {
+    if (cart.length === 0) {
+      setErrorMessage(
+        "Carrinho vazio. Adicione produtos antes de finalizar a venda."
+      );
+      return;
+    }
+
+    if(!selectedCustomer){
+      toast.error("Erro ao cadastrar venda.", {description: "É necessário selecionar um cliente para continuar."})
+      return;
+    }
+
+    setCreatingVenda(true);
+    toast(<div className="flex flex-row flex-nowrap gap-2"><Loader2 className="animate-spin w-4 h-4"/> <span>Cadastrando Venda...</span></div>)
+
+    // TODO: substituir pelos valores reais
+    const usuarioCriadorId = "6e1c2b36-86d5-4bb9-95ce-d94e6550294e"; // UUID do usuário logado
+
+    const payload = {
+      clienteId: selectedCustomer?.id,
+      usuarioCriadorId,
+      status: "PAGAMENTO", // enum_status_venda
+      descontoTipo: undefined,
+      descontoValor: discount,
+      subTotal: subtotal,
+      valorTotal: total,
+      dataVenda: null,
+      itens: cart.map((item) => ({
+        produtoId: item.id,
+        quantidade: item.quantity,
+        subTotal: item.precovenda * item.quantity,
+        valorTotal: item.precovenda * item.quantity,
+        valorDesconto: 0,
+        tipoDesconto: null,
+      })),
+    };
+
+    // chamada com axios
+    const { data } = await axios.post("/api/venda", payload);
+
+
+    console.log("Venda criada com sucesso:", data);
+    toast.success("Venda cadastrada com sucesso.")
+
+    setCart([]);
+    // aqui você pode disparar um toast ou algo do tipo
+  } catch (error: any) {
+
+    if (axios.isAxiosError(error)) {
+      
+        toast.error("Erro código: " + error.status, {
+          description: error.response?.data.error
+        })
+    } else {
+      toast.error("Erro interno ao criar venda")
+    }
+  } finally {
+    setCreatingVenda(false);
+  }
+};
 
   if (loading) {
     return (
@@ -148,7 +231,7 @@ export function POSSystem() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-blue-50 dark:bg-background p-4">
       <div className="mx-auto ">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -214,24 +297,35 @@ export function POSSystem() {
             {/* Products Grid */}
             <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
               {filteredProducts.map((product) => (
-                
                 <Card
                   key={product.id}
                   className={`bg-card border-border hover:border-primary/50 transition-all ${
-                    product.estoque && product.estoque <= 0 ? "opacity-60" : "cursor-pointer group"
+                    product.estoque && product.estoque <= 0
+                      ? "opacity-60"
+                      : "cursor-default group"
                   }`}
                 >
                   <CardContent className="p-4 space-y-3">
                     <div className="h-24 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-all relative">
                       <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                       {product.status_estoque === Estoque_status.CRITICO && (
-                        <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
-                          <AlertCircle className="h-4 w-4" />
-                        </div>
+                            <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
+                        <Tooltip>
+                          <TooltipTrigger>
+                              <AlertCircle className="h-4 w-4" />
+                          </TooltipTrigger>
+                          <TooltipContent>Estoque Crítico</TooltipContent>
+                        </Tooltip>
+                            </div>
                       )}
                       {product.status_estoque === Estoque_status.BAIXO && (
                         <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
+                          <Tooltip>
+                          <TooltipTrigger>
                           <AlertTriangle className="h-4 w-4" />
+                           </TooltipTrigger>
+                          <TooltipContent>Estoque Baixo</TooltipContent>
+                        </Tooltip>
                         </div>
                       )}
                     </div>
@@ -252,9 +346,11 @@ export function POSSystem() {
                       </span>
                       <Button
                         onClick={() => addToCart(product)}
-                        disabled={product.estoque && product.estoque <= 0 ? true : false}
+                        disabled={
+                          product.estoque && product.estoque <= 0 ? true : false
+                        }
                         size="sm"
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-2 disabled:opacity-50"
+                        className="bg-primary hover:cursor-pointer hover:bg-primary/90 text-primary-foreground h-8 px-2 disabled:opacity-50"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -269,13 +365,37 @@ export function POSSystem() {
           <div className="lg:col-span-1">
             <Card className="bg-card border-border h-fit sticky top-4">
               <CardHeader className="border-b border-border">
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <ShoppingCart className="h-5 w-5 text-primary" />
-                  Carrinho
-                  <span className="ml-auto text-sm font-normal text-muted-foreground">
-                    ({cart.length})
-                  </span>
+                <CardTitle className="flex flex-col items-center gap-2 text-foreground">
+                  <div className="flex flex-row justify-between w-full items-center gap-2">
+                    <ShoppingCart className="h-5 w-5 text-primary" />
+                    Carrinho
+                    <span className="ml-auto text-sm font-normal text-muted-foreground">
+                      ({cart.length})
+                    </span>
+                  </div>
+                  
+                  <div className="flex w-full justify-start">
+                    {selectedCustomer ? 
+                    <div className="flex flex-row items-center gap-2 text-sm font-light">
+                      <span>Cliente:</span>
+                      <span className="">{selectedCustomer.nomerazaosocial}</span>
+                      <UserRoundX onClick={()=>setSelectedCustomer(undefined)} className="h-4 w-4 hover:cursor-pointer hover:text-red-500 "/>
+                    </div>
+                    : 
+                    <CustomerSelect
+                    open={isCustomerSelectOpen}
+                    setOpen={setIsCustomerSelectOpen}
+                    OnSelect={(c)=> setSelectedCustomer(c)}
+                    >
+
+                    <Button size={"sm"} variant={"outline"} className="text-xs hover:cursor-pointer"><Search className="size-4"/>Selecionar Cliente</Button>
+                    </CustomerSelect>
+                    }
+                    
+                  </div>
+                  
                 </CardTitle>
+              
               </CardHeader>
               <CardContent className="p-4 space-y-4">
                 {cart.length === 0 ? (
@@ -287,6 +407,14 @@ export function POSSystem() {
                   </div>
                 ) : (
                   <>
+                  <div className="flex w-full justify-start">
+                    <span
+                      onClick={() => setCart([])}
+                      className="text-xs text-red-500 not-dark:text-red-500 hover:cursor-pointer hover:underline"
+                    >
+                      Esvaziar carrinho
+                    </span>
+                  </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {cart.map((item) => (
                         <div
@@ -306,7 +434,7 @@ export function POSSystem() {
                               onClick={() => removeFromCart(item.id)}
                               size="sm"
                               variant="ghost"
-                              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/20"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/20 hover:cursor-pointer"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -352,6 +480,11 @@ export function POSSystem() {
                         <span>Subtotal:</span>
                         <span>R$ {subtotal.toFixed(2)}</span>
                       </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Desconto:</span>
+                        <span>R$ 0,00</span>
+                      </div>
+
                       <div className="flex justify-between text-sm text-muted-foreground"></div>
                       <div className="flex justify-between text-lg font-bold text-primary-foreground bg-primary p-2 rounded">
                         <span>Total:</span>
@@ -361,16 +494,31 @@ export function POSSystem() {
 
                     {/* Action Buttons */}
                     <div className="space-y-2 pt-2">
-                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                      <Button
+                        variant="outline"
+                        className="w-full text-muted-foreground hover:bg-destructive/20 hover:text-green-500 hover:cursor-pointer"
+                      >
+                        Iniciar Pagamento
+                      </Button>
+                      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                        <AlertDialogTrigger asChild>
+                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold hover:cursor-pointer">
                         Finalizar Venda
                       </Button>
-                      <Button
-                        onClick={() => setCart([])}
-                        variant="outline"
-                        className="w-full text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
-                      >
-                        Limpar Carrinho
-                      </Button>
+
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription> Ao selecionar esta opção, o pagamento da venda ficará em aberto</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="hover:cursor-pointer">Cancelar</AlertDialogCancel>
+                          <AlertDialogAction className="hover:cursor-pointer" onClick={()=> createVenda()}>Confirmar</AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </>
                 )}

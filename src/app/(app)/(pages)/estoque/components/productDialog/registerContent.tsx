@@ -95,7 +95,7 @@ export default function RegisterContent({
 
       if (response.status === 201) {
         console.log(response.data.data.id);
-        toast("Sucesso!", {
+        toast.success("Sucesso!", {
           description: "Produto cadastrado.",
           duration: 2000,
         });
@@ -107,7 +107,7 @@ export default function RegisterContent({
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast("Erro", {
+        toast.error("Erro", {
           description: error.response?.data.error,
           duration: 2000,
         });
@@ -206,7 +206,7 @@ export default function RegisterContent({
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="descricao">Descrição *</Label>
+                <Label htmlFor="descricao">Descrição</Label>
                 <Textarea
                   id="descricao"
                   value={newProduct.descricao || ""}
@@ -252,7 +252,7 @@ export default function RegisterContent({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="precounitario">Preço Unitário *</Label>
+                  <Label htmlFor="precounitario">Preço Unitário</Label>
                   <ValueInput
                     price={newProduct.precovenda}
                     setPrice={(v) => handleChange("precovenda", v)}
@@ -272,7 +272,7 @@ export default function RegisterContent({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="unidade">Unidade *</Label>
+                  <Label htmlFor="unidade">Unidade</Label>
                   <Select
                     value={newProduct.unidade}
                     onValueChange={(v) => handleChange("unidade", v)}
@@ -301,7 +301,7 @@ export default function RegisterContent({
             <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="ncm">NCM *</Label>
+                  <Label htmlFor="ncm">NCM</Label>
                   <Input
                     id="ncm"
                     value={newProduct.ncm || ""}
@@ -315,7 +315,7 @@ export default function RegisterContent({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cfop">CFOP *</Label>
+                  <Label htmlFor="cfop">CFOP</Label>
                   <Input
                     id="cfop"
                     value={newProduct.cfop || ""}
@@ -329,7 +329,7 @@ export default function RegisterContent({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="csosn">CSOSN *</Label>
+                  <Label htmlFor="csosn">CSOSN</Label>
                   <Select
                     value={newProduct.csosn || "Selecione"}
                     onValueChange={(v) => handleChange("csosn", v)}
@@ -388,7 +388,7 @@ export default function RegisterContent({
             <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="estoque">Estoque (Qtd)</Label>
+                  <Label htmlFor="estoque">Estoque (Qtd) *</Label>
                   <Input
                     id="estoque"
                     value={newProduct.estoque || ""}
@@ -401,7 +401,7 @@ export default function RegisterContent({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="estoqueminimo">Estoque Mínimo</Label>
+                  <Label htmlFor="estoqueminimo">Estoque Mínimo *</Label>
                   <Input
                     id="estoqueminimo"
                     value={newProduct.estoqueminimo || ""}
@@ -458,7 +458,6 @@ export default function RegisterContent({
               type="submit"
               form="register-form"
               disabled={isSubmitting}
-              //   onClick={handleCreateCustomer}
               onClick={handleCreateProduct}
               className="flex-1 text-sm sm:text-base hover:cursor-pointer"
             >

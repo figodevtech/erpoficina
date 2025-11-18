@@ -19,6 +19,7 @@ export default function ClientesPage() {
     totalCustomers,
     fetchStatusCounts,
   } = useStatusCounter();
+  const [isOpen, setIsOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
@@ -31,7 +32,7 @@ export default function ClientesPage() {
   const [search, setSearch] = useState("");
 
   // Mantemos apenas o setter, já que o antigo Header (controlado) saiu
-  const [, setSelectedCustomerId] = useState<number | undefined>(undefined);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>(undefined);
 
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
@@ -70,6 +71,12 @@ export default function ClientesPage() {
   }, []);
 
   useEffect(() => {
+    if (selectedCustomerId) {
+      setIsOpen(true);
+    }
+  }, [selectedCustomerId]);
+
+  useEffect(() => {
     handleGetCustomers(1, pagination.limit, search, status);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, search]);
@@ -95,7 +102,8 @@ export default function ClientesPage() {
       <CustomersDataTable
         isAlertOpen={isAlertOpen}
         setIsAlertOpen={setIsAlertOpen}
-        setSeletedCustomerId={setSelectedCustomerId}
+        selectedCustomerId={selectedCustomerId}
+        setSelectedCustomerId={setSelectedCustomerId}
         customerItems={customerItems}
         fetchStatusCounts={fetchStatusCounts}
         handleGetCustomers={handleGetCustomers}
@@ -103,6 +111,8 @@ export default function ClientesPage() {
         pagination={pagination}
         search={search}
         status={status}
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
       />
     </div>
   );

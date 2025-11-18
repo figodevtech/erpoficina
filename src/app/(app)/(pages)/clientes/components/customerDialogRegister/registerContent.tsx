@@ -90,13 +90,16 @@ export default function RegisterContent({
         newCustomer,
       });
 
-      if (response.status === 201 && setSelectedCustomerId) {
+      if (response.status === 201) {
         console.log(response.data.data);
         toast("Sucesso!", {
           description: "Cliente cadastrado.",
           duration: 2000,
         });
-        setSelectedCustomerId(response.data.id);
+        if(setSelectedCustomerId){
+
+          setSelectedCustomerId(response.data.id);
+        }
       }
     } catch (error) {
       if (isAxiosError(error)) {

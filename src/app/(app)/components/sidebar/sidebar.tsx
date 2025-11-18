@@ -19,6 +19,8 @@ import {
   ArrowDownUp,
   Receipt,
   Store,
+  Headset,
+  History,
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -58,9 +60,22 @@ const data = {
       icon: Package,
     },
     {
-      title: "Ponto de Venda",
-      url: "/pdv",
+      title: "Vendas",
+      url: "#",
       icon: Store,
+      isActive: true,
+      items: [
+         {
+          title: "Histórico",
+          url: "/historicovendas",
+          icon: History,
+        },
+         {
+          title: "Ponto de Venda",
+          url: "/pdv",
+          icon: Headset,
+        },
+      ]
     },
     {
       title: "Financeiro",
