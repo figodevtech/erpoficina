@@ -10,6 +10,7 @@ export type Usuario = {
   setorid?: number | null;
   perfil?: Perfil | null;
   setor?: Setor | null;
+  ativo?: boolean;
 };
 
 export async function fetchLookup(): Promise<{ perfis: Perfil[]; setores: Setor[] }> {
@@ -35,6 +36,7 @@ export async function fetchUsers(): Promise<Usuario[]> {
     setorid: u.setorid ?? u.setorId ?? u?.setor?.id ?? null,
     perfil: u.perfil ?? null,
     setor: u.setor ?? null,
+    ativo: u.ativo ?? true,
   })) as Usuario[];
 }
 
@@ -42,8 +44,9 @@ export async function createUser(payload: {
   nome: string;
   email: string;
   perfilid?: number | null;
-  perfilNome?: string; // compatível com seu backend
+  perfilNome?: string;
   setorid?: number | null;
+  ativo?: boolean;
 }): Promise<void> {
   // O seu backend aceita perfilId OU perfilNome. Vamos enviar perfilId se existir.
   const body: any = {
@@ -53,6 +56,7 @@ export async function createUser(payload: {
   if (payload.perfilid != null) body.perfilId = payload.perfilid;
   if (payload.perfilNome) body.perfilNome = payload.perfilNome;
   if (payload.setorid != null) body.setorId = payload.setorid;
+  if (payload.ativo != null) body.ativo = payload.ativo;
 
   const r = await fetch("/api/users", {
     method: "POST",
@@ -71,6 +75,7 @@ export async function updateUser(
     perfilid?: number | null;
     perfilNome?: string;
     setorid?: number | null;
+    ativo?: boolean;
   }
 ): Promise<void> {
   const body: any = {
@@ -80,7 +85,8 @@ export async function updateUser(
   if (payload.perfilid != null) body.perfilId = payload.perfilid;
   if (payload.perfilNome) body.perfilNome = payload.perfilNome;
   if (payload.setorid != null) body.setorId = payload.setorid;
-
+  if (payload.ativo != null) body.ativo = payload.ativo;
+  
   const r = await fetch(`/api/users/${id}`, {
     method: "PUT",
     headers: { "content-type": "application/json" },

@@ -141,49 +141,52 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
             </TableRow>
           </TableHeader>
 
-        <TableBody>
-          {loading ? (
-            linhasSkeleton
-          ) : total === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                Nenhum usuário encontrado. Clique em <b>Novo usuário</b> para cadastrar.
-              </TableCell>
-            </TableRow>
-          ) : (
-            pageItems.map((u) => (
-              <TableRow key={String(u.id)} className="hover:cursor-default">
-                <TableCell className="font-medium">{u.nome}</TableCell>
-                <TableCell className="truncate">{u.email}</TableCell>
-                <TableCell>{u.setor ? <Badge variant="secondary">{u.setor.nome}</Badge> : "—"}</TableCell>
-                <TableCell>{u.perfil ? <Badge variant="outline">{u.perfil.nome}</Badge> : "—"}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem onClick={() => onView(u)}>
-                        <Eye className="h-4 w-4 mr-2" /> Visualizar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(u)}>
-                        <Edit3 className="h-4 w-4 mr-2" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => onDelete(String(u.id))}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+          <TableBody>
+            {loading ? (
+              linhasSkeleton
+            ) : total === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                  Nenhum usuário encontrado. Clique em <b>Novo usuário</b> para cadastrar.
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
+            ) : (
+              pageItems.map((u) => (
+                <TableRow key={String(u.id)} className="hover:cursor-default">
+                  <TableCell className="font-medium">{u.nome}</TableCell>
+                  <TableCell className="truncate">{u.email}</TableCell>
+                  <TableCell>{u.setor ? <Badge variant="secondary">{u.setor.nome}</Badge> : "—"}</TableCell>
+                  <TableCell>{u.perfil ? <Badge variant="outline">{u.perfil.nome}</Badge> : "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={u.ativo ? "default" : "destructive"}>{u.ativo ? "Ativo" : "Inativo"}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => onView(u)}>
+                          <Eye className="h-4 w-4 mr-2" /> Visualizar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(u)}>
+                          <Edit3 className="h-4 w-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => onDelete(String(u.id))}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
         </Table>
 
         <div className="flex items-center mt-4 justify-between">
@@ -196,7 +199,9 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
             ) : (
               <span>0 de 0</span>
             )}
-            <Loader className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${loading ? "opacity-100" : ""}`} />
+            <Loader
+              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${loading ? "opacity-100" : ""}`}
+            />
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
@@ -222,7 +227,12 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page === totalPages || total === 0}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages || total === 0}
+            >
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
@@ -240,10 +250,18 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
                 <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10" className="hover:cursor-pointer">10</SelectItem>
-                <SelectItem value="20" className="hover:cursor-pointer">20</SelectItem>
-                <SelectItem value="50" className="hover:cursor-pointer">50</SelectItem>
-                <SelectItem value="100" className="hover:cursor-pointer">100</SelectItem>
+                <SelectItem value="10" className="hover:cursor-pointer">
+                  10
+                </SelectItem>
+                <SelectItem value="20" className="hover:cursor-pointer">
+                  20
+                </SelectItem>
+                <SelectItem value="50" className="hover:cursor-pointer">
+                  50
+                </SelectItem>
+                <SelectItem value="100" className="hover:cursor-pointer">
+                  100
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

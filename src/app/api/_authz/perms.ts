@@ -14,16 +14,13 @@ export const PERMS = {
   FINANCEIRO: "FINANCEIRO_ACESSO",
   RELATORIOS: "RELATORIOS_ACESSO",
 
-  
   CONFIG: "CONFIG_ACESSO",
   USUARIOS: "USUARIOS_ACESSO",
 
   ACOMPANHAMENTO: "ACOMPANHAMENTO_ACESSO",
-  
-
 } as const;
 
-export type Permission = typeof PERMS[keyof typeof PERMS];
+export type Permission = (typeof PERMS)[keyof typeof PERMS];
 
 /**
  * Lê as permissões do usuário logado (por perfil) e retorna como Set em caixa alta.
@@ -39,21 +36,13 @@ async function getUserPerms(): Promise<Set<string>> {
   // 1) tenta por id
   let perfilId: number | null = null;
   {
-    const byId = await supabaseAdmin
-      .from("usuario")
-      .select("perfilid")
-      .eq("id", uid)
-      .maybeSingle();
+    const byId = await supabaseAdmin.from("usuario").select("perfilid").eq("id", uid).maybeSingle();
 
     if (byId.data?.perfilid) {
       perfilId = Number(byId.data.perfilid);
     } else if (email) {
       // 2) fallback por email
-      const byEmail = await supabaseAdmin
-        .from("usuario")
-        .select("perfilid")
-        .eq("email", email)
-        .maybeSingle();
+      const byEmail = await supabaseAdmin.from("usuario").select("perfilid").eq("email", email).maybeSingle();
       if (byEmail.data?.perfilid) perfilId = Number(byEmail.data.perfilid);
     }
   }
@@ -68,9 +57,7 @@ async function getUserPerms(): Promise<Set<string>> {
   if (error) throw error;
 
   // normaliza para UPPERCASE e remove nulos/duplicados
-  const list = (data ?? [])
-    .map((r: any) => (r?.permissao?.nome ?? "").toString().trim().toUpperCase())
-    .filter(Boolean);
+  const list = (data ?? []).map((r: any) => (r?.permissao?.nome ?? "").toString().trim().toUpperCase()).filter(Boolean);
 
   return new Set(list);
 }

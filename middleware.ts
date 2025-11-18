@@ -1,7 +1,9 @@
 // src/middleware.ts
+
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Rotas realmente públicas (login, recovery e APIs públicas)
 const PUBLIC_PATHS = [
@@ -30,7 +32,6 @@ function isStaticAsset(pathname: string) {
 
 function isPublicPath(pathname: string) {
   if (isStaticAsset(pathname)) return true;
-
   return PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
@@ -40,26 +41,41 @@ export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
 
-  // 🔐 Lê o token da sessão
   const token = await getToken({ req });
-  const isLoggedIn = !!token;
 
-  // 1) Usuário logado indo para /login -> manda para /dashboard
+  let isLoggedIn = false;
+  let reason: "inactive" | null = null;
+
+  if (token?.sub) {
+    const { data: row, error } = await supabaseAdmin
+      .from("usuario")
+      .select("ativo")
+      .eq("id", token.sub as string)
+      .maybeSingle();
+
+    if (!error && row && row.ativo === true) {
+      isLoggedIn = true;
+    } else if (!error && row && row.ativo === false) {
+      isLoggedIn = false;
+      reason = "inactive";
+    }
+  }
+
   if (pathname === "/login" && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
-  // 2) Bloqueia tudo que não é público quando não está logado
   if (!isLoggedIn && !isPublicPath(pathname)) {
     const url = new URL("/login", nextUrl);
     url.searchParams.set("callbackUrl", pathname + nextUrl.search);
+    if (reason === "inactive") {
+      url.searchParams.set("reason", "inactive");
+    }
     return NextResponse.redirect(url);
   }
 
-  // 3) Segue normal
   return NextResponse.next();
 }
-
 export const config = {
   matcher: ["/:path*"],
 };

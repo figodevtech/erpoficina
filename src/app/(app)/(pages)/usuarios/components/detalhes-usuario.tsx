@@ -31,7 +31,7 @@ export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
               <div className="text-[11px] uppercase text-muted-foreground">E-mail</div>
               <div className="font-medium break-words">{usuario.email}</div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <div className="text-[11px] uppercase text-muted-foreground">Perfil</div>
                 <div>{usuario.perfil ? <Badge variant="outline">{usuario.perfil.nome}</Badge> : "—"}</div>
@@ -39,6 +39,16 @@ export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
               <div>
                 <div className="text-[11px] uppercase text-muted-foreground">Setor</div>
                 <div>{usuario.setor ? <Badge variant="secondary">{usuario.setor.nome}</Badge> : "—"}</div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase text-muted-foreground">Status</div>
+                <div>
+                  {usuario.ativo ? (
+                    <Badge variant="default">Ativo</Badge>
+                  ) : (
+                    <Badge variant="destructive">Inativo</Badge>
+                  )}
+                </div>
               </div>
             </div>
           </div>

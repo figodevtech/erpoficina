@@ -33,22 +33,52 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     setLoading(true);
 
     try {
-      const res = await signIn("credentials", { email, password, redirect: false });
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
       if (res?.error) {
+        // Se quiser ver o erro exato enquanto ajusta:
+        // console.log("res.error =>", res.error);
+
         switch (res.error) {
-          case "Por favor, forneça e-mail e senha.":
-            toast.error("Por favor, preencha todos os campos.");
-            break;
-          case "E-mail ou senha inválidos":
+          // Erro padrão do CredentialsProvider quando authorize retorna null
+          case "CredentialsSignin":
+          case "INVALID_CREDENTIALS":
             toast.error("E-mail ou senha inválidos.");
             break;
+
+          // Erro padrão quando authorize lança uma exception (USER_BLOCKED no servidor)
+          case "CallbackRouteError":
+          case "USER_BLOCKED":
+            toast.error(
+              "Seu usuário foi bloqueado. Entre em contato com o administrador do sistema."
+            );
+            break;
+
+          // Se em algum lugar você ainda lançar essas mensagens literais,
+          // elas continuam tratadas aqui:
+          case "MISSING_CREDENTIALS":
+          case "Por favor, forneça e-mail e senha.":
+            toast.error("Por favor, preencha e-mail e senha.");
+            break;
+
+          case "USER_NOT_FOUND":
           case "Usuário não encontrado no sistema.":
             toast.error("Usuário não encontrado. Solicite um cadastro.");
             break;
+
+          case "LOGIN_INTERNAL_ERROR":
+            toast.error("Ocorreu um erro ao tentar fazer login. Tente novamente.");
+            break;
+
           default:
-            toast.error("Ocorreu um erro ao fazer login. Tente novamente.");
+            toast.error("Não foi possível fazer login. Tente novamente.");
+            break;
         }
+
         return;
       }
 
@@ -133,7 +163,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
       </Card>
 
       <div className="text-muted-foreground text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-        Ao continuar você concorda com os <a href="#">Termos de Serviço</a> e a <a href="#">Política de Privacidade</a>.
+        Ao continuar você concorda com os <a href="#">Termos de Serviço</a> e a{" "}
+        <a href="#">Política de Privacidade</a>.
       </div>
 
       {/* Dialog Esqueci minha senha */}

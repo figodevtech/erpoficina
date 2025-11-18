@@ -113,7 +113,13 @@ export default function GerenciamentoUsuarios() {
   };
 
   // criar/editar
-  const handleCreate = async (payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null }) => {
+  const handleCreate = async (payload: {
+    nome: string;
+    email: string;
+    perfilid?: number | null;
+    setorid?: number | null;
+    ativo?: boolean;
+  }) => {
     try {
       await createUser(payload);
       toast.success("Usuário criado.");
@@ -126,7 +132,7 @@ export default function GerenciamentoUsuarios() {
 
   const handleUpdate = async (
     id: string | number,
-    payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null }
+    payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null; ativo?: boolean }
   ) => {
     try {
       await updateUser(id, payload);

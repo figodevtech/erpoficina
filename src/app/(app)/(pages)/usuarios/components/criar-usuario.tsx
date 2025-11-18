@@ -8,13 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   perfis: Perfil[];
   setores: Setor[];
-  onCreate: (payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null }) => void | Promise<void>;
+  onCreate: (payload: {
+    nome: string;
+    email: string;
+    perfilid?: number | null;
+    setorid?: number | null;
+    ativo?: boolean;
+  }) => void | Promise<void>;
 };
 
 export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCreate }: Props) {
@@ -22,6 +29,7 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
   const [email, setEmail] = useState("");
   const [perfilid, setPerfilid] = useState<string>("");
   const [setorid, setSetorid] = useState<string>("");
+  const [ativo, setAtivo] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const canSave = nome.trim() && email.trim();
@@ -35,12 +43,14 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
         email: email.trim(),
         perfilid: perfilid ? Number(perfilid) : null,
         setorid: setorid ? Number(setorid) : null,
+        ativo,
       });
       // limpa
       setNome("");
       setEmail("");
       setPerfilid("");
       setSetorid("");
+      setAtivo(true);
     } finally {
       setSaving(false);
     }
@@ -63,7 +73,7 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
             <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@dominio.com" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label>Perfil</Label>
               <Select value={perfilid} onValueChange={setPerfilid}>
@@ -94,6 +104,11 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="ativo">Ativo</Label>
+              <Switch id="ativo" checked={ativo} onCheckedChange={setAtivo} />
             </div>
           </div>
 
