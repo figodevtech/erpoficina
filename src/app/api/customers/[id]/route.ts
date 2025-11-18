@@ -16,6 +16,10 @@ const VEICULO_FIELDS = `
   id, clienteid, placa, modelo, marca, ano, cor, kmatual, createdat, updatedat
 `;
 
+const ORDEM_FIELDS = `
+id, clienteid, descricao, status
+`
+
 type Status = "ATIVO" | "INATIVO" | "PENDENTE";
 const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
 
@@ -86,7 +90,8 @@ export async function GET(_: Request, ctx: Params) {
       .select(
         `
         ${CLIENTE_FIELDS},
-        veiculos:veiculo ( ${VEICULO_FIELDS} )
+        veiculos:veiculo ( ${VEICULO_FIELDS} ),
+        ordens: ordemservico ( ${ORDEM_FIELDS} )
         `
       )
       .eq("id", id)
