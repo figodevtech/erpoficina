@@ -72,14 +72,9 @@ export default function ClientAppShell({
         {!hideHeader && (
           <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
+            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
 
-            <h2 className="text-base md:text-lg font-medium text-foreground/80">
-              {title}
-            </h2>
+            <h2 className="text-base md:text-lg font-medium text-foreground/80">{title}</h2>
             <div className="flex-1" />
 
             <DateTimeBadge />
@@ -90,9 +85,7 @@ export default function ClientAppShell({
         <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
           <div className="mx-auto w-full px-4 md:px-6 py-4 md:py-6">
             {children}
-                        {/* <Toaster richColors position="top-center" /> */}
             <Toaster duration={4000} richColors position="bottom-right" />
-
           </div>
         </main>
       </SidebarInset>
