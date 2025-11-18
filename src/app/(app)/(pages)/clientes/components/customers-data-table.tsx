@@ -64,7 +64,10 @@ interface CustomerDataTableProps {
   fetchStatusCounts: () => void;
   isLoading: boolean;
   customerItems: Customer[];
-  setSeletedCustomerId: (value: number) => void;
+  selectedCustomerId?: number | undefined;
+  setSelectedCustomerId: (value: number | undefined) => void;
+  isOpen: boolean;
+  setIsOpen: (value: boolean) => void;
   isAlertOpen: boolean;
   setIsAlertOpen: (value: boolean) => void;
 }
@@ -77,7 +80,10 @@ export default function CustomersDataTable({
   fetchStatusCounts,
   isLoading,
   customerItems,
-  setSeletedCustomerId,
+  selectedCustomerId,
+  setSelectedCustomerId,
+  isOpen,
+  setIsOpen,
   isAlertOpen,
   setIsAlertOpen,
 }: CustomerDataTableProps) {
@@ -125,16 +131,19 @@ export default function CustomersDataTable({
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
               >
                 <span>Recarregar</span>
-                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+                <Loader2
+                  width={12}
+                  className={isLoading ? "animate-spin" : ""}
+                />
               </button>
             </CardDescription>
           </div>
 
           {/* 👉 Botão movido para cá */}
           <div className="flex items-center gap-2">
-                          <ExportCustomersButton search={search} status={status} />
+            <ExportCustomersButton search={search} status={status} />
 
-            <CustomerDialog>
+            <CustomerDialog customerId={selectedCustomerId} isOpen={isOpen} setIsOpen={setIsOpen} setSelectedCustomerId={setSelectedCustomerId}>
               <Button className="hover:cursor-pointer">Novo Cliente</Button>
             </CustomerDialog>
           </div>
@@ -171,13 +180,15 @@ export default function CustomersDataTable({
             {customerItems.map((customer) => (
               <TableRow
                 key={customer.id}
-                onDoubleClick={() => setSeletedCustomerId(customer.id)}
+                onDoubleClick={() => setSelectedCustomerId(customer.id)}
                 className="hover:cursor-pointer"
               >
                 <TableCell>{customer.id}</TableCell>
                 <TableCell>
                   <div>
-                    <div className="font-medium">{customer.nomerazaosocial}</div>
+                    <div className="font-medium">
+                      {customer.nomerazaosocial}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {customer.tipopessoa === "FISICA" ? "PF" : "PJ"}
                     </div>

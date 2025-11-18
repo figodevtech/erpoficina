@@ -50,7 +50,11 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ExportProductsButton } from "./exportProductsButton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -138,7 +142,7 @@ export default function ProductsDataTable({
     try {
       const response = await axios.delete(`/api/products/${id}`, {});
       if (response.status === 204) {
-        toast("Produto deletado!");
+        toast.success("Produto deletado!");
         handleGetProducts(pagination.page, pagination.limit, search, status);
         fetchStatusCounts();
       } else {
@@ -177,19 +181,23 @@ export default function ProductsDataTable({
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
               >
                 <span>Recarregar</span>
-                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+                <Loader2
+                  width={12}
+                  className={isLoading ? "animate-spin" : ""}
+                />
               </button>
             </CardDescription>
           </div>
 
           {/* 👉 Botão “Novo Produto” movido para cá */}
           <div className="flex items-center gap-2">
-              <ExportProductsButton/>
-            <ProductDialog
-            setSelectedProductId={setSelectedProductId}
+            <ExportProductsButton />
+            <Button
+              className="hover:cursor-pointer"
+              onClick={() => setIsOpen(true)}
             >
-              <Button className="hover:cursor-pointer">Novo Produto</Button>
-            </ProductDialog>
+              Novo Produto
+            </Button>
           </div>
         </div>
 
@@ -245,17 +253,17 @@ export default function ProductsDataTable({
                     <div className="flex items-center gap-2">
                       <div>
                         <div className="flex flex-row gap-2 items-center">
-
-                        <p className="font-medium">{p.titulo}</p>
-                        {p.exibirPdv && (
-                         <Tooltip>
-                          <TooltipTrigger asChild>
-
-                          <Store className="w-4 h-4 text-primary/80 not-dark:text-primary" />
-                          </TooltipTrigger>
-                          <TooltipContent>Exibindo no Marketplace</TooltipContent>
-                         </Tooltip>
-                        )}
+                          <p className="font-medium">{p.titulo}</p>
+                          {p.exibirPdv && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Store className="w-4 h-4 text-primary/80 not-dark:text-primary" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Exibindo no Marketplace
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {p.unidade}
@@ -270,23 +278,34 @@ export default function ProductsDataTable({
                     </div>
                   </TableCell>
 
-                  <TableCell className="font-mono text-xs">{p.referencia}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {p.referencia}
+                  </TableCell>
                   <TableCell>{p.fabricante}</TableCell>
 
-                  <TableCell className="font-medium">{p.estoque ?? 0}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.estoqueminimo ?? 0}</TableCell>
+                  <TableCell className="font-medium">
+                    {p.estoque ?? 0}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {p.estoqueminimo ?? 0}
+                  </TableCell>
 
                   <TableCell>{getStatusBadge(p.status_estoque)}</TableCell>
 
                   <TableCell>
                     R{"$ "}
-                    {p.precovenda.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    {p.precovenda.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
                   </TableCell>
 
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 cursor-pointer"
+                        >
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -328,7 +347,8 @@ export default function ProductsDataTable({
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
             <span>
-              {pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0)}
+              {pagination.limit * (pagination.page - 1) +
+                (pagination.pageCount || 0)}
             </span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
             <Loader
@@ -343,7 +363,9 @@ export default function ProductsDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() => handleGetProducts(1, pagination.limit, search, status)}
+              onClick={() =>
+                handleGetProducts(1, pagination.limit, search, status)
+              }
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />

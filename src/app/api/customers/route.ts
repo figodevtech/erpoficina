@@ -7,6 +7,16 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 type Status = "ATIVO" | "INATIVO" | "PENDENTE";
 const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
 
+const CLIENTE_FIELDS = `
+  id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
+  cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
+  createdat, updatedat, status
+`;
+
+const VEICULO_FIELDS = `
+  id, clienteid, placa, modelo, marca, ano, cor, kmatual, createdat, updatedat
+`;
+
 function onlyDigits(v?: string | null) {
   return (v ?? "").replace(/\D+/g, "");
 }
@@ -172,8 +182,11 @@ export async function POST(req: Request) {
       .from("cliente")
       .insert(payload)
       .select(
-        "id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, createdat, status"
-      )
+         `
+        ${CLIENTE_FIELDS},
+        veiculos:veiculo ( ${VEICULO_FIELDS} )
+        `
+        )
       .single();
 
     if (error) {

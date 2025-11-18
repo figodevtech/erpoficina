@@ -31,6 +31,7 @@ import ValueInput from "./valueInput";
 import axios from "axios";
 import { formatDate } from "@/utils/formatDate";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 // --- Helper data ---
 
@@ -112,6 +113,7 @@ export default function EditContent({ productId }: EditContentProps) {
         const { data } = response;
         setSelectedProduct(data.data);
         console.log("Cliente atualizado:", data.data);
+        // toast.success("Atualizado")
         handleGetProduct(data.data.id);
       }
     } catch (error) {
@@ -240,7 +242,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="descricao">Descrição *</Label>
+                  <Label htmlFor="descricao">Descrição</Label>
                   <Textarea
                     id="descricao"
                     value={selectedProduct.descricao || ""}
@@ -290,7 +292,7 @@ export default function EditContent({ productId }: EditContentProps) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="precounitario">Preço Unitário *</Label>
+                    <Label htmlFor="precounitario">Preço Unitário</Label>
                     <ValueInput
                       price={selectedProduct.precovenda}
                       setPrice={(v) => handleChange("precovenda", v)}
@@ -299,7 +301,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="unidade">Unidade *</Label>
+                    <Label htmlFor="unidade">Unidade</Label>
                     <Select
                       value={selectedProduct.unidade}
                       onValueChange={(v) => handleChange("unidade", v)}
@@ -355,7 +357,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="descricaoMarketplace">Descrição no Marketplace *</Label>
+                  <Label htmlFor="descricaoMarketplace">Descrição no Marketplace</Label>
                   <Textarea
                     id="descricaoMarketplace"
                     value={selectedProduct.descricaoMarketplace || ""}
@@ -373,7 +375,7 @@ export default function EditContent({ productId }: EditContentProps) {
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ncm">NCM *</Label>
+                    <Label htmlFor="ncm">NCM</Label>
                     <Input
                       id="ncm"
                       value={selectedProduct.ncm || ""}
@@ -387,7 +389,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="cfop">CFOP *</Label>
+                    <Label htmlFor="cfop">CFOP</Label>
                     <Input
                       id="cfop"
                       value={selectedProduct.cfop || ""}
@@ -401,7 +403,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="csosn">CSOSN *</Label>
+                    <Label htmlFor="csosn">CSOSN</Label>
                     <Select
                       value={selectedProduct.csosn || "Selecione"}
                       onValueChange={(v) => handleChange("csosn", v)}
@@ -462,7 +464,7 @@ export default function EditContent({ productId }: EditContentProps) {
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="estoque">Estoque (Qtd)</Label>
+                    <Label htmlFor="estoque">Estoque (Qtd) *</Label>
                     <Input
                       id="estoque"
                       value={selectedProduct.estoque || ""}
@@ -475,7 +477,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="estoqueminimo">Estoque Mínimo</Label>
+                    <Label htmlFor="estoqueminimo">Estoque Mínimo *</Label>
                     <Input
                       id="estoqueminimo"
                       value={selectedProduct.estoqueminimo || ""}
@@ -532,7 +534,6 @@ export default function EditContent({ productId }: EditContentProps) {
           <DialogFooter className="px-6 py-4">
             <div className="flex sm:flex-row gap-3 sm:gap-4">
               <Button
-                type="submit"
                 form="register-form"
                 disabled={isSubmitting}
                 className="flex-1 text-sm sm:text-base hover:cursor-pointer"

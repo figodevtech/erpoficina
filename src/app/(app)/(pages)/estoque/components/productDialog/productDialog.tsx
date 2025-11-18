@@ -26,7 +26,7 @@ export function ProductDialog({
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
 
-  const [, setSelectedProduct] = useState<Produto | undefined>(
+  const [ , setSelectedProduct] = useState<Produto | undefined>(
     undefined
   );
   const [newProduct, setNewProduct] = useState<Produto>({
@@ -36,6 +36,8 @@ export function ProductDialog({
     unidade: Unidade_medida.UN,
     fornecedor: "DESCONHECIDO",
   });
+
+
   return (
     <Dialog
       open={open}
