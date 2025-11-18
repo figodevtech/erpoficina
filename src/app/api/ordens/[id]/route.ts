@@ -243,6 +243,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     // OS agregada no formato que o Dialog espera
     const os = {
       id: osRow.id,
+      orcamentototal: osRow.orcamentototal,
       descricao: osRow.descricao ?? null,
       observacoes: osRow.observacoes ?? null,
       status: osRow.status ?? null,

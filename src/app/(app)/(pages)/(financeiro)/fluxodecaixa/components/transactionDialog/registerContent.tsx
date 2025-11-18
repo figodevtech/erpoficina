@@ -95,7 +95,7 @@ export default function RegisterContent({
         cliente_id: selectedCustomer.id,
       });
     }
-  }, [setNewTransaction, selectedCustomer, newTransaction]);
+  }, [setNewTransaction, selectedCustomer]);
 
   const handleCreateTransaction = async () => {
   setIsSubmitting(true);

@@ -1,100 +1,80 @@
 "use client";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import {
-  Package,
-  AlertTriangle,
-  TrendingDown,
-  TrendingUp,
-  
-} from "lucide-react";
+import { Package, AlertTriangle, TrendingDown, TrendingUp, BanknoteArrowUp, ChartSpline, Check, Clock } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { VendaStatusMetricsData } from "../types";
+import formatarEmReal from "@/utils/formatarEmReal";
 
 interface CardsPropos {
-    totalVendas: number;
-    loadingStatusCounter: boolean;
-    statusCounts: Record<string, number>
-
-
+  totalVendas: number;
+  loadingStatusCounter: boolean;
+  statusCounts: VendaStatusMetricsData | null;
 }
 
-export default function Cards({loadingStatusCounter, totalVendas, statusCounts}: CardsPropos) {
-
-    return(
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total de Itens
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingStatusCounter ? (
-              <Skeleton className="h-8 w-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold">{totalVendas || 0}</div>
-            )}
-            <p className="text-xs text-muted-foreground">Produtos listados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Itens Críticos
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            {loadingStatusCounter ? (
-              <Skeleton className="w-8 h-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold text-destructive">
-               definir
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">vENDAS</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estoque Baixo</CardTitle>
-            <TrendingDown className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            {/* {loadingStatusCounter ? (
-              <Skeleton className="w-8 h-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold text-orange-500">
-                {statusCounts.BAIXO}
-              </div>
-            )} */}
-            <p className="text-xs text-muted-foreground">Atenção necessária</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estoque Bom</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {/* {loadingStatusCounter ? (
-              <Skeleton className="w-8 h-8"></Skeleton>
-            ) : (
-              <div className="text-2xl font-bold">{statusCounts.OK}</div>
-            )} */}
-            <p className="text-xs text-muted-foreground">Valor do inventário</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+export default function Cards({
+  loadingStatusCounter,
+  statusCounts,
+}: CardsPropos) {
+  return (
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Valor Total Vendido <span className="text-xs text-muted-foreground">(Este Mês)</span></CardTitle>
+          <BanknoteArrowUp className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {loadingStatusCounter ? (
+            <Skeleton className="h-8 w-8"></Skeleton>
+          ) : (
+            <div className="text-2xl">{formatarEmReal(statusCounts?.byStatus.finalizadas?.totalValor || 0) }</div>
+          )}
+          <p className="text-xs text-muted-foreground">Mensal</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Ticket Médio <span className="text-xs text-muted-foreground">(Este Mês)</span></CardTitle>
+          <ChartSpline className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {loadingStatusCounter ? (
+            <Skeleton className="h-8 w-8"></Skeleton>
+          ) : (
+            <div className="text-2xl">{formatarEmReal(statusCounts?.byStatus.finalizadas?.ticketMedio || 0) }</div>
+          )}
+          <p className="text-xs text-muted-foreground">Mensal</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Vendas Concluídas <span className="text-xs text-muted-foreground">(Este Mês)</span></CardTitle>
+          <Check className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {loadingStatusCounter ? (
+            <Skeleton className="h-8 w-8"></Skeleton>
+          ) : (
+            <div className="text-2xl">{statusCounts?.byStatus.finalizadas?.totalPedidos}</div>
+          )}
+          <p className="text-xs text-muted-foreground">Mensal</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Recebimento em aberto <span className="text-xs text-muted-foreground">(Este Mês)</span></CardTitle>
+          <Clock className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {loadingStatusCounter ? (
+            <Skeleton className="h-8 w-8"></Skeleton>
+          ) : (
+            <div className="text-2xl">{formatarEmReal(statusCounts?.byStatus.abertas?.totalValor || 0)}</div>
+          )}
+          <p className="text-xs text-muted-foreground">Mensal</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

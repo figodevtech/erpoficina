@@ -95,7 +95,7 @@ export default function RegisterContent({
 
       if (response.status === 201) {
         console.log(response.data.data.id);
-        toast("Sucesso!", {
+        toast.success("Sucesso!", {
           description: "Produto cadastrado.",
           duration: 2000,
         });
@@ -107,7 +107,7 @@ export default function RegisterContent({
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast("Erro", {
+        toast.error("Erro", {
           description: error.response?.data.error,
           duration: 2000,
         });

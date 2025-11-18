@@ -226,7 +226,6 @@ export default function ProductsDataTable({
               <TableHead>Mín.</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Preço Unit.</TableHead>
-              <TableHead>Valor Total</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -282,11 +281,6 @@ export default function ProductsDataTable({
                   <TableCell>
                     R{"$ "}
                     {p.precovenda.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </TableCell>
-
-                  <TableCell>
-                    R{"$ "}
-                    {valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </TableCell>
 
                   <TableCell>
