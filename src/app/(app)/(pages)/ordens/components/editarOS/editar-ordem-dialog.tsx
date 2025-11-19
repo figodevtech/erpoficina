@@ -1,3 +1,4 @@
+// src/app/(app)/(pages)/ordens/components/editarOS/editar-ordem-dialog.tsx
 "use client";
 
 import { useRef, useState } from "react";
@@ -22,7 +23,11 @@ export function EditarOSDialog({
 
   const titulo = `Editar OS ${defaultValues?.numero ?? defaultValues?.id ?? ""}`;
   const desc = `${defaultValues?.cliente?.nome ?? ""}${
-    defaultValues?.veiculo ? ` • ${defaultValues.veiculo?.modelo ?? ""} • ${defaultValues.veiculo?.placa ?? ""}` : ""
+    defaultValues?.veiculo
+      ? ` • ${defaultValues.veiculo?.modelo ?? ""} • ${
+          defaultValues.veiculo?.placa ?? ""
+        }`
+      : ""
   }`;
 
   return (
@@ -33,7 +38,12 @@ export function EditarOSDialog({
       description={desc}
       footer={
         <>
-          <Button variant="outline" className="bg-transparent" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button
+            variant="outline"
+            className="bg-transparent"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancelar
           </Button>
           <Button onClick={() => submitRef.current?.()} disabled={saving}>
@@ -46,11 +56,7 @@ export function EditarOSDialog({
       <OrdemEditForm
         defaultValues={defaultValues}
         exposeSubmit={(fn) => (submitRef.current = fn)}
-        onSavingChange={setSaving} // ⬅️ recebe o estado de salvamento do form
-        onSubmit={async (dados) => {
-          await onEdit?.(dados); // se falhar, o form trata o toast de erro e não fecha
-          onOpenChange(false); // fecha apenas após sucesso
-        }}
+        onSavingChange={setSaving}
       />
     </DialogShell>
   );
