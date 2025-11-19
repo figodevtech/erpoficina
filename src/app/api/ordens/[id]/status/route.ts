@@ -1,4 +1,3 @@
-// src/app/api/ordens/[id]/status/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -19,33 +18,22 @@ type Body = {
   status: DBStatusOS;
 };
 
-type Params = {
-  id: string;
-};
+type ParamsId = { id: string };
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<Params> } 
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<ParamsId> }) {
   try {
-    const { id } = await params; 
+    const { id } = await params;
     const osId = Number(id);
 
-    if (!osId || Number.isNaN(osId)) {
-      return NextResponse.json(
-        { error: "ID inválido" },
-        { status: 400 }
-      );
+    if (!osId) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
     }
 
     const body = (await req.json()) as Body;
     const status = body.status;
 
     if (!status) {
-      return NextResponse.json(
-        { error: "Status é obrigatório." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Status é obrigatório." }, { status: 400 });
     }
 
     // define statusaprovacao em função do novo status
@@ -55,11 +43,7 @@ export async function PUT(
       statusaprovacao = "APROVADA";
     } else if (status === "ORCAMENTO_RECUSADO") {
       statusaprovacao = "REPROVADA";
-    } else if (
-      status === "ORCAMENTO" ||
-      status === "APROVACAO_ORCAMENTO" ||
-      status === "AGUARDANDO_CHECKLIST"
-    ) {
+    } else if (status === "ORCAMENTO" || status === "APROVACAO_ORCAMENTO" || status === "AGUARDANDO_CHECKLIST") {
       statusaprovacao = "PENDENTE";
     }
 
@@ -69,17 +53,18 @@ export async function PUT(
       updateData.statusaprovacao = statusaprovacao;
     }
 
-    const upd = await supabaseAdmin
-      .from("ordemservico")
-      .update(updateData)
-      .eq("id", osId);
+    // 👉 datasaida: quando a OS é concluída
+    if (status === "CONCLUIDO") {
+      updateData.datasaida = new Date().toISOString();
+    }
+
+    const upd = await supabaseAdmin.from("ordemservico").update(updateData).eq("id", osId);
 
     if (upd.error) throw upd.error;
 
-    // opcional: marcar tokens da OS como "usados" quando aprovar/reprovar pelo sistema
+    // opcional: marcar tokens da OS como "usados" quando aprovar/reprovar
     if (status === "ORCAMENTO_APROVADO" || status === "ORCAMENTO_RECUSADO") {
-      const desiredAprov: DBAprovacao =
-        status === "ORCAMENTO_APROVADO" ? "APROVADA" : "REPROVADA";
+      const desiredAprov: DBAprovacao = status === "ORCAMENTO_APROVADO" ? "APROVADA" : "REPROVADA";
 
       const mark = await supabaseAdmin
         .from("osaprovacao")
@@ -92,23 +77,13 @@ export async function PUT(
         .is("usado_em", null);
 
       if (mark.error) {
-        // loga, mas não quebra a resposta
-        console.error(
-          "Falha ao marcar tokens de aprovação como usados",
-          mark.error
-        );
+        console.error("Falha ao marcar tokens de aprovação como usados", mark.error);
       }
     }
 
-    return NextResponse.json(
-      { ok: true, status, statusaprovacao },
-      { status: 200 }
-    );
+    return NextResponse.json({ ok: true, status, statusaprovacao }, { status: 200 });
   } catch (err: any) {
     console.error("PUT /api/ordens/[id]/status", err);
-    return NextResponse.json(
-      { error: err?.message || "Falha ao atualizar status" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err?.message || "Falha ao atualizar status" }, { status: 500 });
   }
 }
