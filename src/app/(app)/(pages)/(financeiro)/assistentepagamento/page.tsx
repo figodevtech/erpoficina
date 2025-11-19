@@ -14,6 +14,7 @@ export default function AssistentePagamento (){
   });
     const [isLoading, setIsLoading] = useState(false)
     const[search, ] = useState("")
+    const [msg, setMsg] = useState("")
     
 
     const handleGetOrdens = async (

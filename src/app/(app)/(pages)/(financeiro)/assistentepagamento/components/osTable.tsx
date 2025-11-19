@@ -65,9 +65,9 @@ export default function OsTable({
   const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
 
-  useEffect(()=> {
+  useEffect(() => {
     handleGetOrdens(selectedStatus);
-  },[selectedStatus, ])
+  }, [selectedStatus]);
 
   return (
     <Card className="">
@@ -89,14 +89,22 @@ export default function OsTable({
           <span className="text-xs text-muted-foreground"> Recarregar</span>
         </div>
         <Tabs defaultValue="abertas" className="w-full items-center">
-          <TabsList  className="rounded-b-none">
-            <TabsTrigger onClick={()=>
-              setSelectedStatus("PAGAMENTO")
-            }  className={" rounded-b-none cursor-pointer" + tabTheme} value="abertas">Abertas</TabsTrigger>
-            <TabsTrigger onClick={()=>
-              setSelectedStatus("CONCLUIDO")
-            }  className={" rounded-b-none cursor-pointer" + tabTheme} value="concluidas">Concluídas</TabsTrigger>
-            </TabsList>
+          <TabsList className="rounded-b-none">
+            <TabsTrigger
+              onClick={() => setSelectedStatus("PAGAMENTO")}
+              className={" rounded-b-none cursor-pointer" + tabTheme}
+              value="abertas"
+            >
+              Abertas
+            </TabsTrigger>
+            <TabsTrigger
+              onClick={() => setSelectedStatus("CONCLUIDO")}
+              className={" rounded-b-none cursor-pointer" + tabTheme}
+              value="concluidas"
+            >
+              Concluídas
+            </TabsTrigger>
+          </TabsList>
         </Tabs>
       </CardHeader>
 
@@ -129,70 +137,91 @@ export default function OsTable({
           </TableHeader>
 
           <TableBody>
-            {ordens.map((o) => {
-              // IDs estáveis por linha para o menu
-              const triggerId = `os-row-${o.id}-menu-btn`;
-              const menuId = `os-row-${o.id}-menu`;
+            {ordens.length > 0 ? (
+              ordens.map((o) => {
+                // IDs estáveis por linha para o menu
+                const triggerId = `os-row-${o.id}-menu-btn`;
+                const menuId = `os-row-${o.id}-menu`;
 
-              return (
-                <TableRow key={o.id} className="hover:cursor-pointer">
-                  {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
-                  <TableCell>{o.id}</TableCell>
-                  <TableCell>{o.descricao}</TableCell>
-                  <TableCell>{o.cliente?.nome}</TableCell>
-                  <TableCell>{o.setor?.nome}</TableCell>
-                  <TableCell className=" text-blue-300 not-dark:text-blue-700 font-bold">
-                    {formatarEmReal(
-                      o.transacoes?.reduce(
-                        (acc, t) => acc + Number(t?.valor ?? 0),
-                        0
-                      ) ?? 0
-                    )}
-                  </TableCell>
-                  <TableCell>{formatarEmReal(o.orcamentototal || 0)}</TableCell>
-                  <TableCell className="">
-                    {
-                      o.orcamentototal ? 
-                      ((o.transacoes?.reduce((acc, t) => acc + Number(t?.valor ?? 0),0) || 0) < (o.orcamentototal || 0) ? <span className="font-bold text-amber-400">Pendente</span > : 
-                      
-                      <span className="font-bold text-green-400">Faturado</span>
-                    
-                    )
-                    : "Orçamento falta valor"
-                    }
-                  </TableCell>
-                  <TableCell className="flex justify-end">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          id={triggerId}
-                          aria-controls={menuId}
-                          variant="ghost"
-                          className="h-8 w-8 p-0 cursor-pointer"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent
-                        id={menuId}
-                        aria-labelledby={triggerId}
-                        className="space-y-1"
-                      >
-                        <OsFinancialDialog
-                        handleGetOrdens={handleGetOrdens}
-                        osId={o.id}>
-                          <Button disabled={o.orcamentototal <=0 } className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all">
-                            <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
-                            <span>Pagamento</span>
+                return (
+                  <TableRow key={o.id} className="hover:cursor-pointer">
+                    {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
+                    <TableCell>{o.id}</TableCell>
+                    <TableCell>{o.descricao}</TableCell>
+                    <TableCell>{o.cliente?.nome}</TableCell>
+                    <TableCell>{o.setor?.nome}</TableCell>
+                    <TableCell className=" text-blue-300 not-dark:text-blue-700 font-bold">
+                      {formatarEmReal(
+                        o.transacoes?.reduce(
+                          (acc, t) => acc + Number(t?.valor ?? 0),
+                          0
+                        ) ?? 0
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {formatarEmReal(o.orcamentototal || 0)}
+                    </TableCell>
+                    <TableCell className="">
+                      {o.orcamentototal ? (
+                        (o.transacoes?.reduce(
+                          (acc, t) => acc + Number(t?.valor ?? 0),
+                          0
+                        ) || 0) < (o.orcamentototal || 0) ? (
+                          <span className="font-bold text-amber-400">
+                            Pendente
+                          </span>
+                        ) : (
+                          <span className="font-bold text-green-400">
+                            Faturado
+                          </span>
+                        )
+                      ) : (
+                        "Orçamento falta valor"
+                      )}
+                    </TableCell>
+                    <TableCell className="flex justify-end">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            id={triggerId}
+                            aria-controls={menuId}
+                            variant="ghost"
+                            className="h-8 w-8 p-0 cursor-pointer"
+                          >
+                            <ChevronDown className="h-4 w-4" />
                           </Button>
-                        </OsFinancialDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent
+                          id={menuId}
+                          aria-labelledby={triggerId}
+                          className="space-y-1"
+                        >
+                          <OsFinancialDialog
+                            handleGetOrdens={handleGetOrdens}
+                            osId={o.id}
+                          >
+                            <Button
+                              disabled={o.orcamentototal <= 0}
+                              className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
+                            >
+                              <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
+                              <span>Pagamento</span>
+                            </Button>
+                          </OsFinancialDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell className="text-center h-20" colSpan={99}>
+                  Não existem ordens com este status
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
 
@@ -210,7 +239,9 @@ export default function OsTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetOrdens(selectedStatus, 1, pagination.limit, search)}
+              onClick={() =>
+                handleGetOrdens(selectedStatus, 1, pagination.limit, search)
+              }
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -221,7 +252,12 @@ export default function OsTable({
               size="icon"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetOrdens(selectedStatus, pagination.page - 1, pagination.limit, search)
+                handleGetOrdens(
+                  selectedStatus,
+                  pagination.page - 1,
+                  pagination.limit,
+                  search
+                )
               }
               disabled={pagination.page === 1}
             >
@@ -237,7 +273,12 @@ export default function OsTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetOrdens(selectedStatus, pagination.page + 1, pagination.limit, search)
+                handleGetOrdens(
+                  selectedStatus,
+                  pagination.page + 1,
+                  pagination.limit,
+                  search
+                )
               }
               disabled={
                 pagination.page === pagination.totalPages ||
@@ -252,7 +293,12 @@ export default function OsTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetOrdens(selectedStatus, pagination.totalPages, pagination.limit, search)
+                handleGetOrdens(
+                  selectedStatus,
+                  pagination.totalPages,
+                  pagination.limit,
+                  search
+                )
               }
               disabled={
                 pagination.page === pagination.totalPages ||

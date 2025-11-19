@@ -1,4 +1,5 @@
 import { Timestamp } from "next/dist/server/lib/cache-handlers/types"
+import { Ordem } from "../ordens/types"
 
 
 enum TipoPessoa {
@@ -43,6 +44,7 @@ export interface Customer {
   updatedat: Timestamp
   status: ClientStatus
   veiculos: Vehicle[]
+  ordens: Ordem[]
 }
 
 export interface Pagination {

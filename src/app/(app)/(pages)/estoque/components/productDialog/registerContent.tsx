@@ -388,7 +388,7 @@ export default function RegisterContent({
             <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="estoque">Estoque (Qtd) *</Label>
+                  <Label htmlFor="estoque">Estoque Inicial (Qtd) *</Label>
                   <Input
                     id="estoque"
                     value={newProduct.estoque || ""}

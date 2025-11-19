@@ -45,6 +45,8 @@ export enum vendaStatus {
 export interface VendaComItens {
   id: number;
   clienteid: number;
+  valortotal: number;
+  cliente: Customer
   status: vendaStatus;
   datavenda: string;
   createdat: string | null;
@@ -54,4 +56,12 @@ export interface VendaComItens {
   desconto_valor: number;
   sub_total: number;
   itens: VendaProdutoItem[];
+}
+
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  pageCount?: number;
 }

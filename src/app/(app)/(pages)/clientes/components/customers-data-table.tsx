@@ -128,7 +128,7 @@ export default function CustomersDataTable({
                   );
                   fetchStatusCounts();
                 }}
-                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
               >
                 <span>Recarregar</span>
                 <Loader2

@@ -666,22 +666,22 @@ export default function EditContent({ customerId, }: EditContentProps) {
               className="h-full min-h-0 overflow-hidden p-0"
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
-                <Table>
+                <Table className="text-xs" > 
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Placa</TableHead>
-                      <TableHead>Cor</TableHead>
-                      <TableHead>Fab/Mod</TableHead>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Título</TableHead>
+                      <TableHead className="text-center">Placa</TableHead>
+                      <TableHead className="text-center">Cor</TableHead>
+                      <TableHead className="text-center">Fab/Mod</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody >
                     {selectedCustomer.veiculos.length > 0 ? (
                       selectedCustomer.veiculos.map((vehicle) => (
                         <TableRow
                           key={vehicle.id}
-                          className="hover: cursor-pointer"
+                          className="hover:cursor-pointer text-center"
                         >
                           <TableCell>{vehicle.id}</TableCell>
                           <TableCell>{vehicle.modelo}</TableCell>
@@ -707,18 +707,31 @@ export default function EditContent({ customerId, }: EditContentProps) {
               className="h-full min-h-0 overflow-hidden p-0"
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
-                <Table>
+                <Table className="text-xs">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Descrição</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell>1</TableCell>
-                      <TableCell>Os tal</TableCell>
+                    {selectedCustomer.ordens.length > 0 ? 
+                    selectedCustomer.ordens.map((ordem)=>(
+
+                    <TableRow key={ordem.id} className="hover:cursor-pointer">
+                      <TableCell className="text-center">{ordem.id}</TableCell>
+                      <TableCell className="text-center">{ordem.descricao}</TableCell>
+                      <TableCell className="text-center">{ordem.status}</TableCell>
                     </TableRow>
+                    ))
+                    : 
+                    <TableRow>
+                        <TableCell className="text-center h-20" colSpan={5}>
+                          Cliente não possui ordens cadastradas
+                        </TableCell>
+                      </TableRow>
+                    }
                   </TableBody>
                 </Table>
               </div>

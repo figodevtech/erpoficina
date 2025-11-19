@@ -466,6 +466,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   <div className="space-y-2">
                     <Label htmlFor="estoque">Estoque (Qtd) *</Label>
                     <Input
+                    disabled
                       id="estoque"
                       value={selectedProduct.estoque || ""}
                       onChange={(e) =>

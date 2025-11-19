@@ -30,6 +30,9 @@ import {
   Loader,
   CircleOff,
   Store,
+  DollarSign,
+  Handshake,
+  Check,
 } from "lucide-react";
 import {
   Select,
@@ -43,68 +46,60 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Estoque_status, Pagination, Produto } from "../types";
-import { ProductDialog } from "./productDialog/productDialog";
-import DeleteAlert from "./deleteAlert";
-import axios, { isAxiosError } from "axios";
-import { toast } from "sonner";
 import { useState } from "react";
-import { ExportProductsButton } from "./exportProductsButton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Pagination, VendaComItens, vendaStatus } from "../types";
+import { formatDate } from "@/utils/formatDate";
+import formatarEmReal from "@/utils/formatarEmReal";
 
-interface ProductsDataTableProps {
+interface VendasDataTableProps {
+  vendas: VendaComItens[];
   isLoading: boolean;
-  products: Produto[];
   pagination: Pagination;
   search: string;
-  handleGetProducts: (
+  handleGetVendas: (
     pageNumber?: number,
     limit?: number,
-    search?: string,
-    status?: Estoque_status
+    searchText?: string,
+    status?: vendaStatus | "TODOS"
   ) => void;
   fetchStatusCounts: () => void;
-  status: Estoque_status;
+  status: vendaStatus | "TODOS";
 
   // ✅ para edição via duplo clique (controlado no pai)
-  selectedProductId?: number | undefined;
-  setSelectedProductId?: (value: number | undefined) => void;
+  selectedVendaId?: number | undefined;
+  setSelectedVendaId?: (value: number | undefined) => void;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
 }
 
-const getStatusBadge = (status: Estoque_status) => {
-  if (status === "CRITICO") {
+const getStatusBadge = (status: vendaStatus) => {
+  if (status === "ABERTA") {
     return (
-      <Badge variant="destructive" className="text-xs">
-        <AlertTriangle className="h-3 w-3 mr-1" />
-        Crítico
+      <Badge variant="secondary" className="text-xs bg-primary">
+        <Clock className="h-3 w-3 mr-1" />
+        ABERTA
       </Badge>
     );
   }
-  if (status === "BAIXO") {
+  if (status === "PAGAMENTO") {
     return (
       <Badge
         variant="secondary"
         className="text-xs bg-yellow-600 not-dark:text-white"
       >
-        <Clock className="h-3 w-3 mr-1" />
-        Baixo
+        <DollarSign className="h-3 w-3 mr-1" />
+        PAGAMENTO
       </Badge>
     );
   }
-  if (status === "SEM_ESTOQUE") {
+  if (status === "FINALIZADA") {
     return (
       <Badge
         variant="secondary"
-        className="text-xs bg-purple-800 not-dark:text-white"
+        className="text-xs bg-gray-800 not-dark:text-white"
       >
-        <CircleOff className="h-3 w-3 mr-1" />
-        Sem Estoque
+        <Check className="h-3 w-3 mr-1" />
+        FINALIZADA
       </Badge>
     );
   }
@@ -115,62 +110,31 @@ const getStatusBadge = (status: Estoque_status) => {
   );
 };
 
-export default function ProductsDataTable({
+export default function VendasDataTable({
   isLoading,
-  products,
+  vendas,
   pagination,
   search,
-  handleGetProducts,
+  handleGetVendas,
   fetchStatusCounts,
   status,
-  selectedProductId,
-  setSelectedProductId,
+  selectedVendaId,
+  setSelectedVendaId,
   isOpen,
   setIsOpen,
-}: ProductsDataTableProps) {
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [, setIsDeleting] = useState(false);
-
-  const handleDeleteProduct = async (id: number) => {
-    setIsDeleting(true);
-    toast(
-      <div className="flex gap-2 items-center flex-nowrap">
-        <Loader className=" animate-spin w-4" />
-        <span className="text-nowrap">Deletando produto...</span>
-      </div>
-    );
-    try {
-      const response = await axios.delete(`/api/products/${id}`, {});
-      if (response.status === 204) {
-        toast.success("Produto deletado!");
-        handleGetProducts(pagination.page, pagination.limit, search, status);
-        fetchStatusCounts();
-      } else {
-        toast.warning(`Status inesperado: ${response.status}`);
-      }
-    } catch (error) {
-      if (isAxiosError(error)) {
-        toast.error("Error", {
-          description: error.response?.data.error,
-        });
-      }
-    } finally {
-      setIsDeleting(false);
-      setIsAlertOpen(false);
-    }
-  };
+}: VendasDataTableProps) {
+ 
 
   return (
     <Card>
-      {/* Cabeçalho da tabela com botão Novo Produto no canto superior direito */}
       <CardHeader className="border-b-2 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle>Lista de Produtos</CardTitle>
+            <CardTitle>Lista de Vendas</CardTitle>
             <CardDescription>
               <button
                 onClick={() => {
-                  handleGetProducts(
+                  handleGetVendas(
                     pagination.page,
                     pagination.limit,
                     search,
@@ -189,25 +153,15 @@ export default function ProductsDataTable({
             </CardDescription>
           </div>
 
-          {/* 👉 Botão “Novo Produto” movido para cá */}
           <div className="flex items-center gap-2">
-            <ExportProductsButton />
             <Button
               className="hover:cursor-pointer"
               onClick={() => setIsOpen(true)}
             >
-              Novo Produto
+              Nova Venda
             </Button>
           </div>
         </div>
-
-        {/* ✅ Dialog controlado para edição (abre no duplo clique) */}
-        <ProductDialog
-          setSelectedProductId={setSelectedProductId}
-          productId={selectedProductId}
-          isOpen={isOpen}
-          setIsOpen={setIsOpen}
-        />
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
@@ -227,77 +181,31 @@ export default function ProductsDataTable({
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
-              <TableHead>Produto</TableHead>
-              <TableHead>Referência</TableHead>
-              <TableHead>Fabricante</TableHead>
-              <TableHead>Estoque</TableHead>
-              <TableHead>Mín.</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Preço Unit.</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Data</TableHead>
+              <TableHead>Valor Total</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
-            {products.map((p) => {
-              const valorTotal = (p.estoque ?? 0) * p.precovenda;
-
+            {vendas.map((p) => {
               return (
                 <TableRow
-                  onDoubleClick={() => setSelectedProductId?.(p.id)}
+                  onDoubleClick={() => setSelectedVendaId?.(p.id)}
                   key={p.id}
                   className="hover:cursor-pointer"
                 >
                   <TableCell>{p.id}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div>
-                        <div className="flex flex-row gap-2 items-center">
-                          <p className="font-medium">{p.titulo}</p>
-                          {p.exibirPdv && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Store className="w-4 h-4 text-primary/80 not-dark:text-primary" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Exibindo no Marketplace
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {p.unidade}
-                          {p.fabricante ? ` • ${p.fabricante}` : ""}
-                        </p>
-                        {p.codigobarras && (
-                          <p className="text-xs text-muted-foreground">
-                            CODIGOBARRAS: {p.codigobarras}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
+                  <TableCell>{p.cliente.nomerazaosocial}</TableCell>
 
                   <TableCell className="font-mono text-xs">
-                    {p.referencia}
+                    {formatDate(p.datavenda)}
                   </TableCell>
-                  <TableCell>{p.fabricante}</TableCell>
-
-                  <TableCell className="font-medium">
-                    {p.estoque ?? 0}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {p.estoqueminimo ?? 0}
-                  </TableCell>
-
-                  <TableCell>{getStatusBadge(p.status_estoque)}</TableCell>
-
-                  <TableCell>
-                    R{"$ "}
-                    {p.precovenda.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </TableCell>
+                  <TableCell>{formatarEmReal(p.valortotal)}</TableCell>
+                  <TableCell className="text-center">{getStatusBadge(p.status)}</TableCell>
 
                   <TableCell>
                     <DropdownMenu>
@@ -310,30 +218,14 @@ export default function ProductsDataTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
-                        <ProductDialog productId={p.id}>
-                          <Button
-                            variant={"ghost"}
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
-                          >
-                            <Edit className="-ml-1 -mr-1 h-4 w-4" />
-                            <span>Editar</span>
-                          </Button>
-                        </ProductDialog>
-
-                        <DeleteAlert
-                          handleDeleteProduct={handleDeleteProduct}
-                          isAlertOpen={isAlertOpen}
-                          setIsAlertOpen={setIsAlertOpen}
-                          idToDelete={p.id}
+                        <Button
+                          variant={"ghost"}
+                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
                         >
-                          <Button
-                            variant={"default"}
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
-                          >
-                            <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
-                            <span>Excluir</span>
-                          </Button>
-                        </DeleteAlert>
+                          <Edit className="-ml-1 -mr-1 h-4 w-4" />
+                          <span>Editar</span>
+                        </Button>
+                        
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -364,7 +256,7 @@ export default function ProductsDataTable({
               size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetProducts(1, pagination.limit, search, status)
+                handleGetVendas(1, pagination.limit, search, status)
               }
               disabled={pagination.page === 1}
             >
@@ -375,7 +267,7 @@ export default function ProductsDataTable({
               size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetProducts(
+                handleGetVendas(
                   pagination.page - 1,
                   pagination.limit,
                   search,
@@ -394,7 +286,7 @@ export default function ProductsDataTable({
               variant="outline"
               size="sm"
               onClick={() =>
-                handleGetProducts(
+                handleGetVendas(
                   pagination.page + 1,
                   pagination.limit,
                   search,
@@ -413,7 +305,7 @@ export default function ProductsDataTable({
               variant="outline"
               size="sm"
               onClick={() =>
-                handleGetProducts(
+                handleGetVendas(
                   pagination.totalPages,
                   pagination.limit,
                   search,
