@@ -5,9 +5,13 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
 
+type Prioridade = "ALTA" | "NORMAL" | "BAIXA" | null;
+type AlvoTipo = "VEICULO" | "PECA" | null;
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+
     const status = (searchParams.get("status") as StatusOS) || "TODAS";
     const q = searchParams.get("q")?.trim() || "";
     const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 10), 1), 200);
@@ -26,9 +30,26 @@ export async function GET(req: Request) {
         status,
         dataentrada,
         datasaida,
-        cliente:clienteid ( id, nomerazaosocial ),
-        veiculo:veiculoid ( id, placa, modelo, marca ),
-        setor:setorid ( id, nome ),
+        alvo_tipo,
+        cliente:clienteid (
+          id,
+          nomerazaosocial
+        ),
+        veiculo:veiculoid (
+          id,
+          placa,
+          modelo,
+          marca
+        ),
+        peca:pecaid (
+          id,
+          titulo,
+          descricao
+        ),
+        setor:setorid (
+          id,
+          nome
+        ),
         transacoes:transacao!transacao_ordemservicoid_fkey (
           id,
           descricao,
@@ -46,15 +67,21 @@ export async function GET(req: Request) {
       `,
         { count: "exact" }
       )
-      .order("dataentrada", { ascending: false }) // ordenação do pai
+      .order("dataentrada", { ascending: false }) // ordena OS
       .range(from, to)
-      // ordenação do array filho (usa o alias "transacoes")
+      // ordena transações pelo campo data (foreignTable = alias "transacoes")
       .order("data", { foreignTable: "transacoes", ascending: false })
-      // opcional: limitar quantidade de transações por OS
       .limit(50, { foreignTable: "transacoes" });
 
-    if (status && status !== "TODAS") query = query.eq("status", status);
-    if (q) query = query.ilike("descricao", `%${q}%`);
+    // Filtro por status (único). Para múltiplos, o front já faz filtro defensivo.
+    if (status && status !== "TODAS") {
+      query = query.eq("status", status);
+    }
+
+    // Busca simples por descrição (pode expandir depois pra cliente, placa, etc.)
+    if (q) {
+      query = query.ilike("descricao", `%${q}%`);
+    }
 
     const { data, error, count } = await query;
     if (error) throw error;
@@ -62,26 +89,60 @@ export async function GET(req: Request) {
     const items = (data ?? []).map((r: any) => ({
       id: r.id as number,
       descricao: (r.descricao as string) ?? "",
-      prioridade: (r.prioridade as "ALTA" | "NORMAL" | "BAIXA" | null) ?? null,
+      prioridade: (r.prioridade as Prioridade) ?? null,
       status: r.status as Exclude<StatusOS, "TODAS">,
       dataEntrada: r.dataentrada as string | null,
-      orcamentototal: r.orcamentototal as number | null, // atenção: numeric pode vir como string
+      orcamentototal: r.orcamentototal as number | null, // numeric pode vir como string dependendo da config
       dataSaida: r.datasaida as string | null,
-      cliente: r.cliente ? { id: r.cliente.id as number, nome: r.cliente.nomerazaosocial as string } : null,
-      veiculo: r.veiculo
-        ? { id: r.veiculo.id as number, placa: r.veiculo.placa as string, modelo: r.veiculo.modelo as string, marca: r.veiculo.marca as string }
+
+      // 👇 agora vem do banco:
+      alvo_tipo: (r.alvo_tipo as AlvoTipo) ?? null,
+
+      cliente: r.cliente
+        ? {
+            id: r.cliente.id as number,
+            nome: r.cliente.nomerazaosocial as string,
+          }
         : null,
-      setor: r.setor ? { id: r.setor.id as number, nome: r.setor.nome as string } : null,
+
+      veiculo: r.veiculo
+        ? {
+            id: r.veiculo.id as number,
+            placa: r.veiculo.placa as string,
+            modelo: r.veiculo.modelo as string,
+            marca: r.veiculo.marca as string,
+          }
+        : null,
+
+      // 👇 peça agora disponível pra tabela usar
+      peca: r.peca
+        ? {
+            id: r.peca.id as number,
+            titulo: r.peca.titulo as string,
+            descricao: (r.peca.descricao as string | null) ?? null,
+          }
+        : null,
+
+      setor: r.setor
+        ? {
+            id: r.setor.id as number,
+            nome: r.setor.nome as string,
+          }
+        : null,
+
       transacoes: (r.transacoes ?? []).map((t: any) => ({
         id: Number(t.id),
         descricao: t.descricao as string,
-        valor: Number(t.valor), // pode vir como string dependendo da config do client
+        valor: Number(t.valor),
         data: t.data as string,
         metodoPagamento: t.metodopagamento as string,
         categoria: t.categoria as string,
-        tipo: t.tipo as string, // p.ex. 'ENTRADA' | 'SAIDA'
+        tipo: t.tipo as string, // ex.: 'ENTRADA' | 'SAIDA'
         bancoId: Number(t.banco_id),
-        pagador: { nome: t.nomepagador as string, cpfcnpj: t.cpfcnpjpagador as string },
+        pagador: {
+          nome: t.nomepagador as string,
+          cpfcnpj: t.cpfcnpjpagador as string,
+        },
         createdAt: t.created_at as string,
         updatedAt: t.updated_at as string,
       })),
@@ -93,6 +154,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ items, page, limit, total, totalPages, pageCount });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Erro ao listar OS" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message ?? "Erro ao listar OS" },
+      { status: 500 }
+    );
   }
 }

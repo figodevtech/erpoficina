@@ -19,6 +19,7 @@ import {
   ChevronUp,
   ChevronDown,
   Plus,
+  Package,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -385,9 +386,21 @@ export function OrdensTabela({
                 sortedRows.map((r) => {
                   const st = safeStatus(r.status) as StatusOS;
                   const clienteNome = r.cliente?.nome ?? "—";
+
+                  // VEÍCULO
                   const veiculoStr = r.veiculo
                     ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
+
+                  // PEÇA
+                  const isPeca = (r as any).alvo_tipo === "PECA" || (r as any).alvoTipo === "PECA";
+
+                  const pecaTitulo = (r as any)?.peca?.titulo as string | undefined;
+                  const pecaDesc = (r as any)?.peca?.descricao as string | undefined;
+                  const pecaStr = isPeca ? pecaTitulo || pecaDesc || "Peça" : "";
+
+                  // O que vamos exibir como “linha de baixo”
+                  const alvoStr = isPeca ? pecaStr : veiculoStr;
 
                   // Regras de visibilidade consolidada (iguais às pedidas)
                   const policy = {
@@ -408,10 +421,11 @@ export function OrdensTabela({
 
                       <TableCell className="min-w-0">
                         <div className="truncate font-medium text-[15px]">{clienteNome}</div>
-                        {veiculoStr && (
+
+                        {alvoStr && (
                           <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
-                            <Car className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{veiculoStr}</span>
+                            {isPeca ? <Package className="h-3 w-3 shrink-0" /> : <Car className="h-3 w-3 shrink-0" />}
+                            <span className="truncate">{alvoStr}</span>
                           </div>
                         )}
                       </TableCell>
