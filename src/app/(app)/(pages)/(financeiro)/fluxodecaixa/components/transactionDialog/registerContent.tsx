@@ -137,21 +137,9 @@ export default function RegisterContent({
 };
 
   useEffect(() => {
-    console.log(newTransaction);
+    console.log("nova: ",newTransaction);
   }, [newTransaction]);
 
-  // useEffect(() => {
-  //   if(osId){
-
-  //     setNewTransaction({
-  //       ...newTransaction,
-  //       ordemservicoid: osId,
-  //       tipo: Tipo_transacao.RECEITA,
-  //       categoria: Categoria_transacao.ORDEM_SERVICO,
-  //       descricao: `Pagamento da OS #${osId}`
-  //     });
-  //   }
-  // }, [osId]);
 
   useEffect(() => {
     console.log("osId:", osId);
@@ -160,9 +148,17 @@ export default function RegisterContent({
 
   useEffect((
   )=> { 
+    console.log("mudou")
     setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor})
     setIsChecked(false)
-  }, [newTransaction.tipo])
+  }, [, newTransaction.metodopagamento])
+
+  useEffect(()=>{
+    if(!isChecked){
+      setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor})
+    }
+  },[newTransaction.valor])
+
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
@@ -198,7 +194,7 @@ export default function RegisterContent({
                   </Select>
                 ) : (
                   <Select
-                    value={newTransaction.tipo}
+                    value={newTransaction.tipo || ""}
                     onValueChange={(v) => handleChange("tipo", v)}
                   >
                     <SelectTrigger className="w-full">
@@ -279,7 +275,7 @@ export default function RegisterContent({
               <div className="space-y-2 w-full">
                 <Label htmlFor="banco">Banco</Label>
                 <Select
-                  value={newTransaction.banco_id?.toString()}
+                  value={newTransaction.banco_id?.toString() || ""}
                   onValueChange={(v) => handleChange("banco_id", Number(v))}
                 >
                   <SelectTrigger className="w-full">
@@ -297,7 +293,7 @@ export default function RegisterContent({
               <div className="space-y-2 w-full">
                 <Label htmlFor="metodopagamento">Método de pagamento</Label>
                 <Select
-                  value={newTransaction.metodopagamento}
+                  value={newTransaction.metodopagamento || ""}
                   onValueChange={(v) => handleChange("metodopagamento", v)}
                 >
                   <SelectTrigger className="w-full">

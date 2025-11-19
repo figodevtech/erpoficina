@@ -62,7 +62,7 @@ export default function ValueInput({ setPrice, price }: ValueInputProps) {
       type="text"
       inputMode="numeric"
       pattern="[0-9]*"
-      value={formatBRL(digits)}
+      value={formatBRL(digits) || ""}
       onChange={handleChange}
       // onKeyDown={handleKeyDown}
       placeholder="R$ 0,00"

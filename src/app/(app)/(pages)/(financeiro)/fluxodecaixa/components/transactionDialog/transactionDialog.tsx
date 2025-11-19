@@ -43,6 +43,8 @@ export default function TransactionDialog({
           tipo: Tipo_transacao.RECEITA,
           categoria: Categoria_transacao.ORDEM_SERVICO,
           descricao: `Pagamento da OS #${osId}`,
+          valor: 0,
+          valorLiquido: 0
         });
       } else {
         setNewTransaction({});
