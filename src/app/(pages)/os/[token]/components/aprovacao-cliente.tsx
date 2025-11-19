@@ -14,8 +14,18 @@ import { CartaoFeedback } from "./cartao-feedback";
 import { SolicitarDocumento } from "./solicitar-documento";
 
 /* ----------------------------- Tipagens locais ---------------------------- */
-type LinhaProduto = { descricao: string; quantidade: number; precounitario: number; subtotal: number };
-type LinhaServico = { descricao: string; quantidade: number; precounitario: number; subtotal: number };
+type LinhaProduto = {
+  descricao: string;
+  quantidade: number;
+  precounitario: number;
+  subtotal: number;
+};
+type LinhaServico = {
+  descricao: string;
+  quantidade: number;
+  precounitario: number;
+  subtotal: number;
+};
 
 type Resumo = {
   produtos: LinhaProduto[];
@@ -28,25 +38,27 @@ type Resumo = {
 type DadosBasicos = {
   osId: number;
   cliente: { nome: string };
-  statusOS: "ORCAMENTO" | "APROVACAO_ORCAMENTO" | "EM_ANDAMENTO" | "ORCAMENTO_APROVADO" | "PAGAMENTO" | "CONCLUIDO" | "CANCELADO";
+  statusOS:
+    | "ORCAMENTO"
+    | "APROVACAO_ORCAMENTO"
+    | "EM_ANDAMENTO"
+    | "ORCAMENTO_APROVADO"
+    | "PAGAMENTO"
+    | "CONCLUIDO"
+    | "CANCELADO";
   statusToken: "valido" | "expirado" | "usado";
 };
 
-
 /* ------------------------------- Componente ------------------------------- */
 export default function AprovacaoCliente({ token }: { token: string }) {
-  // loading/erro gerais
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // dados carregados (sem e com resumo)
   const [dados, setDados] = useState<DadosBasicos | null>(null);
   const [resumo, setResumo] = useState<Resumo | null>(null);
 
-  // estado pós-ação
   const [resultado, setResultado] = useState<"aprovado" | "reprovado" | null>(null);
 
-  // overlay de documento
   const [docAberto, setDocAberto] = useState(true);
   const [validandoDoc, setValidandoDoc] = useState(false);
   const [ultimoDoc, setUltimoDoc] = useState<string | null>(null);
@@ -60,17 +72,25 @@ export default function AprovacaoCliente({ token }: { token: string }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || "Falha ao carregar orçamento");
 
+      const statusToken: DadosBasicos["statusToken"] =
+        j.usado
+          ? "usado"
+          : j.expirado
+          ? "expirado"
+          : (j.statusToken as DadosBasicos["statusToken"]) || "valido";
+
       const base: DadosBasicos = {
-        osId: j.ordemservicoid ?? j.osId, // garante compatibilidade
-        cliente: { nome: j.cliente?.nomerazaosocial || j.cliente?.nome || "Cliente" },
+        osId: j.ordemservicoid ?? j.osId,
+        cliente: {
+          nome: j.cliente?.nomerazaosocial || j.cliente?.nome || "Cliente",
+        },
         statusOS: j.statusOS || j.ordemservico?.status || "ORCAMENTO",
-        statusToken:
-          j.usado ? "usado" : j.expirado ? "expirado" : (j.statusToken as DadosBasicos["statusToken"]) || "valido",
+        statusToken,
       };
 
       setDados(base);
       setResumo(null);
-      setDocAberto(true); // força overlay de CPF/CNPJ
+      setDocAberto(true);
       setUltimoDoc(null);
     } catch (e: any) {
       console.error(e);
@@ -97,7 +117,6 @@ export default function AprovacaoCliente({ token }: { token: string }) {
       if (!r.ok) throw new Error(j?.error || "CPF/CNPJ inválido para esta OS");
       if (j.acessoLiberado !== true) throw new Error("Documento não confere para este orçamento");
 
-      // A API retorna os arrays + totais (podem vir separados).
       const resumoOk: Resumo = {
         produtos: Array.isArray(j.produtos) ? j.produtos : j.resumo?.produtos || [],
         servicos: Array.isArray(j.servicos) ? j.servicos : j.resumo?.servicos || [],
@@ -110,19 +129,24 @@ export default function AprovacaoCliente({ token }: { token: string }) {
         old
           ? {
               osId: j.ordemservicoid ?? j.osId ?? old.osId,
-              cliente: { nome: j.cliente?.nomerazaosocial || j.cliente?.nome || old.cliente.nome },
+              cliente: {
+                nome: j.cliente?.nomerazaosocial || j.cliente?.nome || old.cliente.nome,
+              },
               statusOS: j.statusOS || j.ordemservico?.status || old.statusOS,
               statusToken:
-                j.usado ? "usado" : j.expirado ? "expirado" : (j.statusToken as DadosBasicos["statusToken"]) || "valido",
+                j.usado || j.expirado
+                  ? (j.usado ? "usado" : "expirado")
+                  : (j.statusToken as DadosBasicos["statusToken"]) || old.statusToken,
             }
           : null
       );
 
       setResumo(resumoOk);
-      setUltimoDoc(doc);   // guarda o doc confirmado
-      setDocAberto(false); // fecha overlay
+      setUltimoDoc(doc);
+      setDocAberto(false);
       toast.success("Documento confirmado. Você pode visualizar o orçamento.");
     } catch (e: any) {
+      console.error(e);
       toast.error(e?.message || "Falha ao validar o documento");
     } finally {
       setValidandoDoc(false);
@@ -160,7 +184,10 @@ export default function AprovacaoCliente({ token }: { token: string }) {
         <CartaoFeedback
           variante="erro"
           titulo="Falha ao carregar"
-          descricao={erro ?? "Não foi possível carregar este orçamento. Verifique o link e tente novamente."}
+          descricao={
+            erro ??
+            "Não foi possível carregar este orçamento. Verifique o link e tente novamente."
+          }
         />
       </main>
     );
@@ -204,7 +231,6 @@ export default function AprovacaoCliente({ token }: { token: string }) {
     );
   }
 
-  // Card central — tabelas juntas no MESMO card
   return (
     <main className="min-h-[80vh] w-full bg-gradient-to-b from-muted/50 to-background">
       <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-10">
@@ -216,27 +242,24 @@ export default function AprovacaoCliente({ token }: { token: string }) {
               totalGeral={resumo?.totalGeral || 0}
             />
 
-            {/* BLOCO TABELAS JUNTAS */}
             <div className="space-y-5">
               <TabelaProdutos itens={resumo?.produtos ?? []} />
               <Separator />
               <TabelaServicos itens={resumo?.servicos ?? []} />
             </div>
 
-            {/* Ações (só ficam funcionais após doc válido) */}
             <AcoesAprovacao
               token={token}
               totalGeral={resumo?.totalGeral || 0}
-              docConfirmado={ultimoDoc}                // <<<<<<<<<< AQUI
+              docConfirmado={ultimoDoc}
               onAprovado={() => setResultado("aprovado")}
               onReprovado={() => setResultado("reprovado")}
-              disabled={!resumo || !ultimoDoc}         // trava se não validou documento
+              disabled={!resumo || !ultimoDoc}
             />
           </CardContent>
         </Card>
       </section>
 
-      {/* OVERLAY CPF/CNPJ — cobre o conteúdo até validar */}
       {docAberto && (
         <div className="fixed inset-0 bg-background/70 backdrop-blur-sm grid place-items-center p-4 z-40">
           <SolicitarDocumento

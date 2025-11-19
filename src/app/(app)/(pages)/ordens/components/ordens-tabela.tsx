@@ -37,7 +37,7 @@ import type { StatusOS } from "./ordens-tabs";
 import TableSkeleton from "../components/table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
-
+import { ChecklistDialog } from "./dialogs/checklist-dialog";
 // utils & helpers
 import { statusClasses, prioClasses, fmtDate, fmtDuration, toMs, useNowTick, safeStatus } from "./ordens-utils";
 import { RowActions } from "./row-actions";
@@ -260,6 +260,9 @@ export function OrdensTabela({
   const [delOpen, setDelOpen] = useState(false);
   const [delRow, setDelRow] = useState<OrdemComDatas | null>(null);
 
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [checklistRow, setChecklistRow] = useState<OrdemComDatas | null>(null);
+
   // ------- Ordenação em memória (só na página atual)
   const sortedRows = useMemo(() => {
     if (!sortKey) return rows;
@@ -390,15 +393,15 @@ export function OrdensTabela({
                   const policy = {
                     canEditBudget: st === "ORCAMENTO",
                     showEditOS: st === "ORCAMENTO",
-                    showLinkAprov:
-                      st !== "EM_ANDAMENTO" && st !== "PAGAMENTO" && st !== "CONCLUIDO" && st !== "CANCELADO",
+                    showLinkAprov: st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
                     showCancelBudget: st === "APROVACAO_ORCAMENTO",
                     showApproveBudget: st === "APROVACAO_ORCAMENTO",
+                    // 👇 ESTA LINHA FALTAVA
+                    showRejectBudget: st === "APROVACAO_ORCAMENTO",
                     showStart: st === "ORCAMENTO_APROVADO",
                     showSendToPayment: st === "EM_ANDAMENTO",
                     showReceivePayment: st === "PAGAMENTO",
                   };
-
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-mono">{r.id}</TableCell>
@@ -448,6 +451,8 @@ export function OrdensTabela({
                           setDetailsOpen={setDetailsOpen}
                           setDelRow={setDelRow}
                           setDelOpen={setDelOpen}
+                          setChecklistRow={setChecklistRow}
+                          setChecklistOpen={setChecklistOpen}
                         />
                       </TableCell>
                     </TableRow>
@@ -597,6 +602,16 @@ export function OrdensTabela({
           if (!v) setDetailsId(null);
         }}
         osId={detailsId ?? 0}
+      />
+
+      {/* Dialog: Checklist */}
+      <ChecklistDialog
+        open={checklistOpen}
+        onOpenChange={(v) => {
+          setChecklistOpen(v);
+          if (!v) setChecklistRow(null);
+        }}
+        osId={checklistRow?.id ?? 0}
       />
 
       {/* Alerta: Excluir OS */}

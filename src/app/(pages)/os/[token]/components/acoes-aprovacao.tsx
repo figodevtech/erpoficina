@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 const money = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v) || 0);
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+    Number(v) || 0
+  );
 
 export function AcoesAprovacao({
   token,
   totalGeral,
-  docConfirmado,            
+  docConfirmado,
   onAprovado,
   onReprovado,
   disabled,
@@ -35,7 +37,7 @@ export function AcoesAprovacao({
       const r = await fetch(`/api/ordens/aprovacao/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acao, doc: docConfirmado }), 
+        body: JSON.stringify({ acao, doc: docConfirmado }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || "Falha ao enviar resposta");

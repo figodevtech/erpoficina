@@ -3,7 +3,6 @@ import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/theme-provider";
 import NProgressHandler from "@/components/NProgressHandler";
-import { Toaster } from "sonner";
 import { RouteAwareToaster } from "@/components/route-aware-toaster";
 
 export const metadata: Metadata = {
