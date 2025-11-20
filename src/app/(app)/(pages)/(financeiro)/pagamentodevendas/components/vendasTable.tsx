@@ -37,13 +37,13 @@ import OsFinancialDialog from "./osFinancialDialog/osFinancialDialog";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
-import { VendaComItens } from "../../../historicovendas/types";
+import { VendaComItens, vendaStatus } from "../../../historicovendas/types";
 
 interface OsTableProps {
   vendas: VendaComItens[];
   pagination: Pagination;
   handleGetVendas: (
-    status: StatusOS,
+    status: vendaStatus,
     pageNumber?: number,
     limit?: number,
     search?: string
@@ -60,7 +60,7 @@ export default function VendasTable({
   search,
 }: OsTableProps) {
   // ID estável para o Select de "itens por página"
-  const [selectedStatus, setSelectedStatus] = useState<StatusOS>("PAGAMENTO");
+  const [selectedStatus, setSelectedStatus] = useState<vendaStatus>(vendaStatus.PAGAMENTO);
   const limitUid = React.useId();
   const limitListboxId = `${limitUid}-os-limit-listbox`;
   const tabTheme =
@@ -92,14 +92,14 @@ export default function VendasTable({
         <Tabs defaultValue="abertas" className="w-full items-center">
           <TabsList className="rounded-b-none">
             <TabsTrigger
-              onClick={() => setSelectedStatus("PAGAMENTO")}
+              onClick={() => setSelectedStatus(vendaStatus.PAGAMENTO)}
               className={" rounded-b-none cursor-pointer" + tabTheme}
               value="abertas"
             >
               Abertas
             </TabsTrigger>
             <TabsTrigger
-              onClick={() => setSelectedStatus("CONCLUIDO")}
+              onClick={() => setSelectedStatus(vendaStatus.FINALIZADA)}
               className={" rounded-b-none cursor-pointer" + tabTheme}
               value="concluidas"
             >

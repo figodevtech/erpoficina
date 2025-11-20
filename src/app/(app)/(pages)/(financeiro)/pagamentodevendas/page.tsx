@@ -1,9 +1,7 @@
 "use client"
 import { useEffect, useState } from "react";
-import OsTable from "./components/vendasTable";
-import { Ordem, StatusOS } from "../../ordens/types";
 import axios from "axios";
-import { VendaComItens } from "../../historicovendas/types";
+import { VendaComItens, vendaStatus } from "../../historicovendas/types";
 import VendasTable from "./components/vendasTable";
 
 export default function AssistentePagamentoVendas (){
@@ -16,11 +14,10 @@ export default function AssistentePagamentoVendas (){
   });
     const [isLoading, setIsLoading] = useState(false)
     const[search, ] = useState("")
-    const [msg, setMsg] = useState("")
     
 
     const handleGetVendas = async (
-      status: StatusOS,
+      status: vendaStatus,
     pageNumber?: number,
     limit?: number,
     search?: string,
@@ -39,9 +36,9 @@ export default function AssistentePagamentoVendas (){
         // console.log(response)
         console.log(response)
         const { data } = response;
-        setVendas(data.items);
+        setVendas(data.data);
         setPagination({...pagination, limit:data.limit, page: data.page, totalPages:data.totalPages, total: data.total});
-        console.log("Vendas carregadas:", data.items);
+        console.log("Vendas carregadas:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar vendas:", error);
@@ -51,7 +48,7 @@ export default function AssistentePagamentoVendas (){
   };
 
   useEffect(()=> {
-    handleGetVendas("PAGAMENTO");
+    handleGetVendas(vendaStatus.PAGAMENTO);
   },[])
 
     return (
