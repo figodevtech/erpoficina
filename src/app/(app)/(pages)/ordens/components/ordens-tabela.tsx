@@ -2,8 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,7 +34,13 @@ import {
   Plus,
   Package,
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +59,15 @@ import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 import { ChecklistDialog } from "./dialogs/checklist-dialog";
 // utils & helpers
-import { statusClasses, prioClasses, fmtDate, fmtDuration, toMs, useNowTick, safeStatus } from "./ordens-utils";
+import {
+  statusClasses,
+  prioClasses,
+  fmtDate,
+  fmtDuration,
+  toMs,
+  useNowTick,
+  safeStatus,
+} from "./ordens-utils";
 import { RowActions } from "./row-actions";
 import OsFinancialDialog from "../../(financeiro)/pagamentodeordens/components/osFinancialDialog/osFinancialDialog";
 
@@ -140,7 +167,9 @@ export function OrdensTabela({
         let items: OrdemComDatas[] = j.items ?? [];
         // filtro defensivo no client caso backend não suporte "statuses"
         if (sts.length > 0) {
-          items = items.filter((row) => sts.includes(safeStatus(row.status) as StatusOS));
+          items = items.filter((row) =>
+            sts.includes(safeStatus(row.status) as StatusOS)
+          );
         }
         setRows(items);
         setTotalPages(j.totalPages ?? 1);
@@ -153,7 +182,8 @@ export function OrdensTabela({
       }
     } catch (err: any) {
       if (myId !== reqIdRef.current) return;
-      if (err?.name !== "AbortError") toast.error(err?.message || "Erro ao carregar as ordens");
+      if (err?.name !== "AbortError")
+        toast.error(err?.message || "Erro ao carregar as ordens");
       setRows([]);
       setTotalPages(1);
       setTotal(0);
@@ -164,11 +194,17 @@ export function OrdensTabela({
 
   // carregar quando filtros/paginação mudarem (debounce simples do search)
   useEffect(() => {
-    const t = setTimeout(() => fetchNow({ statuses, search, page, limit }), 300);
+    const t = setTimeout(
+      () => fetchNow({ statuses, search, page, limit }),
+      300
+    );
     return () => clearTimeout(t);
   }, [statuses, search, page, limit]);
 
-  const statusesKey = useMemo(() => (statuses?.length ? statuses.join("|") : ""), [statuses]);
+  const statusesKey = useMemo(
+    () => (statuses?.length ? statuses.join("|") : ""),
+    [statuses]
+  );
 
   // reset página quando mudar conjunto de status
   useEffect(() => {
@@ -181,13 +217,17 @@ export function OrdensTabela({
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     if (!url || !anon) return;
 
-    const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const supabase = createClient(url, anon, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
     const suffix = statusesKey ? statusesKey.replace(/\|/g, "+") : "all";
     const channelName = `os-realtime-list-${suffix}`;
     const ch = supabase
       .channel(channelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () =>
-        fetchNow(currentParamsRef.current)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ordemservico" },
+        () => fetchNow(currentParamsRef.current)
       )
       .subscribe();
 
@@ -206,13 +246,20 @@ export function OrdensTabela({
   const end = limit * (page - 1) + pageCount;
 
   const renderTempo = (r: OrdemComDatas) => {
-    const startMs = toMs(r.dataEntrada) ?? toMs((r as any).createdat) ?? toMs((r as any).createdAt) ?? null;
+    const startMs =
+      toMs(r.dataEntrada) ??
+      toMs((r as any).createdat) ??
+      toMs((r as any).createdAt) ??
+      null;
     if (!startMs) return "—";
 
     const st = safeStatus(r.status);
     const endMs =
       st === "CONCLUIDO" || st === "CANCELADO"
-        ? toMs(r.dataSaidaReal) ?? toMs((r as any).updatedat) ?? toMs((r as any).updatedAt) ?? now
+        ? toMs(r.dataSaidaReal) ??
+          toMs((r as any).updatedat) ??
+          toMs((r as any).updatedAt) ??
+          now
         : now;
 
     return fmtDuration((endMs ?? now) - startMs);
@@ -262,7 +309,9 @@ export function OrdensTabela({
   const [delRow, setDelRow] = useState<OrdemComDatas | null>(null);
 
   const [checklistOpen, setChecklistOpen] = useState(false);
-  const [checklistRow, setChecklistRow] = useState<OrdemComDatas | null>(null);
+  const [checklistRow, setChecklistRow] = useState<OrdemComDatas | null>(
+    null
+  );
 
   // ------- Ordenação em memória (só na página atual)
   const sortedRows = useMemo(() => {
@@ -328,13 +377,20 @@ export function OrdensTabela({
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
               >
                 <span>Recarregar</span>
-                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+                <Loader2
+                  width={12}
+                  className={isLoading ? "animate-spin" : ""}
+                />
               </button>
             </CardDescription>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button onClick={onNovaOS} size="sm" className="hover:cursor-pointer">
+            <Button
+              onClick={onNovaOS}
+              size="sm"
+              className="hover:cursor-pointer"
+            >
               <Plus className="h-4 w-4 mr-1" />
               Nova OS
             </Button>
@@ -349,7 +405,9 @@ export function OrdensTabela({
             <TableHeader>
               <TableRow className="bg-muted/40">
                 <TableHead className="min-w-[96px]">#</TableHead>
-                <TableHead className="min-w-[240px]">Cliente / Veículo</TableHead>
+                <TableHead className="min-w-[240px]">
+                  Cliente / Veículo
+                </TableHead>
                 <TableHead className="min-w-[220px]">Descrição</TableHead>
                 <TableHead className="min-w-[140px]">Setor</TableHead>
                 <TableHead className="min-w-[130px]">Entrada</TableHead>
@@ -389,31 +447,47 @@ export function OrdensTabela({
 
                   // VEÍCULO
                   const veiculoStr = r.veiculo
-                    ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
+                    ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${
+                        r.veiculo.placa ?? ""
+                      }`.trim()
                     : "";
 
                   // PEÇA
-                  const isPeca = (r as any).alvo_tipo === "PECA" || (r as any).alvoTipo === "PECA";
+                  const isPeca =
+                    (r as any).alvo_tipo === "PECA" ||
+                    (r as any).alvoTipo === "PECA";
 
-                  const pecaTitulo = (r as any)?.peca?.titulo as string | undefined;
-                  const pecaDesc = (r as any)?.peca?.descricao as string | undefined;
-                  const pecaStr = isPeca ? pecaTitulo || pecaDesc || "Peça" : "";
+                  const pecaTitulo = (r as any)?.peca?.titulo as
+                    | string
+                    | undefined;
+                  const pecaDesc = (r as any)?.peca?.descricao as
+                    | string
+                    | undefined;
+                  const pecaStr = isPeca
+                    ? pecaTitulo || pecaDesc || "Peça"
+                    : "";
 
-                  // O que vamos exibir como “linha de baixo”
+                  // Linha de baixo (veículo OU peça)
                   const alvoStr = isPeca ? pecaStr : veiculoStr;
 
                   // Regras de visibilidade consolidada
                   const policy = {
                     // pode editar orçamento (tela de orçamento) em ORCAMENTO ou ORCAMENTO_RECUSADO
-                    canEditBudget: st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
+                    canEditBudget:
+                      st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
                     showEditOS: st === "ORCAMENTO",
+                    // link de aprovação só em ORCAMENTO ou APROVACAO_ORCAMENTO
                     showLinkAprov:
                       st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO",
-                    showCancelBudget: st === "APROVACAO_ORCAMENTO",
+                    // cancelar orçamento em APROVACAO_ORCAMENTO ou ORCAMENTO_RECUSADO
+                    showCancelBudget:
+                      st === "APROVACAO_ORCAMENTO" ||
+                      st === "ORCAMENTO_RECUSADO",
                     showApproveBudget: st === "APROVACAO_ORCAMENTO",
                     showRejectBudget: st === "APROVACAO_ORCAMENTO",
-                    // NOVO: botão "Enviar para aprovação" em ORCAMENTO e ORCAMENTO_RECUSADO
-                    showSendToApproval: st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
+                    // botão "Enviar para aprovação" em ORCAMENTO e ORCAMENTO_RECUSADO
+                    showSendToApproval:
+                      st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
                     showStart: st === "ORCAMENTO_APROVADO",
                     showSendToPayment: st === "EM_ANDAMENTO",
                     showReceivePayment: st === "PAGAMENTO",
@@ -424,26 +498,51 @@ export function OrdensTabela({
                       <TableCell className="font-mono">{r.id}</TableCell>
 
                       <TableCell className="min-w-0">
-                        <div className="truncate font-medium text-[15px]">{clienteNome}</div>
+                        <div className="truncate font-medium text-[15px]">
+                          {clienteNome}
+                        </div>
 
                         {alvoStr && (
                           <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
-                            {isPeca ? <Package className="h-3 w-3 shrink-0" /> : <Car className="h-3 w-3 shrink-0" />}
+                            {isPeca ? (
+                              <Package className="h-3 w-3 shrink-0" />
+                            ) : (
+                              <Car className="h-3 w-3 shrink-0" />
+                            )}
                             <span className="truncate">{alvoStr}</span>
                           </div>
                         )}
                       </TableCell>
 
-                      <TableCell className="max-w-[380px] truncate">{r.descricao || "—"}</TableCell>
+                      <TableCell className="max-w-[380px] truncate">
+                        {r.descricao || "—"}
+                      </TableCell>
                       <TableCell>{r.setor?.nome ?? "—"}</TableCell>
-                      <TableCell>{fmtDate((r as any).dataEntrada ?? (r as any).dataentrada)}</TableCell>
-                      <TableCell>{fmtDate((r as any).dataSaida ?? (r as any).datasaida)}</TableCell>
                       <TableCell>
-                        <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>
+                        {fmtDate(
+                          (r as any).dataEntrada ??
+                            (r as any).dataentrada
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {fmtDate(
+                          (r as any).dataSaida ?? (r as any).datasaida
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusClasses[st] ?? ""}>
+                          {st.replaceAll("_", " ")}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {r.prioridade ? (
-                          <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>
+                          <Badge
+                            className={
+                              prioClasses[
+                                (r.prioridade || "").toUpperCase()
+                              ] ?? ""
+                            }
+                          >
                             {r.prioridade}
                           </Badge>
                         ) : (
@@ -479,7 +578,10 @@ export function OrdensTabela({
 
               {!isLoading && sortedRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={10}
+                    className="py-10 text-center text-muted-foreground"
+                  >
                     Nenhuma OS encontrada.
                   </TableCell>
                 </TableRow>
@@ -494,7 +596,9 @@ export function OrdensTabela({
             <span>{start || 0}</span> - <span>{end || 0}</span>
             <span className="ml-1 hidden sm:block">de {total}</span>
             <Loader
-              className={`ml-2 h-full w-4 animate-spin transition-all ${isLoading ? "opacity-100" : "opacity-0"}`}
+              className={`ml-2 h-full w-4 animate-spin transition-all ${
+                isLoading ? "opacity-100" : "opacity-0"
+              }`}
               aria-label="carregando"
             />
           </div>
@@ -525,7 +629,9 @@ export function OrdensTabela({
               variant="outline"
               size="icon"
               aria-label="Próxima página"
-              onClick={() => setPage(Math.min(totalPages || 1, page + 1))}
+              onClick={() =>
+                setPage(Math.min(totalPages || 1, page + 1))
+              }
               disabled={page === totalPages || totalPages === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
@@ -549,7 +655,10 @@ export function OrdensTabela({
                 setLimit(Number(v));
               }}
             >
-              <SelectTrigger className="ml-2 hover:cursor-pointer" aria-label="Itens por página">
+              <SelectTrigger
+                className="ml-2 hover:cursor-pointer"
+                aria-label="Itens por página"
+              >
                 <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
@@ -582,7 +691,8 @@ export function OrdensTabela({
               Confirmar envio ao Financeiro
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação mudará o status da OS <b>#{confirmRow?.id}</b> para <b>PAGAMENTO</b>.
+              Esta ação mudará o status da OS <b>#{confirmRow?.id}</b> para{" "}
+              <b>PAGAMENTO</b>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -636,9 +746,12 @@ export function OrdensTabela({
       <AlertDialog open={delOpen} onOpenChange={setDelOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">Excluir OS #{delRow?.id}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              Excluir OS #{delRow?.id}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Essa ação é irreversível. Tem certeza que deseja excluir a OS <b>#{delRow?.id}</b>?
+              Essa ação é irreversível. Tem certeza que deseja excluir a OS{" "}
+              <b>#{delRow?.id}</b>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
