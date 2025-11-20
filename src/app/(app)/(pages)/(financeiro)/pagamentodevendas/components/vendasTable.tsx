@@ -38,6 +38,7 @@ import formatarEmReal from "@/utils/formatarEmReal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { VendaComItens, vendaStatus } from "../../../historicovendas/types";
+import { formatDate } from "@/utils/formatDate";
 
 interface OsTableProps {
   vendas: VendaComItens[];
@@ -127,12 +128,10 @@ export default function VendasTable({
           <TableHeader>
             <TableRow className="font-bold">
               <TableCell>ID</TableCell>
-              <TableCell>Descrição</TableCell>
               <TableCell>Cliente</TableCell>
-              <TableCell>Setor</TableCell>
-              <TableCell>Pago</TableCell>
-              <TableCell>Total</TableCell>
-              <TableCell>Situação</TableCell>
+              <TableCell>Data</TableCell>
+              <TableCell>Valor Total</TableCell>
+              <TableCell>Status</TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHeader>
@@ -149,8 +148,9 @@ export default function VendasTable({
                     {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
                     <TableCell>{o.id}</TableCell>
                     <TableCell>{o.cliente.nomerazaosocial}</TableCell>
-                    <TableCell>{o.cliente.cpfcnpj}</TableCell>
-                    <TableCell>{o.valortotal}</TableCell>
+                    <TableCell>{formatDate(o.datavenda)}</TableCell>
+                    <TableCell>{formatarEmReal(o.valortotal)}</TableCell>
+                    <TableCell>{o.status}</TableCell>
                    
                     <TableCell className="flex justify-end">
                       <DropdownMenu>

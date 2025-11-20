@@ -37,7 +37,7 @@ export default function AssistentePagamentoVendas (){
         console.log(response)
         const { data } = response;
         setVendas(data.data);
-        setPagination({...pagination, limit:data.limit, page: data.page, totalPages:data.totalPages, total: data.total});
+        setPagination({...pagination, limit:data.pagination.limit, page: data.pagination.page, totalPages:data.pagination.totalPages, total: data.pagination.total});
         console.log("Vendas carregadas:", data.data);
       }
     } catch (error) {
