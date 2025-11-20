@@ -30,6 +30,7 @@ import {
   Loader,
   CircleOff,
   Store,
+  Plus,
 } from "lucide-react";
 import {
   Select,
@@ -55,6 +56,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import EntradaDialog from "./entradaDialog/entradaDialog";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -319,7 +321,18 @@ export default function ProductsDataTable({
                             <span>Editar</span>
                           </Button>
                         </ProductDialog>
-
+                        
+                        <EntradaDialog
+                        productId={p.id}
+                        >
+                          <Button
+                            variant={"default"}
+                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer  bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
+                          >
+                            <Plus className="-ml-1 -mr-1 h-4 w-4" />
+                            <span>Entrada</span>
+                          </Button>
+                        </EntradaDialog>
                         <DeleteAlert
                           handleDeleteProduct={handleDeleteProduct}
                           isAlertOpen={isAlertOpen}
