@@ -402,19 +402,23 @@ export function OrdensTabela({
                   // O que vamos exibir como “linha de baixo”
                   const alvoStr = isPeca ? pecaStr : veiculoStr;
 
-                  // Regras de visibilidade consolidada (iguais às pedidas)
+                  // Regras de visibilidade consolidada
                   const policy = {
-                    canEditBudget: st === "ORCAMENTO",
+                    // pode editar orçamento (tela de orçamento) em ORCAMENTO ou ORCAMENTO_RECUSADO
+                    canEditBudget: st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
                     showEditOS: st === "ORCAMENTO",
-                    showLinkAprov: st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
+                    showLinkAprov:
+                      st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO",
                     showCancelBudget: st === "APROVACAO_ORCAMENTO",
                     showApproveBudget: st === "APROVACAO_ORCAMENTO",
-                    // 👇 ESTA LINHA FALTAVA
                     showRejectBudget: st === "APROVACAO_ORCAMENTO",
+                    // NOVO: botão "Enviar para aprovação" em ORCAMENTO e ORCAMENTO_RECUSADO
+                    showSendToApproval: st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
                     showStart: st === "ORCAMENTO_APROVADO",
                     showSendToPayment: st === "EM_ANDAMENTO",
                     showReceivePayment: st === "PAGAMENTO",
                   };
+
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-mono">{r.id}</TableCell>
