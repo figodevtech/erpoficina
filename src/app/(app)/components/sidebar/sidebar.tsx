@@ -21,6 +21,7 @@ import {
   Store,
   Headset,
   History,
+  Handbag,
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -89,9 +90,14 @@ const data = {
           icon: ArrowDownUp,
         },
         {
-          title: "Assist. de Pagamentos",
-          url: "/assistentepagamento",
+          title: "Pagamento de Ordens",
+          url: "/pagamentodeordens",
           icon: Calculator,
+        },
+        {
+          title: "Pagamento de Vendas",
+          url: "/pagamentodevendas",
+          icon: Handbag,
         },
       ],
     },

@@ -41,7 +41,7 @@ import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 // utils & helpers
 import { statusClasses, prioClasses, fmtDate, fmtDuration, toMs, useNowTick, safeStatus } from "./ordens-utils";
 import { RowActions } from "./row-actions";
-import OsFinancialDialog from "../../(financeiro)/assistentepagamento/components/osFinancialDialog/osFinancialDialog";
+import OsFinancialDialog from "../../(financeiro)/pagamentodeordens/components/osFinancialDialog/osFinancialDialog";
 
 // ---- Tipos locais (datas amigas p/ tabela)
 type OrdemComDatas = Ordem & {
