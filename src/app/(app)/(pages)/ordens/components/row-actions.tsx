@@ -113,7 +113,7 @@ export function RowActions<TRow extends RowBase>({
   const showLinkAprov =
     policy.showLinkAprov &&
     (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
-    
+
   // Fluxo de aprovação
   const showApproveBudget =
     policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
@@ -122,7 +122,8 @@ export function RowActions<TRow extends RowBase>({
     policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
 
   const showCancelBudget =
-    policy.showCancelBudget && st === "APROVACAO_ORCAMENTO"; // volta para ORCAMENTO
+    policy.showCancelBudget &&
+    (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   // NOVO: enviar orçamento para aprovação (ORCAMENTO ou ORCAMENTO_RECUSADO)
   const showSendToApproval =
