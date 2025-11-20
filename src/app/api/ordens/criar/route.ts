@@ -1,3 +1,6 @@
+// src/app/api/ordens/criar/route.ts
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -12,11 +15,17 @@ type Payload = {
   veiculoid: number | null;
   descricao: string | null;
   observacoes: string | null;
-  checklistTemplateId: string | null;
+  // legado: mantido apenas para compatibilidade, hoje ignorado na criação da OS
+  checklistTemplateId?: string | null;
   prioridade?: DBPrioridade;
   cliente:
     | { id: number }
-    | { nome: string; documento: string; telefone?: string | null; email?: string | null };
+    | {
+        nome: string;
+        documento: string;
+        telefone?: string | null;
+        email?: string | null;
+      };
 
   alvo?: {
     tipo: DBAlvo;
@@ -31,20 +40,28 @@ type Payload = {
     peca?: { nome: string; descricao?: string | null };
   };
 
-  checklist: Array<{ item: string; status?: DBChecklistStatus | string | null | undefined; observacao?: string | null }>;
+  // legado: checklist completo agora é salvo em /api/ordens/[id]/checklist
+  checklist?: Array<{
+    item: string;
+    status?: DBChecklistStatus | string | null | undefined;
+    observacao?: string | null;
+  }>;
 };
 
-function onlyDigits(s: string) { return (s || "").replace(/\D+/g, ""); }
+function onlyDigits(s: string) {
+  return (s || "").replace(/\D+/g, "");
+}
+
 function deduzTipoPessoa(documento: string): "FISICA" | "JURIDICA" {
   const d = onlyDigits(documento);
   return d.length === 14 ? "JURIDICA" : "FISICA";
 }
-function toDbChecklistStatusOrNull(v: unknown): DBChecklistStatus | null {
-  const t = String(v ?? "").trim().toUpperCase();
-  return t === "OK" || t === "ALERTA" || t === "FALHA" ? (t as DBChecklistStatus) : null;
-}
+
+// função de normalização de prioridade
 function normPrioridade(v: any): DBPrioridade {
-  const t = String(v ?? "").trim().toUpperCase();
+  const t = String(v ?? "")
+    .trim()
+    .toUpperCase();
   return t === "BAIXA" || t === "ALTA" ? (t as DBPrioridade) : "NORMAL";
 }
 
@@ -96,6 +113,7 @@ export async function POST(req: NextRequest) {
             nomerazaosocial: nome,
             email: (body.cliente as any)?.email || null,
             telefone: (body.cliente as any)?.telefone || null,
+            // campos como cidade/estado você pode preencher aqui se quiser
           })
           .select("id")
           .single();
@@ -117,7 +135,10 @@ export async function POST(req: NextRequest) {
     if (!alvo) {
       if (!veiculoid) {
         return NextResponse.json(
-          { error: "Informe o 'alvo' (VEICULO/PECA). Quando VEICULO, selecione um veículo ou informe placa, modelo e marca." },
+          {
+            error:
+              "Informe o 'alvo' (VEICULO/PECA). Quando VEICULO, selecione um veículo ou informe placa, modelo e marca.",
+          },
           { status: 400 }
         );
       }
@@ -127,42 +148,37 @@ export async function POST(req: NextRequest) {
 
       if (!veiculoid) {
         const placa = (alvo.veiculo?.placa || "").trim();
-        const modelo = (alvo.veiculo?.modelo || "").trim();
-        const marca = (alvo.veiculo?.marca || "").trim();
+        const modelo = (alvo.veiculo?.modelo || "").trim() || "N/I";
+        const marca = (alvo.veiculo?.marca || "").trim() || "N/I";
+        const ano = alvo.veiculo?.ano ?? null;
+        const cor = (alvo.veiculo?.cor || "").trim() || null;
+        const kmatual = alvo.veiculo?.kmatual ?? null;
+
         if (!placa) {
           return NextResponse.json(
-            { error: "Para alvo VEICULO sem vínculo, informe ao menos a PLACA (modelo/marca recomendados)." },
+            {
+              error: "Para alvo VEICULO sem vínculo, informe ao menos a PLACA (modelo/marca recomendados).",
+            },
             { status: 400 }
           );
         }
 
-        const { data: vExist, error: eFindV } = await supabaseAdmin
+        const { data: vNew, error: eVNew } = await supabaseAdmin
           .from("veiculo")
-          .select("id, clienteid")
-          .eq("placa", placa)
-          .maybeSingle();
-        if (eFindV) throw eFindV;
-
-        if (vExist?.id) {
-          veiculoid = vExist.id;
-        } else {
-          const { data: vNew, error: eVNew } = await supabaseAdmin
-            .from("veiculo")
-            .insert({
-              clienteid,
-              placa,
-              modelo: modelo || "—",
-              marca: marca || "—",
-              ano: alvo.veiculo?.ano ?? null,
-              cor: (alvo.veiculo?.cor || null) as any,
-              kmatual: alvo.veiculo?.kmatual ?? null,
-            })
-            .select("id")
-            .single();
-          if (eVNew) throw eVNew;
-          veiculoid = vNew.id;
-          createdVeiculoId = vNew.id;
-        }
+          .insert({
+            clienteid,
+            placa,
+            modelo,
+            marca,
+            ano,
+            cor,
+            kmatual,
+          })
+          .select("id")
+          .single();
+        if (eVNew) throw eVNew;
+        veiculoid = vNew.id;
+        createdVeiculoId = vNew.id;
       }
       pecaid = null;
     } else if (alvo.tipo === "PECA") {
@@ -186,18 +202,12 @@ export async function POST(req: NextRequest) {
       if (eP) throw eP;
 
       pecaid = pNew.id;
-      createdPecaId = pNew.id;
-      veiculoid = null;
+      createdPecaId = pNew.id; // 👈 agora de fato usamos createdPecaId
     } else {
       return NextResponse.json({ error: "alvo.tipo inválido" }, { status: 400 });
     }
 
     // ========= Cria OS =========
-    const checklistModeloId =
-      body?.checklistTemplateId && /^\d+$/.test(String(body.checklistTemplateId))
-        ? Number(body.checklistTemplateId)
-        : null;
-
     const { data: os, error: eOS } = await supabaseAdmin
       .from("ordemservico")
       .insert({
@@ -210,50 +220,25 @@ export async function POST(req: NextRequest) {
         prioridade,
         descricao: body.descricao || null,
         observacoes: body.observacoes || null,
-        checklist_modelo_id: checklistModeloId,
+        status: "AGUARDANDO_CHECKLIST",
       })
       .select("id")
       .single();
-    if (eOS) throw eOS;
+
+    if (eOS) {
+      // rollback básico se falhar ao criar OS
+      if (createdPecaId) {
+        await supabaseAdmin.from("peca").delete().eq("id", createdPecaId);
+      }
+      if (createdVeiculoId) {
+        await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
+      }
+      throw eOS;
+    }
 
     const osId = os.id as number;
 
-    // ========= Checklist =========
-    const reqItens = Array.isArray(body.checklist) ? body.checklist : [];
-    const itens = reqItens
-      .map((x) => {
-        const label = (x?.item || "").trim();
-        const status = toDbChecklistStatusOrNull(x?.status);
-        if (!label || !status) return null;
-        return {
-          ordemservicoid: osId,
-          item: label,
-          status, // "OK" | "ALERTA" | "FALHA"
-          observacao: (x?.observacao ?? null) as string | null,
-        };
-      })
-      .filter(Boolean) as Array<{ ordemservicoid: number; item: string; status: DBChecklistStatus; observacao: string | null }>;
-
-    let checklistCreated:
-      | Array<{ id: number; item: string; status: DBChecklistStatus; observacao: string | null }>
-      | [] = [];
-
-    if (itens.length) {
-      const { data: inserted, error: eCheck } = await supabaseAdmin
-        .from("checklist")
-        .insert(itens)
-        .select("id, item, status, observacao");
-      if (eCheck) {
-        // compensação: apaga tudo que foi criado nesta chamada
-        await supabaseAdmin.from("ordemservico").delete().eq("id", osId);
-        if (createdPecaId) await supabaseAdmin.from("peca").delete().eq("id", createdPecaId);
-        if (createdVeiculoId) await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
-        throw eCheck;
-      }
-      checklistCreated = inserted ?? [];
-    }
-
-    return NextResponse.json({ id: osId, checklistCreated }, { status: 201 });
+    return NextResponse.json({ id: osId }, { status: 201 });
   } catch (err: any) {
     console.error("POST /api/ordens/criar", err);
     return NextResponse.json({ error: err?.message || "Falha ao criar OS" }, { status: 500 });

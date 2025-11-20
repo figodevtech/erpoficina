@@ -19,6 +19,7 @@ import {
   ChevronUp,
   ChevronDown,
   Plus,
+  Package,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -37,7 +38,7 @@ import type { StatusOS } from "./ordens-tabs";
 import TableSkeleton from "../components/table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
-
+import { ChecklistDialog } from "./dialogs/checklist-dialog";
 // utils & helpers
 import { statusClasses, prioClasses, fmtDate, fmtDuration, toMs, useNowTick, safeStatus } from "./ordens-utils";
 import { RowActions } from "./row-actions";
@@ -260,6 +261,9 @@ export function OrdensTabela({
   const [delOpen, setDelOpen] = useState(false);
   const [delRow, setDelRow] = useState<OrdemComDatas | null>(null);
 
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [checklistRow, setChecklistRow] = useState<OrdemComDatas | null>(null);
+
   // ------- Ordenação em memória (só na página atual)
   const sortedRows = useMemo(() => {
     if (!sortKey) return rows;
@@ -382,33 +386,46 @@ export function OrdensTabela({
                 sortedRows.map((r) => {
                   const st = safeStatus(r.status) as StatusOS;
                   const clienteNome = r.cliente?.nome ?? "—";
+
+                  // VEÍCULO
                   const veiculoStr = r.veiculo
                     ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
+
+                  // PEÇA
+                  const isPeca = (r as any).alvo_tipo === "PECA" || (r as any).alvoTipo === "PECA";
+
+                  const pecaTitulo = (r as any)?.peca?.titulo as string | undefined;
+                  const pecaDesc = (r as any)?.peca?.descricao as string | undefined;
+                  const pecaStr = isPeca ? pecaTitulo || pecaDesc || "Peça" : "";
+
+                  // O que vamos exibir como “linha de baixo”
+                  const alvoStr = isPeca ? pecaStr : veiculoStr;
 
                   // Regras de visibilidade consolidada (iguais às pedidas)
                   const policy = {
                     canEditBudget: st === "ORCAMENTO",
                     showEditOS: st === "ORCAMENTO",
-                    showLinkAprov:
-                      st !== "EM_ANDAMENTO" && st !== "PAGAMENTO" && st !== "CONCLUIDO" && st !== "CANCELADO",
+                    showLinkAprov: st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO",
                     showCancelBudget: st === "APROVACAO_ORCAMENTO",
                     showApproveBudget: st === "APROVACAO_ORCAMENTO",
+                    // 👇 ESTA LINHA FALTAVA
+                    showRejectBudget: st === "APROVACAO_ORCAMENTO",
                     showStart: st === "ORCAMENTO_APROVADO",
                     showSendToPayment: st === "EM_ANDAMENTO",
                     showReceivePayment: st === "PAGAMENTO",
                   };
-
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-mono">{r.id}</TableCell>
 
                       <TableCell className="min-w-0">
                         <div className="truncate font-medium text-[15px]">{clienteNome}</div>
-                        {veiculoStr && (
+
+                        {alvoStr && (
                           <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
-                            <Car className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{veiculoStr}</span>
+                            {isPeca ? <Package className="h-3 w-3 shrink-0" /> : <Car className="h-3 w-3 shrink-0" />}
+                            <span className="truncate">{alvoStr}</span>
                           </div>
                         )}
                       </TableCell>
@@ -448,6 +465,8 @@ export function OrdensTabela({
                           setDetailsOpen={setDetailsOpen}
                           setDelRow={setDelRow}
                           setDelOpen={setDelOpen}
+                          setChecklistRow={setChecklistRow}
+                          setChecklistOpen={setChecklistOpen}
                         />
                       </TableCell>
                     </TableRow>
@@ -597,6 +616,16 @@ export function OrdensTabela({
           if (!v) setDetailsId(null);
         }}
         osId={detailsId ?? 0}
+      />
+
+      {/* Dialog: Checklist */}
+      <ChecklistDialog
+        open={checklistOpen}
+        onOpenChange={(v) => {
+          setChecklistOpen(v);
+          if (!v) setChecklistRow(null);
+        }}
+        osId={checklistRow?.id ?? 0}
       />
 
       {/* Alerta: Excluir OS */}

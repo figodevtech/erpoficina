@@ -1,3 +1,4 @@
+// src/app/(app)/components/sidebar/sidebar.tsx
 "use client";
 
 import * as React from "react";
@@ -26,7 +27,12 @@ import {
 
 import { NavMain } from "./components/nav-main";
 import { NavUser } from "./components/nav-user";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from "@/components/ui/sidebar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarRail,
+} from "@/components/ui/sidebar";
 import { NavSettings } from "./components/nav-settings";
 
 import { useSession } from "next-auth/react";
@@ -66,17 +72,17 @@ const data = {
       icon: Store,
       isActive: true,
       items: [
-         {
+        {
           title: "Histórico",
           url: "/historicovendas",
           icon: History,
         },
-         {
+        {
           title: "Ponto de Venda",
           url: "/pdv",
           icon: Headset,
         },
-      ]
+      ],
     },
     {
       title: "Financeiro",
@@ -156,21 +162,28 @@ const data = {
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const { data: session } = useSession();
 
+  // Se tiver sessão, usa usuário da sessão; senão, usa o user vindo por props (do layout)
+  const effectiveUser =
+    (session?.user as any) ??
+    (user
+      ? {
+          nome: user.nome,
+          email: user.email,
+        }
+      : null);
+
   return (
     <Sidebar collapsible="icon" {...props}>
-      {/* <SidebarHeader className="items-center justify-center">
-        <Image src={logoDemir} alt="Logo" width={130} height={40} />
-      </SidebarHeader> */}
       <SidebarContent>
         <NavMain items={data.navOptions} />
         <NavSettings items={data.navSettings} />
       </SidebarContent>
       <SidebarFooter>
-        {session?.user && (
+        {effectiveUser && (
           <NavUser
             user={{
-              nome: session.user.nome || "",
-              email: session.user.email || "",
+              nome: effectiveUser.nome || "",
+              email: effectiveUser.email || "",
             }}
           />
         )}

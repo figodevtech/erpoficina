@@ -5,6 +5,7 @@ import type { StatusOS } from "./ordens-tabs";
 
 // Cores dos status (mantive seu padrão e ajustei APROVADO p/ consistência)
 export const statusClasses: Record<string, string> = {
+  AGUARDANDO_CHECKLIST: "bg-slate-600/15 text-slate-300",
   ORCAMENTO: "bg-fuchsia-600/15 text-fuchsia-400",
   APROVACAO_ORCAMENTO: "bg-sky-600/15 text-sky-400",
   ORCAMENTO_APROVADO: "bg-emerald-600/15 text-emerald-400",

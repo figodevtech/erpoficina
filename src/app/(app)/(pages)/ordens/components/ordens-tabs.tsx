@@ -19,6 +19,7 @@ import { createClient } from "@supabase/supabase-js";
 
 /** Status que existem no banco */
 export type StatusOS =
+  | "AGUARDANDO_CHECKLIST"
   | "ORCAMENTO"
   | "ORCAMENTO_RECUSADO"
   | "APROVACAO_ORCAMENTO"
@@ -32,6 +33,7 @@ export type StatusOS =
 type TabKey = "TODAS" | "ORCAMENTO" | "APROVACAO" | "EM_ANDAMENTO" | "PAGAMENTO" | "FINALIZADAS";
 
 const ALL_STATUSES: StatusOS[] = [
+  "AGUARDANDO_CHECKLIST",
   "ORCAMENTO",
   "ORCAMENTO_RECUSADO",
   "APROVACAO_ORCAMENTO",
@@ -73,8 +75,7 @@ const statusTabs: {
     label: "Aprovação",
     icon: <ClipboardCheck className="h-4 w-4" />,
     dot: "bg-sky-500",
-    active:
-      "data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-200 data-[state=active]:ring-sky-500/30",
+    active: "data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-200 data-[state=active]:ring-sky-500/30",
     statuses: ["APROVACAO_ORCAMENTO", "ORCAMENTO_APROVADO"],
   },
   {
@@ -117,6 +118,7 @@ export function OrdensTabs({
 }) {
   const [active, setActive] = useState<TabKey>("TODAS");
   const [stats, setStats] = useState<Record<string, number>>({
+    AGUARDANDO_CHECKLIST: 0,
     ORCAMENTO: 0,
     APROVACAO_ORCAMENTO: 0,
     EM_ANDAMENTO: 0,
@@ -124,6 +126,7 @@ export function OrdensTabs({
     CONCLUIDO: 0,
     CANCELADO: 0,
   });
+
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
 
   const [showSummaryMobile, setShowSummaryMobile] = useState(false);
@@ -178,20 +181,14 @@ export function OrdensTabs({
 
         {showSummaryMobile && (
           <div id="os-summary-grid" className="mt-2">
-            <SummaryGrid
-              total={total}
-              stats={stats}
-            />
+            <SummaryGrid total={total} stats={stats} />
           </div>
         )}
       </div>
 
       {/* Resumo sempre visível em sm+ */}
       <div className="hidden sm:block">
-        <SummaryGrid
-          total={total}
-          stats={stats}
-        />
+        <SummaryGrid total={total} stats={stats} />
       </div>
 
       <Tabs value={active} onValueChange={(v) => setActive(v as TabKey)} className="w-full">
@@ -238,22 +235,46 @@ export function OrdensTabs({
   );
 }
 
-function SummaryGrid({
-  total,
-  stats,
-}: {
-  total: number;
-  stats: Record<string, number>;
-}) {
+function SummaryGrid({ total, stats }: { total: number; stats: Record<string, number> }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
       <MiniCard accent="text-slate-300" title="Total" value={total} icon={<ClipboardList className="h-4 w-4" />} />
-      <MiniCard accent="text-fuchsia-300" title="Orçamento" value={stats.ORCAMENTO || 0} icon={<ClipboardList className="h-4 w-4" />} />
-      <MiniCard accent="text-sky-300" title="Aprovação" value={(stats.APROVACAO_ORCAMENTO || 0) + (stats.ORCAMENTO_APROVADO || 0)} icon={<ClipboardCheck className="h-4 w-4" />} />
-      <MiniCard accent="text-amber-300" title="Em Andamento" value={stats.EM_ANDAMENTO || 0} icon={<Loader2 className="h-4 w-4" />} />
-      <MiniCard accent="text-indigo-300" title="Pagamento" value={stats.PAGAMENTO || 0} icon={<CreditCard className="h-4 w-4" />} />
-      <MiniCard accent="text-emerald-300" title="Concluído" value={stats.CONCLUIDO || 0} icon={<CheckCircle2 className="h-4 w-4" />} />
-      <MiniCard accent="text-rose-300" title="Cancelado" value={stats.CANCELADO || 0} icon={<XCircle className="h-4 w-4" />} />
+      <MiniCard
+        accent="text-fuchsia-300"
+        title="Orçamento"
+        value={stats.ORCAMENTO || 0}
+        icon={<ClipboardList className="h-4 w-4" />}
+      />
+      <MiniCard
+        accent="text-sky-300"
+        title="Aprovação"
+        value={(stats.APROVACAO_ORCAMENTO || 0) + (stats.ORCAMENTO_APROVADO || 0)}
+        icon={<ClipboardCheck className="h-4 w-4" />}
+      />
+      <MiniCard
+        accent="text-amber-300"
+        title="Em Andamento"
+        value={stats.EM_ANDAMENTO || 0}
+        icon={<Loader2 className="h-4 w-4" />}
+      />
+      <MiniCard
+        accent="text-indigo-300"
+        title="Pagamento"
+        value={stats.PAGAMENTO || 0}
+        icon={<CreditCard className="h-4 w-4" />}
+      />
+      <MiniCard
+        accent="text-emerald-300"
+        title="Concluído"
+        value={stats.CONCLUIDO || 0}
+        icon={<CheckCircle2 className="h-4 w-4" />}
+      />
+      <MiniCard
+        accent="text-rose-300"
+        title="Cancelado"
+        value={stats.CANCELADO || 0}
+        icon={<XCircle className="h-4 w-4" />}
+      />
     </div>
   );
 }
@@ -274,7 +295,11 @@ function MiniCard({
       <CardContent className="p-2 sm:p-3">
         <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground">
           <span className="truncate leading-tight">{title}</span>
-          <span className={["shrink-0", accent, "[&>svg]:h-3 [&>svg]:w-3 sm:[&>svg]:h-4 sm:[&>svg]:w-4"].filter(Boolean).join(" ")}>
+          <span
+            className={["shrink-0", accent, "[&>svg]:h-3 [&>svg]:w-3 sm:[&>svg]:h-4 sm:[&>svg]:w-4"]
+              .filter(Boolean)
+              .join(" ")}
+          >
             {icon}
           </span>
         </div>
