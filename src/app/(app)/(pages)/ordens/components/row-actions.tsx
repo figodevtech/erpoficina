@@ -1,4 +1,3 @@
-// src/app/(app)/(pages)/ordens/components/row-actions.tsx
 "use client";
 
 import * as React from "react";
@@ -52,6 +51,7 @@ type Policy = {
   showCancelBudget: boolean;
   showApproveBudget: boolean;
   showRejectBudget: boolean;
+  showSendToApproval: boolean; // NOVO
   showStart: boolean;
   showSendToPayment: boolean;
   showReceivePayment: boolean;
@@ -104,8 +104,7 @@ export function RowActions<TRow extends RowBase>({
 
   // Orçamento (abrir tela de orçamento)
   const showBudget =
-    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO") &&
-    policy.canEditBudget;
+    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO") && policy.canEditBudget;
 
   // Editar OS
   const showEditOS = st === "ORCAMENTO" && policy.showEditOS;
@@ -113,10 +112,8 @@ export function RowActions<TRow extends RowBase>({
   // Link de aprovação
   const showLinkAprov =
     policy.showLinkAprov &&
-    (st === "ORCAMENTO" ||
-      st === "APROVACAO_ORCAMENTO" ||
-      st === "ORCAMENTO_RECUSADO");
-
+    (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
+    
   // Fluxo de aprovação
   const showApproveBudget =
     policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
@@ -127,15 +124,18 @@ export function RowActions<TRow extends RowBase>({
   const showCancelBudget =
     policy.showCancelBudget && st === "APROVACAO_ORCAMENTO"; // volta para ORCAMENTO
 
+  // NOVO: enviar orçamento para aprovação (ORCAMENTO ou ORCAMENTO_RECUSADO)
+  const showSendToApproval =
+    policy.showSendToApproval &&
+    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+
   // Orçamento recusado: permitir cancelar OS
   const showCancelOSRecusado = st === "ORCAMENTO_RECUSADO";
 
   // Produção / Pagamento
   const showStart = policy.showStart && st === "ORCAMENTO_APROVADO"; // -> EM_ANDAMENTO
-  const showSendToPayment =
-    policy.showSendToPayment && st === "EM_ANDAMENTO"; // -> PAGAMENTO
-  const showReceivePayment =
-    policy.showReceivePayment && st === "PAGAMENTO"; // finalizar pagamento
+  const showSendToPayment = policy.showSendToPayment && st === "EM_ANDAMENTO"; // -> PAGAMENTO
+  const showReceivePayment = policy.showReceivePayment && st === "PAGAMENTO"; // finalizar pagamento
 
   return (
     <DropdownMenu>
@@ -174,6 +174,16 @@ export function RowActions<TRow extends RowBase>({
           <DropdownMenuItem onClick={() => onEditar(row)}>
             <Pencil className="mr-2 h-4 w-4" />
             Editar OS
+          </DropdownMenuItem>
+        )}
+
+        {/* NOVO: Enviar para aprovação (status APROVACAO_ORCAMENTO) */}
+        {showSendToApproval && (
+          <DropdownMenuItem
+            onClick={() => setStatus(row.id, "APROVACAO_ORCAMENTO")}
+          >
+            <ThumbsUp className="mr-2 h-4 w-4" />
+            Enviar para aprovação
           </DropdownMenuItem>
         )}
 
