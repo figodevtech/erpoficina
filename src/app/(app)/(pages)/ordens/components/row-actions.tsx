@@ -1,4 +1,3 @@
-// src/app/(app)/(pages)/ordens/components/row-actions.tsx
 "use client";
 
 import * as React from "react";
@@ -52,6 +51,7 @@ type Policy = {
   showCancelBudget: boolean;
   showApproveBudget: boolean;
   showRejectBudget: boolean;
+  showSendToApproval: boolean;
   showStart: boolean;
   showSendToPayment: boolean;
   showReceivePayment: boolean;
@@ -97,7 +97,7 @@ export function RowActions<TRow extends RowBase>({
 }) {
   const st = String(row.status ?? "").toUpperCase();
 
-  // Checklist pode continuar só por status (se quiser, dá pra amarrar em permissão depois)
+  // Checklist
   const showChecklist = st === "AGUARDANDO_CHECKLIST";
 
   // ===== Regras baseadas em STATUS + POLICY =====
@@ -110,12 +110,10 @@ export function RowActions<TRow extends RowBase>({
   // Editar OS
   const showEditOS = st === "ORCAMENTO" && policy.showEditOS;
 
-  // Link de aprovação
+  // Link de aprovação (NÃO mostra em ORCAMENTO_RECUSADO)
   const showLinkAprov =
     policy.showLinkAprov &&
-    (st === "ORCAMENTO" ||
-      st === "APROVACAO_ORCAMENTO" ||
-      st === "ORCAMENTO_RECUSADO");
+    (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
 
   // Fluxo de aprovação
   const showApproveBudget =
@@ -124,8 +122,15 @@ export function RowActions<TRow extends RowBase>({
   const showRejectBudget =
     policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
 
+  // Cancelar orçamento: em APROVACAO_ORCAMENTO ou ORCAMENTO_RECUSADO
   const showCancelBudget =
-    policy.showCancelBudget && st === "APROVACAO_ORCAMENTO"; // volta para ORCAMENTO
+    policy.showCancelBudget &&
+    (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+
+  // Enviar orçamento para aprovação (ORCAMENTO ou ORCAMENTO_RECUSADO)
+  const showSendToApproval =
+    policy.showSendToApproval &&
+    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   // Orçamento recusado: permitir cancelar OS
   const showCancelOSRecusado = st === "ORCAMENTO_RECUSADO";
@@ -174,6 +179,16 @@ export function RowActions<TRow extends RowBase>({
           <DropdownMenuItem onClick={() => onEditar(row)}>
             <Pencil className="mr-2 h-4 w-4" />
             Editar OS
+          </DropdownMenuItem>
+        )}
+
+        {/* Enviar para aprovação */}
+        {showSendToApproval && (
+          <DropdownMenuItem
+            onClick={() => setStatus(row.id, "APROVACAO_ORCAMENTO")}
+          >
+            <ThumbsUp className="mr-2 h-4 w-4" />
+            Enviar para aprovação
           </DropdownMenuItem>
         )}
 
