@@ -130,7 +130,7 @@ const data = {
         },
         {
           title: "Tipos",
-          url: "#",
+          url: "/configuracoes/tipos",
           icon: Type,
         },
         {
