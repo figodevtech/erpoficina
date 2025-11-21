@@ -323,6 +323,8 @@ export default function ProductsDataTable({
                         </ProductDialog>
                         
                         <EntradaDialog
+                        currentQuantity={p.estoque ||  0}
+                        productDescription={p.titulo || ""}
                         productId={p.id}
                         >
                           <Button

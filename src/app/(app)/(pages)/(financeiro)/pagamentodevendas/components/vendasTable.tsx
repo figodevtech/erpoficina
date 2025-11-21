@@ -76,7 +76,7 @@ export default function VendasTable({
       <CardHeader className="border-b-2 flex flex-col">
         <div className="flex flex-row justify-between w-full">
           <CardTitle className="text-lg font-medium">
-            Vendasb{" "}
+            Vendas{" "}
             <span className="text-muted-foreground text-xs font-mono font-extralight">
               |EM PAGAMENTO
             </span>
@@ -186,7 +186,7 @@ export default function VendasTable({
             ) : (
               <TableRow>
                 <TableCell className="text-center h-20" colSpan={99}>
-                  Não existem ordens com este status
+                  Não existem vendas com este status
                 </TableCell>
               </TableRow>
             )}
