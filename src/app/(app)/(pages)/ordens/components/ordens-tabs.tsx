@@ -205,7 +205,7 @@ export function OrdensTabs({
               key={t.key}
               value={t.key}
               className={[
-                "whitespace-nowrap px-3 py-1.5 rounded-md text-xs md:text-sm",
+                "whitespace-nowrap px-3 not-dark:data-[state=active]:text-black py-1.5 rounded-md text-xs md:text-sm",
                 "ring-1 ring-transparent transition-colors",
                 "hover:bg-muted/50",
                 t.active,

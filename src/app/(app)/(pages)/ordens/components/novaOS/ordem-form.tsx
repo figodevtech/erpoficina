@@ -31,6 +31,8 @@ import {
   Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { Customer } from "../../../clientes/types";
 
 /* ========== Props ========== */
 export type FormularioNovaOSProps = {
@@ -67,11 +69,12 @@ export function FormularioNovaOS({
     "NORMAL"
   );
   const [docBusca, setDocBusca] = useState("");
-  const [cliente, setCliente] = useState<any | null>(null);
+  const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] =
     useState<number | null>(null);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [openCustomer, setOpenCustomer] = useState(false);
   const [erroCliente, setErroCliente] = useState<string | null>(null);
 
   // Avulso
@@ -329,34 +332,17 @@ export function FormularioNovaOS({
           {modoAtendimento === "cadastrado" ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-                <div className="space-y-2">
-                  <Label>CPF/CNPJ</Label>
-                  <Input
-                    placeholder="Digite com ou sem máscara"
-                    value={docBusca}
-                    onChange={(e) => setDocBusca(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && buscarClientePorDocumento()
-                    }
-                  />
-                </div>
                 <div className="flex items-end">
-                  <Button
-                    className="w-full md:w-auto"
-                    onClick={buscarClientePorDocumento}
-                    disabled={buscandoCliente}
-                  >
-                    {buscandoCliente ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />{" "}
-                        Buscando…
-                      </>
-                    ) : (
-                      <>
-                        <Search className="h-4 w-4 mr-2" /> Buscar
-                      </>
-                    )}
-                  </Button>
+                  
+                  <CustomerSelect
+                  open={openCustomer}
+                  setOpen={setOpenCustomer}
+                  OnSelect={(c)=> setCliente( c ?? null)}>
+                    <Button
+                    className="w-full md:w-auto hover:cursor-pointer"
+                    
+                  ><Search/>Selecionar Cliente</Button>
+                  </CustomerSelect>
                 </div>
               </div>
 
@@ -364,32 +350,7 @@ export function FormularioNovaOS({
                 <div className="text-sm text-red-600">{erroCliente}</div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Nome/Razão Social</Label>
-                  <Input
-                    value={cliente?.nomerazaosocial ?? ""}
-                    readOnly
-                    placeholder="—"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Telefone</Label>
-                  <Input
-                    value={cliente?.telefone ?? ""}
-                    readOnly
-                    placeholder="—"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>E-mail</Label>
-                  <Input
-                    value={cliente?.email ?? ""}
-                    readOnly
-                    placeholder="—"
-                  />
-                </div>
-              </div>
+              
             </>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

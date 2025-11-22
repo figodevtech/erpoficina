@@ -36,6 +36,8 @@ export async function GET(req: Request) {
       "E-mail",
       "Telefone",
       "Endereço",
+      "Número",
+      "Complemento",
       "Cidade",
       "Estado",
       "CEP",
@@ -60,6 +62,8 @@ export async function GET(req: Request) {
       { wch: 28 }, // E-mail
       { wch: 16 }, // Telefone
       { wch: 40 }, // Endereço
+      { wch: 10 }, // Número
+      { wch: 10 }, // Complemento
       { wch: 22 }, // Cidade
       { wch: 6 },  // Estado
       { wch: 10 }, // CEP
@@ -77,7 +81,7 @@ export async function GET(req: Request) {
         .from("cliente")
         .select(
           `
-          id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
+          id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco, endereconumero, enderecocomplemento,
           cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
           createdat, updatedat, status
         `,
@@ -115,6 +119,8 @@ export async function GET(req: Request) {
         c.email ?? "",
         c.telefone ?? "",
         c.endereco ?? "",
+        c.endereconumero ?? "",
+        c.enderecocomplemento ?? "",
         c.cidade ?? "",
         c.estado ?? "",
         c.cep ?? "",

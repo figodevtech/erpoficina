@@ -34,6 +34,8 @@ export interface Customer {
   email: string
   telefone: string
   endereco: string
+  endereconumero: string
+  enderecocomplemento: string
   cidade: string
   estado: string
   cep: string

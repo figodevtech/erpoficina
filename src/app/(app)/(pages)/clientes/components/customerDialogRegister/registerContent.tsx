@@ -92,7 +92,7 @@ export default function RegisterContent({
 
       if (response.status === 201) {
         console.log(response.data.data);
-        toast("Sucesso!", {
+        toast.success("Sucesso!", {
           description: "Cliente cadastrado.",
           duration: 2000,
         });
@@ -103,7 +103,7 @@ export default function RegisterContent({
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast("Erro", {
+        toast.error("Erro", {
           description: error.response?.data.error,
           duration: 2000,
         });
@@ -166,7 +166,7 @@ export default function RegisterContent({
               Status
             </Label>
             <Select
-              value={newCustomer.status}
+              value={newCustomer.status || ""}
               onValueChange={(value: StatusCliente) =>
                 handleInputChange("status", value)
               }
@@ -320,19 +320,46 @@ export default function RegisterContent({
               <h3 className="text-base sm:text-lg font-semibold">Endereço</h3>
             </div> */}
 
-            <div className="space-y-2">
+              <div className=" flex flex-row items-center gap-2">
+
+            <div className="space-y-2 w-full">
               <Label htmlFor="endereco" className="text-sm sm:text-base">
                 Endereço Completo
               </Label>
               <Input
                 id="endereco"
                 className=""
-                value={newCustomer.endereco}
+                value={newCustomer.endereco || ""}
                 onChange={(e) => handleInputChange("endereco", e.target.value)}
-                placeholder="Rua, número, complemento, bairro"
+                placeholder="Rua, avenida..."
               />
             </div>
-
+            <div className="space-y-2">
+              <Label htmlFor="numero" className="text-sm sm:text-base">
+                Número
+              </Label>
+              <Input
+                id="endereconumero"
+                className=""
+                value={newCustomer.endereconumero || ""}
+                onChange={(e) => handleInputChange("endereconumero", e.target.value)}
+                placeholder="123"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="complemento" className="text-sm sm:text-base">
+                Complemento
+              </Label>
+              <Input
+                id="enderecocomplemento"
+                className=""
+                value={newCustomer.enderecocomplemento || ""}
+                onChange={(e) => handleInputChange("enderecocomplemento", e.target.value)}
+                placeholder="Ap, Bloco..."
+              />
+            </div>
+              </div>
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               
 
@@ -510,7 +537,7 @@ export default function RegisterContent({
                     <Input
                       id="inscricaoestadual"
                       className=""
-                      value={newCustomer.inscricaoestadual}
+                      value={newCustomer.inscricaoestadual || ""}
                       onChange={(e) =>
                         handleInputChange("inscricaoestadual", e.target.value)
                       }
@@ -528,7 +555,7 @@ export default function RegisterContent({
                     <Input
                       id="inscricaomunicipal"
                       className=""
-                      value={newCustomer.inscricaomunicipal}
+                      value={newCustomer.inscricaomunicipal || ""}
                       onChange={(e) =>
                         handleInputChange("inscricaomunicipal", e.target.value)
                       }
@@ -547,7 +574,7 @@ export default function RegisterContent({
                   <Input
                     id="codigomunicipio"
                     className=""
-                    value={newCustomer.codigomunicipio}
+                    value={newCustomer.codigomunicipio || ""}
                     onChange={(e) =>
                       handleInputChange("codigomunicipio", e.target.value)
                     }

@@ -409,7 +409,9 @@ export default function EditContent({ customerId, }: EditContentProps) {
                 <Separator className="mt-4" />
                 {/* Endereço */}
                 <div className="space-y-3 sm:space-y-4">
-                  <div className="space-y-2">
+                  <div className="flex flex-row items-center gap-2">
+
+                  <div className="space-y-2 w-full">
                     <Label htmlFor="endereco" className="text-sm sm:text-base">
                       <MapPin className="h-4.5" />
                       Endereço Completo
@@ -423,6 +425,35 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       }
                       placeholder="Rua, número, complemento, bairro"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="numero" className="text-sm sm:text-base">
+                      Número
+                    </Label>
+                    <Input
+                      id="endereconumero"
+                      className=""
+                      value={selectedCustomer.endereconumero || ""}
+                      onChange={(e) =>
+                        handleInputChange("endereconumero", e.target.value)
+                      }
+                      placeholder="123"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="complemento" className="text-sm sm:text-base">
+                      Complemento
+                    </Label>
+                    <Input
+                      id="enderecocomplemento"
+                      className=""
+                      value={selectedCustomer.enderecocomplemento || ""}
+                      onChange={(e) =>
+                        handleInputChange("enderecocomplemento", e.target.value)
+                      }
+                      placeholder="Ap, bloco..."
+                    />
+                  </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">

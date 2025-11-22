@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
 const CLIENTE_FIELDS = `
   id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
   cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-  createdat, updatedat, status
+  createdat, updatedat, endereconumero, enderecocomplemento, status
 `;
 
 const VEICULO_FIELDS = `
@@ -30,6 +30,8 @@ const WRITABLE_FIELDS = new Set([
   "email",
   "telefone",
   "endereco",
+  "endereconumero",
+  "enderecocomplemento",
   "cidade",
   "estado",
   "cep",
@@ -59,7 +61,7 @@ function sanitizePayload(body: any, { strict }: { strict: boolean }) {
   }
 
   if (strict) {
-    const required = ["tipopessoa", "cpfcnpj", "nomerazaosocial"];
+    const required = ["tipopessoa", "cpfcnpj", "nomerazaosocial", "email", "telefone"];
     const missing = required.filter((k) => out[k] == null);
     if (missing.length) {
       throw new Error(

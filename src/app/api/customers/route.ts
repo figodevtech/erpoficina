@@ -10,7 +10,7 @@ const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
 const CLIENTE_FIELDS = `
   id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
   cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-  createdat, updatedat, status
+  createdat, updatedat, endereconumero, enderecocomplemento, status
 `;
 
 const VEICULO_FIELDS = `
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
         `
         id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
         cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-        createdat, updatedat, status
+        createdat, updatedat,endereconumero, enderecocomplemento, status
         `,
         { count: "exact" }
       )
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const missing = ["tipopessoa", "cpfcnpj", "nomerazaosocial"].filter(
+    const missing = ["tipopessoa", "cpfcnpj", "nomerazaosocial", "telefone", "email"].filter(
       (k) => !json[k] || String(json[k]).trim() === ""
     );
     if (missing.length) {
