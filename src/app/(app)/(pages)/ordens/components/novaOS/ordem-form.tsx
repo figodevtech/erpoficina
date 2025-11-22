@@ -344,7 +344,34 @@ export function FormularioNovaOS({
                   ><Search/>Selecionar Cliente</Button>
                   </CustomerSelect>
                 </div>
+                
               </div>
+              {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Nome/Razão Social</Label>
+                  <Input
+                    value={cliente?.nomerazaosocial ?? ""}
+                    readOnly
+                    placeholder="—"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Telefone</Label>
+                  <Input
+                    value={cliente?.telefone ?? ""}
+                    readOnly
+                    placeholder="—"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>E-mail</Label>
+                  <Input
+                    value={cliente?.email ?? ""}
+                    readOnly
+                    placeholder="—"
+                  />
+                </div>
+              </div> */}
 
               {erroCliente && (
                 <div className="text-sm text-red-600">{erroCliente}</div>
