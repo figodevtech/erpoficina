@@ -29,6 +29,7 @@ const routeTitles: Record<string, string> = {
   "/configuracoes/fiscal-pagamentos": "Configurações Fiscais e de Pagamentos",
   "/checklist": "Gerenciamento de Checklists",
   "/nao-autorizado": "Acesso não autorizado",
+  "/configuracoes/tipos": "Configurações de Tipos",
 };
 
 function humanize(path: string) {
