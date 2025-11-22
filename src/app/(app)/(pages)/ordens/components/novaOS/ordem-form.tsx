@@ -306,8 +306,8 @@ export function FormularioNovaOS({
 
         <CardContent className="space-y-5">
           {/* Tipo de atendimento */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Tipo de atendimento</Label>
+          <div className="flex flex-row  items-center gap-2">
+            <Label className="text-sm font-medium">Tipo de atendimento:</Label>
             <RadioGroup
               value={modoAtendimento}
               onValueChange={(v: "cadastrado" | "avulso") => {
@@ -326,15 +326,9 @@ export function FormularioNovaOS({
                 <RadioGroupItem value="avulso" id="r-avulso" />
                 <span>Atendimento avulso</span>
               </label>
-            </RadioGroup>
-          </div>
-
-          {modoAtendimento === "cadastrado" ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-                <div className="flex items-end">
-                  
-                  <CustomerSelect
+              {modoAtendimento === "cadastrado" && (
+                
+            <CustomerSelect
                   open={openCustomer}
                   setOpen={setOpenCustomer}
                   OnSelect={(c)=> setCliente( c ?? null)}>
@@ -343,6 +337,27 @@ export function FormularioNovaOS({
                     
                   ><Search/>Selecionar Cliente</Button>
                   </CustomerSelect>
+              )}
+            </RadioGroup>
+          </div>
+
+          {modoAtendimento === "cadastrado" ? (
+            <>
+            
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+                  {/* <div className="space-y-2">
+                  <Label>CPF/CNPJ</Label>
+                  <Input
+                    placeholder="Digite com ou sem máscara"
+                    value={docBusca}
+                    onChange={(e) => setDocBusca(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && buscarClientePorDocumento()
+                    }
+                  />
+                </div> */}
+                <div className="flex items-end">
+                  
                 </div>
                 
               </div>
@@ -415,6 +430,7 @@ export function FormularioNovaOS({
               </div>
             </div>
           )}
+
         </CardContent>
       </Card>
 
