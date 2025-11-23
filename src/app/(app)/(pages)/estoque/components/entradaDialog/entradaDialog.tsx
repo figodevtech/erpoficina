@@ -30,9 +30,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Paperclip } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Paperclip } from "lucide-react";
+import { useEffect, useState } from "react";
 import ValueInput from "../productDialog/valueInput";
+import { toast } from "sonner";
+import axios, { isAxiosError } from "axios";
+import { Estoque_status, Fornecedor, Pagination } from "../../types";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -41,6 +44,15 @@ interface EntradaDialogProps {
   productId: number;
   productDescription: string;
   currentQuantity: number;
+  search?: string;
+  handleGetProducts?: (
+    pageNumber?: number,
+    limit?: number,
+    search?: string,
+    status?: Estoque_status
+  ) => void;
+  paginantion?: Pagination;
+  status?: Estoque_status;
 }
 
 export default function EntradaDialog({
@@ -50,10 +62,86 @@ export default function EntradaDialog({
   productId,
   currentQuantity,
   productDescription,
+  handleGetProducts,
+  paginantion,
+  search,
+  status,
 }: EntradaDialogProps) {
   const [newQtd, setNewQtd] = useState(0);
   const [value, setValue] = useState(0);
   const isMobile = useIsMobile();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingFornecedor, setIsLoadingFornecedor] = useState(false);
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [selectedFornecedorId, setSelectedFornecedorId] = useState<
+    number | undefined
+  >(undefined);
+
+  const handleGetFornecedores = async () => {
+    setIsLoadingFornecedor(true);
+    try {
+      const response = await axios.get("/api/tipos/fornecedor");
+      if (response.status === 200) {
+        console.log(response.data.items);
+        setFornecedores(response.data.items);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro ao buscar fornecedores: " + error);
+      }
+    } finally {
+      setIsLoadingFornecedor(false);
+    }
+  };
+
+  const handleCreateEntrada = async () => {
+    setIsSubmitting(true);
+    if (!newQtd) {
+      toast.error(
+        "Insira uma quantidade maior que zero para realizar a entrada"
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post("/api/entradas", {
+        produtoid: productId,
+        fornecedorid: selectedFornecedorId,
+        quantidade: newQtd,
+      });
+
+      if (response.status === 201) {
+        console.log(response.data);
+        toast.success("Sucesso!", {
+          description: "Entrada realizada.",
+          duration: 2000,
+        });
+        setIsOpen?.(false);
+        handleGetProducts?.(
+          paginantion?.page,
+          paginantion?.limit,
+          search,
+          status
+        );
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro", {
+          description: error.response?.data.error,
+          duration: 2000,
+        });
+
+        console.log(error);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    handleGetFornecedores();
+  }, []);
 
   if (isMobile) {
     return (
@@ -64,6 +152,7 @@ export default function EntradaDialog({
           if (!nextOpen) {
             setNewQtd(0);
             setValue(0);
+            setSelectedFornecedorId(undefined);
           }
         }}
       >
@@ -105,21 +194,54 @@ export default function EntradaDialog({
 
               <div className="space-y-2">
                 <Label>Fornecedor</Label>
-                <Select>
+                <Select
+                  disabled={isLoadingFornecedor}
+                  value={selectedFornecedorId?.toString()}
+                  onValueChange={(v) => setSelectedFornecedorId(Number(v))}
+                >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue
+                      placeholder={
+                        isLoadingFornecedor ? "Carregando..." : "Selecione"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Selecione">Selecione</SelectItem>
+                    {fornecedores.map((f) => (
+                      <SelectItem
+                        className="hover:cursor-pointer"
+                        key={f.id}
+                        value={f.id.toString()}
+                      >
+                        {f.nomerazaosocial}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <DrawerFooter className="flex flex-row gap-2 items-center justify-center">
-              <Button className="hover:cursor-pointer">Registrar</Button>
+              <Button
+                onClick={handleCreateEntrada}
+                className="hover:cursor-pointer"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    {" "}
+                    <Loader2 className="animate-spin" /> Registrando...
+                  </>
+                ) : (
+                  "Registrar Entrada"
+                )}
+              </Button>
               <DrawerClose asChild>
-                <Button className="hover:cursor-pointer" variant="outline">
+                <Button
+                  disabled={isSubmitting}
+                  className="hover:cursor-pointer"
+                  variant="outline"
+                >
                   Cancelar
                 </Button>
               </DrawerClose>
@@ -140,11 +262,15 @@ export default function EntradaDialog({
           if (!nextOpen) {
             setNewQtd(0);
             setValue(0);
+            setSelectedFornecedorId(undefined);
           }
         }}
       >
         <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="p-0 overflow-hidden">
+        <DialogContent
+          className="p-0 overflow-hidden"
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
           <div className="flex h-full min-h-0 flex-col">
             <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
               <DialogTitle>Entrada de produto</DialogTitle>
@@ -177,12 +303,28 @@ export default function EntradaDialog({
                 </div>
                 <div className="space-y-2">
                   <Label>Fornecedor</Label>
-                  <Select>
+                  <Select
+                    disabled={isLoadingFornecedor}
+                    value={selectedFornecedorId?.toString()}
+                    onValueChange={(v) => setSelectedFornecedorId(Number(v))}
+                  >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue
+                        placeholder={
+                          isLoadingFornecedor ? "Carregando..." : "Selecione"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Selecione">Selecione</SelectItem>
+                      {fornecedores.map((f) => (
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          key={f.id}
+                          value={f.id.toString()}
+                        >
+                          {f.nomerazaosocial}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -191,9 +333,26 @@ export default function EntradaDialog({
 
             <DialogFooter className="px-6 py-4">
               <div className="flex sm:flex-row gap-3 sm:gap-4">
-                <Button className="hover:cursor-pointer">Registrar</Button>
+                <Button
+                  onClick={handleCreateEntrada}
+                  className="hover:cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      {" "}
+                      <Loader2 className="animate-spin" /> Registrando...
+                    </>
+                  ) : (
+                    "Registrar Entrada"
+                  )}
+                </Button>
                 <DialogClose asChild>
-                  <Button className="hover:cursor-pointer" variant="outline">
+                  <Button
+                    disabled={isSubmitting}
+                    className="hover:cursor-pointer"
+                    variant="outline"
+                  >
                     Cancelar
                   </Button>
                 </DialogClose>

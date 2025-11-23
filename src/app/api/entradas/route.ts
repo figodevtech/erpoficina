@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({} as any));
-
+    console.log(body)
     const produtoid = toPositiveInt(body.produtoid, "produtoid");
     const fornecedorid = toPositiveInt(body.fornecedorid, "fornecedorid");
     const quantidade = toPositiveInt(body.quantidade, "quantidade");

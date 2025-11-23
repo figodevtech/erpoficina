@@ -59,6 +59,23 @@ export enum Unidade_medida {
   PCT = "PCT",
 }
 
+export interface Fornecedor {
+   id: number; 
+  cpfcnpj?: string; 
+  nomerazaosocial: string; 
+  nomefantasia?: string; 
+  endereco ?: string; 
+  cidade?: string; 
+  estado?: string; 
+  cep?: string; 
+  contato?: string; 
+  createdat?: Date
+  updatedat?: Date
+  endereconumero?: string; 
+  enderecocomplemento?: string; 
+  bairro?: string; 
+}
+
 export interface Produto {
   id: number;
   precovenda: number;

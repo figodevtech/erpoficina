@@ -131,6 +131,7 @@ export default function ProductsDataTable({
   setIsOpen,
 }: ProductsDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isEntradaOpen, setIsEntradaOpen] = useState(false);
   const [, setIsDeleting] = useState(false);
 
   const handleDeleteProduct = async (id: number) => {
@@ -323,6 +324,11 @@ export default function ProductsDataTable({
                         </ProductDialog>
                         
                         <EntradaDialog
+                        handleGetProducts={handleGetProducts}
+                        status={status}
+                        search={search}
+                        isOpen={isEntradaOpen}
+                        setIsOpen={setIsEntradaOpen}
                         currentQuantity={p.estoque ||  0}
                         productDescription={p.titulo || ""}
                         productId={p.id}
