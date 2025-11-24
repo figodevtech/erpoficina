@@ -12,6 +12,14 @@ const PRODUTO_FIELDS = `
   titulo, status_estoque, fornecedor, fabricante, grupo, exibirPdv,
   tituloMarketplace, descricaoMarketplace
 `;
+const GET_PRODUTO_FIELDS = `
+  ${PRODUTO_FIELDS},
+  entradas: produtoentrada (id, fornecedorid, quantidade, created_at, fornecedor: fornecedor(id, nomerazaosocial, cpfcnpj)),
+  vendasdoproduto: vendaproduto (
+  id, venda_id, produtoid, sub_total, valor_total, valor_desconto, tipo_desconto, quantidade, venda (id, valortotal, status, valortotal, datavenda, desconto_valor, sub_total)
+  ),
+  ordensdoproduto: osproduto (quantidade, precounitario, subtotal, ordem: ordemservico (id, descricao, status))
+`;
 
 const WRITABLE_FIELDS = new Set([
   "descricao",
@@ -155,7 +163,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<Params> 
 
     const { data, error } = await supabaseAdmin
       .from("produto")
-      .select(PRODUTO_FIELDS)
+      .select(GET_PRODUTO_FIELDS)
       .eq("id", id)
       .single();
 

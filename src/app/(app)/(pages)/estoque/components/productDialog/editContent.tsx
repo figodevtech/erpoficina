@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Upload } from "lucide-react";
+import { ChevronDown, Edit, Undo2, Upload } from "lucide-react";
 import { Grupo_produto, Produto, Unidade_medida } from "../../types";
 import { Estoque_status } from "../../types";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,21 @@ import axios from "axios";
 import { formatDate } from "@/utils/formatDate";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import formatarEmReal from "@/utils/formatarEmReal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 
 // --- Helper data ---
 
@@ -131,7 +146,7 @@ export default function EditContent({ productId }: EditContentProps) {
     if (productId) {
       handleGetProduct(productId);
     }
-  }, [ productId]);
+  }, [productId]);
 
   if (isLoading) {
     return (
@@ -149,7 +164,10 @@ export default function EditContent({ productId }: EditContentProps) {
 
   if (selectedProduct) {
     return (
-      <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+      <DialogContent
+        onDoubleClick={(e) => e.stopPropagation()}
+        className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0"
+      >
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
             <DialogTitle>
@@ -188,6 +206,24 @@ export default function EditContent({ productId }: EditContentProps) {
                 className={"hover:cursor-pointer" + tabTheme}
               >
                 Estoque
+              </TabsTrigger>
+              <TabsTrigger
+                value="Vendas"
+                className={"hover:cursor-pointer" + tabTheme}
+              >
+                Vendas
+              </TabsTrigger>
+              <TabsTrigger
+                value="Ordens"
+                className={"hover:cursor-pointer" + tabTheme}
+              >
+                Ordens
+              </TabsTrigger>
+              <TabsTrigger
+                value="Fluxo"
+                className={"hover:cursor-pointer" + tabTheme}
+              >
+                Fluxo
               </TabsTrigger>
             </TabsList>
 
@@ -297,7 +333,6 @@ export default function EditContent({ productId }: EditContentProps) {
                       price={selectedProduct.precovenda}
                       setPrice={(v) => handleChange("precovenda", v)}
                     />
-                   
                   </div>
 
                   <div className="space-y-2">
@@ -345,23 +380,36 @@ export default function EditContent({ productId }: EditContentProps) {
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
                 <div className="flex flex-row gap-2">
                   <Label htmlFor="exibirPdv">Exibir no Marketplace:</Label>
-                <Switch checked={selectedProduct.exibirPdv} onCheckedChange={(v)=>setSelectedProduct({...selectedProduct, exibirPdv: v})}></Switch>
+                  <Switch
+                    checked={selectedProduct.exibirPdv}
+                    onCheckedChange={(v) =>
+                      setSelectedProduct({ ...selectedProduct, exibirPdv: v })
+                    }
+                  ></Switch>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tituloMarketplace">Título no Marketplace *</Label>
+                  <Label htmlFor="tituloMarketplace">
+                    Título no Marketplace *
+                  </Label>
                   <Input
                     id="tituloMarketplace"
                     value={selectedProduct.tituloMarketplace || ""}
-                    onChange={(e) => handleChange("tituloMarketplace", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("tituloMarketplace", e.target.value)
+                    }
                     placeholder="Nome comercial / Site"
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="descricaoMarketplace">Descrição no Marketplace</Label>
+                  <Label htmlFor="descricaoMarketplace">
+                    Descrição no Marketplace
+                  </Label>
                   <Textarea
                     id="descricaoMarketplace"
                     value={selectedProduct.descricaoMarketplace || ""}
-                    onChange={(e) => handleChange("descricaoMarketplace", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("descricaoMarketplace", e.target.value)
+                    }
                     placeholder="Descrição do produto"
                   />
                 </div>
@@ -412,7 +460,7 @@ export default function EditContent({ productId }: EditContentProps) {
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                      <SelectItem value="Selecione">Selecione</SelectItem>
+                        <SelectItem value="Selecione">Selecione</SelectItem>
                         {CSOSN_OPTIONS.map((c) => (
                           <SelectItem key={c} value={c}>
                             {c}
@@ -421,8 +469,6 @@ export default function EditContent({ productId }: EditContentProps) {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -466,7 +512,7 @@ export default function EditContent({ productId }: EditContentProps) {
                   <div className="space-y-2">
                     <Label htmlFor="estoque">Estoque (Qtd) *</Label>
                     <Input
-                    disabled
+                      disabled
                       id="estoque"
                       value={selectedProduct.estoque || ""}
                       onChange={(e) =>
@@ -494,20 +540,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="origem">Fornecedor *</Label>
-                  <Select
-                    value={String(selectedProduct.fornecedor)}
-                    onValueChange={(v) => handleChange("fornecedor", Number(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DESCONHECIDO">DESCONHECIDO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+
                 <Separator />
                 <div className="text-xs text-muted-foreground">
                   <span>Regra de estoque:</span>
@@ -528,6 +561,216 @@ export default function EditContent({ productId }: EditContentProps) {
                     </li>
                   </ul>
                 </div>
+              </div>
+            </TabsContent>
+
+            {/* --- Aba: Vendas ---- */}
+            <TabsContent
+              value="Vendas"
+              className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+            >
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+                <div className="flex flex-row items-center justify-between">
+                  <span className="text-xs">Participações em vendas</span>
+                  <span className="text-xs">
+                    Quantidade: {selectedProduct.vendasdoproduto.length}
+                  </span>
+                </div>
+                <Table className="text-xs border-1">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Data</TableHead>
+                      <TableHead className="text-center">Quantidade</TableHead>
+                      <TableHead className="text-center">Valor Total</TableHead>
+                      <TableHead className="text-center"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedProduct.vendasdoproduto?.length > 0 ? (
+                      selectedProduct.vendasdoproduto.map((v) => (
+                        <TableRow
+                          key={v.id}
+                          className="hover:cursor-pointer text-center"
+                        >
+                          <TableCell>{v.venda_id}</TableCell>
+                          <TableCell>{formatDate(v.venda.datavenda)}</TableCell>
+                          <TableCell>{v.quantidade}</TableCell>
+                          <TableCell>{formatarEmReal(v.valor_total)}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="h-3 w-3 p-0 cursor-pointer"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="space-y-1">
+                                <Button
+                                  variant={"ghost"}
+                                  className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
+                                >
+                                  <Edit className="-ml-1 -mr-1 h-4 w-4" />
+                                  <span>Editar</span>
+                                </Button>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell className="text-center h-20" colSpan={5}>
+                          Produto não possui histórico de vendas
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+
+            {/* --- Aba: Ordens ---- */}
+            <TabsContent
+              value="Ordens"
+              className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+            >
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+                <div className="flex flex-row items-center justify-between">
+                  <span className="text-xs">
+                    Participações em Ordens de Serviço
+                  </span>
+                  <span className="text-xs">
+                    Quantidade: {selectedProduct.ordensdoproduto.length}
+                  </span>
+                </div>
+                <Table className="text-xs border-1">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Descrição</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedProduct.ordensdoproduto?.length > 0 ? (
+                      selectedProduct.ordensdoproduto.map((o) => (
+                        <TableRow
+                          key={o.ordem.id}
+                          className="hover:cursor-pointer text-center"
+                        >
+                          <TableCell>{o.ordem.id}</TableCell>
+                          <TableCell>{o.ordem.descricao || "-"}</TableCell>
+                          <TableCell>{o.ordem.status}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="h-3 w-3 p-0 cursor-pointer"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="space-y-1">
+                                <Button
+                                  variant={"ghost"}
+                                  className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
+                                >
+                                  <Edit className="-ml-1 -mr-1 h-4 w-4" />
+                                  <span>Editar</span>
+                                </Button>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell className="text-center h-20" colSpan={5}>
+                          Produto não possui histórico de Ordens de Serviço
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+            {/* --- Aba: Fluxo ---- */}
+            <TabsContent
+              value="Fluxo"
+              className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+            >
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+                <div className="flex flex-row items-center justify-between">
+                  <span className="text-xs">Movimentações em estoque</span>
+                  <span className="text-xs">
+                    Quantidade: {selectedProduct.entradas.length}
+                  </span>
+                </div>
+                <Table className="text-xs border-1">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Data:</TableHead>
+                      <TableHead className="text-center">Fornecedor</TableHead>
+                      <TableHead className="text-center">Quantidade</TableHead>
+                      <TableHead className="text-center"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedProduct.entradas?.length > 0 ? (
+                      selectedProduct.entradas.map((e) => (
+                        <TableRow
+                          key={e.id}
+                          className="hover:cursor-pointer text-center"
+                        >
+                          <TableCell>{e.id}</TableCell>
+                          <TableCell>{formatDate(e.created_at) }</TableCell>
+                          <TableCell>{e.fornecedor.nomerazaosocial}</TableCell>
+                          <TableCell className="text-green-600 font-bold">+ {e.quantidade}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="h-3 w-3 p-0 cursor-pointer"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="space-y-1">
+                                <Button
+                                  variant={"ghost"}
+                                  className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
+                                >
+                                  <Edit className="-ml-1 -mr-1 h-4 w-4" />
+                                  <span>Editar</span>
+                                </Button>
+                                <Button
+                                  className="size-full flex justify-start gap-5 bg-red-500/50 hover:bg-red-500 px-0 rounded-sm py-2 hover:cursor-pointer"
+                                >
+                                  <Undo2 className="-ml-1 -mr-1 h-4 w-4" />
+                                  <span>Cancelar Entrada</span>
+                                </Button>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell className="text-center h-20" colSpan={5}>
+                          Produto não possui histórico de movimentação no
+                          estoque
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </TabsContent>
           </Tabs>

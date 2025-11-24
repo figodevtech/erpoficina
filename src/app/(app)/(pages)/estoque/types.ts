@@ -1,3 +1,6 @@
+import { VendaComItens } from "../historicovendas/types";
+import { OrdemServico } from "@/types/ordemservico";
+
 export enum Estoque_status {
   CRITICO = "CRITICO",
   OK = "OK",
@@ -59,6 +62,38 @@ export enum Unidade_medida {
   PCT = "PCT",
 }
 
+export interface Produtoentrada{
+  id: number;
+  fornecedorid: number;
+  quantidade: number;
+  created_at: Date;
+  fornecedor: Fornecedor;
+}
+
+export interface Vendaproduto {
+  id: number;
+  created_at: Date;
+  updated_at: Date;
+  venda_id: number;
+  produtoid: number;
+  sub_total: number;
+  valor_total: number;
+  valor_desconto: number;
+  tipo_desconto: number;
+  quantidade: number;
+  venda: VendaComItens
+
+}
+
+export interface OSProduto {
+  id: number;
+  ordemservicoid: number;
+  quantidade: number;
+  precounitario: number;
+  subtotal: number;
+  ordem: OrdemServico
+}
+
 export interface Fornecedor {
    id: number; 
   cpfcnpj?: string; 
@@ -101,6 +136,9 @@ export interface Produto {
   exibirPdv?: boolean;
   tituloMarketplace?: string;
   descricaoMarketplace?: string;
+  entradas: Produtoentrada[]
+  vendasdoproduto: Vendaproduto[];
+  ordensdoproduto: OSProduto[];
 }
 
 export interface Pagination {

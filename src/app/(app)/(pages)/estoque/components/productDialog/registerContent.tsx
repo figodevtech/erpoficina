@@ -414,20 +414,7 @@ export default function RegisterContent({
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="origem">Fornecedor *</Label>
-                <Select
-                  value={String(newProduct.fornecedor)}
-                  onValueChange={(v) => handleChange("fornecedor", Number(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DESCONHECIDO">DESCONHECIDO</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              
               <Separator />
               <div className="text-xs text-muted-foreground">
                 <span>Regra de estoque:</span>
