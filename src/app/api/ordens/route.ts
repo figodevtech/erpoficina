@@ -33,7 +33,9 @@ export async function GET(req: Request) {
         alvo_tipo,
         cliente:clienteid (
           id,
-          nomerazaosocial
+          nomerazaosocial,
+          telefone,
+          email
         ),
         veiculo:veiculoid (
           id,
@@ -102,6 +104,8 @@ export async function GET(req: Request) {
         ? {
             id: r.cliente.id as number,
             nome: r.cliente.nomerazaosocial as string,
+            telefone: (r.cliente.telefone as string | null) ?? null,
+            email: (r.cliente.email as string | null) ?? null,
           }
         : null,
 
@@ -154,9 +158,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ items, page, limit, total, totalPages, pageCount });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao listar OS" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message ?? "Erro ao listar OS" }, { status: 500 });
   }
 }

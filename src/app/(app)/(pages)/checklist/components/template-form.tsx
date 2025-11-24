@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ChecklistTemplate, ItemChecklist } from "./types";
 import { uid } from "./utils";
 
@@ -12,7 +12,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,16 +25,18 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card";
 
 type Props = {
   value: ChecklistTemplate;
-  categorias: ReadonlyArray<string>;   // << corrigido (readonly)
+  categorias: ReadonlyArray<string>;
   editando?: boolean;
-  onSave: (tpl: ChecklistTemplate) => void;
+  onSave: (tpl: ChecklistTemplate) => Promise<void> | void;
   onCancel: () => void;
   variant?: "card" | "bare";
+  onChange?: (tpl: ChecklistTemplate) => void;
+  exposeSubmit?: (fn: () => Promise<void> | void) => void;
 };
 
 export function TemplateForm({
@@ -44,6 +46,8 @@ export function TemplateForm({
   onSave,
   onCancel,
   variant = "card",
+  onChange,
+  exposeSubmit,
 }: Props) {
   const [tpl, setTpl] = useState<ChecklistTemplate>(value);
   const [addOpen, setAddOpen] = useState(false);
@@ -53,6 +57,19 @@ export function TemplateForm({
   useEffect(() => {
     setTpl(value);
   }, [value]);
+
+  // sobe alterações pro pai, pra ele conseguir validar no footer
+  useEffect(() => {
+    onChange?.(tpl);
+  }, [tpl, onChange]);
+
+  // garante que a categoria atual (vinda do banco) apareça no select,
+  // mesmo se não estiver em `categorias`
+  const categoriasSelect = useMemo(() => {
+    if (!tpl.categoria) return categorias;
+    if (categorias.includes(tpl.categoria)) return categorias;
+    return [tpl.categoria, ...categorias];
+  }, [categorias, tpl.categoria]);
 
   const adicionarItem = (it: Partial<ItemChecklist>) => {
     const novo: ItemChecklist = {
@@ -68,23 +85,36 @@ export function TemplateForm({
   const atualizarItem = (it: Partial<ItemChecklist> & { id: string }) => {
     setTpl((prev) => ({
       ...prev,
-      itens: prev.itens.map((i) => (i.id === it.id ? { ...i, ...it } as ItemChecklist : i)),
+      itens: prev.itens.map((i) =>
+        i.id === it.id ? ({ ...i, ...it } as ItemChecklist) : i
+      ),
     }));
   };
 
   const removerItem = (id: string) => {
-    setTpl((prev) => ({ ...prev, itens: prev.itens.filter((i) => i.id !== id) }));
+    setTpl((prev) => ({
+      ...prev,
+      itens: prev.itens.filter((i) => i.id !== id),
+    }));
   };
 
-  const salvar = () => {
+  const salvar = async () => {
     if (!tpl.nome.trim() || tpl.itens.length === 0) return;
     const toSave: ChecklistTemplate = {
       ...tpl,
       id: tpl.id || uid(),
       criadoEm: tpl.criadoEm || new Date().toISOString(),
     };
-    onSave(toSave);
+    await onSave(toSave);
   };
+
+  // expõe função de submit pro DialogFooter
+  useEffect(() => {
+    if (exposeSubmit) {
+      exposeSubmit(salvar);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tpl, exposeSubmit]);
 
   const Content = (
     <div className="space-y-6">
@@ -96,7 +126,9 @@ export function TemplateForm({
             id="nome"
             placeholder="Ex.: Inspeção de entrada"
             value={tpl.nome}
-            onChange={(e) => setTpl((p) => ({ ...p, nome: e.target.value }))}
+            onChange={(e) =>
+              setTpl((p) => ({ ...p, nome: e.target.value }))
+            }
           />
         </div>
 
@@ -104,14 +136,18 @@ export function TemplateForm({
           <Label htmlFor="categoria">Categoria</Label>
           <Select
             value={tpl.categoria || ""}
-            onValueChange={(v) => setTpl((p) => ({ ...p, categoria: v }))}
+            onValueChange={(v) =>
+              setTpl((p) => ({ ...p, categoria: v }))
+            }
           >
             <SelectTrigger id="categoria">
               <SelectValue placeholder="Selecione..." />
             </SelectTrigger>
             <SelectContent>
-              {categorias.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+              {categoriasSelect.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -123,7 +159,9 @@ export function TemplateForm({
             id="descricao"
             placeholder="Uma descrição curta para identificar o checklist…"
             value={tpl.descricao || ""}
-            onChange={(e) => setTpl((p) => ({ ...p, descricao: e.target.value }))}
+            onChange={(e) =>
+              setTpl((p) => ({ ...p, descricao: e.target.value }))
+            }
             rows={3}
           />
         </div>
@@ -135,7 +173,13 @@ export function TemplateForm({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="font-medium">Itens do checklist</h4>
-          <Button size="sm" onClick={() => { setItemEditando(null); setAddOpen(true); }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setItemEditando(null);
+              setAddOpen(true);
+            }}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Adicionar item
           </Button>
@@ -154,12 +198,30 @@ export function TemplateForm({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{it.titulo}</span>
-                    {it.obrigatorio && <Badge variant="destructive" className="text-xs">Obrigatório</Badge>}
-                    {it.categoria && <Badge variant="outline" className="text-xs">{it.categoria}</Badge>}
+                    <span className="font-medium truncate">
+                      {it.titulo}
+                    </span>
+                    {it.obrigatorio && (
+                      <Badge
+                        variant="destructive"
+                        className="text-xs"
+                      >
+                        Obrigatório
+                      </Badge>
+                    )}
+                    {it.categoria && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs"
+                      >
+                        {it.categoria}
+                      </Badge>
+                    )}
                   </div>
                   {it.descricao && (
-                    <p className="text-sm text-muted-foreground mt-1">{it.descricao}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {it.descricao}
+                    </p>
                   )}
                 </div>
 
@@ -167,7 +229,10 @@ export function TemplateForm({
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => { setItemEditando(it); setEditItemOpen(true); }}
+                    onClick={() => {
+                      setItemEditando(it);
+                      setEditItemOpen(true);
+                    }}
                     title="Editar item"
                     aria-label="Editar item"
                   >
@@ -190,23 +255,28 @@ export function TemplateForm({
         )}
       </div>
 
-      {/* Ações */}
-      <div className="border-t pt-4 flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button onClick={salvar} disabled={!tpl.nome.trim() || tpl.itens.length === 0}>
-          <Save className="h-4 w-4 mr-1" />
-          {editando ? "Salvar alterações" : "Criar checklist"}
-        </Button>
-      </div>
+      {/* Ações – só quando NÃO está em variant="bare" */}
+      {variant !== "bare" && (
+        <div className="border-t pt-4 flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={salvar}
+            disabled={!tpl.nome.trim() || tpl.itens.length === 0}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            {editando ? "Salvar alterações" : "Criar checklist"}
+          </Button>
+        </div>
+      )}
 
       {/* Dialog de item (adicionar/editar) */}
       <ItemDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         onSave={(novo) => adicionarItem(novo)}
-        categorias={categorias}               // << readonly ok
+        categorias={categorias}
       />
 
       {itemEditando && (
@@ -216,9 +286,11 @@ export function TemplateForm({
             setEditItemOpen(v);
             if (!v) setItemEditando(null);
           }}
-          onSave={(novo) => atualizarItem({ ...novo, id: itemEditando.id })}
-          categorias={categorias}            
-          initialValue={itemEditando}      
+          onSave={(novo) =>
+            atualizarItem({ ...novo, id: itemEditando.id })
+          }
+          categorias={categorias}
+          initialValue={itemEditando}
         />
       )}
     </div>
@@ -233,8 +305,9 @@ export function TemplateForm({
           {editando ? "Editar Checklist" : "Novo Checklist"}
         </CardTitle>
         <CardDescription>
-          {editando ? "Atualize os campos e salve para aplicar as alterações."
-                    : "Preencha os campos para criar um novo modelo."}
+          {editando
+            ? "Atualize os campos e salve para aplicar as alterações."
+            : "Preencha os campos para criar um novo modelo."}
         </CardDescription>
       </CardHeader>
       <CardContent>{Content}</CardContent>

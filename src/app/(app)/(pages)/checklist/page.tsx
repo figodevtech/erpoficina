@@ -1,14 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
 import type { ChecklistTemplate } from "./components/types";
 import { categorias, novoTemplateVazio } from "./components/utils";
-import { listarModelos, criarModelo, atualizarModelo, excluirModelo } from "./components/api";
+import {
+  listarModelos,
+  criarModelo,
+  atualizarModelo,
+  excluirModelo,
+} from "./components/api";
 
 import { TemplateForm } from "./components/template-form";
 import { TemplatesList } from "./components/template-list";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export default function Page() {
   const [items, setItems] = useState<ChecklistTemplate[]>([]);
@@ -17,8 +31,13 @@ export default function Page() {
 
   const [open, setOpen] = useState(false);
   const [salvando, setSalvando] = useState(false);
+
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [modeloEmEdicao, setModeloEmEdicao] = useState<ChecklistTemplate>(novoTemplateVazio());
+  const [modeloEmEdicao, setModeloEmEdicao] =
+    useState<ChecklistTemplate>(novoTemplateVazio());
+
+  // função exposta pelo TemplateForm pra disparar o "submit"
+  const submitRef = useRef<(() => Promise<void> | void) | null>(null);
 
   async function reload() {
     try {
@@ -27,7 +46,12 @@ export default function Page() {
       const data = await listarModelos();
       setItems(data);
     } catch (e: any) {
-      setErro(e?.message || "Não foi possível carregar os modelos.");
+      const msg =
+        typeof e?.message === "string"
+          ? e.message
+          : "Não foi possível carregar os modelos.";
+      setErro(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -45,7 +69,8 @@ export default function Page() {
 
   const editar = (tpl: ChecklistTemplate) => {
     setEditandoId(tpl.id);
-    setModeloEmEdicao(JSON.parse(JSON.stringify(tpl)));
+    const clone = JSON.parse(JSON.stringify(tpl)) as ChecklistTemplate;
+    setModeloEmEdicao(clone);
     setOpen(true);
   };
 
@@ -54,28 +79,35 @@ export default function Page() {
       setErro(null);
       await excluirModelo(id);
       setItems((lst) => lst.filter((c) => c.id !== id));
+      toast.success("Checklist excluído com sucesso.");
       if (editandoId === id) {
         setEditandoId(null);
         setOpen(false);
       }
     } catch (e: any) {
-      setErro(e?.message || "Erro ao excluir modelo.");
+      const msg =
+        typeof e?.message === "string"
+          ? e.message
+          : "Erro ao excluir checklist.";
+      setErro(msg);
+      toast.error(msg);
     }
   };
 
-  const cancelarEdicao = () => {
-    setEditandoId(null);
+  const handleCloseDialog = () => {
+    if (salvando) return;
     setOpen(false);
+    setEditandoId(null);
+    setModeloEmEdicao(novoTemplateVazio());
   };
 
-  const salvar = async (tpl: ChecklistTemplate) => {
-    setSalvando(true);
+  const handleSaveTemplate = async (tpl: ChecklistTemplate) => {
     setErro(null);
 
     const payload = {
       nome: tpl.nome,
-      descricao: tpl.descricao,
-      categoria: tpl.categoria,
+      descricao: tpl.descricao ?? "",
+      categoria: tpl.categoria ?? "",
       itens: tpl.itens,
       ativo: tpl.ativo ?? true,
     };
@@ -83,18 +115,41 @@ export default function Page() {
     try {
       if (editandoId) {
         const atualizado = await atualizarModelo(editandoId, payload);
-        setItems((lst) => lst.map((c) => (c.id === editandoId ? atualizado : c)));
+        setItems((lst) =>
+          lst.map((c) => (c.id === editandoId ? atualizado : c))
+        );
+        toast.success("Checklist atualizado com sucesso.");
       } else {
         const criado = await criarModelo(payload);
         setItems((lst) => [criado, ...lst]);
+        toast.success("Checklist criado com sucesso.");
       }
-      cancelarEdicao();
+
+      handleCloseDialog();
     } catch (e: any) {
-      setErro(e?.message || "Erro ao salvar modelo.");
+      const msg =
+        typeof e?.message === "string"
+          ? e.message
+          : "Erro ao salvar checklist.";
+      setErro(msg);
+      toast.error(msg);
+      throw e; // deixa o botão de salvar tirar o loading corretamente
+    }
+  };
+
+  const handleClickSalvar = async () => {
+    if (!submitRef.current) return;
+    setSalvando(true);
+    try {
+      await submitRef.current();
     } finally {
       setSalvando(false);
     }
   };
+
+  const isInvalid =
+    !modeloEmEdicao.nome?.trim() ||
+    (modeloEmEdicao.itens?.length ?? 0) === 0;
 
   return (
     <div className="mx-auto space-y-6">
@@ -108,44 +163,62 @@ export default function Page() {
         onDelete={excluir}
       />
 
-      {/* Dialog MAIOR + separador sob o título */}
-     <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : cancelarEdicao())}>
-  <DialogContent
-    className="
-      p-0 w-[98vw] max-w-[98vw]
-      sm:max-w-[90vw] lg:max-w-[1200px] xl:max-w-[1400px]
-      max-h-[90vh] overflow-hidden
-    "
-  >
-    {/* layout fixo: header + separator + body rolável */}
-    <div className="flex h-[90vh] max-h-[90vh] flex-col">
-      <DialogHeader className="px-6 pt-4 pb-3 text-center shrink-0">
-        <DialogTitle className="text-lg font-semibold">
-          {editandoId ? "Editar checklist" : "Novo checklist"}
-        </DialogTitle>
-      </DialogHeader>
-      <div className="shrink-0 h-px bg-border" /> {/* Separator */}
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (v) setOpen(true);
+          else handleCloseDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {editandoId ? "Editar checklist" : "Novo checklist"}
+            </DialogTitle>
+          </DialogHeader>
 
-      {/* body com scroll, evita “muito alto” */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-        <TemplateForm
-          value={modeloEmEdicao}
-          categorias={categorias}
-          editando={!!editandoId}
-          onSave={salvar}
-          onCancel={cancelarEdicao}
-          variant="bare"
-        />
-        {salvando && (
-          <div className="mt-3 text-sm text-muted-foreground inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Salvando…
+          {/* conteúdo rolável */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 py-2">
+            <TemplateForm
+              value={modeloEmEdicao}
+              categorias={categorias}
+              editando={!!editandoId}
+              onSave={handleSaveTemplate}
+              onCancel={handleCloseDialog}
+              variant="bare"
+              onChange={setModeloEmEdicao}
+              exposeSubmit={(fn) => {
+                submitRef.current = fn;
+              }}
+            />
           </div>
-        )}
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
 
+          <DialogFooter className="mt-2 border-t pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCloseDialog}
+              disabled={salvando}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleClickSalvar}
+              disabled={salvando || isInvalid}
+            >
+              {salvando ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

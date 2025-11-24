@@ -680,6 +680,7 @@ export function OrdensTabela({
         }}
         osId={linkRow?.id ?? 0}
         clienteNome={linkRow?.cliente?.nome ?? null}
+        clienteTelefone={linkRow?.cliente?.telefone}
       />
 
       {/* Alerta: enviar p/ pagamento */}

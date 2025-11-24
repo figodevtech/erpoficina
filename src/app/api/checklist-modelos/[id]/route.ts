@@ -1,6 +1,6 @@
 // app/api/checklist-modelos/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { auth } from "@/lib/auth";
 
@@ -8,17 +8,65 @@ const OPEN = process.env.OPEN_PERMISSIONS === "true";
 
 const ItemSchema = z.object({
   titulo: z.string().min(1),
-  descricao: z.string().optional(),
-  categoria: z.string().optional().default(""),
-  obrigatorio: z.boolean().optional().default(false),
-  ordem: z.number().int().optional().default(0),
+
+  // null / undefined -> ""
+  descricao: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? ""),
+
+  // null / undefined -> ""
+  categoria: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? ""),
+
+  // qualquer coisa truthy -> true, senão false
+  obrigatorio: z
+    .boolean()
+    .nullable()
+    .optional()
+    .transform((v) => !!v),
+
+  // null / undefined / coisa estranha -> 0
+  ordem: z
+    .number()
+    .int()
+    .nullable()
+    .optional()
+    .transform((v) =>
+      typeof v === "number" && Number.isFinite(v) ? v : 0
+    ),
 });
 
 const ModeloUpdateSchema = z.object({
   nome: z.string().min(1),
-  descricao: z.string().optional().default(""),
-  categoria: z.string().optional().default(""),
-  ativo: z.boolean().optional().default(true),
+
+  // null / undefined -> ""
+  descricao: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? ""),
+
+  // null / undefined -> ""
+  categoria: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? ""),
+
+  // null / undefined -> true
+  ativo: z
+    .boolean()
+    .nullable()
+    .optional()
+    .transform((v) =>
+      typeof v === "boolean" ? v : true
+    ),
+
   itens: z.array(ItemSchema).min(1),
 });
 
@@ -35,7 +83,10 @@ function mapItemRow(row: any) {
   };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<Params> }) {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<Params> }
+) {
   try {
     if (!OPEN) {
       const session = await auth();
@@ -63,8 +114,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<Param
         "id, nome, descricao, categoria, ativo, criado_em, atualizado_em, checklist_modelo_item(*)"
       )
       .eq("id", modeloId)
-      // ordena os itens por ordem
-      .order("ordem", { ascending: true, foreignTable: "checklist_modelo_item" })
+      .order("ordem", {
+        ascending: true,
+        foreignTable: "checklist_modelo_item",
+      })
       .single();
 
     if (error) throw error;
@@ -98,7 +151,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<Param
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<Params> }) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<Params> }
+) {
   try {
     if (!OPEN) {
       const session = await auth();
@@ -128,8 +184,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
       .from("checklist_modelo")
       .update({
         nome: parsed.nome,
-        descricao: parsed.descricao,
-        categoria: parsed.categoria,
+        descricao: parsed.descricao || null,
+        categoria: parsed.categoria || "",
         ativo: parsed.ativo,
         atualizado_em: new Date().toISOString(),
       })
@@ -137,7 +193,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
 
     if (e1) {
       if ((e1 as any).code === "23505") {
-        // unique_violation do constraint checklist_modelo_nome_key
         return NextResponse.json(
           { ok: false, error: "Já existe um modelo com esse nome" },
           { status: 409 }
@@ -146,7 +201,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
       throw e1;
     }
 
-    // Estratégia simples: substitui todos os itens
+    // Substitui todos os itens
     const { error: e2 } = await supabaseAdmin
       .from("checklist_modelo_item")
       .delete()
@@ -156,10 +211,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
     const itensToInsert = parsed.itens.map((it, idx) => ({
       modelo_id: modeloId,
       titulo: it.titulo,
-      descricao: it.descricao ?? null,
-      categoria: it.categoria ?? "",
+      descricao: it.descricao || null,
+      categoria: it.categoria || "",
       obrigatorio: !!it.obrigatorio,
-      ordem: typeof it.ordem === "number" ? it.ordem : idx,
+      ordem:
+        typeof it.ordem === "number" && Number.isFinite(it.ordem)
+          ? it.ordem
+          : idx,
     }));
 
     const { error: e3 } = await supabaseAdmin
@@ -167,14 +225,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
       .insert(itensToInsert);
     if (e3) throw e3;
 
-    // Retorna atualizado já no formato normalizado
+    // Retorna atualizado
     const { data, error: e4 } = await supabaseAdmin
       .from("checklist_modelo")
       .select(
         "id, nome, descricao, categoria, ativo, criado_em, atualizado_em, checklist_modelo_item(*)"
       )
       .eq("id", modeloId)
-      .order("ordem", { ascending: true, foreignTable: "checklist_modelo_item" })
+      .order("ordem", {
+        ascending: true,
+        foreignTable: "checklist_modelo_item",
+      })
       .single();
     if (e4) throw e4;
 
@@ -194,12 +255,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
 
     return NextResponse.json({ ok: true, item }, { status: 200 });
   } catch (e: any) {
-    if (e?.name === "ZodError") {
+    if (e instanceof ZodError) {
+      const flat = e.flatten();
+      const firstFieldError = Object.values(flat.fieldErrors)
+        .flat()
+        .find((msg) => !!msg) as string | undefined;
+      const firstFormError = flat.formErrors[0];
+
+      const msg =
+        firstFieldError ||
+        firstFormError ||
+        "Dados inválidos. Verifique os campos do checklist.";
+
       return NextResponse.json(
-        { ok: false, error: e.flatten?.() ?? String(e) },
+        { ok: false, error: msg, issues: flat },
         { status: 400 }
       );
     }
+
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Erro ao atualizar" },
       { status: 500 }
@@ -207,7 +280,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<Params> }
+) {
   try {
     if (!OPEN) {
       const session = await auth();
@@ -229,7 +305,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
       );
     }
 
-    // ON DELETE CASCADE no FK cuida dos itens
     const { error } = await supabaseAdmin
       .from("checklist_modelo")
       .delete()
