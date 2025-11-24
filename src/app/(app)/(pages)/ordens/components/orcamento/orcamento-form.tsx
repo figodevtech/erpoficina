@@ -7,13 +7,15 @@ import { Separator } from "@/components/ui/separator";
 import { ClipboardList, ShoppingCart, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
-import { OrcamentoFormHandle, OrcamentoFormProps } from "./tipos";
+import { OrcamentoFormHandle, OrcamentoFormProps, ProdutoBusca } from "./tipos";
 import { useCarrinhoOrcamento } from "./ganchos/use-carrinho-orcamento";
 import { salvarOrcamentoAPI, EstoqueInsuficienteError } from "./servicos/api-orcamento";
 
 import { TabelaItensProduto } from "./components/tabela-itens-produto";
 import { TabelaItensServico } from "./components/tabela-tens-servico";
 import { SelecaoItensTabs } from "./components/selecao-itens-tabs";
+import ProductSelect from "@/app/(app)/components/productSelect";
+import { Button } from "@/components/ui/button";
 
 export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
   { ordemServico, onTotaisChange },
@@ -35,7 +37,7 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
 
   // mapa: produtoid -> {disponivel, solicitado}
   const [errosEstoque, setErrosEstoque] = useState<Record<number, { disponivel: number; solicitado: number }>>({});
-
+  const [isProductSelectOpen, setIsProductSelectOpen] = useState(false)
   useEffect(() => {
     if (!osId) return;
     (async () => {
@@ -149,7 +151,21 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
             <Wrench className="h-5 w-5 text-primary" />
             <CardTitle className="text-base sm:text-lg">Itens do orçamento</CardTitle>
           </div>
-          <CardDescription>Use os botões para ajustar quantidade. Preço é fixo.</CardDescription>
+          <CardDescription className="flex flex-row items-center justify-between">
+            <span>
+
+            Use os botões para ajustar quantidade. Preço é fixo.
+            </span>
+            <div>
+              <ProductSelect
+              open={isProductSelectOpen}
+              setOpen={setIsProductSelectOpen}
+               OnSelect={(p)=> console.log(p)}>
+                <Button>Selecionar Produto</Button>
+              </ProductSelect>
+            </div>
+
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">

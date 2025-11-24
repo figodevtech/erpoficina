@@ -335,7 +335,7 @@ export default function ProductsDataTable({
                         >
                           <Button
                             variant={"default"}
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer  bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
+                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer not-dark:text-gray-800  bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
                           >
                             <Plus className="-ml-1 -mr-1 h-4 w-4" />
                             <span>Entrada</span>
@@ -349,7 +349,7 @@ export default function ProductsDataTable({
                         >
                           <Button
                             variant={"default"}
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
+                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer not-dark:text-gray-800 bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
                           >
                             <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
                             <span>Excluir</span>

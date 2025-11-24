@@ -279,7 +279,7 @@ export default function EntradaDialog({
                 <span>Em estoque: {currentQuantity}</span>
               </DialogDescription>
             </DialogHeader>
-            <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2 relative">
+            <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 bg-muted px-6 py-10 space-y-2 relative">
               <Button
                 variant={"outline"}
                 className="absolute top-5 right-5 hover:cursor-pointer"
@@ -291,9 +291,10 @@ export default function EntradaDialog({
                 <div className="space-y-2">
                   <Label>Quantidade:</Label>
                   <Input
+                  
                     value={newQtd}
                     onChange={(e) => setNewQtd(Number(e.target.value))}
-                    className="w-20"
+                    className="w-20 not-dark:bg-white"
                     type="numeric"
                   />
                 </div>
@@ -308,7 +309,7 @@ export default function EntradaDialog({
                     value={selectedFornecedorId?.toString()}
                     onValueChange={(v) => setSelectedFornecedorId(Number(v))}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full not-dark:bg-white">
                       <SelectValue
                         placeholder={
                           isLoadingFornecedor ? "Carregando..." : "Selecione"
