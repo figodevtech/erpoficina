@@ -102,7 +102,7 @@ export default function ProductSelect({
       <DialogContent className="h-lvh min-w-screen max-h-[600px] p-0 overflow-hidden sm:max-w-[500px] sm:max-h-[600px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle>Selecione um cliente</DialogTitle>
+            <DialogTitle>Selecione um Produto</DialogTitle>
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
@@ -158,7 +158,12 @@ export default function ProductSelect({
                     ))}
                   </TableBody>
                 </Table>
-                <div className="flex items-center mt-4 justify-between">
+                
+             
+          </div>
+        </div>
+        <DialogFooter>
+          <div className="flex flex-row items-center pb-5 w-full h-full justify-center">
                   <div className="text-xs text-muted-foreground flex flex-nowrap">
                     <span>{pagination.limit * (pagination.page - 1) + 1}</span>{" "}
                     -{" "}
@@ -259,10 +264,7 @@ export default function ProductSelect({
                     </Select>
                   </div>
                 </div>
-             
-          </div>
-        </div>
-        
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

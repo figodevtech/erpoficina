@@ -2,6 +2,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -152,7 +153,12 @@ export default function CustomerSelect({
                     ))}
                   </TableBody>
                 </Table>
-                <div className="flex items-center mt-4 justify-between">
+                
+             
+          </div>
+        </div>
+        <DialogFooter>
+<div className="flex items-center pb-5 w-full h-full flex-row justify-center">
                   <div className="text-xs text-muted-foreground flex flex-nowrap">
                     <span>{pagination.limit * (pagination.page - 1) + 1}</span>{" "}
                     -{" "}
@@ -253,9 +259,7 @@ export default function CustomerSelect({
                     </Select>
                   </div>
                 </div>
-             
-          </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

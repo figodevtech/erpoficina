@@ -14,16 +14,21 @@ const supabase = createClient(
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const q = (searchParams.get("q") || "").trim();
+
+    const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
+    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "").trim();
     const codigo = (searchParams.get("codigo") || "").trim();
 
     const limit = Math.min(Number(searchParams.get("limit") ?? 50) || 50, 200);
-    const from = Math.max(Number(searchParams.get("from") ?? 0) || 0, 0);
+    const from = (page - 1) * limit;
     const to = from + limit - 1;
 
     let query = supabase
       .from("servico")
-      .select("id,codigo,descricao,precohora,cnae,itemlistaservico", { count: "exact" })
+      .select(
+        "id,codigo,descricao,precohora,cnae,itemlistaservico",
+        { count: "exact" } // <- pega o total pra paginação
+      )
       .range(from, to)
       .order("descricao", { ascending: true });
 
@@ -37,7 +42,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
+
     if (error) throw error;
 
     const servicos = (data ?? []).map((s: any) => ({
@@ -47,12 +53,28 @@ export async function GET(request: Request) {
       precohora: Number(s.precohora ?? 0),
     }));
 
+    const total = count ?? 0;
+    const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+    const pageCount = servicos.length;
+
     return NextResponse.json(
-      { servicos, total: servicos.length },
+      {
+        servicos,
+        pagination: {
+          total,      // total de registros no banco (dentro do filtro)
+          page,       // página atual
+          limit,      // limite por página
+          totalPages, // total de páginas
+          pageCount,  // qtde de itens retornados nesta página
+        },
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (err: any) {
     console.error("GET /api/servicos/buscar", err);
-    return NextResponse.json({ error: "Falha ao buscar serviços" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Falha ao buscar serviços" },
+      { status: 500 }
+    );
   }
 }

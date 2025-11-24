@@ -4,7 +4,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ClipboardList, ShoppingCart, Wrench } from "lucide-react";
+import { ClipboardList, Plus, ShoppingCart, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { OrcamentoFormHandle, OrcamentoFormProps, ProdutoBusca } from "./tipos";
@@ -16,6 +16,7 @@ import { TabelaItensServico } from "./components/tabela-tens-servico";
 import { SelecaoItensTabs } from "./components/selecao-itens-tabs";
 import ProductSelect from "@/app/(app)/components/productSelect";
 import { Button } from "@/components/ui/button";
+import ServiceSelect from "@/app/(app)/components/serviceSelect";
 
 export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
   { ordemServico, onTotaisChange },
@@ -38,6 +39,7 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
   // mapa: produtoid -> {disponivel, solicitado}
   const [errosEstoque, setErrosEstoque] = useState<Record<number, { disponivel: number; solicitado: number }>>({});
   const [isProductSelectOpen, setIsProductSelectOpen] = useState(false)
+  const [isServiceSelectOpen, setIsServiceSelectOpen] = useState(false)
   useEffect(() => {
     if (!osId) return;
     (async () => {
@@ -156,12 +158,19 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
 
             Use os botões para ajustar quantidade. Preço é fixo.
             </span>
-            <div>
+            <div className="flex flex-row items-center gap-2">
+              <ServiceSelect
+              open={isServiceSelectOpen}
+              setOpen={setIsServiceSelectOpen}
+              OnSelect={(s)=>console.log(s)}
+              >
+                <Button className="hover:cursor-pointer"  variant={"outline"}><Plus/> Serviço</Button>
+              </ServiceSelect>
               <ProductSelect
               open={isProductSelectOpen}
               setOpen={setIsProductSelectOpen}
                OnSelect={(p)=> console.log(p)}>
-                <Button>Selecionar Produto</Button>
+                <Button className="hover:cursor-pointer" variant={"outline"}><Plus/> Produto</Button>
               </ProductSelect>
             </div>
 
