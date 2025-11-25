@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Ordem, StatusOS } from "../../../ordens/types";
 import { Pagination } from "../../fluxodecaixa/types";
 import {
   ChevronDown,
@@ -33,12 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import OsFinancialDialog from "./osFinancialDialog/osFinancialDialog";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { VendaComItens, vendaStatus } from "../../../historicovendas/types";
 import { formatDate } from "@/utils/formatDate";
+import VendasFinancialDialog from "./vendasFinancialDialog/vendasFinancialDialog";
 
 interface OsTableProps {
   vendas: VendaComItens[];
@@ -62,6 +61,7 @@ export default function VendasTable({
 }: OsTableProps) {
   // ID estável para o Select de "itens por página"
   const [selectedStatus, setSelectedStatus] = useState<vendaStatus>(vendaStatus.PAGAMENTO);
+  const [open, setOpen] = useState(false);
   const limitUid = React.useId();
   const limitListboxId = `${limitUid}-os-limit-listbox`;
   const tabTheme =
@@ -138,19 +138,19 @@ export default function VendasTable({
 
           <TableBody>
             {vendas.length > 0 ? (
-              vendas.map((o) => {
+              vendas.map((v) => {
                 // IDs estáveis por linha para o menu
-                const triggerId = `os-row-${o.id}-menu-btn`;
-                const menuId = `os-row-${o.id}-menu`;
+                const triggerId = `os-row-${v.id}-menu-btn`;
+                const menuId = `os-row-${v.id}-menu`;
 
                 return (
-                  <TableRow key={o.id} className="hover:cursor-pointer">
+                  <TableRow key={v.id} className="hover:cursor-pointer">
                     {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
-                    <TableCell>{o.id}</TableCell>
-                    <TableCell>{o.cliente.nomerazaosocial}</TableCell>
-                    <TableCell>{formatDate(o.datavenda)}</TableCell>
-                    <TableCell>{formatarEmReal(o.valortotal)}</TableCell>
-                    <TableCell>{o.status}</TableCell>
+                    <TableCell>{v.id}</TableCell>
+                    <TableCell>{v.cliente.nomerazaosocial}</TableCell>
+                    <TableCell>{formatDate(v.datavenda)}</TableCell>
+                    <TableCell>{formatarEmReal(v.valortotal)}</TableCell>
+                    <TableCell>{v.status}</TableCell>
                    
                     <TableCell className="flex justify-end">
                       <DropdownMenu>
@@ -170,13 +170,20 @@ export default function VendasTable({
                           aria-labelledby={triggerId}
                           className="space-y-1"
                         >
-                          
+                          <VendasFinancialDialog
+                          handleGetVendas={handleGetVendas}
+                          open={open}
+                          onOpenChange={setOpen}
+                          vendaId={v.id}
+                          >
+
                             <Button
                               className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
                             >
                               <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
                               <span>Pagamento</span>
                             </Button>
+                          </VendasFinancialDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

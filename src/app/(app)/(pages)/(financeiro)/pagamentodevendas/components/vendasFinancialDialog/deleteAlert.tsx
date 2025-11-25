@@ -1,3 +1,4 @@
+import { vendaStatus } from "@/app/(app)/(pages)/historicovendas/types";
 import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
 import {
   AlertDialog,
@@ -18,10 +19,10 @@ interface DeleteAlertProps{
     isAlertOpen: boolean
     setIsAlertOpen: (value: boolean)=>void
     idToDelete: number
-    statusOs?: StatusOS | null
+    statusVenda?: vendaStatus | null
   
 }
-export default function DeleteAlert({children, handleDeleteTransaction, isAlertOpen, setIsAlertOpen, idToDelete, statusOs}: DeleteAlertProps) {
+export default function DeleteAlert({children, handleDeleteTransaction, isAlertOpen, setIsAlertOpen, idToDelete, statusVenda}: DeleteAlertProps) {
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
       <AlertDialogTrigger asChild>
@@ -32,7 +33,7 @@ export default function DeleteAlert({children, handleDeleteTransaction, isAlertO
         <AlertDialogHeader>
           <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
           <AlertDialogDescription>
-            {statusOs === "CONCLUIDO" ?
+            {statusVenda === "FINALIZADA" ?
             
             "Ordem de Serviço já conluída. Tem certeza que deseja deletar a transação? Está ação não pode ser desfeita e retornará a OS para o status de PAGAMENTO EM ABERTO."
             :
