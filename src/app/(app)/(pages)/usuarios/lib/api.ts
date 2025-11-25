@@ -1,7 +1,9 @@
+// lib/api.ts
 "use client";
 
 export type Perfil = { id: number; nome: string };
 export type Setor = { id: number; nome: string };
+
 export type Usuario = {
   id: number | string;
   nome: string;
@@ -13,7 +15,19 @@ export type Usuario = {
   ativo?: boolean;
 };
 
-export async function fetchLookup(): Promise<{ perfis: Perfil[]; setores: Setor[] }> {
+export type UsuarioPayload = {
+  nome: string;
+  email: string;
+  perfilid?: number | null;
+  setorid?: number | null;
+  ativo?: boolean;
+};
+
+// 🔹 Busca perfis e setores para o cadastro de usuários
+export async function buscarListasUsuarios(): Promise<{
+  perfis: Perfil[];
+  setores: Setor[];
+}> {
   const r = await fetch("/api/users/lookup", { cache: "no-store" });
   const j = await r.json();
   if (!r.ok) throw new Error(j?.error || "Falha ao carregar listas auxiliares");
@@ -22,12 +36,13 @@ export async function fetchLookup(): Promise<{ perfis: Perfil[]; setores: Setor[
   return { perfis, setores };
 }
 
-export async function fetchUsers(): Promise<Usuario[]> {
+// 🔹 Lista usuários
+export async function buscarUsuarios(): Promise<Usuario[]> {
   const r = await fetch("/api/users", { cache: "no-store" });
   const j = await r.json();
   if (!r.ok) throw new Error(j?.error || "Falha ao carregar usuários");
   const arr: any[] = Array.isArray(j?.users) ? j.users : [];
-  // Normaliza campos comuns
+
   return arr.map((u) => ({
     id: u.id,
     nome: u.nome,
@@ -36,68 +51,75 @@ export async function fetchUsers(): Promise<Usuario[]> {
     setorid: u.setorid ?? u.setorId ?? u?.setor?.id ?? null,
     perfil: u.perfil ?? null,
     setor: u.setor ?? null,
-    ativo: u.ativo ?? true,
+    ativo: typeof u.ativo === "boolean" ? u.ativo : true,
   })) as Usuario[];
 }
 
-export async function createUser(payload: {
-  nome: string;
-  email: string;
-  perfilid?: number | null;
-  perfilNome?: string;
-  setorid?: number | null;
-  ativo?: boolean;
-}): Promise<void> {
-  // O seu backend aceita perfilId OU perfilNome. Vamos enviar perfilId se existir.
-  const body: any = {
-    nome: payload.nome,
-    email: payload.email,
-  };
-  if (payload.perfilid != null) body.perfilId = payload.perfilid;
-  if (payload.perfilNome) body.perfilNome = payload.perfilNome;
-  if (payload.setorid != null) body.setorId = payload.setorid;
-  if (payload.ativo != null) body.ativo = payload.ativo;
-
-  const r = await fetch("/api/users", {
+// 🔹 Cria usuário
+export async function criarUsuario(payload: UsuarioPayload) {
+  const res = await fetch("/api/users", {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nome: payload.nome,
+      email: payload.email,
+      perfilid: payload.perfilid ?? null,
+      setorid: payload.setorid ?? null,
+      ativo: payload.ativo,
+    }),
   });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j?.error || "Erro ao criar usuário");
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Erro ao criar usuário");
+  return data.users; // backend devolve lista atualizada (mas o caller não precisa usar)
 }
 
-export async function updateUser(
-  id: string | number,
-  payload: {
-    nome: string;
-    email: string;
-    perfilid?: number | null;
-    perfilNome?: string;
-    setorid?: number | null;
-    ativo?: boolean;
-  }
-): Promise<void> {
-  const body: any = {
-    nome: payload.nome,
-    email: payload.email,
-  };
-  if (payload.perfilid != null) body.perfilId = payload.perfilid;
-  if (payload.perfilNome) body.perfilNome = payload.perfilNome;
-  if (payload.setorid != null) body.setorId = payload.setorid;
-  if (payload.ativo != null) body.ativo = payload.ativo;
-  
-  const r = await fetch(`/api/users/${id}`, {
+// 🔹 Atualiza usuário
+export async function atualizarUsuario(id: string | number, payload: UsuarioPayload) {
+  const res = await fetch(`/api/users/${id}`, {
     method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nome: payload.nome,
+      email: payload.email,
+      perfilId: payload.perfilid ?? null,
+      setorId: payload.setorid ?? null,
+      ativo: payload.ativo,
+    }),
   });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j?.error || "Erro ao salvar usuário");
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Erro ao atualizar usuário");
+  return data.users;
 }
 
-export async function deleteUser(id: string | number): Promise<void> {
+// 🔹 Exclui usuário
+export async function excluirUsuario(id: string | number): Promise<void> {
   const r = await fetch(`/api/users/${id}`, { method: "DELETE" });
-  const j = await r.json();
+  const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error || "Erro ao remover usuário");
+}
+
+// 🔹 Enviar convite (e-mail de definição/redefinição de senha)
+export async function enviarConviteUsuario(id: string | number): Promise<void> {
+  const res = await fetch(`/api/users/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ acao: "convite" }), // 👈 PT-BR
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Erro ao enviar convite");
+}
+
+// 🔹 Definir diretamente a senha do usuário
+export async function definirSenhaUsuario(id: string | number, senha: string): Promise<void> {
+  const res = await fetch(`/api/users/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ acao: "definir_senha", senha }), // 👈 PT-BR
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Erro ao definir senha do usuário");
 }

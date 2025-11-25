@@ -1,3 +1,4 @@
+// tabela-usuarios.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -27,6 +28,8 @@ import {
   Trash2,
   Plus,
   Loader,
+  Mail,
+  Key,
 } from "lucide-react";
 
 type Props = {
@@ -38,9 +41,22 @@ type Props = {
   onEdit: (u: Usuario) => void;
   onView: (u: Usuario) => void;
   onDelete: (id: string | number) => void;
+  onEnviarConvite?: (u: Usuario) => void;
+  onDefinirSenha?: (u: Usuario) => void;
 };
 
-export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit, onView, onDelete }: Props) {
+export function TabelaUsuarios({
+  items,
+  loading,
+  error,
+  onReload,
+  onNew,
+  onEdit,
+  onView,
+  onDelete,
+  onEnviarConvite,
+  onDefinirSenha,
+}: Props) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -137,6 +153,7 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
               <TableHead>E-mail</TableHead>
               <TableHead>Setor</TableHead>
               <TableHead>Perfil</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -146,7 +163,7 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                   Nenhum usuário encontrado. Clique em <b>Novo usuário</b> para cadastrar.
                 </TableCell>
               </TableRow>
@@ -167,13 +184,23 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem onClick={() => onView(u)}>
                           <Eye className="h-4 w-4 mr-2" /> Visualizar
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onEdit(u)}>
                           <Edit3 className="h-4 w-4 mr-2" /> Editar
                         </DropdownMenuItem>
+                        {onEnviarConvite && (
+                          <DropdownMenuItem onClick={() => onEnviarConvite(u)}>
+                            <Mail className="h-4 w-4 mr-2" /> Enviar convite
+                          </DropdownMenuItem>
+                        )}
+                        {onDefinirSenha && (
+                          <DropdownMenuItem onClick={() => onDefinirSenha(u)}>
+                            <Key className="h-4 w-4 mr-2" /> Definir senha
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => onDelete(String(u.id))}
@@ -189,6 +216,7 @@ export function TabelaUsuarios({ items, loading, error, onReload, onNew, onEdit,
           </TableBody>
         </Table>
 
+        {/* Paginação igual estava — só ajustei colSpan no "nenhum usuário" */}
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             {total > 0 ? (

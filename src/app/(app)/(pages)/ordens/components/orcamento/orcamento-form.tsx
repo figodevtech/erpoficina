@@ -1,27 +1,46 @@
 // src/app/(app)/(pages)/ordens/components/orcamento/orcamento-form.tsx
 "use client";
 
-import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useState,
+  useCallback,
+} from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ClipboardList, Plus, ShoppingCart, Wrench } from "lucide-react";
+import { ClipboardList, Plus, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
-import { OrcamentoFormHandle, OrcamentoFormProps, ProdutoBusca } from "./tipos";
+import {
+  OrcamentoFormHandle,
+  OrcamentoFormProps,
+  ProdutoBusca,
+  ServicoBusca,
+} from "./tipos";
 import { useCarrinhoOrcamento } from "./ganchos/use-carrinho-orcamento";
-import { salvarOrcamentoAPI, EstoqueInsuficienteError } from "./servicos/api-orcamento";
+import {
+  salvarOrcamentoAPI,
+  EstoqueInsuficienteError,
+} from "./servicos/api-orcamento";
 
 import { TabelaItensProduto } from "./components/tabela-itens-produto";
 import { TabelaItensServico } from "./components/tabela-tens-servico";
-import { SelecaoItensTabs } from "./components/selecao-itens-tabs";
 import ProductSelect from "@/app/(app)/components/productSelect";
-import { Button } from "@/components/ui/button";
 import ServiceSelect from "@/app/(app)/components/serviceSelect";
+import { Button } from "@/components/ui/button";
 
-export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
-  { ordemServico, onTotaisChange },
-  ref
-) {
+export const OrcamentoForm = forwardRef<
+  OrcamentoFormHandle,
+  OrcamentoFormProps
+>(function OrcamentoForm({ ordemServico, onTotaisChange }, ref) {
   const osId = ordemServico?.id;
 
   const {
@@ -37,15 +56,19 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
   } = useCarrinhoOrcamento(osId, onTotaisChange);
 
   // mapa: produtoid -> {disponivel, solicitado}
-  const [errosEstoque, setErrosEstoque] = useState<Record<number, { disponivel: number; solicitado: number }>>({});
-  const [isProductSelectOpen, setIsProductSelectOpen] = useState(false)
-  const [isServiceSelectOpen, setIsServiceSelectOpen] = useState(false)
+  const [errosEstoque, setErrosEstoque] = useState<
+    Record<number, { disponivel: number; solicitado: number }>
+  >({});
+
+  const [isProductSelectOpen, setIsProductSelectOpen] = useState(false);
+  const [isServiceSelectOpen, setIsServiceSelectOpen] = useState(false);
+
   useEffect(() => {
     if (!osId) return;
     (async () => {
       try {
         await carregarItensDaOS();
-        setErrosEstoque({}); // limpamos marcações ao carregar da base
+        setErrosEstoque({});
       } catch (e: any) {
         console.error(e);
         toast.error(e?.message ?? "Falha ao carregar orçamento");
@@ -61,11 +84,26 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
       toast.success("Orçamento salvo com sucesso");
       window.dispatchEvent(new Event("os:refresh"));
     } catch (e: any) {
-      if (e instanceof EstoqueInsuficienteError || e?.name === "EstoqueInsuficienteError") {
-        // destacamos em vermelho os itens com falta
-        const faltas = (e.faltas ?? []) as Array<{ produtoid: number; disponivel: number; solicitado: number }>;
-        const map: Record<number, { disponivel: number; solicitado: number }> = {};
-        for (const f of faltas) map[f.produtoid] = { disponivel: f.disponivel, solicitado: f.solicitado };
+      if (
+        e instanceof EstoqueInsuficienteError ||
+        e?.name === "EstoqueInsuficienteError"
+      ) {
+        const faltas =
+          (e.faltas ??
+            []) as Array<{
+            produtoid: number;
+            disponivel: number;
+            solicitado: number;
+          }>;
+        const map: Record<
+          number,
+          { disponivel: number; solicitado: number }
+        > = {};
+        for (const f of faltas)
+          map[f.produtoid] = {
+            disponivel: f.disponivel,
+            solicitado: f.solicitado,
+          };
         setErrosEstoque(map);
 
         if (faltas.length) {
@@ -86,7 +124,10 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
   useImperativeHandle(ref, () => ({ salvarOrcamento }), [salvarOrcamento]);
 
   // wrappers para limpar aviso do item ao alterar/remover
-  const atualizarProdutoComReset = (index: number, patch: Partial<(typeof itensProduto)[number]>) => {
+  const atualizarProdutoComReset = (
+    index: number,
+    patch: Partial<(typeof itensProduto)[number]>
+  ) => {
     const prod = itensProduto[index];
     if (prod) {
       setErrosEstoque((prev) => {
@@ -113,67 +154,132 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
     toast.success("Produto removido");
   };
 
+  // 🔹 Adapta o produto vindo do ProductSelect para ProdutoBusca
+  const handleSelecionarProduto = (produtoSelecionado: any) => {
+    const descricao =
+      produtoSelecionado.titulo ??
+      produtoSelecionado.descricao ??
+      String(produtoSelecionado.id);
+
+    const codigo = String(
+      produtoSelecionado.codigo ??
+        produtoSelecionado.referencia ??
+        produtoSelecionado.codigobarras ??
+        produtoSelecionado.id
+    );
+
+    const estoque =
+      Number(produtoSelecionado.estoque ?? produtoSelecionado.estoque_atual) ||
+      0;
+
+    const precounitario = Number(
+      produtoSelecionado.precovenda ??
+        produtoSelecionado.precounitario ??
+        0
+    );
+
+    const adaptado: ProdutoBusca = {
+      id: produtoSelecionado.id,
+      codigo,
+      descricao,
+      precounitario,
+      estoque,
+    };
+
+    adicionarProduto(adaptado);
+    toast.success(`Produto "${adaptado.descricao}" adicionado ao orçamento.`);
+  };
+
+  // 🔹 Adapta o serviço vindo do ServiceSelect para ServicoBusca
+  const handleSelecionarServico = (servicoSelecionado: any) => {
+    const descricao =
+      servicoSelecionado.descricao ?? String(servicoSelecionado.id);
+
+    const codigo = String(servicoSelecionado.codigo ?? servicoSelecionado.id);
+
+    const precohora = Number(
+      servicoSelecionado.precohora ??
+        servicoSelecionado.valor ??
+        servicoSelecionado.preco ??
+        0
+    );
+
+    const adaptado: ServicoBusca = {
+      id: servicoSelecionado.id,
+      codigo,
+      descricao,
+      precohora,
+    };
+
+    adicionarServico(adaptado);
+    toast.success(`Serviço "${adaptado.descricao}" adicionado ao orçamento.`);
+  };
+
   return (
     <div className="space-y-6">
       {/* CAPA */}
-      <Card className="border-border">
+      {/* <Card className="border-border">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">Orçamento • OS {ordemServico?.numero ?? osId ?? "—"}</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              Orçamento • OS {ordemServico?.numero ?? osId ?? "—"}
+            </CardTitle>
           </div>
           <CardDescription className="text-sm">
-            {[ordemServico?.cliente, ordemServico?.veiculo].filter(Boolean).join(" • ") || "—"}
+            {[ordemServico?.cliente, ordemServico?.veiculo]
+              .filter(Boolean)
+              .join(" • ") || "—"}
           </CardDescription>
         </CardHeader>
-      </Card>
+      </Card> */}
 
-      {/* BUSCAR ITENS */}
-      <Card className="border-border">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">Adicionar itens</CardTitle>
-          </div>
-          <CardDescription>Pesquise e inclua produtos e serviços no orçamento.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SelecaoItensTabs
-            onAdicionarProduto={adicionarProduto}
-            onAdicionarServico={adicionarServico}
-            abaInicial="produtos"
-          />
-        </CardContent>
-      </Card>
-
-      {/* ITENS ADICIONADOS */}
+      {/* ITENS ADICIONADOS + BOTÕES DE SELEÇÃO */}
       <Card className="border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Wrench className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">Itens do orçamento</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              Itens do orçamento
+            </CardTitle>
           </div>
-          <CardDescription className="flex flex-row items-center justify-between">
-            <span>
-
-            Use os botões para ajustar quantidade. Preço é fixo.
+          <CardDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm">
+              Use os botões para buscar e adicionar produtos e serviços ao
+              orçamento. Ajuste as quantidades diretamente na tabela.
             </span>
+
             <div className="flex flex-row items-center gap-2">
               <ServiceSelect
-              open={isServiceSelectOpen}
-              setOpen={setIsServiceSelectOpen}
-              OnSelect={(s)=>console.log(s)}
+                open={isServiceSelectOpen}
+                setOpen={setIsServiceSelectOpen}
+                OnSelect={handleSelecionarServico}
               >
-                <Button className="hover:cursor-pointer"  variant={"outline"}><Plus/> Serviço</Button>
+                <Button
+                  className="hover:cursor-pointer"
+                  variant={"outline"}
+                  type="button"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Serviço
+                </Button>
               </ServiceSelect>
+
               <ProductSelect
-              open={isProductSelectOpen}
-              setOpen={setIsProductSelectOpen}
-               OnSelect={(p)=> console.log(p)}>
-                <Button className="hover:cursor-pointer" variant={"outline"}><Plus/> Produto</Button>
+                open={isProductSelectOpen}
+                setOpen={setIsProductSelectOpen}
+                OnSelect={handleSelecionarProduto}
+              >
+                <Button
+                  className="hover:cursor-pointer"
+                  variant={"outline"}
+                  type="button"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Produto
+                </Button>
               </ProductSelect>
             </div>
-
           </CardDescription>
         </CardHeader>
 

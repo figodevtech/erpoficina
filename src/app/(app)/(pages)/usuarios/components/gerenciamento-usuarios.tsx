@@ -1,3 +1,4 @@
+// gerenciamento-usuarios.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,16 +12,28 @@ import { EditarUsuarioDialog } from "./editar-usuario";
 import { DetalhesUsuarioDialog } from "./detalhes-usuario";
 
 import {
-  fetchLookup,
-  fetchUsers,
-  createUser,
-  updateUser,
-  deleteUser,
+  buscarListasUsuarios,
+  buscarUsuarios,
+  criarUsuario,
+  atualizarUsuario,
+  excluirUsuario,
+  enviarConviteUsuario,
+  definirSenhaUsuario,
   type Usuario,
   type Perfil,
   type Setor,
 } from "../lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export default function GerenciamentoUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -31,19 +44,31 @@ export default function GerenciamentoUsuarios() {
 
   // filtros
   const [q, setQ] = useState("");
-  const [perfilFiltro, setPerfilFiltro] = useState<string>("ALL"); // 👈 sentinel
+  const [perfilFiltro, setPerfilFiltro] = useState<string>("ALL");
 
-  // dialogs
+  // dialogs principais
   const [openCriar, setOpenCriar] = useState(false);
   const [openEditar, setOpenEditar] = useState(false);
   const [openDetalhes, setOpenDetalhes] = useState(false);
   const [selected, setSelected] = useState<Usuario | null>(null);
 
+  // dialog de definir senha
+  const [openSenha, setOpenSenha] = useState(false);
+  const [usuarioSenha, setUsuarioSenha] = useState<Usuario | null>(null);
+  const [senha, setSenha] = useState("");
+  const [senhaConfirm, setSenhaConfirm] = useState("");
+  const [savingSenha, setSavingSenha] = useState(false);
+
+  // dialog de confirmação de exclusão
+  const [openExcluir, setOpenExcluir] = useState(false);
+  const [usuarioExcluir, setUsuarioExcluir] = useState<Usuario | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+
   const loadAll = useCallback(async () => {
     try {
       setLoading(true);
       setErro(null);
-      const [lookup, users] = await Promise.all([fetchLookup(), fetchUsers()]);
+      const [lookup, users] = await Promise.all([buscarListasUsuarios(), buscarUsuarios()]);
       setPerfis(lookup.perfis);
       setSetores(lookup.setores);
       setUsuarios(users);
@@ -77,7 +102,6 @@ export default function GerenciamentoUsuarios() {
       });
     }
 
-    // 👇 aplica filtro só quando for diferente de "ALL"
     if (perfilFiltro !== "ALL") {
       const pid = Number(perfilFiltro);
       base = base.filter((u) => {
@@ -102,13 +126,27 @@ export default function GerenciamentoUsuarios() {
     setOpenDetalhes(true);
   };
 
-  const onDelete = async (id: string | number) => {
+  // abre o dialog de confirmação
+  const onDelete = (id: string | number) => {
+    const alvo = usuarios.find((u) => String(u.id) === String(id)) ?? null;
+    if (!alvo) return;
+    setUsuarioExcluir(alvo);
+    setOpenExcluir(true);
+  };
+
+  const confirmarExclusao = async () => {
+    if (!usuarioExcluir) return;
     try {
-      await deleteUser(id);
+      setExcluindo(true);
+      await excluirUsuario(usuarioExcluir.id);
       toast.success("Usuário removido.");
+      setOpenExcluir(false);
+      setUsuarioExcluir(null);
       await loadAll();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao remover usuário.");
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -121,7 +159,7 @@ export default function GerenciamentoUsuarios() {
     ativo?: boolean;
   }) => {
     try {
-      await createUser(payload);
+      await criarUsuario(payload);
       toast.success("Usuário criado.");
       setOpenCriar(false);
       await loadAll();
@@ -135,13 +173,61 @@ export default function GerenciamentoUsuarios() {
     payload: { nome: string; email: string; perfilid?: number | null; setorid?: number | null; ativo?: boolean }
   ) => {
     try {
-      await updateUser(id, payload);
+      await atualizarUsuario(id, payload);
       toast.success("Usuário atualizado.");
       setOpenEditar(false);
       setSelected(null);
       await loadAll();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao atualizar usuário.");
+    }
+  };
+
+  // enviar convite
+  const handleEnviarConvite = async (u: Usuario) => {
+    try {
+      await enviarConviteUsuario(u.id);
+      toast.success(`Convite enviado para ${u.email}.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar convite.");
+    }
+  };
+
+  // abrir dialog de definir senha
+  const handleAbrirSenha = (u: Usuario) => {
+    setUsuarioSenha(u);
+    setSenha("");
+    setSenhaConfirm("");
+    setOpenSenha(true);
+  };
+
+  // salvar senha
+  const handleSalvarSenha = async () => {
+    if (!usuarioSenha) return;
+    const s = senha.trim();
+    const c = senhaConfirm.trim();
+
+    if (!s || s.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (s !== c) {
+      toast.error("As senhas não conferem.");
+      return;
+    }
+
+    try {
+      setSavingSenha(true);
+      await definirSenhaUsuario(usuarioSenha.id, s);
+      toast.success("Senha atualizada com sucesso.");
+      setOpenSenha(false);
+      setUsuarioSenha(null);
+      setSenha("");
+      setSenhaConfirm("");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao definir senha.");
+    } finally {
+      setSavingSenha(false);
     }
   };
 
@@ -183,9 +269,11 @@ export default function GerenciamentoUsuarios() {
         onEdit={onEdit}
         onView={onView}
         onDelete={onDelete}
+        onEnviarConvite={handleEnviarConvite}
+        onDefinirSenha={handleAbrirSenha}
       />
 
-      {/* Dialogs */}
+      {/* Dialogs de CRUD */}
       <CriarUsuarioDialog
         open={openCriar}
         onOpenChange={setOpenCriar}
@@ -214,6 +302,118 @@ export default function GerenciamentoUsuarios() {
         }}
         usuario={selected}
       />
+
+      {/* 🔐 Dialog Definir Senha */}
+      <Dialog
+        open={openSenha}
+        onOpenChange={(v) => {
+          setOpenSenha(v);
+          if (!v) {
+            setUsuarioSenha(null);
+            setSenha("");
+            setSenhaConfirm("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Definir senha</DialogTitle>
+            <DialogDescription>
+              {usuarioSenha
+                ? `Definir ou redefinir a senha para o usuário ${usuarioSenha.nome} (${usuarioSenha.email}).`
+                : "Definir ou redefinir a senha do usuário."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="senha">Nova senha</Label>
+              <Input
+                id="senha"
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="senhaConfirm">Confirmar senha</Label>
+              <Input
+                id="senhaConfirm"
+                type="password"
+                value={senhaConfirm}
+                onChange={(e) => setSenhaConfirm(e.target.value)}
+                placeholder="Repita a senha"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={savingSenha}
+              onClick={() => {
+                setOpenSenha(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSalvarSenha} disabled={savingSenha}>
+              {savingSenha && (
+                <span className="mr-2 h-4 w-4 animate-spin border-2 border-t-transparent rounded-full" />
+              )}
+              Salvar senha
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 🗑️ Dialog Confirmar Exclusão */}
+      <Dialog
+        open={openExcluir}
+        onOpenChange={(v) => {
+          setOpenExcluir(v);
+          if (!v) {
+            setUsuarioExcluir(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir usuário</DialogTitle>
+            <DialogDescription>
+              {usuarioExcluir
+                ? `Tem certeza que deseja excluir o usuário "${usuarioExcluir.nome}"? Esta ação não poderá ser desfeita. O usuário será removido do sistema e não terá mais acesso.`
+                : "Esta ação não poderá ser desfeita. O usuário será removido do sistema e não terá mais acesso."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={excluindo}
+              onClick={() => {
+                setOpenExcluir(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={excluindo}
+              onClick={confirmarExclusao}
+            >
+              {excluindo && (
+                <span className="mr-2 h-4 w-4 animate-spin border-2 border-t-transparent rounded-full" />
+              )}
+              Excluir usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
