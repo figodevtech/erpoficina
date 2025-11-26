@@ -1,35 +1,15 @@
 // src/app/(app)/(pages)/ordens/components/orcamento/orcamento-form.tsx
 "use client";
 
-import React, {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useState,
-  useCallback,
-} from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ClipboardList, Plus, Wrench } from "lucide-react";
+import { Plus, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  OrcamentoFormHandle,
-  OrcamentoFormProps,
-  ProdutoBusca,
-  ServicoBusca,
-} from "./tipos";
+import { OrcamentoFormHandle, OrcamentoFormProps, ProdutoBusca, ServicoBusca } from "./tipos";
 import { useCarrinhoOrcamento } from "./ganchos/use-carrinho-orcamento";
-import {
-  salvarOrcamentoAPI,
-  EstoqueInsuficienteError,
-} from "./servicos/api-orcamento";
+import { salvarOrcamentoAPI, EstoqueInsuficienteError } from "./servicos/api-orcamento";
 
 import { TabelaItensProduto } from "./components/tabela-itens-produto";
 import { TabelaItensServico } from "./components/tabela-tens-servico";
@@ -37,10 +17,10 @@ import ProductSelect from "@/app/(app)/components/productSelect";
 import ServiceSelect from "@/app/(app)/components/serviceSelect";
 import { Button } from "@/components/ui/button";
 
-export const OrcamentoForm = forwardRef<
-  OrcamentoFormHandle,
-  OrcamentoFormProps
->(function OrcamentoForm({ ordemServico, onTotaisChange }, ref) {
+export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
+  { ordemServico, onTotaisChange },
+  ref
+) {
   const osId = ordemServico?.id;
 
   const {
@@ -56,9 +36,7 @@ export const OrcamentoForm = forwardRef<
   } = useCarrinhoOrcamento(osId, onTotaisChange);
 
   // mapa: produtoid -> {disponivel, solicitado}
-  const [errosEstoque, setErrosEstoque] = useState<
-    Record<number, { disponivel: number; solicitado: number }>
-  >({});
+  const [errosEstoque, setErrosEstoque] = useState<Record<number, { disponivel: number; solicitado: number }>>({});
 
   const [isProductSelectOpen, setIsProductSelectOpen] = useState(false);
   const [isServiceSelectOpen, setIsServiceSelectOpen] = useState(false);
@@ -84,21 +62,13 @@ export const OrcamentoForm = forwardRef<
       toast.success("Orçamento salvo com sucesso");
       window.dispatchEvent(new Event("os:refresh"));
     } catch (e: any) {
-      if (
-        e instanceof EstoqueInsuficienteError ||
-        e?.name === "EstoqueInsuficienteError"
-      ) {
-        const faltas =
-          (e.faltas ??
-            []) as Array<{
-            produtoid: number;
-            disponivel: number;
-            solicitado: number;
-          }>;
-        const map: Record<
-          number,
-          { disponivel: number; solicitado: number }
-        > = {};
+      if (e instanceof EstoqueInsuficienteError || e?.name === "EstoqueInsuficienteError") {
+        const faltas = (e.faltas ?? []) as Array<{
+          produtoid: number;
+          disponivel: number;
+          solicitado: number;
+        }>;
+        const map: Record<number, { disponivel: number; solicitado: number }> = {};
         for (const f of faltas)
           map[f.produtoid] = {
             disponivel: f.disponivel,
@@ -124,10 +94,7 @@ export const OrcamentoForm = forwardRef<
   useImperativeHandle(ref, () => ({ salvarOrcamento }), [salvarOrcamento]);
 
   // wrappers para limpar aviso do item ao alterar/remover
-  const atualizarProdutoComReset = (
-    index: number,
-    patch: Partial<(typeof itensProduto)[number]>
-  ) => {
+  const atualizarProdutoComReset = (index: number, patch: Partial<(typeof itensProduto)[number]>) => {
     const prod = itensProduto[index];
     if (prod) {
       setErrosEstoque((prev) => {
@@ -156,10 +123,7 @@ export const OrcamentoForm = forwardRef<
 
   // 🔹 Adapta o produto vindo do ProductSelect para ProdutoBusca
   const handleSelecionarProduto = (produtoSelecionado: any) => {
-    const descricao =
-      produtoSelecionado.titulo ??
-      produtoSelecionado.descricao ??
-      String(produtoSelecionado.id);
+    const descricao = produtoSelecionado.titulo ?? produtoSelecionado.descricao ?? String(produtoSelecionado.id);
 
     const codigo = String(
       produtoSelecionado.codigo ??
@@ -168,15 +132,9 @@ export const OrcamentoForm = forwardRef<
         produtoSelecionado.id
     );
 
-    const estoque =
-      Number(produtoSelecionado.estoque ?? produtoSelecionado.estoque_atual) ||
-      0;
+    const estoque = Number(produtoSelecionado.estoque ?? produtoSelecionado.estoque_atual) || 0;
 
-    const precounitario = Number(
-      produtoSelecionado.precovenda ??
-        produtoSelecionado.precounitario ??
-        0
-    );
+    const precounitario = Number(produtoSelecionado.precovenda ?? produtoSelecionado.precounitario ?? 0);
 
     const adaptado: ProdutoBusca = {
       id: produtoSelecionado.id,
@@ -192,17 +150,11 @@ export const OrcamentoForm = forwardRef<
 
   // 🔹 Adapta o serviço vindo do ServiceSelect para ServicoBusca
   const handleSelecionarServico = (servicoSelecionado: any) => {
-    const descricao =
-      servicoSelecionado.descricao ?? String(servicoSelecionado.id);
+    const descricao = servicoSelecionado.descricao ?? String(servicoSelecionado.id);
 
     const codigo = String(servicoSelecionado.codigo ?? servicoSelecionado.id);
 
-    const precohora = Number(
-      servicoSelecionado.precohora ??
-        servicoSelecionado.valor ??
-        servicoSelecionado.preco ??
-        0
-    );
+    const precohora = Number(servicoSelecionado.precohora ?? servicoSelecionado.valor ?? servicoSelecionado.preco ?? 0);
 
     const adaptado: ServicoBusca = {
       id: servicoSelecionado.id,
@@ -239,14 +191,12 @@ export const OrcamentoForm = forwardRef<
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Wrench className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">
-              Itens do orçamento
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">Itens do orçamento</CardTitle>
           </div>
           <CardDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm">
-              Use os botões para buscar e adicionar produtos e serviços ao
-              orçamento. Ajuste as quantidades diretamente na tabela.
+              Use os botões para buscar e adicionar produtos e serviços ao orçamento. Ajuste as quantidades diretamente
+              na tabela.
             </span>
 
             <div className="flex flex-row items-center gap-2">
@@ -255,11 +205,7 @@ export const OrcamentoForm = forwardRef<
                 setOpen={setIsServiceSelectOpen}
                 OnSelect={handleSelecionarServico}
               >
-                <Button
-                  className="hover:cursor-pointer"
-                  variant={"outline"}
-                  type="button"
-                >
+                <Button className="hover:cursor-pointer" variant={"outline"} type="button">
                   <Plus className="h-4 w-4 mr-1" />
                   Serviço
                 </Button>
@@ -270,11 +216,7 @@ export const OrcamentoForm = forwardRef<
                 setOpen={setIsProductSelectOpen}
                 OnSelect={handleSelecionarProduto}
               >
-                <Button
-                  className="hover:cursor-pointer"
-                  variant={"outline"}
-                  type="button"
-                >
+                <Button className="hover:cursor-pointer" variant={"outline"} type="button">
                   <Plus className="h-4 w-4 mr-1" />
                   Produto
                 </Button>

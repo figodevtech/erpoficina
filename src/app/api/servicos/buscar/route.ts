@@ -27,10 +27,12 @@ export async function GET(request: Request) {
       .from("servico")
       .select(
         "id,codigo,descricao,precohora,cnae,itemlistaservico",
-        { count: "exact" } // <- pega o total pra paginação
+        { count: "exact" }
       )
-      .range(from, to)
-      .order("descricao", { ascending: true });
+      // 🔹 só serviços ativos
+      .eq("ativo", true)
+      .order("descricao", { ascending: true })
+      .range(from, to);
 
     if (codigo && !q) {
       query = query.ilike("codigo", `%${codigo}%`);
@@ -61,11 +63,11 @@ export async function GET(request: Request) {
       {
         servicos,
         pagination: {
-          total,      // total de registros no banco (dentro do filtro)
-          page,       // página atual
-          limit,      // limite por página
-          totalPages, // total de páginas
-          pageCount,  // qtde de itens retornados nesta página
+          total,
+          page,
+          limit,
+          totalPages,
+          pageCount,
         },
       },
       { headers: { "Cache-Control": "no-store" } }

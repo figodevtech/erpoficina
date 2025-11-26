@@ -1,14 +1,50 @@
 // src/app/(app)/(pages)/configuracoes/tipos/components/servicos-section.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import {
+  ChevronsLeft,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ChevronsRight,
+  Loader as LoaderIcon,
+  Loader2,
+  Plus,
+  MoreHorizontal,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
 
 type Servico = {
   id: number;
@@ -20,7 +56,7 @@ type Servico = {
   cnae?: string | null;
   itemlistaservico: string;
   tiposervicoid?: number | null;
-  ativo?: boolean;
+  ativo?: boolean | null;
 };
 
 type ServicoForm = {
@@ -32,6 +68,7 @@ type ServicoForm = {
   cnae: string;
   itemlistaservico: string;
   tiposervicoid: string;
+  ativo: boolean;
 };
 
 const emptyForm: ServicoForm = {
@@ -43,27 +80,89 @@ const emptyForm: ServicoForm = {
   cnae: "",
   itemlistaservico: "",
   tiposervicoid: "",
+  ativo: true,
 };
 
 export default function ServicosSection() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editing, setEditing] = useState<Servico | null>(null);
   const [form, setForm] = useState<ServicoForm>(emptyForm);
 
+  // paginação (padrão TabelaUsuarios / Fornecedores)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+
+  const total = servicos.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages, page]);
+
+  const start = (page - 1) * limit;
+  const end = Math.min(total, start + limit);
+  const pageItems = useMemo(
+    () => servicos.slice(start, end),
+    [servicos, start, end]
+  );
+
+  const linhasSkeleton = useMemo(
+    () =>
+      Array.from({ length: Math.min(5, limit) }).map((_, i) => (
+        <TableRow key={`skeleton-${i}`} className="animate-pulse">
+          <TableCell className="h-10">
+            <div className="h-3 w-24 bg-muted rounded" />
+          </TableCell>
+          <TableCell>
+            <div className="h-3 w-40 bg-muted rounded" />
+          </TableCell>
+          <TableCell>
+            <div className="h-3 w-20 bg-muted rounded" />
+          </TableCell>
+          <TableCell>
+            <div className="h-3 w-16 bg-muted rounded" />
+          </TableCell>
+          <TableCell>
+            <div className="h-3 w-24 bg-muted rounded" />
+          </TableCell>
+          <TableCell className="text-center">
+            <div className="h-5 w-16 bg-muted rounded-full mx-auto" />
+          </TableCell>
+          <TableCell className="text-right">
+            <div className="h-6 w-10 bg-muted rounded-full ml-auto" />
+          </TableCell>
+        </TableRow>
+      )),
+    [limit]
+  );
+
   async function loadServicos() {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/config/servicos", { cache: "no-store" });
+      setErro(null);
+
+      // mesma ideia do fornecedores: usar /api/tipos/...
+      const res = await fetch("/api/tipos/servicos", { cache: "no-store" });
       const j = await res.json();
+
       if (!res.ok) throw new Error(j?.error || "Falha ao carregar serviços");
-      setServicos(j.items ?? j.data ?? []);
+
+      const items: Servico[] = (j.items ?? j.data ?? []).map((s: Servico) => ({
+        ...s,
+        ativo: s.ativo ?? true,
+      }));
+
+      setServicos(items);
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || "Erro ao carregar serviços");
+      const msg = e?.message || "Erro ao carregar serviços";
+      setErro(msg);
+      toast.error(msg);
       setServicos([]);
     } finally {
       setIsLoading(false);
@@ -73,6 +172,10 @@ export default function ServicosSection() {
   useEffect(() => {
     loadServicos();
   }, []);
+
+  function handleChange<K extends keyof ServicoForm>(key: K, value: ServicoForm[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
 
   function openNovo() {
     setEditing(null);
@@ -85,18 +188,24 @@ export default function ServicosSection() {
     setForm({
       codigo: s.codigo ?? "",
       descricao: s.descricao ?? "",
-      precohora: s.precohora != null ? String(s.precohora) : "",
+      precohora:
+        s.precohora !== null && s.precohora !== undefined
+          ? String(s.precohora)
+          : "",
       codigoservicomunicipal: s.codigoservicomunicipal ?? "",
-      aliquotaiss: s.aliquotaiss != null ? String(s.aliquotaiss) : "",
+      aliquotaiss:
+        s.aliquotaiss !== null && s.aliquotaiss !== undefined
+          ? String(s.aliquotaiss)
+          : "",
       cnae: s.cnae ?? "",
       itemlistaservico: s.itemlistaservico ?? "",
-      tiposervicoid: s.tiposervicoid != null ? String(s.tiposervicoid) : "",
+      tiposervicoid:
+        s.tiposervicoid !== null && s.tiposervicoid !== undefined
+          ? String(s.tiposervicoid)
+          : "",
+      ativo: s.ativo ?? true,
     });
     setDialogOpen(true);
-  }
-
-  function handleChange<K extends keyof ServicoForm>(key: K, value: string) {
-    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function handleSave() {
@@ -122,16 +231,22 @@ export default function ServicosSection() {
       descricao: form.descricao.trim(),
       precohora: Number(form.precohora),
       codigoservicomunicipal: form.codigoservicomunicipal.trim(),
-      aliquotaiss: form.aliquotaiss.trim() ? Number(form.aliquotaiss) : null,
+      aliquotaiss: form.aliquotaiss.trim()
+        ? Number(form.aliquotaiss)
+        : null,
       cnae: form.cnae.trim() || null,
       itemlistaservico: form.itemlistaservico.trim(),
-      tiposervicoid: form.tiposervicoid.trim() ? Number(form.tiposervicoid) : null,
+      tiposervicoid: form.tiposervicoid.trim()
+        ? Number(form.tiposervicoid)
+        : null,
+      ativo: form.ativo,
     };
 
     try {
       setIsSaving(true);
+
       if (editing) {
-        const res = await fetch(`/api/config/servicos/${editing.id}`, {
+        const res = await fetch(`/api/tipos/servicos/${editing.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -140,7 +255,7 @@ export default function ServicosSection() {
         if (!res.ok) throw new Error(j?.error || "Falha ao atualizar serviço");
         toast.success("Serviço atualizado");
       } else {
-        const res = await fetch("/api/config/servicos", {
+        const res = await fetch("/api/tipos/servicos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -162,42 +277,45 @@ export default function ServicosSection() {
     }
   }
 
-  async function handleToggleAtivo(id: number, ativo: boolean) {
-    try {
-      const res = await fetch(`/api/config/servicos/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ativo }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j?.error || "Falha ao atualizar serviço");
-
-      setServicos((old) => old.map((s) => (s.id === id ? { ...s, ativo } : s)));
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Erro ao atualizar serviço");
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-6 h-full min-h-[460px]">
-      {/* Cabeçalho + botão Novo serviço (abre dialog) */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4">
+      {/* Cabeçalho no estilo das outras tabelas */}
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Serviços</h2>
-          <p className="text-sm text-muted-foreground">Cadastre os serviços de mão de obra e diagnósticos.</p>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+            <span className="text-foreground/60">
+              {total} serviço{total === 1 ? "" : "s"}
+            </span>
+            {erro && (
+              <Badge variant="destructive" className="ml-1">
+                {erro}
+              </Badge>
+            )}
+            <button
+              onClick={loadServicos}
+              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
+            >
+              <span>Recarregar</span>
+              <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+            </button>
+          </p>
         </div>
 
+        {/* Botão Novo serviço + Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openNovo}>
+            <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
               <Plus className="mr-1 h-4 w-4" />
               Novo serviço
             </Button>
           </DialogTrigger>
+
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editing ? "Editar serviço" : "Novo serviço"}</DialogTitle>
+              <DialogTitle>
+                {editing ? "Editar serviço" : "Novo serviço"}
+              </DialogTitle>
             </DialogHeader>
 
             <div className="mt-4 space-y-4">
@@ -235,7 +353,9 @@ export default function ServicosSection() {
                   <label className="text-sm font-medium">Código serviço municipal</label>
                   <Input
                     value={form.codigoservicomunicipal}
-                    onChange={(e) => handleChange("codigoservicomunicipal", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("codigoservicomunicipal", e.target.value)
+                    }
                     placeholder="Código conforme prefeitura"
                   />
                 </div>
@@ -267,7 +387,9 @@ export default function ServicosSection() {
                   <label className="text-sm font-medium">Item da lista de serviço</label>
                   <Input
                     value={form.itemlistaservico}
-                    onChange={(e) => handleChange("itemlistaservico", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("itemlistaservico", e.target.value)
+                    }
                     placeholder="Ex.: 14.01"
                   />
                 </div>
@@ -275,8 +397,29 @@ export default function ServicosSection() {
                   <label className="text-sm font-medium">Tipo de serviço (ID)</label>
                   <Input
                     value={form.tiposervicoid}
-                    onChange={(e) => handleChange("tiposervicoid", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("tiposervicoid", e.target.value)
+                    }
                     placeholder="ID da categoria do serviço (opcional)"
+                  />
+                </div>
+              </div>
+
+              {/* Status dentro do diálogo */}
+              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+                <div className="space-y-0.5">
+                  <span className="text-sm font-medium">Status do serviço</span>
+                  <p className="text-xs text-muted-foreground">
+                    Defina se este serviço está ativo para uso nas ordens de serviço.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {form.ativo ? "Ativo" : "Inativo"}
+                  </span>
+                  <Switch
+                    checked={form.ativo}
+                    onCheckedChange={(val) => handleChange("ativo", val)}
                   />
                 </div>
               </div>
@@ -285,6 +428,7 @@ export default function ServicosSection() {
             <div className="mt-6 flex justify-end gap-2">
               <Button
                 variant="outline"
+                type="button"
                 onClick={() => {
                   setDialogOpen(false);
                   setEditing(null);
@@ -293,7 +437,7 @@ export default function ServicosSection() {
               >
                 Cancelar
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button type="button" onClick={handleSave} disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salvar
               </Button>
@@ -302,9 +446,22 @@ export default function ServicosSection() {
         </Dialog>
       </div>
 
-      {/* Tabela de serviços */}
-      <div className="rounded-md border bg-background overflow-hidden min-h-[220px]">
-        <Table>
+      {/* Tabela de serviços, no padrão das outras páginas (sem Card) */}
+      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
+        {/* Barrinha de loading no topo */}
+        <div
+          className={`${
+            isLoading ? "opacity-100" : ""
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+        >
+          <div
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
+              isLoading ? "animate-slideIn" : ""
+            }`}
+          />
+        </div>
+
+        <Table className="mt-6">
           <TableHeader>
             <TableRow>
               <TableHead>Código</TableHead>
@@ -312,44 +469,150 @@ export default function ServicosSection() {
               <TableHead>Preço/hora</TableHead>
               <TableHead>Item lista</TableHead>
               <TableHead>Cód. mun.</TableHead>
-              <TableHead className="w-[120px]">Ativo</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && (
+            {isLoading ? (
+              linhasSkeleton
+            ) : total === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Carregando serviços...
+                <TableCell
+                  colSpan={7}
+                  className="py-10 text-center text-sm text-muted-foreground"
+                >
+                  Nenhum serviço cadastrado. Clique em <b>Novo serviço</b> para cadastrar.
                 </TableCell>
               </TableRow>
-            )}
-
-            {!isLoading && servicos.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhum serviço cadastrado.
-                </TableCell>
-              </TableRow>
-            )}
-
-            {!isLoading &&
-              servicos.map((s) => (
-                <TableRow key={s.id} className="cursor-pointer" onClick={() => openEditar(s)}>
-                  <TableCell className="font-mono">{s.codigo}</TableCell>
+            ) : (
+              pageItems.map((s) => (
+                <TableRow key={s.id} className="hover:cursor-default">
+                  <TableCell className="font-mono text-xs">{s.codigo}</TableCell>
                   <TableCell>{s.descricao}</TableCell>
-                  <TableCell>{s.precohora != null ? s.precohora.toFixed(2) : "—"}</TableCell>
+                  <TableCell>
+                    {s.precohora != null
+                      ? Number(s.precohora).toFixed(2)
+                      : "—"}
+                  </TableCell>
                   <TableCell>{s.itemlistaservico}</TableCell>
                   <TableCell>{s.codigoservicomunicipal}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Switch checked={s.ativo ?? true} onCheckedChange={(val) => handleToggleAtivo(s.id, val)} />
-                      <span className="text-xs text-muted-foreground">{s.ativo ? "Ativo" : "Inativo"}</span>
-                    </div>
+                    <Badge
+                      variant={s.ativo ? "default" : "outline"}
+                      className={s.ativo ? "" : "border-destructive bg-destructive"}
+                    >
+                      {s.ativo ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 hover:cursor-pointer"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-32">
+                        <DropdownMenuItem onClick={() => openEditar(s)}>
+                          Editar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+            )}
           </TableBody>
         </Table>
+
+        {/* Paginação no rodapé */}
+        <div className="flex items-center mt-4 justify-between">
+          <div className="text-xs text-muted-foreground flex flex-nowrap">
+            {total > 0 ? (
+              <>
+                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
+                <span className="ml-1 hidden sm:block">de {total}</span>
+              </>
+            ) : (
+              <span>0 de 0</span>
+            )}
+            <LoaderIcon
+              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
+                isLoading ? "opacity-100" : ""
+              }`}
+            />
+          </div>
+
+          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(1)}
+              disabled={page === 1 || total === 0}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1 || total === 0}
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </Button>
+            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+              Pg. {Math.min(page, totalPages)} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || total === 0}
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages || total === 0}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div>
+            <Select
+              value={String(limit)}
+              onValueChange={(v) => {
+                const n = parseInt(v, 10) || 20;
+                setLimit(n);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2 w-[80px]">
+                <SelectValue placeholder={limit} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10" className="hover:cursor-pointer">
+                  10
+                </SelectItem>
+                <SelectItem value="20" className="hover:cursor-pointer">
+                  20
+                </SelectItem>
+                <SelectItem value="50" className="hover:cursor-pointer">
+                  50
+                </SelectItem>
+                <SelectItem value="100" className="hover:cursor-pointer">
+                  100
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
     </div>
   );

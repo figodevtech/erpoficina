@@ -1,0 +1,117 @@
+// src/app/api/tipos/grupos-produto/route.ts
+export const runtime = "nodejs";
+
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+function isOpen() {
+  const v = (process.env.OPEN_PERMISSIONS ?? "").toString().trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes" || v === "sim";
+}
+
+async function ensureAuth() {
+  if (isOpen()) return;
+  await auth();
+}
+
+// GET /api/tipos/grupos-produto -> listar
+export async function GET(req: NextRequest) {
+  try {
+    await ensureAuth();
+
+    const { data, error } = await supabaseAdmin
+      .from("produtogrupo")
+      .select(`
+        id,
+        nome,
+        descricao,
+        ativo
+      `)
+      .order("nome", { ascending: true });
+
+    if (error) throw error;
+
+    const items = (data ?? []).map((g: any) => ({
+      id: g.id as number,
+      nome: g.nome as string,
+      descricao: (g.descricao as string | null) ?? null,
+      ativo: typeof g.ativo === "boolean" ? g.ativo : true,
+    }));
+
+    return NextResponse.json({ items });
+  } catch (e: any) {
+    console.error("[/api/tipos/grupos-produto GET] error:", e);
+    const status = /auth|unauth|não autenticado/i.test(String(e?.message))
+      ? 401
+      : 500;
+    return NextResponse.json(
+      { error: e?.message ?? "Erro ao carregar grupos de produto" },
+      { status }
+    );
+  }
+}
+
+// POST /api/tipos/grupos-produto -> criar
+export async function POST(req: NextRequest) {
+  try {
+    await ensureAuth();
+
+    const body = await req.json().catch(() => ({}));
+    const { nome, descricao, ativo } = body ?? {};
+
+    if (!nome?.trim()) {
+      return NextResponse.json(
+        { error: "Nome do grupo é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    const payload: Record<string, any> = {
+      nome: nome.trim(),
+      descricao: descricao?.trim() || null,
+      ativo: typeof ativo === "boolean" ? ativo : true,
+      createdat: now,
+      updatedat: now,
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from("produtogrupo")
+      .insert(payload)
+      .select(`
+        id,
+        nome,
+        descricao,
+        ativo
+      `)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      return NextResponse.json(
+        { error: "Erro ao criar grupo de produto." },
+        { status: 500 }
+      );
+    }
+
+    const item = {
+      id: data.id as number,
+      nome: data.nome as string,
+      descricao: (data.descricao as string | null) ?? null,
+      ativo: typeof data.ativo === "boolean" ? data.ativo : true,
+    };
+
+    return NextResponse.json({ item }, { status: 201 });
+  } catch (e: any) {
+    console.error("[/api/tipos/grupos-produto POST] error:", e);
+    const msg = String(e?.message ?? "");
+    const status = /auth|unauth|não autenticado/i.test(msg) ? 401 : 500;
+
+    return NextResponse.json(
+      { error: e?.message ?? "Erro ao criar grupo de produto" },
+      { status }
+    );
+  }
+}
