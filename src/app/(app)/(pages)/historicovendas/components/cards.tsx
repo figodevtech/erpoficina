@@ -28,7 +28,10 @@ export default function Cards({
           {loadingStatusCounter ? (
             <Skeleton className="h-8 w-8"></Skeleton>
           ) : (
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">{statusCounts?.byStatus?.finalizadas?.totalPedidos || 0}  vendas concluídas</span>
             <div className="text-2xl">{formatarEmReal(statusCounts?.byStatus.finalizadas?.totalValor || 0) }</div>
+            </div>
           )}
           <p className="text-xs text-muted-foreground">Mensal</p>
         </CardContent>
@@ -56,7 +59,8 @@ export default function Cards({
           {loadingStatusCounter ? (
             <Skeleton className="h-8 w-8"></Skeleton>
           ) : (
-            <div className="text-2xl">{statusCounts?.byStatus.finalizadas?.totalPedidos}</div>
+
+              <div className="text-2xl">{statusCounts?.byStatus.finalizadas?.totalPedidos || 0}</div>
           )}
           <p className="text-xs text-muted-foreground">Mensal</p>
         </CardContent>
@@ -70,7 +74,10 @@ export default function Cards({
           {loadingStatusCounter ? (
             <Skeleton className="h-8 w-8"></Skeleton>
           ) : (
-            <div className="text-2xl">{formatarEmReal(statusCounts?.byStatus.abertas?.totalValor || 0)}</div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">{statusCounts?.byStatus?.pagamento?.totalPedidos || 0}  vendas em pagamento</span>
+              <div className="text-2xl">{formatarEmReal(statusCounts?.byStatus.pagamento?.totalValor || 0)}</div>
+            </div>
           )}
           <p className="text-xs text-muted-foreground">Mensal</p>
         </CardContent>
