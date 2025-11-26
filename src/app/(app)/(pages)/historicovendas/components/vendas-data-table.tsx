@@ -33,6 +33,7 @@ import {
   DollarSign,
   Handshake,
   Check,
+  EyeIcon,
 } from "lucide-react";
 import {
   Select,
@@ -50,6 +51,7 @@ import { useState } from "react";
 import { Pagination, VendaComItens, vendaStatus } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
+import DeleteAlert from "./deleteAlert";
 
 interface VendasDataTableProps {
   vendas: VendaComItens[];
@@ -110,6 +112,10 @@ const getStatusBadge = (status: vendaStatus) => {
   );
 };
 
+const handleDeleteVenda = async () => {
+  return
+}
+
 export default function VendasDataTable({
   isLoading,
   vendas,
@@ -123,8 +129,7 @@ export default function VendasDataTable({
   isOpen,
   setIsOpen,
 }: VendasDataTableProps) {
- 
-
+  const [isAlertOpen, setIsAlertOpen] = useState(false)
   return (
     <Card>
       <CardHeader className="border-b-2 pb-4">
@@ -153,14 +158,14 @@ export default function VendasDataTable({
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <Button
               className="hover:cursor-pointer"
               onClick={() => setIsOpen(true)}
             >
               Nova Venda
             </Button>
-          </div>
+          </div> */}
         </div>
       </CardHeader>
 
@@ -205,7 +210,9 @@ export default function VendasDataTable({
                     {formatDate(p.datavenda)}
                   </TableCell>
                   <TableCell>{formatarEmReal(p.valortotal)}</TableCell>
-                  <TableCell className="text-center">{getStatusBadge(p.status)}</TableCell>
+                  <TableCell className="text-center">
+                    {getStatusBadge(p.status)}
+                  </TableCell>
 
                   <TableCell>
                     <DropdownMenu>
@@ -222,10 +229,24 @@ export default function VendasDataTable({
                           variant={"ghost"}
                           className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
                         >
-                          <Edit className="-ml-1 -mr-1 h-4 w-4" />
-                          <span>Editar</span>
+                          <EyeIcon className="-ml-1 -mr-1 h-4 w-4" />
+                          <span>Visualizar</span>
                         </Button>
-                        
+
+                        <DeleteAlert
+                          handleDeleteVenda={handleDeleteVenda}
+                          isAlertOpen={isAlertOpen}
+                          setIsAlertOpen={setIsAlertOpen}
+                          idToDelete={p.id}
+                        >
+                          <Button
+                            variant={"default"}
+                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer not-dark:text-gray-800 bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
+                          >
+                            <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
+                            <span>Excluir</span>
+                          </Button>
+                        </DeleteAlert>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

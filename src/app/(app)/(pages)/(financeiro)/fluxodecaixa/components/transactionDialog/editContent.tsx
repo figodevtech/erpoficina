@@ -23,7 +23,14 @@ import { useEffect, useState } from "react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import axios from "axios";
 import { Upload } from "lucide-react";
-import { Banco, Categoria_transacao, Metodo_pagamento, Tipo_transacao, Transaction, TransactionCustomer } from "../../types";
+import {
+  Banco,
+  Categoria_transacao,
+  Metodo_pagamento,
+  Tipo_transacao,
+  Transaction,
+  TransactionCustomer,
+} from "../../types";
 import { formatCpfCnpj } from "../../utils";
 
 interface EditContentProps {
@@ -40,7 +47,7 @@ export default function EditContent({
   const [selectedTransaction, setSelectedTransaction] = useState<
     Transaction | undefined
   >(undefined);
-  const [isSubmitting,] = useState(false);
+  const [isSubmitting] = useState(false);
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
@@ -332,7 +339,7 @@ export default function EditContent({
           </div>
           <DialogFooter className="px-6 py-4">
             <div className="flex sm:flex-row gap-3 sm:gap-4">
-              <Button
+              {/* <Button
                 type="submit"
                 form="register-form"
                 // disabled={isSubmitting}
@@ -350,7 +357,7 @@ export default function EditContent({
                     Registrar
                   </>
                 )}
-              </Button>
+              </Button> */}
               <DialogClose asChild>
                 <Button className="hover:cursor-pointer" variant={"outline"}>
                   Cancelar

@@ -30,15 +30,16 @@ import { ChevronDown, Loader, Loader2, Trash2Icon } from "lucide-react";
 import DeleteAlert from "./deleteAlert";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatDate";
+import { VendaComItens } from "@/app/(app)/(pages)/historicovendas/types";
 
-interface OsContentProps {
-  osId: number;
+interface VendasContentProps {
+  vendaId: number;
   IsOpen?: boolean;
 }
 
 // Ajuste conforme a sua estrutura real
 
-export default function OsContent({ osId, IsOpen }: OsContentProps) {
+export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
 
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -50,38 +51,39 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     limit: 20,
     totalPages: 0,
   });
-  const [ordem, setOrdem] = useState<Ordem | undefined>(undefined);
+  const [venda, setVenda] = useState<VendaComItens | undefined>(undefined);
   const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
   // ====== DATA LOADERS
-  const handleGetOrdem = async (
-    osId: number,
+  const handleGetVenda = async (
+    vendaId: number,
   ) => {
     setIsLoadingOs(true);
     try {
-      const response = await axios.get(`/api/ordens/${osId}`);
+      const response = await axios.get(`/api/venda/${vendaId}`);
       if (response.status === 200) {
-        setOrdem(response.data.os);
+        setVenda(response.data.data);
       }
+      console.log("venda:",response)
     } catch (error) {
-      console.log("Erro ao buscar Ordem:", error);
-      toast.error("Não foi possível carregar a OS");
+      console.log("Erro ao buscar Venda:", error);
+      toast.error("Não foi possível carregar a Venda");
     } finally {
       setIsLoadingOs(false);
     }
   };
 
   const handleGetTransactions = async (pageNumber?: number) => {
-    if (!ordem?.id) return;
+    if (!venda?.id) return;
     setIsLoading(true);
     try {
       const response = await axios.get("/api/transaction", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
-          ordemservicoid: ordem.id,
+          vendaid: venda.id,
         },
       });
       if (response.status === 200) {
@@ -100,7 +102,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
   useEffect(()=> {
     if(!IsOpen){
       setTransactions([]);
-      setOrdem(undefined);
+      setVenda(undefined);
       }
     },[IsOpen])
 
@@ -136,17 +138,17 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
 
   // ====== EFFECTS
   useEffect(() => {
-    if (ordem?.id) {
+    if (venda?.id) {
       handleGetTransactions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordem?.id]);
+  }, [venda?.id]);
 
   useEffect(() => {
-    if (osId) {
-      handleGetOrdem(osId);
+    if (vendaId) {
+      handleGetVenda(vendaId);
     }
-  }, [osId]);
+  }, [vendaId]);
 
 
 
@@ -165,14 +167,14 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     );
   }
 
-  if (!ordem) return null;
+  if (!venda) return null;
 
   return (
     <DialogContent className="h-svh w-[100svw] max-w-[100svw] p-0 overflow-hidden rounded-none sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:rounded-2xl">
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b">
           <DialogTitle>
-            OS #{ordem.id}{" "}
+            Venda #{venda.id}{" "}
             <span className="text-muted-foreground text-sm font-light">
               {" "}
               | PAGAMENTOS{" "}
@@ -199,12 +201,12 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
-              osId={ordem.id}
+              vendaId={venda.id}
               open={open}
               setOpen={setOpen}
             >
               <Button
-              disabled={ordem.status === "CONCLUIDO"}
+              disabled={venda.status === "FINALIZADA"}
               className="hover:cursor-pointer">Novo pagamento</Button>
             </TransactionDialog>
           </div>
@@ -281,7 +283,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                             align="end"
                           >
                             <DeleteAlert
-                              statusOs={ordem.status}
+                              statusVenda={venda.status}
                               handleDeleteTransaction={handleDeleteTransaction}
                               isAlertOpen={isAlertOpen}
                               setIsAlertOpen={setIsAlertOpen}
@@ -319,7 +321,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Total a Pagar:</span>
               <div className="w-full border-b h-full border-dashed"></div>
-              <h1>{formatarEmReal(ordem.orcamentototal || 0)}</h1>
+              <h1>{formatarEmReal(venda.valortotal || 0)}</h1>
             </div>
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Total Pago:</span>
@@ -338,7 +340,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
               <div className="w-full border-b h-full border-dashed"></div>
               <h1 className="font-bold text-gray-400">
                 {formatarEmReal(
-                  (ordem.orcamentototal || 0) -
+                  (venda.valortotal || 0) -
                     (transactions?.reduce(
                       (acc, t) => acc + Number(t?.valor ?? 0),
                       0

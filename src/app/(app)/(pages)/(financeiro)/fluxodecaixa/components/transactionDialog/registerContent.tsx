@@ -37,14 +37,15 @@ import formatarEmReal from "@/utils/formatarEmReal";
 
 interface RegisterContentProps {
   osId?: number | undefined;
+  vendaId?: number | undefined;
   setSelectedTransactionId?: (value: number | undefined) => void;
   newTransaction: NewTransaction;
   setNewTransaction: (value: NewTransaction) => void;
   dialogOpen: boolean | undefined;
   selectedCustomer: TransactionCustomer | undefined;
   setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
-  handleGetTransactions?: (pageNumber?: number) => void
-  setOpen?: (value: boolean)=> void
+  handleGetTransactions?: (pageNumber?: number) => void;
+  setOpen?: (value: boolean) => void;
 }
 
 export default function RegisterContent({
@@ -53,6 +54,7 @@ export default function RegisterContent({
   setNewTransaction,
   selectedCustomer,
   osId,
+  vendaId,
   setSelectedCustomer,
   handleGetTransactions,
   setOpen,
@@ -98,77 +100,83 @@ export default function RegisterContent({
   }, [setNewTransaction, selectedCustomer]);
 
   const handleCreateTransaction = async () => {
-  setIsSubmitting(true);
-  try {
-    
-    const response = await axios.post("/api/transaction/os", { newTransaction });
-
-    if (response.status === 201) {
-      const created = response.data?.data ?? response.data;
-
-      toast("Sucesso!", {
-        description: "Transação registrada.",
-        duration: 2000,
+    setIsSubmitting(true);
+    try {
+      const response = await axios.post("/api/transaction/os", {
+        newTransaction,
       });
 
-      // se existir, seta o id (fluxo fora de OS)
-      setSelectedTransactionId?.(created?.id);
+      if (response.status === 201) {
+        const created = response.data?.data ?? response.data;
 
-      // recarrega a lista da OS (quando veio por OS)
-      handleGetTransactions?.();
+        toast("Sucesso!", {
+          description: "Transação registrada.",
+          duration: 2000,
+        });
 
-      // fecha SEMPRE que criar
-      setOpen?.(false);
+        // se existir, seta o id (fluxo fora de OS)
+        setSelectedTransactionId?.(created?.id);
 
-      // opcional: limpar o formulário
-      setNewTransaction({});
-      setSelectedCustomer?.(undefined);
+        // recarrega a lista da OS (quando veio por OS)
+        handleGetTransactions?.();
+
+        // fecha SEMPRE que criar
+        setOpen?.(false);
+
+        // opcional: limpar o formulário
+        setNewTransaction({});
+        setSelectedCustomer?.(undefined);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast("Erro", {
+          description: error.response?.data?.error,
+          duration: 2000,
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (error) {
-    if (isAxiosError(error)) {
-      toast("Erro", {
-        description: error.response?.data?.error,
-        duration: 2000,
-      });
-    }
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   useEffect(() => {
-    console.log("nova: ",newTransaction);
+    console.log("nova: ", newTransaction);
   }, [newTransaction]);
-
 
   useEffect(() => {
     console.log("osId:", osId);
+    console.log("vendaId:", vendaId);
+
     handleGetBanks();
   }, []);
 
-  useEffect((
-  )=> { 
-    console.log("mudou")
-    setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor})
-    setIsChecked(false)
-  }, [, newTransaction.metodopagamento])
+  useEffect(() => {
+    console.log("mudou");
+    setNewTransaction({
+      ...newTransaction,
+      valorLiquido: newTransaction.valor,
+    });
+    setIsChecked(false);
+  }, [, newTransaction.metodopagamento]);
 
-  useEffect(()=>{
-    if(!isChecked){
-      setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor})
+  useEffect(() => {
+    if (!isChecked) {
+      setNewTransaction({
+        ...newTransaction,
+        valorLiquido: newTransaction.valor,
+      });
     }
-  },[newTransaction.valor])
+  }, [newTransaction.valor]);
 
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          {osId ? 
-          <DialogTitle>Nova Transação OS #{osId}</DialogTitle>
-        :  
-                  <DialogTitle>Nova Transação</DialogTitle>
-
-        }
+          {osId && <DialogTitle>Nova Transação OS #{osId}</DialogTitle>}
+          {vendaId && (
+            <DialogTitle>Nova Transação Venda #{vendaId}</DialogTitle>
+          )}
+          {!osId && !vendaId && <DialogTitle>Nova Transação</DialogTitle>}
           <DialogDescription>
             Preencha dados para registrar uma transação
           </DialogDescription>
@@ -179,9 +187,9 @@ export default function RegisterContent({
             <div className="space-y-4 grid sm:grid-cols-3 gap-4">
               <div className="space-y-2 w-full">
                 <Label htmlFor="tipo">Tipo</Label>
-                {osId ? (
+                {osId || vendaId ? (
                   <Select
-                  disabled
+                    disabled
                     value={"RECEITA"}
                     onValueChange={(v) => handleChange("tipo", v)}
                   >
@@ -213,7 +221,7 @@ export default function RegisterContent({
               <div className="space-y-2 w-full col-span-full">
                 <Label htmlFor="descricao">Descrição*</Label>
                 <Input
-                  disabled={osId ? true : false}
+                  disabled={osId || vendaId ? true : false}
                   id="descricao"
                   value={newTransaction.descricao || ""}
                   onChange={(e) => handleChange("descricao", e.target.value)}
@@ -223,46 +231,57 @@ export default function RegisterContent({
               </div>
               <div className="space-y-2 w-full">
                 <div className="p-0 m-0 mb-1 flex flex-row justify-between items-center">
-
-                <Label htmlFor="valor">Valor* </Label>
-                {(newTransaction.tipo === Tipo_transacao.RECEITA || newTransaction.tipo === Tipo_transacao.SAQUE) && (
-
-                <div className="flex flex-row gap-2">
-
-                <span className="text-xs text-muted-foreground">Taxa de recebimento</span>
-                <Switch 
-                checked={isChecked}
-                onCheckedChange={()=>
-                {
-                  setIsChecked(!isChecked)
-                  if(!isChecked){
-                    setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor})
-                  }
-                  else{
-                    setNewTransaction({...newTransaction, valorLiquido: newTransaction.valor}) 
-                }
-
-              }}
-                />
-                </div>
-                )}
+                  <Label htmlFor="valor">Valor* </Label>
+                  {(newTransaction.tipo === Tipo_transacao.RECEITA ||
+                    newTransaction.tipo === Tipo_transacao.SAQUE) && (
+                    <div className="flex flex-row gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Taxa de recebimento
+                      </span>
+                      <Switch
+                        checked={isChecked}
+                        onCheckedChange={() => {
+                          setIsChecked(!isChecked);
+                          if (!isChecked) {
+                            setNewTransaction({
+                              ...newTransaction,
+                              valorLiquido: newTransaction.valor,
+                            });
+                          } else {
+                            setNewTransaction({
+                              ...newTransaction,
+                              valorLiquido: newTransaction.valor,
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <ValueInput
                   price={newTransaction.valor || 0}
                   setPrice={(v) => handleChange("valor", v)}
                 ></ValueInput>
                 {isChecked && (
-                <>
-                <div className="flex flex-row items-center justify-between">
-
-                <span className="text-xs text-muted-foreground">Valor líquido recebido:</span>
-                <span className="text-xs text-muted-foreground">Taxa: {newTransaction.valor && newTransaction.valorLiquido ? formatarEmReal(newTransaction.valor - newTransaction.valorLiquido)  : 0 }</span>
-                </div>
-                <ValueInput
-                  price={newTransaction.valorLiquido || 0}
-                  setPrice={(v) => handleChange("valorLiquido", v)}
-                ></ValueInput>
-                </>
+                  <>
+                    <div className="flex flex-row items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        Valor líquido recebido:
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Taxa:{" "}
+                        {newTransaction.valor && newTransaction.valorLiquido
+                          ? formatarEmReal(
+                              newTransaction.valor - newTransaction.valorLiquido
+                            )
+                          : 0}
+                      </span>
+                    </div>
+                    <ValueInput
+                      price={newTransaction.valorLiquido || 0}
+                      setPrice={(v) => handleChange("valorLiquido", v)}
+                    ></ValueInput>
+                  </>
                 )}
               </div>
               <div className="space-y-2 w-full">
@@ -310,39 +329,53 @@ export default function RegisterContent({
               </div>
               <div className="space-y-2 w-full">
                 <Label htmlFor="categoria">Categoria</Label>
-                {osId ? 
-                <Select
-                disabled
-                  value={newTransaction.categoria}
-                  onValueChange={(v) => handleChange("categoria", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="ORDEM_SERVICO" >
+                {osId && (
+                  <Select
+                    disabled
+                    value={newTransaction.categoria}
+                    onValueChange={(v) => handleChange("categoria", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ORDEM_SERVICO">
                         ORDEM DE SERVIÇO
                       </SelectItem>
-                  </SelectContent>
-                </Select>
-              :
-
-                <Select
-                  value={newTransaction.categoria}
-                  onValueChange={(v) => handleChange("categoria", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(Categoria_transacao).map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              }
+                    </SelectContent>
+                  </Select>
+                )}
+                {vendaId && (
+                  <Select
+                    disabled
+                    value={newTransaction.categoria}
+                    onValueChange={(v) => handleChange("categoria", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VENDA">VENDA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {!osId && !vendaId && (
+                  <Select
+                    value={newTransaction.categoria}
+                    onValueChange={(v) => handleChange("categoria", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(Categoria_transacao).map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 

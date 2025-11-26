@@ -143,6 +143,7 @@ export async function GET(req: Request) {
     const tipo = (searchParams.get("tipo") ?? "").trim(); // public.tipos_transacao
     const categoria = (searchParams.get("categoria") ?? "").trim(); // public.categoria_transacao
     const ordemservicoid = (searchParams.get("ordemservicoid"))
+    const vendaid = (searchParams.get("vendaid"))
     const metodo = (searchParams.get("metodo") ??
       searchParams.get("metodopagamento") ??
       ""
@@ -175,6 +176,7 @@ export async function GET(req: Request) {
       query = query.ilike("descricao", `%${q}%`);
     }
     if(ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
+    if(vendaid) query = query.eq("vendaid", vendaid);
     if (tipo) query = query.eq("tipo", tipo);
     if (categoria) query = query.eq("categoria", categoria);
     if (metodo) query = query.eq("metodopagamento", metodo);

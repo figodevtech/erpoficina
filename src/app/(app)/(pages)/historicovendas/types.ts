@@ -20,6 +20,7 @@ export interface VendaStatusMetricsData {
     abertas?: StatusMetrics;
     finalizadas?: StatusMetrics;
     canceladas?: StatusMetrics;
+    pagamento?: StatusMetrics;
     [key: string]: StatusMetrics | undefined; // fallback pra outros status
   };
 }
