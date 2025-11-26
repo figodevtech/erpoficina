@@ -201,7 +201,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
             
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
-              // vendaId={venda.id}
+              vendaId={venda.id}
               open={open}
               setOpen={setOpen}
             >

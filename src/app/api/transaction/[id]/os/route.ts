@@ -23,8 +23,8 @@ async function parseId(ctx: Params) {
 }
 
 // Ajuste se seus literais do enum forem diferentes
-const STATUS_CONCLUIDO = "CONCLUIDO";
-const STATUS_CONCLUIDA = "CONCLUIDA"; // caso exista no seu enum
+const STATUS_CONCLUIDO = "FINALIZADA";
+const STATUS_CONCLUIDA = "FINALIZADA"; // caso exista no seu enum
 const STATUS_PAGAMENTO = "PAGAMENTO";
 
 /* ========================= DELETE ========================= */
@@ -32,10 +32,10 @@ export async function DELETE(_: Request, ctx: Params) {
   try {
     const id = await parseId(ctx);
 
-    // 1) Buscar a transação para obter OS e tipo
+    // 1) Buscar a transação para obter OS ou VENDA e tipo
     const { data: tx, error: txErr } = await supabaseAdmin
       .from("transacao")
-      .select("id, ordemservicoid, tipo")
+      .select("id, ordemservicoid, tipo, vendaid")
       .eq("id", id)
       .maybeSingle();
 
@@ -54,6 +54,9 @@ export async function DELETE(_: Request, ctx: Params) {
 
     const osId: number | null =
       tx?.ordemservicoid != null ? Number(tx.ordemservicoid) : null;
+    const vendaId: number | null =
+      tx?.vendaid != null ? Number(tx.vendaid) : null;
+
     const isReceita =
       typeof tx?.tipo === "string" && tx.tipo.toUpperCase() === "RECEITA";
 
@@ -123,6 +126,61 @@ export async function DELETE(_: Request, ctx: Params) {
         }
       } else if (osErr) {
         console.error("Erro ao buscar OS após delete:", osErr);
+      }
+    }
+    // 3) Se era VENDA vinculada a VENDA, revalidar status da VENDA após a exclusão
+    if (vendaId && isReceita) {
+      // 3.1 Orçamento e status atuais
+      const { data: venda, error: osErr } = await supabaseAdmin
+        .from("venda")
+        .select("id, valortotal, status")
+        .eq("id", vendaId)
+        .maybeSingle();
+
+      if (!osErr && venda && venda.valortotal != null) {
+        const orcCents = toCents(venda.valortotal);
+
+        if (orcCents > 0) {
+          // 3.2 Soma das RECEITAS restantes
+          const { data: receitas, error: recErr } = await supabaseAdmin
+            .from("transacao")
+            .select("valor")
+            .eq("vendaid", vendaId)
+            .eq("tipo", "RECEITA");
+
+          if (!recErr) {
+            const somaCents =
+              receitas?.reduce((acc, t) => acc + toCents(t.valor), 0) ?? 0;
+
+            const statusAtual = String(venda.status ?? "").toUpperCase();
+            const estavaConcluida =
+              statusAtual === STATUS_CONCLUIDO ||
+              statusAtual === STATUS_CONCLUIDA;
+
+            // 3.3 Se estava concluída e a soma ficou menor que o orçamento → volta para PAGAMENTO
+            if (estavaConcluida && somaCents < orcCents) {
+              const { error: updErr } = await supabaseAdmin
+                .from("venda")
+                .update({
+                  status: STATUS_PAGAMENTO,
+                  updatedat: new Date().toISOString(),
+                })
+                .eq("id", vendaId);
+
+              if (updErr) {
+                // Não invalida o DELETE; apenas loga
+                console.error(
+                  "Falha ao reabrir VENDA para PAGAMENTO após deletar transação:",
+                  updErr
+                );
+              }
+            }
+          } else {
+            console.error("Erro ao somar receitas da VENDA após delete:", recErr);
+          }
+        }
+      } else if (osErr) {
+        console.error("Erro ao buscar VENDA após delete:", osErr);
       }
     }
 

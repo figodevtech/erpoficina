@@ -1,5 +1,4 @@
 import { vendaStatus } from "@/app/(app)/(pages)/historicovendas/types";
-import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +34,7 @@ export default function DeleteAlert({children, handleDeleteTransaction, isAlertO
           <AlertDialogDescription>
             {statusVenda === "FINALIZADA" ?
             
-            "Ordem de Serviço já conluída. Tem certeza que deseja deletar a transação? Está ação não pode ser desfeita e retornará a OS para o status de PAGAMENTO EM ABERTO."
+            "Ordem de Serviço já conluída. Tem certeza que deseja deletar a transação? Está ação não pode ser desfeita e retornará a VENDA para o status de PAGAMENTO EM ABERTO."
             :
             "Esta ação não pode ser desfeita. Deletará a transação." 
           }

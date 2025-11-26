@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 /** Campos graváveis em transacao */
 const WRITABLE_FIELDS = new Set([
   "ordemservicoid",
+  "vendaid",
   "descricao",
   "valor",
   "valorLiquido",
@@ -22,7 +23,7 @@ const WRITABLE_FIELDS = new Set([
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
-  "id, descricao, valor, valorLiquido, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
+  "id, descricao, valor, valorLiquido, data, ordemservicoid, vendaid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
 const BANCO_FIELDS =
@@ -63,6 +64,7 @@ function brl(cents: number): string {
 
 // Ajuste para o literal correto do seu enum (ex.: 'FINALIZADA')
 const TARGET_STATUS_CONCLUIDA = "CONCLUIDO";
+const TARGET_VENDA_STATUS_CONCLUIDA = "FINALIZADA";
 
 /**
  * Saneia e valida payload de transacao:
@@ -147,6 +149,7 @@ export async function GET(req: Request) {
     const tipo = (searchParams.get("tipo") ?? "").trim(); // public.tipos_transacao
     const categoria = (searchParams.get("categoria") ?? "").trim(); // public.categoria_transacao
     const ordemservicoid = searchParams.get("ordemservicoid");
+    const vendaid = searchParams.get("vendaid");
     const metodo = (
       searchParams.get("metodo") ??
       searchParams.get("metodopagamento") ??
@@ -180,6 +183,7 @@ export async function GET(req: Request) {
       query = query.ilike("descricao", `%${q}%`);
     }
     if (ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
+    if (vendaid) query = query.eq("vendaid", vendaid);
     if (tipo) query = query.eq("tipo", tipo);
     if (categoria) query = query.eq("categoria", categoria);
     if (metodo) query = query.eq("metodopagamento", metodo);
@@ -247,6 +251,8 @@ export async function POST(req: Request) {
         ? body.newTransaction
         : body;
 
+    console.log(json)
+
     if (!json || typeof json !== "object") {
       return NextResponse.json(
         { error: "Corpo da requisição inválido." },
@@ -260,6 +266,7 @@ export async function POST(req: Request) {
     let preSumCents: number | null = null;
     let orcCents: number | null = null;
     let osId: number | null = null;
+    let vendaId: number | null = null;
     const isReceita =
       typeof payload?.tipo === "string" &&
       payload.tipo.toUpperCase() === "RECEITA";
@@ -349,6 +356,84 @@ export async function POST(req: Request) {
         );
       }
     }
+
+
+    if (payload?.vendaid != null && isReceita) {
+      vendaId = Number(payload.vendaid);
+
+      // 1) Busca orcamentototal da OS
+      const { data: venda, error: osErr } = await supabaseAdmin
+        .from("venda")
+        .select("id, valortotal, status")
+        .eq("id", vendaId)
+        .maybeSingle();
+
+      if (osErr) {
+        return NextResponse.json(
+          { error: "Erro ao buscar a venda vinculada." },
+          { status: 500 }
+        );
+      }
+      if (!venda) {
+        return NextResponse.json(
+          { error: "Venda não encontrada." },
+          { status: 404 }
+        );
+      }
+
+      orcCents = moneyToCents(venda.valortotal as any);
+      if (orcCents == null || orcCents <= 0) {
+        return NextResponse.json(
+          { error: "A Venda não possui orçamento válido para validação." },
+          { status: 409 }
+        );
+      }
+
+      // 2) Pagamento único não pode ultrapassar orçamento
+      if (valorCents > orcCents) {
+        return NextResponse.json(
+          {
+            error: `Pagamento único (${brl(
+              valorCents
+            )}) ultrapassa o valor da Venda (${brl(orcCents)}).`,
+          },
+          { status: 409 }
+        );
+      }
+
+      // 3) Soma pagamentos existentes + novo não pode ultrapassar
+      const { data: transacoes, error: txErr } = await supabaseAdmin
+        .from("transacao")
+        .select("valor")
+        .eq("vendaid", vendaId)
+        .eq("tipo", "RECEITA");
+
+      if (txErr) {
+        return NextResponse.json(
+          { error: "Erro ao somar pagamentos existentes da Venda." },
+          { status: 500 }
+        );
+      }
+
+      preSumCents =
+        transacoes?.reduce((acc, t) => {
+          const cents = moneyToCents(t.valor as any) ?? 0;
+          return acc + cents;
+        }, 0) ?? 0;
+
+      const novoTotal = preSumCents + valorCents;
+      if (novoTotal > orcCents) {
+        const restante = orcCents - preSumCents;
+        return NextResponse.json(
+          {
+            error: `A soma dos pagamentos ultrapassa o valor da Venda. Restante permitido: ${brl(
+              Math.max(restante, 0)
+            )}.`,
+          },
+          { status: 409 }
+        );
+      }
+    }
     // =================== Fim validações pré-inserção ===================
 
     // 🔹 Insere e retorna já com o banco relacionado
@@ -404,6 +489,23 @@ export async function POST(req: Request) {
         if (updErr) {
           // não invalida a criação da transação; apenas loga
           console.error("Falha ao atualizar status da OS:", updErr);
+        }
+      }
+    }
+    if (vendaId != null && preSumCents != null && orcCents != null) {
+      const novoTotal = preSumCents + valorCents!;
+      if (novoTotal === orcCents) {
+        const { error: updErr } = await supabaseAdmin
+          .from("venda")
+          .update({
+            status: TARGET_VENDA_STATUS_CONCLUIDA,
+            updatedat: new Date().toISOString(),
+          })
+          .eq("id", vendaId);
+
+        if (updErr) {
+          // não invalida a criação da transação; apenas loga
+          console.error("Falha ao atualizar status da Venda:", updErr);
         }
       }
     }

@@ -8,6 +8,7 @@ import { Categoria_transacao, NewTransaction, Tipo_transacao, TransactionCustome
 interface TransactionDialogProps {
   children?: ReactNode;
   osId?: number
+  vendaId?: number
   transactionId?: number;
   setSelectedTransactionId?: (value: number | undefined) => void;
   open?: boolean;
@@ -21,6 +22,7 @@ export default function TransactionDialog({
   selectedTransactionId,
   open,
   osId,
+  vendaId,
   setOpen,
   handleGetTransactions,
 }: TransactionDialogProps) {
@@ -46,9 +48,23 @@ export default function TransactionDialog({
           valor: 0,
           valorLiquido: 0
         });
-      } else {
+      }
+
+      if(vendaId){
+        setNewTransaction({
+          vendaid: vendaId,
+          tipo: Tipo_transacao.RECEITA,
+          categoria: Categoria_transacao.VENDA,
+          descricao: `Pagamento da Venda #${vendaId}`,
+          valor: 0,
+          valorLiquido: 0
+        });
+      }
+      
+      if(!osId && !vendaId) {
         setNewTransaction({});
       }
+
       return;
     }
 
@@ -67,6 +83,7 @@ export default function TransactionDialog({
         />
       ) : (
         <RegisterContent
+        vendaId={vendaId}
         osId={osId}
         handleGetTransactions={handleGetTransactions}
           selectedCustomer={selectedCustomer}
