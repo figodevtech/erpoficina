@@ -1,4 +1,3 @@
-// tabela-usuarios.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -25,7 +24,6 @@ import {
   MoreHorizontal,
   Eye,
   Edit3,
-  Trash2,
   Plus,
   Loader,
   Mail,
@@ -40,7 +38,6 @@ type Props = {
   onNew?: () => void;
   onEdit: (u: Usuario) => void;
   onView: (u: Usuario) => void;
-  onDelete: (id: string | number) => void;
   onEnviarConvite?: (u: Usuario) => void;
   onDefinirSenha?: (u: Usuario) => void;
 };
@@ -53,7 +50,6 @@ export function TabelaUsuarios({
   onNew,
   onEdit,
   onView,
-  onDelete,
   onEnviarConvite,
   onDefinirSenha,
 }: Props) {
@@ -193,7 +189,7 @@ export function TabelaUsuarios({
                         </DropdownMenuItem>
                         {onEnviarConvite && (
                           <DropdownMenuItem onClick={() => onEnviarConvite(u)}>
-                            <Mail className="h-4 w-4 mr-2" /> Enviar convite
+                            <Mail className="h-4 w-4 mr-2" /> Refinir senha
                           </DropdownMenuItem>
                         )}
                         {onDefinirSenha && (
@@ -201,12 +197,6 @@ export function TabelaUsuarios({
                             <Key className="h-4 w-4 mr-2" /> Definir senha
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => onDelete(String(u.id))}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

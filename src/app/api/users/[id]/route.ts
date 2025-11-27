@@ -284,31 +284,31 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = isOpen() ? null : await auth();
-    await ensureAccess(session);
+// export async function DELETE(
+//   req: NextRequest,
+//   context: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     const session = isOpen() ? null : await auth();
+//     await ensureAccess(session);
 
-    const { id: userId } = await context.params;
+//     const { id: userId } = await context.params;
 
-    const { error: dErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (dErr) throw dErr;
+//     const { error: dErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+//     if (dErr) throw dErr;
 
-    await supabaseAdmin.from("usuario").delete().eq("id", userId);
+//     await supabaseAdmin.from("usuario").delete().eq("id", userId);
 
-    const { GET: listUsers } = await import("../route");
-    return listUsers();
-  } catch (e: any) {
-    console.error("[/api/users/:id DELETE] error:", e);
-    const status = /não autenticado|unauth|auth/i.test(String(e?.message))
-      ? 401
-      : 500;
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao remover usuário" },
-      { status }
-    );
-  }
-}
+//     const { GET: listUsers } = await import("../route");
+//     return listUsers();
+//   } catch (e: any) {
+//     console.error("[/api/users/:id DELETE] error:", e);
+//     const status = /não autenticado|unauth|auth/i.test(String(e?.message))
+//       ? 401
+//       : 500;
+//     return NextResponse.json(
+//       { error: e?.message ?? "Erro ao remover usuário" },
+//       { status }
+//     );
+//   }
+// }

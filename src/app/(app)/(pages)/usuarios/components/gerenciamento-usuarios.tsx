@@ -16,7 +16,6 @@ import {
   buscarUsuarios,
   criarUsuario,
   atualizarUsuario,
-  excluirUsuario,
   enviarConviteUsuario,
   definirSenhaUsuario,
   type Usuario,
@@ -58,11 +57,6 @@ export default function GerenciamentoUsuarios() {
   const [senha, setSenha] = useState("");
   const [senhaConfirm, setSenhaConfirm] = useState("");
   const [savingSenha, setSavingSenha] = useState(false);
-
-  // dialog de confirmação de exclusão
-  const [openExcluir, setOpenExcluir] = useState(false);
-  const [usuarioExcluir, setUsuarioExcluir] = useState<Usuario | null>(null);
-  const [excluindo, setExcluindo] = useState(false);
 
   const loadAll = useCallback(async () => {
     try {
@@ -124,30 +118,6 @@ export default function GerenciamentoUsuarios() {
   const onView = (u: Usuario) => {
     setSelected(u);
     setOpenDetalhes(true);
-  };
-
-  // abre o dialog de confirmação
-  const onDelete = (id: string | number) => {
-    const alvo = usuarios.find((u) => String(u.id) === String(id)) ?? null;
-    if (!alvo) return;
-    setUsuarioExcluir(alvo);
-    setOpenExcluir(true);
-  };
-
-  const confirmarExclusao = async () => {
-    if (!usuarioExcluir) return;
-    try {
-      setExcluindo(true);
-      await excluirUsuario(usuarioExcluir.id);
-      toast.success("Usuário removido.");
-      setOpenExcluir(false);
-      setUsuarioExcluir(null);
-      await loadAll();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao remover usuário.");
-    } finally {
-      setExcluindo(false);
-    }
   };
 
   // criar/editar
@@ -268,7 +238,6 @@ export default function GerenciamentoUsuarios() {
         onNew={onNew}
         onEdit={onEdit}
         onView={onView}
-        onDelete={onDelete}
         onEnviarConvite={handleEnviarConvite}
         onDefinirSenha={handleAbrirSenha}
       />
@@ -360,56 +329,8 @@ export default function GerenciamentoUsuarios() {
               Cancelar
             </Button>
             <Button type="button" onClick={handleSalvarSenha} disabled={savingSenha}>
-              {savingSenha && (
-                <span className="mr-2 h-4 w-4 animate-spin border-2 border-t-transparent rounded-full" />
-              )}
+              {savingSenha && <span className="mr-2 h-4 w-4 animate-spin border-2 border-t-transparent rounded-full" />}
               Salvar senha
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 🗑️ Dialog Confirmar Exclusão */}
-      <Dialog
-        open={openExcluir}
-        onOpenChange={(v) => {
-          setOpenExcluir(v);
-          if (!v) {
-            setUsuarioExcluir(null);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Excluir usuário</DialogTitle>
-            <DialogDescription>
-              {usuarioExcluir
-                ? `Tem certeza que deseja excluir o usuário "${usuarioExcluir.nome}"? Esta ação não poderá ser desfeita. O usuário será removido do sistema e não terá mais acesso.`
-                : "Esta ação não poderá ser desfeita. O usuário será removido do sistema e não terá mais acesso."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={excluindo}
-              onClick={() => {
-                setOpenExcluir(false);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={excluindo}
-              onClick={confirmarExclusao}
-            >
-              {excluindo && (
-                <span className="mr-2 h-4 w-4 animate-spin border-2 border-t-transparent rounded-full" />
-              )}
-              Excluir usuário
             </Button>
           </DialogFooter>
         </DialogContent>
