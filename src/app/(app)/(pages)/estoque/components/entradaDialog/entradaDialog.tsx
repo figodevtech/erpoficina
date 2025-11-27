@@ -80,7 +80,7 @@ export default function EntradaDialog({
   const handleGetFornecedores = async () => {
     setIsLoadingFornecedor(true);
     try {
-      const response = await axios.get("/api/tipos/fornecedor");
+      const response = await axios.get("/api/tipos/fornecedores");
       if (response.status === 200) {
         console.log(response.data.items);
         setFornecedores(response.data.items);
