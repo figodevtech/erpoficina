@@ -28,6 +28,7 @@ import {
   MapPin,
   Search,
   Loader2,
+  IdCard,
 } from "lucide-react";
 import {
   DialogClose,
@@ -66,12 +67,14 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EditContentProps {
   customerId: number;
 }
 export default function EditContent({ customerId }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const [selectedCustomer, setselectedCustomer] = useState<
     Customer | undefined
   >(undefined);
@@ -105,11 +108,60 @@ export default function EditContent({ customerId }: EditContentProps) {
     }
   };
 
-  const handleGetCep = async () => {
-     if(!selectedCustomer?.cep){
-          toast.error("Informe um CEP para buscar")
-          return
+  const handleGetCNPJ = async () => {
+    if (selectedCustomer && selectedCustomer?.cpfcnpj?.length < 14) {
+      return;
+    }
+    setIsLoadingCNPJ(true);
+    try {
+      const response = await axios.get(
+        `https://publica.cnpj.ws/cnpj/${selectedCustomer?.cpfcnpj}`
+      );
+      if (response.status === 200) {
+        console.log(response.data);
+        const juridica = response.data;
+        ({
+          ...selectedCustomer,
+          nomerazaosocial: juridica.razao_social,
+          cep: juridica.estabelecimento.cep,
+          email: juridica.estabelecimento.email,
+          endereconumero: juridica.estabelecimento.numero,
+          telefone: `${juridica.estabelecimento.ddd1}${juridica.estabelecimento.telefone1}`,
+          estado: juridica.estabelecimento.estado.sigla,
+          cidade: juridica.estabelecimento.cidade.nome,
+          endereco: juridica.estabelecimento.logradouro,
+          enderecocomplemento: juridica.estabelecimento.complemento,
+          bairro: juridica.estabelecimento.bairro,
+        });
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        if (error.status === 429) {
+          toast.error("Muitas tentativas", {
+            description: "Aguarde um pouco e tente novamente",
+          });
         }
+        if (error.status === 400) {
+          toast.error("CNPJ não encontrado", {
+            description: "Verifique o dado informado",
+          });
+        }
+        if (error.status === 404) {
+          toast.error("Error no servidor de consulta", {
+            description: "Verifique com o administrador",
+          });
+        }
+      }
+    } finally {
+      setIsLoadingCNPJ(false);
+    }
+  };
+
+  const handleGetCep = async () => {
+    if (!selectedCustomer?.cep) {
+      toast.error("Informe um CEP para buscar");
+      return;
+    }
     setIsLoadingCep(true);
     try {
       const response = await axios.get(
@@ -161,6 +213,7 @@ export default function EditContent({ customerId }: EditContentProps) {
       setIsSubmitting(false);
     }
   };
+  
 
   useEffect(() => {
     if (customerId) {
@@ -171,6 +224,8 @@ export default function EditContent({ customerId }: EditContentProps) {
   useEffect(() => {
     console.log(selectedCustomer);
   }, [selectedCustomer]);
+
+
   if (isLoading) {
     return (
       <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
@@ -184,6 +239,8 @@ export default function EditContent({ customerId }: EditContentProps) {
       </DialogContent>
     );
   }
+
+  
 
   if (selectedCustomer) {
     return (
@@ -349,28 +406,51 @@ export default function EditContent({ customerId }: EditContentProps) {
                         : "CNPJ"}{" "}
                       *
                     </Label>
-                    <Input
-                      id="cpfcnpj"
-                      inputMode="numeric"
-                      className=""
-                      value={
-                        formatCpfCnpj(
-                          selectedCustomer.cpfcnpj,
-                          selectedCustomer.tipopessoa
-                        ) || ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange("cpfcnpj", e.target.value)
-                      }
-                      placeholder={
-                        selectedCustomer.tipopessoa === "FISICA"
-                          ? "000.000.000-00"
-                          : "00.000.000/0000-00"
-                      }
-                      maxLength={
-                        selectedCustomer.tipopessoa === "FISICA" ? 14 : 18
-                      }
-                    />
+                    <div className=" relative">
+                      {isLoadingCNPJ && (
+                        <Loader2 className="w-4 h-4 absolute right-9 top-2.5 animate-spin text-primary" />
+                      )}
+                      <div className="relative">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+
+                        <div
+                        onClick={handleGetCNPJ}
+                        className="p-1 hover:bg-gray-500/20 cursor-pointer transition-all rounded-3xl absolute top-1.5 right-2 m-0">
+
+                        <IdCard className="w-4 h-4"/>
+                        </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Consultar CNPJ
+                          </TooltipContent>
+                        </Tooltip>
+                      <Input
+                        id="cpfcnpj"
+                        inputMode="numeric"
+                        className=""
+                        value={
+                          formatCpfCnpj(
+                            selectedCustomer.cpfcnpj,
+                            selectedCustomer.tipopessoa
+                          ) || ""
+                        }
+                        onChange={(e) => {
+                          const onlyNumbers = e.target.value.replace(/\D/g, "");
+
+                          handleInputChange("cpfcnpj", onlyNumbers);
+                        }}
+                        placeholder={
+                          selectedCustomer.tipopessoa === "FISICA"
+                            ? "000.000.000-00"
+                            : "00.000.000/0000-00"
+                        }
+                        maxLength={
+                          selectedCustomer.tipopessoa === "FISICA" ? 14 : 18
+                        }
+                      />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
