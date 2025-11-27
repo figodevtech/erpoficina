@@ -83,6 +83,9 @@ const emptyForm: ServicoForm = {
   ativo: true,
 };
 
+// 🔹 limite padrão de 10 por página
+const DEFAULT_LIMIT = 10;
+
 export default function ServicosSection() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +98,7 @@ export default function ServicosSection() {
 
   // paginação (padrão TabelaUsuarios / Fornecedores)
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
 
   const total = servicos.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -146,7 +149,6 @@ export default function ServicosSection() {
       setIsLoading(true);
       setErro(null);
 
-      // mesma ideia do fornecedores: usar /api/tipos/...
       const res = await fetch("/api/tipos/servicos", { cache: "no-store" });
       const j = await res.json();
 
@@ -588,13 +590,13 @@ export default function ServicosSection() {
             <Select
               value={String(limit)}
               onValueChange={(v) => {
-                const n = parseInt(v, 10) || 20;
+                const n = parseInt(v, 10) || DEFAULT_LIMIT;
                 setLimit(n);
                 setPage(1);
               }}
             >
               <SelectTrigger size="sm" className="hover:cursor-pointer ml-2 w-[80px]">
-                <SelectValue placeholder={limit} />
+                <SelectValue placeholder={DEFAULT_LIMIT} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="10" className="hover:cursor-pointer">

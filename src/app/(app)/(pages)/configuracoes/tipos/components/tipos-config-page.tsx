@@ -9,6 +9,7 @@ import {
   Factory,
   Landmark,
   Tags,
+  LayoutPanelLeft,
 } from "lucide-react";
 
 import GruposProdutoSection from "./grupos-produto-section";
@@ -17,12 +18,14 @@ import ServicosSection from "./servicos-section";
 import FornecedoresSection from "./fornecedores-section";
 import BancosSection from "./contas-bancarias-section";
 import CategoriasTransacaoSection from "./categorias-transacao-section";
+import SetoresSection from "./setores-section";
 
 type TabId =
   | "grupos"
   | "unidades"
   | "servicos"
   | "fornecedores"
+  | "setores"
   | "bancos"
   | "categorias";
 
@@ -67,6 +70,13 @@ export default function TiposConfigPage() {
               onClick={() => setActiveTab("fornecedores")}
             />
             <TabButton
+              active={activeTab === "setores"}
+              icon={LayoutPanelLeft}
+              title="Setores"
+              subtitle="Áreas internas da empresa"
+              onClick={() => setActiveTab("setores")}
+            />
+            <TabButton
               active={activeTab === "bancos"}
               icon={Landmark}
               title="Contas bancárias"
@@ -90,6 +100,7 @@ export default function TiposConfigPage() {
             {activeTab === "unidades" && <UnidadesMedidaSection />}
             {activeTab === "servicos" && <ServicosSection />}
             {activeTab === "fornecedores" && <FornecedoresSection />}
+            {activeTab === "setores" && <SetoresSection />}
             {activeTab === "bancos" && <BancosSection />}
             {activeTab === "categorias" && <CategoriasTransacaoSection />}
           </div>

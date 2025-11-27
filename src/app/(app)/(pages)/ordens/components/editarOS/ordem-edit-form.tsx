@@ -2,27 +2,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, User2, Wrench, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
+import { listarSetores } from "../../lib/api";
 
 type Cliente = {
   id: number;
@@ -53,45 +42,27 @@ const NONE = "__none__";
 type AlvoTipo = "VEICULO" | "PECA";
 
 function resolvePecaNome(src: any): string {
-  return (
-    src?.titulo ??
-    src?.nome ??
-    src?.peca?.titulo ??
-    src?.peca?.nome ??
-    ""
-  );
+  return src?.titulo ?? src?.nome ?? src?.peca?.titulo ?? src?.peca?.nome ?? "";
 }
 
 function resolvePecaDescricao(src: any): string {
   return src?.descricao ?? src?.peca?.descricao ?? "";
 }
 
-export function OrdemEditForm({
-  defaultValues,
-  exposeSubmit,
-  onSavingChange,
-}: OrdemEditFormProps) {
+export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: OrdemEditFormProps) {
   const osId = defaultValues?.id ?? null;
 
-  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>(
-    []
-  );
+  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
   const [loadingSetores, setLoadingSetores] = useState(false);
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
 
-  const [modoAtendimento, setModoAtendimento] = useState<
-    "cadastrado" | "avulso"
-  >("cadastrado");
-  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">(
-    "NORMAL"
-  );
+  const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
+  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
 
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<Veiculo[]>([]);
-  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<
-    number | null
-  >(null);
+  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
 
   const [avulsoNome, setAvulsoNome] = useState("");
   const [avulsoDoc, setAvulsoDoc] = useState("");
@@ -122,16 +93,11 @@ export function OrdemEditForm({
       try {
         setLoadingSetores(true);
         setSetoresError(null);
-        const r = await fetch("/api/setores", { cache: "no-store" });
-        const j = await r.json();
-        const items: Array<{ id: number; nome: string }> = Array.isArray(j)
-          ? j
-          : j?.items ?? [];
+
+        const items = await listarSetores(); // só ativos
         setSetores(items);
       } catch (e: any) {
-        setSetoresError(
-          e?.message ?? "Não foi possível carregar os setores."
-        );
+        setSetoresError(e?.message ?? "Não foi possível carregar os setores.");
         setSetores([]);
       } finally {
         setLoadingSetores(false);
@@ -154,12 +120,7 @@ export function OrdemEditForm({
         const cli = j?.cliente ?? j?.os?.cliente ?? null;
         const vei = j?.veiculo ?? j?.os?.veiculo ?? null;
 
-        const setorIdResolvido =
-          os?.setorid != null
-            ? os.setorid
-            : os?.setor?.id != null
-            ? os.setor.id
-            : null;
+        const setorIdResolvido = os?.setorid != null ? os.setorid : os?.setor?.id != null ? os.setor.id : null;
         setSetor(setorIdResolvido != null ? String(setorIdResolvido) : "");
 
         setPrioridade((os?.prioridade as any) || "NORMAL");
@@ -183,17 +144,15 @@ export function OrdemEditForm({
             });
             if (rv.ok) {
               const vj = await rv.json();
-              const arr: Veiculo[] = (Array.isArray(vj) ? vj : vj?.items ?? []).map(
-                (v: any) => ({
-                  id: v.id,
-                  placa: v.placa,
-                  modelo: v.modelo,
-                  marca: v.marca,
-                  ano: v.ano ?? null,
-                  cor: v.cor ?? null,
-                  kmatual: v.kmatual ?? null,
-                })
-              );
+              const arr: Veiculo[] = (Array.isArray(vj) ? vj : vj?.items ?? []).map((v: any) => ({
+                id: v.id,
+                placa: v.placa,
+                modelo: v.modelo,
+                marca: v.marca,
+                ano: v.ano ?? null,
+                cor: v.cor ?? null,
+                kmatual: v.kmatual ?? null,
+              }));
               setVeiculosDoCliente(arr);
             }
           } catch {
@@ -217,21 +176,9 @@ export function OrdemEditForm({
           setVPlaca(vei?.placa ?? os?.veiculo?.placa ?? "");
           setVModelo(vei?.modelo ?? os?.veiculo?.modelo ?? "");
           setVMarca(vei?.marca ?? os?.veiculo?.marca ?? "");
-          setVAno(
-            vei?.ano
-              ? String(vei.ano)
-              : os?.veiculo?.ano
-              ? String(os.veiculo.ano)
-              : ""
-          );
+          setVAno(vei?.ano ? String(vei.ano) : os?.veiculo?.ano ? String(os.veiculo.ano) : "");
           setVCor(vei?.cor ?? os?.veiculo?.cor ?? "");
-          setVKm(
-            vei?.kmatual
-              ? String(vei.kmatual)
-              : os?.veiculo?.kmatual
-              ? String(os.veiculo.kmatual)
-              : ""
-          );
+          setVKm(vei?.kmatual ? String(vei.kmatual) : os?.veiculo?.kmatual ? String(os.veiculo.kmatual) : "");
         } else {
           setPNome(resolvePecaNome(j?.peca ?? os?.peca));
           setPDesc(resolvePecaDescricao(j?.peca ?? os?.peca));
@@ -262,12 +209,10 @@ export function OrdemEditForm({
   function validar(): string | null {
     if (!osId) return "OS inválida.";
     if (!setor) return "Selecione o setor responsável.";
-    if (modoAtendimento === "cadastrado" && !cliente)
-      return "Dados do cliente não carregados.";
+    if (modoAtendimento === "cadastrado" && !cliente) return "Dados do cliente não carregados.";
 
     if (modoAtendimento === "avulso") {
-      if (!avulsoNome || !avulsoDoc)
-        return "Preencha Nome/Razão Social e CPF/CNPJ no atendimento avulso.";
+      if (!avulsoNome || !avulsoDoc) return "Preencha Nome/Razão Social e CPF/CNPJ no atendimento avulso.";
       if (!avulsoTelefone?.trim() || !avulsoEmail?.trim())
         return "Para atendimento avulso, telefone e e-mail são obrigatórios.";
     }
@@ -386,8 +331,7 @@ export function OrdemEditForm({
     pDesc,
   ]);
 
-  if (!osId)
-    return <div className="text-sm text-red-600">OS inválida para edição.</div>;
+  if (!osId) return <div className="text-sm text-red-600">OS inválida para edição.</div>;
 
   return (
     <div className="space-y-6">
@@ -400,9 +344,7 @@ export function OrdemEditForm({
           {/* Definição da OS */}
           <Card className="border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base sm:text-lg">
-                Definição da OS
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -411,11 +353,7 @@ export function OrdemEditForm({
                   <Select
                     value={setor}
                     onValueChange={setSetor}
-                    disabled={
-                      loadingSetores ||
-                      (!!setoresError && setores.length === 0) ||
-                      saving
-                    }
+                    disabled={loadingSetores || (!!setoresError && setores.length === 0) || saving}
                   >
                     <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                       <SelectValue
@@ -436,18 +374,12 @@ export function OrdemEditForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  {setoresError && (
-                    <p className="text-xs text-red-500">{setoresError}</p>
-                  )}
+                  {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
                 </div>
 
                 <div className="space-y-3">
                   <Label>Prioridade</Label>
-                  <Select
-                    value={prioridade}
-                    onValueChange={(v) => setPrioridade(v as any)}
-                    disabled={saving}
-                  >
+                  <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)} disabled={saving}>
                     <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                       <SelectValue placeholder="Selecione a prioridade" />
                     </SelectTrigger>
@@ -481,27 +413,15 @@ export function OrdemEditForm({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label>Nome/Razão Social</Label>
-                    <Input
-                      value={cliente?.nomerazaosocial ?? ""}
-                      readOnly
-                      placeholder="—"
-                    />
+                    <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Telefone</Label>
-                    <Input
-                      value={cliente?.telefone ?? ""}
-                      readOnly
-                      placeholder="—"
-                    />
+                    <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
                   </div>
                   <div className="space-y-1.5">
                     <Label>E-mail</Label>
-                    <Input
-                      value={cliente?.email ?? ""}
-                      readOnly
-                      placeholder="—"
-                    />
+                    <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
                   </div>
                 </div>
               ) : (
@@ -552,9 +472,7 @@ export function OrdemEditForm({
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">
-                  Alvo do reparo
-                </CardTitle>
+                <CardTitle className="text-base sm:text-lg">Alvo do reparo</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -578,27 +496,15 @@ export function OrdemEditForm({
                   {modoAtendimento === "cadastrado" && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>
-                          Vincular a um veículo do cliente (opcional)
-                        </Label>
+                        <Label>Vincular a um veículo do cliente (opcional)</Label>
                         <Badge variant="outline" className="font-normal">
-                          {cliente
-                            ? `${veiculoOptions.length} veículo(s)`
-                            : "—"}
+                          {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
                         </Badge>
                       </div>
                       <Select
-                        value={
-                          veiculoSelecionadoId === null
-                            ? NONE
-                            : String(veiculoSelecionadoId)
-                        }
-                        onValueChange={(v) =>
-                          setVeiculoSelecionadoId(v === NONE ? null : Number(v))
-                        }
-                        disabled={
-                          !cliente || veiculoOptions.length === 0 || saving
-                        }
+                        value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
+                        onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
+                        disabled={!cliente || veiculoOptions.length === 0 || saving}
                       >
                         <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                           <SelectValue
@@ -662,11 +568,7 @@ export function OrdemEditForm({
                     </div>
                     <div className="space-y-1.5">
                       <Label>Cor</Label>
-                      <Input
-                        value={vCor}
-                        onChange={(e) => setVCor(e.target.value)}
-                        disabled={saving}
-                      />
+                      <Input value={vCor} onChange={(e) => setVCor(e.target.value)} disabled={saving} />
                     </div>
                     <div className="space-y-1.5">
                       <Label>KM atual</Label>
@@ -709,9 +611,7 @@ export function OrdemEditForm({
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">
-                  Descrição do Problema
-                </CardTitle>
+                <CardTitle className="text-base sm:text-lg">Descrição do Problema</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -728,9 +628,7 @@ export function OrdemEditForm({
           {/* Observações */}
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">
-                Observações
-              </CardTitle>
+              <CardTitle className="text-base sm:text-lg">Observações</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea

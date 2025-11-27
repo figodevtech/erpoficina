@@ -14,6 +14,7 @@ import { Loader2, Search, User2, ClipboardList, Building2, Wrench } from "lucide
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "../../../clientes/types";
+import { listarSetores } from "../../lib/api";
 
 /* ========== Props ========== */
 export type FormularioNovaOSProps = {
@@ -75,9 +76,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
       try {
         setLoadingSetores(true);
         setSetoresError(null);
-        const r = await fetch("/api/setores", { cache: "no-store" });
-        const j = await r.json();
-        setSetores(Array.isArray(j) ? j : j?.items ?? []);
+
+        const items = await listarSetores();
+        setSetores(items);
       } catch (e: any) {
         setSetoresError(e?.message ?? "Não foi possível carregar os setores.");
         setSetores([]);

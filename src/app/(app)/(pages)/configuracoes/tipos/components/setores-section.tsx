@@ -1,8 +1,18 @@
-// src/app/(app)/(pages)/configuracoes/tipos/components/categorias-transacao-section.tsx
+// src/app/(app)/(pages)/configuracoes/tipos/components/setores-section.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  ChevronsLeft,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ChevronsRight,
+  Loader as LoaderIcon,
+  Loader2,
+  Plus,
+  MoreHorizontal,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +33,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -30,61 +46,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 
-import {
-  ChevronsLeft,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  ChevronsRight,
-  Loader as LoaderIcon,
-  Loader2,
-  MoreHorizontal,
-  Plus,
-} from "lucide-react";
-
-type CategoriaTransacao = {
+type Setor = {
   id: number;
   nome: string;
   descricao: string | null;
+  responsavel: string | null;
   ativo: boolean | null;
 };
 
-type CategoriaForm = {
+type SetorForm = {
   nome: string;
   descricao: string;
+  responsavel: string;
   ativo: boolean;
 };
 
-const emptyForm: CategoriaForm = {
+const emptyForm: SetorForm = {
   nome: "",
   descricao: "",
+  responsavel: "",
   ativo: true,
 };
 
-// 🔹 limite padrão de 10 por página
-const DEFAULT_LIMIT = 10;
-
-export default function CategoriasTransacaoSection() {
-  const [items, setItems] = useState<CategoriaTransacao[]>([]);
+export default function SetoresSection() {
+  const [setores, setSetores] = useState<Setor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editing, setEditing] = useState<CategoriaTransacao | null>(null);
-  const [form, setForm] = useState<CategoriaForm>(emptyForm);
+  const [editing, setEditing] = useState<Setor | null>(null);
+  const [form, setForm] = useState<SetorForm>(emptyForm);
 
-  // paginação local (padrão TabelaUsuarios)
+  // paginação padrão: 10 por página
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(DEFAULT_LIMIT); // 🔹 agora começa em 10
+  const [limit, setLimit] = useState(10);
 
-  const total = items.length;
+  const total = setores.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   useEffect(() => {
@@ -93,10 +93,9 @@ export default function CategoriasTransacaoSection() {
 
   const start = (page - 1) * limit;
   const end = Math.min(total, start + limit);
-
   const pageItems = useMemo(
-    () => items.slice(start, end),
-    [items, start, end]
+    () => setores.slice(start, end),
+    [setores, start, end]
   );
 
   const linhasSkeleton = useMemo(
@@ -104,13 +103,16 @@ export default function CategoriasTransacaoSection() {
       Array.from({ length: Math.min(5, limit) }).map((_, i) => (
         <TableRow key={`skeleton-${i}`} className="animate-pulse">
           <TableCell className="h-10">
-            <div className="h-3 w-44 bg-muted rounded" />
+            <div className="h-3 w-48 bg-muted rounded" />
+          </TableCell>
+          <TableCell>
+            <div className="h-3 w-40 bg-muted rounded" />
           </TableCell>
           <TableCell>
             <div className="h-3 w-64 bg-muted rounded" />
           </TableCell>
           <TableCell>
-            <div className="h-5 w-20 bg-muted rounded-full mx-auto" />
+            <div className="h-5 w-16 bg-muted rounded-full mx-auto" />
           </TableCell>
           <TableCell className="text-right">
             <div className="h-6 w-10 bg-muted rounded-full ml-auto" />
@@ -120,48 +122,47 @@ export default function CategoriasTransacaoSection() {
     [limit]
   );
 
-  async function loadCategorias() {
+  async function loadSetores() {
     try {
       setIsLoading(true);
       setErro(null);
 
-      const res = await fetch("/api/tipos/categorias-transacao", {
+      // Cadastro precisa ver TODOS (ativos e inativos)
+      const res = await fetch("/api/tipos/setores?all=1", {
         cache: "no-store",
       });
       const j = await res.json();
       if (!res.ok)
-        throw new Error(j?.error || "Falha ao carregar categorias");
+        throw new Error(j?.error || "Falha ao carregar setores");
 
-      const list: CategoriaTransacao[] = (j.items ?? j.data ?? []).map(
-        (c: any) => ({
-          id: c.id as number,
-          nome: String(c.nome ?? ""),
-          descricao: (c.descricao as string | null) ?? null,
-          ativo:
-            typeof c.ativo === "boolean"
-              ? (c.ativo as boolean)
-              : true,
-        })
-      );
+      const items: Setor[] = (j.items ?? j.data ?? []).map((s: any) => ({
+        id: Number(s.id),
+        nome: String(s.nome ?? ""),
+        descricao: (s.descricao as string | null) ?? null,
+        responsavel: (s.responsavel as string | null) ?? null,
+        ativo:
+          typeof s.ativo === "boolean" ? (s.ativo as boolean) : true,
+      }));
 
-      setItems(list);
+      setSetores(items);
     } catch (e: any) {
       console.error(e);
-      setErro(e?.message || "Erro ao carregar categorias");
-      toast.error(e?.message || "Erro ao carregar categorias");
-      setItems([]);
+      const msg = e?.message || "Erro ao carregar setores";
+      setErro(msg);
+      toast.error(msg);
+      setSetores([]);
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadCategorias();
+    loadSetores();
   }, []);
 
-  function handleChange<K extends keyof CategoriaForm>(
+  function handleChange<K extends keyof SetorForm>(
     key: K,
-    value: CategoriaForm[K]
+    value: SetorForm[K]
   ) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -172,25 +173,27 @@ export default function CategoriasTransacaoSection() {
     setDialogOpen(true);
   }
 
-  function openEditar(c: CategoriaTransacao) {
-    setEditing(c);
+  function openEditar(s: Setor) {
+    setEditing(s);
     setForm({
-      nome: c.nome ?? "",
-      descricao: c.descricao ?? "",
-      ativo: c.ativo ?? true,
+      nome: s.nome ?? "",
+      descricao: s.descricao ?? "",
+      responsavel: s.responsavel ?? "",
+      ativo: s.ativo ?? true,
     });
     setDialogOpen(true);
   }
 
   async function handleSave() {
     if (!form.nome.trim()) {
-      toast.error("O nome da categoria é obrigatório.");
+      toast.error("Informe o nome do setor.");
       return;
     }
 
     const payload = {
-      nome: form.nome.trim().toUpperCase(),
+      nome: form.nome.trim(),
       descricao: form.descricao.trim() || null,
+      responsavel: form.responsavel.trim() || null,
       ativo: form.ativo,
     };
 
@@ -198,57 +201,50 @@ export default function CategoriasTransacaoSection() {
       setIsSaving(true);
 
       if (editing) {
-        const res = await fetch(
-          `/api/tipos/categorias-transacao/${editing.id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }
-        );
+        const res = await fetch(`/api/tipos/setores/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
         const j = await res.json();
         if (!res.ok)
-          throw new Error(
-            j?.error || "Falha ao atualizar categoria"
-          );
-        toast.success("Categoria atualizada");
+          throw new Error(j?.error || "Falha ao atualizar setor");
+        toast.success("Setor atualizado.");
       } else {
-        const res = await fetch("/api/tipos/categorias-transacao", {
+        const res = await fetch("/api/tipos/setores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         const j = await res.json();
         if (!res.ok)
-          throw new Error(
-            j?.error || "Falha ao cadastrar categoria"
-          );
-        toast.success("Categoria cadastrada");
+          throw new Error(j?.error || "Falha ao cadastrar setor");
+        toast.success("Setor cadastrado.");
       }
 
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
-      await loadCategorias();
+      await loadSetores();
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || "Erro ao salvar categoria");
+      toast.error(e?.message || "Erro ao salvar setor");
     } finally {
       setIsSaving(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full min-h-[460px]">
-      {/* Cabeçalho no padrão das outras sections novas */}
+    <div className="flex flex-col gap-4 min-h-[460px]">
+      {/* Cabeçalho padrão */}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            Categorias de transação
+            Setores
           </h2>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
             <span className="text-foreground/60">
-              {total} categoria{total === 1 ? "" : "s"}
+              {total} setor{total === 1 ? "" : "es"} cadastrados
             </span>
             {erro && (
               <Badge variant="destructive" className="ml-1">
@@ -256,7 +252,7 @@ export default function CategoriasTransacaoSection() {
               </Badge>
             )}
             <button
-              onClick={loadCategorias}
+              onClick={loadSetores}
               className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
             >
               <span>Recarregar</span>
@@ -268,50 +264,49 @@ export default function CategoriasTransacaoSection() {
           </p>
         </div>
 
-        {/* Dialog: nova / editar categoria */}
+        {/* Dialog Novo/Editar setor */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="hover:cursor-pointer"
               onClick={openNovo}
+              className="hover:cursor-pointer"
             >
               <Plus className="mr-1 h-4 w-4" />
-              Nova categoria
+              Novo setor
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-xl">
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editing
-                  ? "Editar categoria de transação"
-                  : "Nova categoria de transação"}
+                {editing ? "Editar setor" : "Novo setor"}
               </DialogTitle>
             </DialogHeader>
 
             <div className="mt-4 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  Nome (interno / enum-like)
-                </label>
+                <Label>Nome do setor</Label>
                 <Input
                   value={form.nome}
-                  onChange={(e) =>
-                    handleChange("nome", e.target.value)
-                  }
-                  placeholder="Ex.: SERVICO, PRODUTO, TRANSPORTE_LOGISTICA..."
+                  onChange={(e) => handleChange("nome", e.target.value)}
+                  placeholder="Ex.: Mecânica, Elétrica, Funilaria..."
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Recomenda usar letras maiúsculas e sem acento,
-                  similar a enum (SERVICO, PRODUTO, etc.).
-                </p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  Descrição
-                </label>
+                <Label>Responsável (opcional)</Label>
+                <Input
+                  value={form.responsavel}
+                  onChange={(e) =>
+                    handleChange("responsavel", e.target.value)
+                  }
+                  placeholder="Nome do responsável pelo setor"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Descrição (opcional)</Label>
                 <Input
                   value={form.descricao}
                   onChange={(e) =>
@@ -321,20 +316,20 @@ export default function CategoriasTransacaoSection() {
                 />
               </div>
 
-              {/* Status dentro do dialog */}
+              {/* Status dentro do diálogo */}
               <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
                 <div className="space-y-0.5">
                   <span className="text-sm font-medium">
-                    Status da categoria
+                    Status do setor
                   </span>
                   <p className="text-xs text-muted-foreground">
-                    Defina se esta categoria poderá ser usada em
-                    lançamentos e relatórios.
+                    Defina se este setor pode ser selecionado nas
+                    ordens de serviço.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativa" : "Inativa"}
+                    {form.ativo ? "Ativo" : "Inativo"}
                   </span>
                   <Switch
                     checked={form.ativo}
@@ -358,11 +353,7 @@ export default function CategoriasTransacaoSection() {
               >
                 Cancelar
               </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
+              <Button type="button" onClick={handleSave} disabled={isSaving}>
                 {isSaving && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
@@ -373,9 +364,9 @@ export default function CategoriasTransacaoSection() {
         </Dialog>
       </div>
 
-      {/* Container da tabela com barra de loading e paginação igual as outras */}
+      {/* Tabela com paginação */}
       <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
-        {/* Barrinha de loading no topo */}
+        {/* Barrinha de loading */}
         <div
           className={`${
             isLoading ? "opacity-100" : ""
@@ -392,6 +383,7 @@ export default function CategoriasTransacaoSection() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Responsável</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -403,35 +395,33 @@ export default function CategoriasTransacaoSection() {
             ) : total === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={4}
-                  className="text-center py-10 text-muted-foreground"
+                  colSpan={5}
+                  className="py-10 text-center text-sm text-muted-foreground"
                 >
-                  Nenhuma categoria cadastrada. Clique em{" "}
-                  <b>Nova categoria</b> para cadastrar.
+                  Nenhum setor cadastrado. Clique em{" "}
+                  <b>Novo setor</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
-              pageItems.map((c) => (
-                <TableRow
-                  key={c.id}
-                  className="hover:cursor-default"
-                >
-                  <TableCell className="font-mono">
-                    {c.nome}
+              pageItems.map((s) => (
+                <TableRow key={s.id} className="hover:cursor-default">
+                  <TableCell className="font-medium">
+                    {s.nome}
                   </TableCell>
-                  <TableCell>
-                    {c.descricao || "—"}
+                  <TableCell className="text-sm">
+                    {s.responsavel || "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {s.descricao || "—"}
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={c.ativo ? "default" : "outline"}
+                      variant={s.ativo ? "default" : "outline"}
                       className={
-                        c.ativo
-                          ? ""
-                          : "border-destructive bg-destructive"
+                        s.ativo ? "" : "border-destructive bg-destructive"
                       }
                     >
-                      {c.ativo ? "Ativa" : "Inativa"}
+                      {s.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -449,7 +439,7 @@ export default function CategoriasTransacaoSection() {
                         className="w-32"
                       >
                         <DropdownMenuItem
-                          onClick={() => openEditar(c)}
+                          onClick={() => openEditar(s)}
                         >
                           Editar
                         </DropdownMenuItem>
@@ -462,13 +452,12 @@ export default function CategoriasTransacaoSection() {
           </TableBody>
         </Table>
 
-        {/* Paginação no rodapé, padrão TabelaUsuarios */}
+        {/* Paginação */}
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;
-                <span>{end}</span>
+                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
                 <span className="ml-1 hidden sm:block">
                   de {total}
                 </span>
@@ -495,7 +484,9 @@ export default function CategoriasTransacaoSection() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() =>
+                setPage((p) => Math.max(1, p - 1))
+              }
               disabled={page === 1 || total === 0}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -527,7 +518,7 @@ export default function CategoriasTransacaoSection() {
             <Select
               value={String(limit)}
               onValueChange={(v) => {
-                const n = parseInt(v, 10) || DEFAULT_LIMIT;
+                const n = parseInt(v, 10) || 10;
                 setLimit(n);
                 setPage(1);
               }}
@@ -536,31 +527,19 @@ export default function CategoriasTransacaoSection() {
                 size="sm"
                 className="hover:cursor-pointer ml-2 w-[80px]"
               >
-                <SelectValue placeholder={DEFAULT_LIMIT} />
+                <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem
-                  value="10"
-                  className="hover:cursor-pointer"
-                >
+                <SelectItem value="10" className="hover:cursor-pointer">
                   10
                 </SelectItem>
-                <SelectItem
-                  value="20"
-                  className="hover:cursor-pointer"
-                >
+                <SelectItem value="20" className="hover:cursor-pointer">
                   20
                 </SelectItem>
-                <SelectItem
-                  value="50"
-                  className="hover:cursor-pointer"
-                >
+                <SelectItem value="50" className="hover:cursor-pointer">
                   50
                 </SelectItem>
-                <SelectItem
-                  value="100"
-                  className="hover:cursor-pointer"
-                >
+                <SelectItem value="100" className="hover:cursor-pointer">
                   100
                 </SelectItem>
               </SelectContent>

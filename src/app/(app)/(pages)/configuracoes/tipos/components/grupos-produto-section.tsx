@@ -66,6 +66,9 @@ const emptyForm: GrupoForm = {
   ativo: true,
 };
 
+// 🔹 limite padrão de 10 por página
+const DEFAULT_LIMIT = 10;
+
 export default function GruposProdutoSection() {
   const [grupos, setGrupos] = useState<GrupoProduto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +81,7 @@ export default function GruposProdutoSection() {
 
   // paginação
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
 
   const total = grupos.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -219,7 +222,7 @@ export default function GruposProdutoSection() {
   }
 
   async function handleToggleAtivoLinha(id: number, ativo: boolean) {
-    // se quiser permitir toggle rápido pela linha (opcional)
+    // se quiser permitir toggle rápido pela linha (continua opcional)
     try {
       const res = await fetch(`/api/tipos/grupos-produto/${id}`, {
         method: "PATCH",
@@ -412,7 +415,6 @@ export default function GruposProdutoSection() {
                       >
                         {g.ativo ? "Ativo" : "Inativo"}
                       </Badge>
-                 
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
@@ -498,7 +500,7 @@ export default function GruposProdutoSection() {
             <Select
               value={String(limit)}
               onValueChange={(v) => {
-                const n = parseInt(v, 10) || 20;
+                const n = parseInt(v, 10) || DEFAULT_LIMIT;
                 setLimit(n);
                 setPage(1);
               }}
@@ -507,7 +509,7 @@ export default function GruposProdutoSection() {
                 size="sm"
                 className="hover:cursor-pointer ml-2 w-[80px]"
               >
-                <SelectValue placeholder={limit} />
+                <SelectValue placeholder={DEFAULT_LIMIT} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="10" className="hover:cursor-pointer">
