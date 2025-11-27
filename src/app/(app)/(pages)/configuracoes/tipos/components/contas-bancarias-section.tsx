@@ -80,6 +80,9 @@ const emptyForm: ContaForm = {
   ativo: true,
 };
 
+// 🔹 limite padrão de 10 por página
+const DEFAULT_LIMIT = 10;
+
 export default function ContasBancariasSection() {
   const [contas, setContas] = useState<ContaBancaria[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +95,7 @@ export default function ContasBancariasSection() {
 
   // paginação
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT); // 🔹 agora começa em 10
 
   const total = contas.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -570,7 +573,7 @@ export default function ContasBancariasSection() {
             <Select
               value={String(limit)}
               onValueChange={(v) => {
-                const n = parseInt(v, 10) || 20;
+                const n = parseInt(v, 10) || DEFAULT_LIMIT;
                 setLimit(n);
                 setPage(1);
               }}
@@ -579,7 +582,7 @@ export default function ContasBancariasSection() {
                 size="sm"
                 className="hover:cursor-pointer ml-2 w-[80px]"
               >
-                <SelectValue placeholder={limit} />
+                <SelectValue placeholder={DEFAULT_LIMIT} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="10" className="hover:cursor-pointer">

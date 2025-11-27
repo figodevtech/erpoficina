@@ -75,9 +75,21 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
       try {
         setLoadingSetores(true);
         setSetoresError(null);
-        const r = await fetch("/api/setores", { cache: "no-store" });
+
+        // Vai retornar APENAS setores ativo = true
+        const r = await fetch("/api/tipos/setores", { cache: "no-store" });
         const j = await r.json();
-        setSetores(Array.isArray(j) ? j : j?.items ?? []);
+
+        const items = Array.isArray(j) ? j : j?.items ?? [];
+        // caso algum venha com ativo=false por algum motivo, filtramos aqui também por segurança
+        const onlyActive = items.filter((s: any) => s.ativo !== false);
+
+        setSetores(
+          onlyActive.map((s: any) => ({
+            id: Number(s.id),
+            nome: String(s.nome ?? ""),
+          }))
+        );
       } catch (e: any) {
         setSetoresError(e?.message ?? "Não foi possível carregar os setores.");
         setSetores([]);
