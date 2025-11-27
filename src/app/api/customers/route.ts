@@ -9,7 +9,7 @@ const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
 
 const CLIENTE_FIELDS = `
   id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
-  cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
+  cidade, estado, bairro, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
   createdat, updatedat, endereconumero, enderecocomplemento, status
 `;
 
@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       .select(
         `
         id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
-        cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
+        cidade, estado, bairro, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
         createdat, updatedat,endereconumero, enderecocomplemento, status
         `,
         { count: "exact" }

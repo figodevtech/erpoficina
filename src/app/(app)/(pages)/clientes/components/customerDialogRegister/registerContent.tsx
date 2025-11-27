@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,9 @@ import {
   Camera,
   ChevronsUpDown,
   Check,
+  Search,
+  Loader2,
+  MapPin,
 } from "lucide-react";
 import {
   DialogClose,
@@ -73,15 +76,82 @@ export default function RegisterContent({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { cidades, loading } = useGetCidades(newCustomer?.estado);
   const [open, setOpen] = useState(false);
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const [open2, setOpen2] = useState(false);
 
   const handleInputChange = (field: keyof NewCustomer, value: string) => {
     setNewCustomer({ ...newCustomer, [field]: value });
   };
 
-  // useEffect(()=>{
-  //   console.log(newCustomer)
-  // },[newCustomer])
+  const handleGetCep = async () => {
+    if (!newCustomer.cep) {
+      toast.error("Informe um CEP para buscar");
+      return;
+    }
+    setIsLoadingCep(true);
+    try {
+      const response = await axios.get(
+        `https://opencep.com/v1/${newCustomer.cep}`
+      );
+      if (response.status === 200) {
+        console.log(response);
+        const enderecoResponse = response.data;
+        setNewCustomer({
+          ...newCustomer,
+          endereco: enderecoResponse.logradouro,
+          cidade: enderecoResponse.localidade,
+          estado: enderecoResponse.uf,
+          bairro: enderecoResponse.bairro,
+        });
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        if (error.status === 404) {
+          toast.error("CEP não encontrado.");
+        }
+      }
+    } finally {
+      setIsLoadingCep(false);
+    }
+  };
+
+  const handleGetCNPJ = async () => {
+    if (newCustomer.cpfcnpj.length < 14) {
+      return;
+    }
+    setIsLoadingCNPJ(true);
+    try {
+      const response = await axios.get(
+        `https://publica.cnpj.ws/cnpj/${newCustomer.cpfcnpj}`
+      );
+      if (response.status === 200) {
+        console.log(response.data);
+        const juridica = response.data;
+        setNewCustomer({
+          ...newCustomer,
+          nomerazaosocial: juridica.razao_social,
+          cep: juridica.estabelecimento.cep,
+          email: juridica.estabelecimento.email,
+          endereconumero: juridica.estabelecimento.numero,
+          telefone: `${juridica.estabelecimento.ddd1}${juridica.estabelecimento.telefone1}`,
+          estado: juridica.estabelecimento.estado.sigla,
+          cidade: juridica.estabelecimento.cidade.nome,
+          endereco: juridica.estabelecimento.logradouro,
+          enderecocomplemento: juridica.estabelecimento.complemento,
+          bairro: juridica.estabelecimento.bairro
+    
+
+        });
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error(error.status, { description: error.message });
+      }
+    } finally {
+      setIsLoadingCNPJ(false);
+    }
+  };
 
   const handleCreateCustomer = async () => {
     setIsSubmitting(true);
@@ -96,8 +166,7 @@ export default function RegisterContent({
           description: "Cliente cadastrado.",
           duration: 2000,
         });
-        if(setSelectedCustomerId){
-
+        if (setSelectedCustomerId) {
           setSelectedCustomerId(response.data.id);
         }
       }
@@ -114,6 +183,36 @@ export default function RegisterContent({
       setIsSubmitting(false);
     }
   };
+
+  useEffect(()=>{
+    setNewCustomer({
+            tipopessoa: newCustomer.tipopessoa,
+            cpfcnpj: "",
+            nomerazaosocial: "",
+            email: "",
+            bairro:"",
+            telefone: "",
+            endereco: "",
+            enderecocomplemento: "",
+            endereconumero: "",
+            cidade: "",
+            estado: "",
+            cep: "",
+            inscricaoestadual: "",
+            inscricaomunicipal: "",
+            codigomunicipio: "",
+            status: "ATIVO",
+            foto: "",
+          });
+  },[
+    newCustomer.tipopessoa
+  ])
+
+  useEffect(() => {
+    if (newCustomer.cpfcnpj.length === 14) {
+      handleGetCNPJ();
+    }
+  }, [newCustomer.cpfcnpj]);
   return (
     // <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
     <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
@@ -228,6 +327,11 @@ export default function RegisterContent({
               <Label htmlFor="cpfcnpj" className="text-sm sm:text-base">
                 {newCustomer.tipopessoa === "FISICA" ? "CPF" : "CNPJ"} *
               </Label>
+              <div className=" relative">
+                {isLoadingCNPJ &&
+
+              <Loader2 className="w-4 h-4 absolute right-2 top-2.5 animate-spin text-primary"/>
+                }
               <Input
                 inputMode="numeric"
                 id="cpfcnpj"
@@ -235,7 +339,7 @@ export default function RegisterContent({
                 value={formatCpfCnpj(
                   newCustomer.cpfcnpj,
                   newCustomer.tipopessoa
-                )}
+                ) || ""}
                 onChange={(e) => handleInputChange("cpfcnpj", e.target.value)}
                 placeholder={
                   newCustomer.tipopessoa === "FISICA"
@@ -244,10 +348,11 @@ export default function RegisterContent({
                 }
                 maxLength={newCustomer.tipopessoa === "FISICA" ? 14 : 18}
               />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nomerazaosocial" className="">
+              <Label htmlFor="nomerazaosocial" className="text-sm sm:text-base">
                 {newCustomer.tipopessoa === "FISICA"
                   ? "Nome Completo"
                   : "Razão Social"}{" "}
@@ -256,7 +361,7 @@ export default function RegisterContent({
               <Input
                 id="nomerazaosocial"
                 className=""
-                value={newCustomer.nomerazaosocial}
+                value={newCustomer.nomerazaosocial || ""}
                 onChange={(e) =>
                   handleInputChange("nomerazaosocial", e.target.value)
                 }
@@ -284,7 +389,7 @@ export default function RegisterContent({
                 id="email"
                 type="email"
                 className=""
-                value={newCustomer.email}
+                value={newCustomer.email || ""}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="cliente@email.com"
               />
@@ -302,7 +407,7 @@ export default function RegisterContent({
                 inputMode="tel"
                 id="telefone"
                 className=""
-                value={formatTelefone(newCustomer.telefone)}
+                value={formatTelefone(newCustomer.telefone || "")}
                 onChange={(e) => {
                   const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
                   handleInputChange("telefone", raw);
@@ -320,54 +425,69 @@ export default function RegisterContent({
               <h3 className="text-base sm:text-lg font-semibold">Endereço</h3>
             </div> */}
 
-              <div className=" flex flex-row items-center gap-2">
-
-            <div className="space-y-2 w-full">
-              <Label htmlFor="endereco" className="text-sm sm:text-base">
-                Endereço Completo
-              </Label>
-              <Input
-                id="endereco"
-                className=""
-                value={newCustomer.endereco || ""}
-                onChange={(e) => handleInputChange("endereco", e.target.value)}
-                placeholder="Rua, avenida..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="numero" className="text-sm sm:text-base">
-                Número
-              </Label>
-              <Input
-                id="endereconumero"
-                className=""
-                value={newCustomer.endereconumero || ""}
-                onChange={(e) => handleInputChange("endereconumero", e.target.value)}
-                placeholder="123"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="complemento" className="text-sm sm:text-base">
-                Complemento
-              </Label>
-              <Input
-                id="enderecocomplemento"
-                className=""
-                value={newCustomer.enderecocomplemento || ""}
-                onChange={(e) => handleInputChange("enderecocomplemento", e.target.value)}
-                placeholder="Ap, Bloco..."
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-center gap-2">
+              <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                <Label htmlFor="cep" className="text-sm sm:text-base">
+                  CEP
+                </Label>
+                <div className="flex flex-row items-center gap-1">
+                  <Input
+                    id="cep"
+                    className=""
+                    value={formatCep(newCustomer.cep || "")}
+                    onChange={(e) => handleInputChange("cep", e.target.value)}
+                    placeholder="00000-000"
+                    maxLength={9}
+                  />
+                  <Button
+                    onClick={handleGetCep}
+                    className="hover:cursor-pointer"
+                    variant={"outline"}
+                  >
+                    {isLoadingCep ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              
+              <div className="space-y-2 lg:col-span-2">
+                <Label htmlFor="endereco" className="text-sm sm:text-base">
+                  <MapPin className="h-4.5" />
+                  Endereço Completo
+                </Label>
+                <Input
+                  id="endereco"
+                  className=""
+                  value={newCustomer.endereco || ""}
+                  onChange={(e) =>
+                    handleInputChange("endereco", e.target.value)
+                  }
+                  placeholder="Rua, avenida..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="numero" className="text-sm sm:text-base">
+                  Número
+                </Label>
+                <Input
+                  id="endereconumero"
+                  className=""
+                  value={newCustomer.endereconumero || ""}
+                  onChange={(e) =>
+                    handleInputChange("endereconumero", e.target.value)
+                  }
+                  placeholder="123"
+                />
+              </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="estado" className="text-sm sm:text-base">
                   Estado
                 </Label>
-
 
                 <Popover open={open2} onOpenChange={setOpen2}>
                   <PopoverTrigger asChild>
@@ -381,7 +501,7 @@ export default function RegisterContent({
                         ? ESTADOS_BRASIL.find(
                             (estado) => estado === newCustomer.estado
                           )
-                        :  "Selecione..."}
+                        : "Selecione..."}
                       <ChevronsUpDown className="opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -399,32 +519,32 @@ export default function RegisterContent({
                         <CommandEmpty>Nenhum estado encontrada.</CommandEmpty>
 
                         {/* Aqui NÃO precisa de overflow/max-h */}
-                          <CommandGroup>
-                            {ESTADOS_BRASIL.map((estado,i) => (
-                              <CommandItem
-                                className="hover:cursor-pointer"
-                                key={i}
-                                value={estado}
-                                onSelect={(currentValue) => {
-                                  setNewCustomer({
-                                    ...newCustomer,
-                                    estado: currentValue,
-                                  });
-                                  setOpen2(false);
-                                }}
-                              >
-                                {estado}
-                                <Check
-                                  className={cn(
-                                    "ml-auto",
-                                    newCustomer.estado === estado
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                        <CommandGroup>
+                          {ESTADOS_BRASIL.map((estado, i) => (
+                            <CommandItem
+                              className="hover:cursor-pointer"
+                              key={i}
+                              value={estado}
+                              onSelect={(currentValue) => {
+                                setNewCustomer({
+                                  ...newCustomer,
+                                  estado: currentValue,
+                                });
+                                setOpen2(false);
+                              }}
+                            >
+                              {estado}
+                              <Check
+                                className={cn(
+                                  "ml-auto",
+                                  newCustomer.estado === estado
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
                       </CommandList>
                     </Command>
                   </PopoverContent>
@@ -437,7 +557,10 @@ export default function RegisterContent({
                 </Label>
 
                 <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger disabled={newCustomer.estado ? false : true} asChild>
+                  <PopoverTrigger
+                    disabled={newCustomer.estado ? false : true}
+                    asChild
+                  >
                     <Button
                       variant="outline"
                       role="combobox"
@@ -448,7 +571,11 @@ export default function RegisterContent({
                         ? cidades.find(
                             (cidade) => cidade.nome === newCustomer.cidade
                           )?.nome
-                        : loading ? "Carregando..." : newCustomer.estado ? "Selecione..." : "Selecione o estado"}
+                        : loading
+                        ? "Carregando..."
+                        : newCustomer.estado
+                        ? "Selecione..."
+                        : "Selecione o estado"}
                       <ChevronsUpDown className="opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -466,49 +593,61 @@ export default function RegisterContent({
                         <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
 
                         {/* Aqui NÃO precisa de overflow/max-h */}
-                          <CommandGroup>
-                            {cidades.map((cidade) => (
-                              <CommandItem
-                                className="hover:cursor-pointer"
-                                key={cidade.id}
-                                value={cidade.nome}
-                                onSelect={(currentValue) => {
-                                  setNewCustomer({
-                                    ...newCustomer,
-                                    cidade: currentValue,
-                                  });
-                                  setOpen(false);
-                                }}
-                              >
-                                {cidade.nome}
-                                <Check
-                                  className={cn(
-                                    "ml-auto",
-                                    newCustomer.cidade === cidade.nome
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
+                        <CommandGroup>
+                          {cidades.map((cidade) => (
+                            <CommandItem
+                              className="hover:cursor-pointer"
+                              key={cidade.id}
+                              value={cidade.nome}
+                              onSelect={(currentValue) => {
+                                setNewCustomer({
+                                  ...newCustomer,
+                                  cidade: currentValue,
+                                });
+                                setOpen(false);
+                              }}
+                            >
+                              {cidade.nome}
+                              <Check
+                                className={cn(
+                                  "ml-auto",
+                                  newCustomer.cidade === cidade.nome
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
                       </CommandList>
                     </Command>
                   </PopoverContent>
                 </Popover>
               </div>
-
-              <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                <Label htmlFor="cep" className="text-sm sm:text-base">
-                  CEP
+              <div className="space-y-2">
+                <Label htmlFor="cidade" className="text-sm sm:text-base">
+                  Bairro
                 </Label>
                 <Input
-                  id="cep"
+                  id="bairro"
                   className=""
-                  value={formatCep(newCustomer.cep)}
-                  onChange={(e) => handleInputChange("cep", e.target.value)}
-                  placeholder="00000-000"
-                  maxLength={9}
+                  value={newCustomer.bairro || ""}
+                  onChange={(e) => handleInputChange("bairro", e.target.value)}
+                  placeholder="Bairro..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="complemento" className="text-sm sm:text-base">
+                  Complemento
+                </Label>
+                <Input
+                  id="enderecocomplemento"
+                  className=""
+                  value={newCustomer.enderecocomplemento || ""}
+                  onChange={(e) =>
+                    handleInputChange("enderecocomplemento", e.target.value)
+                  }
+                  placeholder="Ap, Bloco..."
                 />
               </div>
             </div>

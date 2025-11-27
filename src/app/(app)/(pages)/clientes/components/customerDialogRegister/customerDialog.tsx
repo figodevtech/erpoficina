@@ -35,6 +35,7 @@ export function CustomerDialog({
   const [, setIsLoading] = useState(false);
   const [newCustomer, setNewCustomer] = useState<NewCustomer>({
     tipopessoa: "FISICA",
+    bairro:"",
     cpfcnpj: "",
     nomerazaosocial: "",
     email: "",
@@ -90,6 +91,7 @@ export function CustomerDialog({
             cpfcnpj: "",
             nomerazaosocial: "",
             email: "",
+            bairro:"",
             telefone: "",
             endereco: "",
             enderecocomplemento: "",
