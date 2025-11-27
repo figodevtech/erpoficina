@@ -19,9 +19,17 @@ export async function editarOrdem(id: number, payload: any) {
 }
 
 export async function listarSetores(): Promise<{ id: number; nome: string }[]> {
-  const r = await fetch("/api/setores", { cache: "no-store" });
+  const r = await fetch("/api/tipos/setores", { cache: "no-store" });
   const j = await r.json().catch(() => ({}));
-  return j?.items ?? [];
+
+  const items = Array.isArray(j) ? j : j?.items ?? [];
+
+  return items
+    .filter((s: any) => s.ativo !== false) // só ativos
+    .map((s: any) => ({
+      id: Number(s.id),
+      nome: String(s.nome ?? ""),
+    }));
 }
 
 export async function listarResponsaveis(): Promise<{ id: number; nome: string }[]> {
