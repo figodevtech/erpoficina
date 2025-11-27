@@ -26,6 +26,8 @@ import {
   ChevronsUpDown,
   Check,
   MapPin,
+  Search,
+  Loader2,
 } from "lucide-react";
 import {
   DialogClose,
@@ -47,7 +49,7 @@ import {
 import { StatusCliente, TipoPessoa, ESTADOS_BRASIL, tabTheme } from "./types";
 import { formatCep, formatCpfCnpj, formatTelefone } from "./utils";
 import { Customer } from "../../types";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
 import {
   Popover,
@@ -68,13 +70,13 @@ import { toast } from "sonner";
 interface EditContentProps {
   customerId: number;
 }
-export default function EditContent({ customerId, }: EditContentProps) {
+export default function EditContent({ customerId }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCustomer, setselectedCustomer] = useState<
     Customer | undefined
   >(undefined);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
   const { cidades, loading } = useGetCidades(selectedCustomer?.estado);
   const [open, setOpen] = useState(false);
   const [open2, setOpen2] = useState(false);
@@ -103,10 +105,45 @@ export default function EditContent({ customerId, }: EditContentProps) {
     }
   };
 
+  const handleGetCep = async () => {
+     if(!selectedCustomer?.cep){
+          toast.error("Informe um CEP para buscar")
+          return
+        }
+    setIsLoadingCep(true);
+    try {
+      const response = await axios.get(
+        `https://opencep.com/v1/${selectedCustomer?.cep}`
+      );
+      if (response.status === 200) {
+        console.log(response);
+        const enderecoResponse = response.data;
+        if (selectedCustomer) {
+          setselectedCustomer({
+            ...selectedCustomer,
+            endereco: enderecoResponse.logradouro,
+            cidade: enderecoResponse.localidade,
+            estado: enderecoResponse.uf,
+            bairro: enderecoResponse.bairro,
+          });
+        }
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        if (error.status === 404) {
+          toast.error("CEP não encontrado.");
+        }
+      }
+    } finally {
+      setIsLoadingCep(false);
+    }
+  };
+
   const handleUpdateCustomer = async () => {
     setIsSubmitting(true);
     try {
-      const response = await axios.put("/api/customers/" + customerId,
+      const response = await axios.put(
+        "/api/customers/" + customerId,
         selectedCustomer
       );
 
@@ -115,8 +152,8 @@ export default function EditContent({ customerId, }: EditContentProps) {
         const { data } = response;
         setselectedCustomer(data.data);
         console.log("Cliente atualizado:", data.data);
-        toast.success("Cliente Atualizado")
-        handleGetCustomer(data.data.id)
+        toast.success("Cliente Atualizado");
+        handleGetCustomer(data.data.id);
       }
     } catch (error) {
       console.log("Erro ao atualizar cliente:", error);
@@ -124,7 +161,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
       setIsSubmitting(false);
     }
   };
-  
+
   useEffect(() => {
     if (customerId) {
       handleGetCustomer(customerId);
@@ -136,7 +173,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
   }, [selectedCustomer]);
   if (isLoading) {
     return (
-    <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+      <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <DialogHeader className="hidden">
           <DialogTitle></DialogTitle>
         </DialogHeader>
@@ -150,9 +187,9 @@ export default function EditContent({ customerId, }: EditContentProps) {
 
   if (selectedCustomer) {
     return (
-    <DialogContent className="h-svh min-w-screen p-0  overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+      <DialogContent className="h-svh min-w-screen p-0  overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
-        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
+          <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
             <DialogTitle>Cliente #{selectedCustomer.id}</DialogTitle>
             <DialogDescription>
               Modifique dados para atualizar o cliente
@@ -316,10 +353,12 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       id="cpfcnpj"
                       inputMode="numeric"
                       className=""
-                      value={formatCpfCnpj(
-                        selectedCustomer.cpfcnpj,
-                        selectedCustomer.tipopessoa
-                      ) || ""}
+                      value={
+                        formatCpfCnpj(
+                          selectedCustomer.cpfcnpj,
+                          selectedCustomer.tipopessoa
+                        ) || ""
+                      }
                       onChange={(e) =>
                         handleInputChange("cpfcnpj", e.target.value)
                       }
@@ -409,39 +448,235 @@ export default function EditContent({ customerId, }: EditContentProps) {
                 <Separator className="mt-4" />
                 {/* Endereço */}
                 <div className="space-y-3 sm:space-y-4">
-                  <div className="flex flex-row items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-center gap-2">
+                    <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                      <Label htmlFor="cep" className="text-sm sm:text-base">
+                        CEP
+                      </Label>
+                      <div className="flex flex-row items-center gap-1">
+                        <Input
+                          id="cep"
+                          className=""
+                          value={formatCep(selectedCustomer.cep) || ""}
+                          onChange={(e) =>
+                            handleInputChange("cep", e.target.value)
+                          }
+                          placeholder="00000-000"
+                          maxLength={9}
+                        />
+                        <Button
+                          onClick={handleGetCep}
+                          className="hover:cursor-pointer"
+                          variant={"outline"}
+                        >
+                          {isLoadingCep ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Search className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label
+                        htmlFor="endereco"
+                        className="text-sm sm:text-base"
+                      >
+                        <MapPin className="h-4.5" />
+                        Endereço Completo
+                      </Label>
+                      <Input
+                        id="endereco"
+                        className=""
+                        value={selectedCustomer.endereco || ""}
+                        onChange={(e) =>
+                          handleInputChange("endereco", e.target.value)
+                        }
+                        placeholder="Rua, número, complemento, bairro"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="numero" className="text-sm sm:text-base">
+                        Número
+                      </Label>
+                      <Input
+                        id="endereconumero"
+                        className=""
+                        value={selectedCustomer.endereconumero || ""}
+                        onChange={(e) =>
+                          handleInputChange("endereconumero", e.target.value)
+                        }
+                        placeholder="123"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="space-y-2 w-full">
-                    <Label htmlFor="endereco" className="text-sm sm:text-base">
-                      <MapPin className="h-4.5" />
-                      Endereço Completo
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="estado" className="text-sm sm:text-base">
+                      Estado
+                    </Label>
+
+                    <Popover open={open2} onOpenChange={setOpen2}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={open2}
+                          className="w-[200px] justify-between"
+                        >
+                          {selectedCustomer.estado
+                            ? ESTADOS_BRASIL.find(
+                                (estado) => estado === selectedCustomer.estado
+                              )
+                            : "Selecione..."}
+                          <ChevronsUpDown className="opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        className="w-[200px] p-0"
+                        onWheelCapture={(e) => e.stopPropagation()}
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="Buscar estado..."
+                            className="h-9"
+                          />
+                          <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
+                            <CommandEmpty>
+                              Nenhum estado encontrada.
+                            </CommandEmpty>
+
+                            {/* Aqui NÃO precisa de overflow/max-h */}
+                            <CommandGroup>
+                              {ESTADOS_BRASIL.map((estado, i) => (
+                                <CommandItem
+                                  className="hover:cursor-pointer"
+                                  key={i}
+                                  value={estado}
+                                  onSelect={(currentValue) => {
+                                    setselectedCustomer({
+                                      ...selectedCustomer,
+                                      estado: currentValue,
+                                    });
+                                    setOpen2(false);
+                                  }}
+                                >
+                                  {estado}
+                                  <Check
+                                    className={cn(
+                                      "ml-auto",
+                                      selectedCustomer.estado === estado
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cidade" className="text-sm sm:text-base">
+                      Cidade
+                    </Label>
+
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger
+                        disabled={selectedCustomer.estado ? false : true}
+                        asChild
+                      >
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={open}
+                          className="w-[200px] justify-between"
+                        >
+                          {selectedCustomer.cidade
+                            ? cidades.find(
+                                (cidade) =>
+                                  cidade.nome === selectedCustomer.cidade
+                              )?.nome
+                            : loading
+                            ? "Carregando..."
+                            : selectedCustomer.estado
+                            ? "Selecione..."
+                            : "Selecione o estado"}
+                          <ChevronsUpDown className="opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        className="w-[200px] p-0"
+                        onWheelCapture={(e) => e.stopPropagation()}
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="Buscar cidade..."
+                            className="h-9"
+                          />
+                          <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
+                            <CommandEmpty>
+                              Nenhuma cidade encontrada.
+                            </CommandEmpty>
+
+                            {/* Aqui NÃO precisa de overflow/max-h */}
+                            <CommandGroup>
+                              {cidades.map((cidade) => (
+                                <CommandItem
+                                  className="hover:cursor-pointer"
+                                  key={cidade.id}
+                                  value={cidade.nome}
+                                  onSelect={(currentValue) => {
+                                    setselectedCustomer({
+                                      ...selectedCustomer,
+                                      cidade: currentValue,
+                                    });
+                                    setOpen(false);
+                                  }}
+                                >
+                                  {cidade.nome}
+                                  <Check
+                                    className={cn(
+                                      "ml-auto",
+                                      selectedCustomer.cidade === cidade.nome
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bairro" className="text-sm sm:text-base">
+                      Bairro
                     </Label>
                     <Input
-                      id="endereco"
+                      id="bairro"
                       className=""
-                      value={selectedCustomer.endereco || ""}
+                      value={selectedCustomer.bairro || ""}
                       onChange={(e) =>
-                        handleInputChange("endereco", e.target.value)
+                        handleInputChange("bairro", e.target.value)
                       }
-                      placeholder="Rua, número, complemento, bairro"
+                      placeholder="Ap, bloco..."
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="numero" className="text-sm sm:text-base">
-                      Número
-                    </Label>
-                    <Input
-                      id="endereconumero"
-                      className=""
-                      value={selectedCustomer.endereconumero || ""}
-                      onChange={(e) =>
-                        handleInputChange("endereconumero", e.target.value)
-                      }
-                      placeholder="123"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="complemento" className="text-sm sm:text-base">
+                    <Label
+                      htmlFor="complemento"
+                      className="text-sm sm:text-base"
+                    >
                       Complemento
                     </Label>
                     <Input
@@ -453,160 +688,6 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       }
                       placeholder="Ap, bloco..."
                     />
-                  </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    <div className="space-y-2">
-                                    <Label htmlFor="estado" className="text-sm sm:text-base">
-                                      Estado
-                                    </Label>
-                    
-                    
-                                    <Popover open={open2} onOpenChange={setOpen2}>
-                                      <PopoverTrigger asChild>
-                                        <Button
-                                          variant="outline"
-                                          role="combobox"
-                                          aria-expanded={open2}
-                                          className="w-[200px] justify-between"
-                                        >
-                                          {selectedCustomer.estado
-                                            ? ESTADOS_BRASIL.find(
-                                                (estado) => estado === selectedCustomer.estado
-                                              )
-                                            :  "Selecione..."}
-                                          <ChevronsUpDown className="opacity-50" />
-                                        </Button>
-                                      </PopoverTrigger>
-                    
-                                      <PopoverContent
-                                        className="w-[200px] p-0"
-                                        onWheelCapture={(e) => e.stopPropagation()}
-                                      >
-                                        <Command>
-                                          <CommandInput
-                                            placeholder="Buscar estado..."
-                                            className="h-9"
-                                          />
-                                          <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
-                                            <CommandEmpty>Nenhum estado encontrada.</CommandEmpty>
-                    
-                                            {/* Aqui NÃO precisa de overflow/max-h */}
-                                              <CommandGroup>
-                                                {ESTADOS_BRASIL.map((estado,i) => (
-                                                  <CommandItem
-                                                    className="hover:cursor-pointer"
-                                                    key={i}
-                                                    value={estado}
-                                                    onSelect={(currentValue) => {
-                                                      setselectedCustomer({
-                                                        ...selectedCustomer,
-                                                        estado: currentValue,
-                                                      });
-                                                      setOpen2(false);
-                                                    }}
-                                                  >
-                                                    {estado}
-                                                    <Check
-                                                      className={cn(
-                                                        "ml-auto",
-                                                        selectedCustomer.estado === estado
-                                                          ? "opacity-100"
-                                                          : "opacity-0"
-                                                      )}
-                                                    />
-                                                  </CommandItem>
-                                                ))}
-                                              </CommandGroup>
-                                          </CommandList>
-                                        </Command>
-                                      </PopoverContent>
-                                    </Popover>
-                                  </div>
-                    
-                                  <div className="space-y-2">
-                                    <Label htmlFor="cidade" className="text-sm sm:text-base">
-                                      Cidade
-                                    </Label>
-                    
-                                    <Popover open={open} onOpenChange={setOpen}>
-                                      <PopoverTrigger disabled={selectedCustomer.estado ? false : true} asChild>
-                                        <Button
-                                          variant="outline"
-                                          role="combobox"
-                                          aria-expanded={open}
-                                          className="w-[200px] justify-between"
-                                        >
-                                          {selectedCustomer.cidade
-                                            ? cidades.find(
-                                                (cidade) => cidade.nome === selectedCustomer.cidade
-                                              )?.nome
-                                            : loading ? "Carregando..." : selectedCustomer.estado ? "Selecione..." : "Selecione o estado"}
-                                          <ChevronsUpDown className="opacity-50" />
-                                        </Button>
-                                      </PopoverTrigger>
-                    
-                                      <PopoverContent
-                                        className="w-[200px] p-0"
-                                        onWheelCapture={(e) => e.stopPropagation()}
-                                      >
-                                        <Command>
-                                          <CommandInput
-                                            placeholder="Buscar cidade..."
-                                            className="h-9"
-                                          />
-                                          <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
-                                            <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
-                    
-                                            {/* Aqui NÃO precisa de overflow/max-h */}
-                                              <CommandGroup>
-                                                {cidades.map((cidade) => (
-                                                  <CommandItem
-                                                    className="hover:cursor-pointer"
-                                                    key={cidade.id}
-                                                    value={cidade.nome}
-                                                    onSelect={(currentValue) => {
-                                                      setselectedCustomer({
-                                                        ...selectedCustomer,
-                                                        cidade: currentValue,
-                                                      });
-                                                      setOpen(false);
-                                                    }}
-                                                  >
-                                                    {cidade.nome}
-                                                    <Check
-                                                      className={cn(
-                                                        "ml-auto",
-                                                        selectedCustomer.cidade === cidade.nome
-                                                          ? "opacity-100"
-                                                          : "opacity-0"
-                                                      )}
-                                                    />
-                                                  </CommandItem>
-                                                ))}
-                                              </CommandGroup>
-                                          </CommandList>
-                                        </Command>
-                                      </PopoverContent>
-                                    </Popover>
-                                  </div>
-
-                    <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                      <Label htmlFor="cep" className="text-sm sm:text-base">
-                        CEP
-                      </Label>
-                      <Input
-                        id="cep"
-                        className=""
-                        value={formatCep(selectedCustomer.cep) || ""}
-                        onChange={(e) =>
-                          handleInputChange("cep", e.target.value)
-                        }
-                        placeholder="00000-000"
-                        maxLength={9}
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -676,7 +757,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                         <Input
                           id="codigomunicipio"
                           className=""
-                          value={selectedCustomer.codigomunicipio}
+                          value={selectedCustomer.codigomunicipio || ""}
                           onChange={(e) =>
                             handleInputChange("codigomunicipio", e.target.value)
                           }
@@ -697,7 +778,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
               className="h-full min-h-0 overflow-hidden p-0"
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
-                <Table className="text-xs" > 
+                <Table className="text-xs">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center">ID</TableHead>
@@ -707,7 +788,7 @@ export default function EditContent({ customerId, }: EditContentProps) {
                       <TableHead className="text-center">Fab/Mod</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody >
+                  <TableBody>
                     {selectedCustomer.veiculos.length > 0 ? (
                       selectedCustomer.veiculos.map((vehicle) => (
                         <TableRow
@@ -747,22 +828,30 @@ export default function EditContent({ customerId, }: EditContentProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedCustomer.ordens.length > 0 ? 
-                    selectedCustomer.ordens.map((ordem)=>(
-
-                    <TableRow key={ordem.id} className="hover:cursor-pointer">
-                      <TableCell className="text-center">{ordem.id}</TableCell>
-                      <TableCell className="text-center">{ordem.descricao}</TableCell>
-                      <TableCell className="text-center">{ordem.status}</TableCell>
-                    </TableRow>
-                    ))
-                    : 
-                    <TableRow>
+                    {selectedCustomer.ordens.length > 0 ? (
+                      selectedCustomer.ordens.map((ordem) => (
+                        <TableRow
+                          key={ordem.id}
+                          className="hover:cursor-pointer"
+                        >
+                          <TableCell className="text-center">
+                            {ordem.id}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {ordem.descricao}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {ordem.status}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
                         <TableCell className="text-center h-20" colSpan={5}>
                           Cliente não possui ordens cadastradas
                         </TableCell>
                       </TableRow>
-                    }
+                    )}
                   </TableBody>
                 </Table>
               </div>

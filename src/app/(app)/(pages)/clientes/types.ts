@@ -38,6 +38,7 @@ export interface Customer {
   enderecocomplemento: string
   cidade: string
   estado: string
+  bairro: string
   cep: string
   inscricaoestadual: string
   inscricaomunicipal: string

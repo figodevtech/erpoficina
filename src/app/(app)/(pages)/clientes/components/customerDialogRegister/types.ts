@@ -10,6 +10,7 @@ export interface NewCustomer {
   endereco: string;
   endereconumero: string;
   enderecocomplemento: string;
+  bairro: string;
   cidade: string;
   estado: string;
   cep: string;

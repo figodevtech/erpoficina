@@ -8,7 +8,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const CLIENTE_FIELDS = `
   id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
-  cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
+  cidade, estado, bairro, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
   createdat, updatedat, endereconumero, enderecocomplemento, status
 `;
 
@@ -34,6 +34,7 @@ const WRITABLE_FIELDS = new Set([
   "enderecocomplemento",
   "cidade",
   "estado",
+  "bairro",
   "cep",
   "inscricaoestadual",
   "inscricaomunicipal",
