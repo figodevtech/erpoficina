@@ -197,24 +197,11 @@ export default function RegisterContent({
   };
 
   useEffect(() => {
-    setNewCustomer({
+    setNewCustomer({...newCustomer,
       tipopessoa: newCustomer.tipopessoa,
       cpfcnpj: "",
       nomerazaosocial: "",
-      email: "",
-      bairro: "",
-      telefone: "",
-      endereco: "",
-      enderecocomplemento: "",
-      endereconumero: "",
-      cidade: "",
-      estado: "",
-      cep: "",
-      inscricaoestadual: "",
-      inscricaomunicipal: "",
-      codigomunicipio: "",
-      status: "ATIVO",
-      foto: "",
+      
     });
   }, [newCustomer.tipopessoa]);
 
