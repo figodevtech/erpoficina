@@ -2,6 +2,7 @@
 
 export const runtime = "nodejs";
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -57,6 +58,9 @@ type VendaPatchBody = {
   dataVenda?: string | null; // ISO string
 };
 
+// Contexto esperado pelo typed routes do Next 15
+type ParamsCtx = { params: Promise<{ id: string }> };
+
 /* ========================= Helpers ========================= */
 
 function parseId(idStr: string) {
@@ -84,16 +88,19 @@ function parseId(idStr: string) {
 /**
  * Retorna uma venda específica com itens + produto
  */
-export async function GET(
-  _req: Request,
-  context: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id: idStr } = context.params;
+    // só pra não dar warning de variável não usada
+    req;
+
+    const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {
-      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+      return NextResponse.json(
+        { error: parsed.error },
+        { status: parsed.status }
+      );
     }
 
     const vendaId = parsed.id as number;
@@ -146,16 +153,16 @@ export async function GET(
  * Obs: aqui NÃO estou atualizando itens da venda (vendaproduto),
  * apenas campos diretos da tabela venda.
  */
-export async function PATCH(
-  req: Request,
-  context: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id: idStr } = context.params;
+    const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {
-      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+      return NextResponse.json(
+        { error: parsed.error },
+        { status: parsed.status }
+      );
     }
 
     const vendaId = parsed.id as number;
@@ -214,9 +221,9 @@ export async function PATCH(
       if (!STATUS_SET.has(upperStatus as Status)) {
         return NextResponse.json(
           {
-            error: `Status inválido. Use um dos: ${Array.from(STATUS_SET).join(
-              ", "
-            )}.`,
+            error: `Status inválido. Use um dos: ${Array.from(
+              STATUS_SET
+            ).join(", ")}.`,
           },
           { status: 400 }
         );
@@ -241,7 +248,6 @@ export async function PATCH(
     }
 
     if (dataVenda !== undefined) {
-      // poderia validar ISO aqui se quiser ser mais rígido
       updatePayload.datavenda = dataVenda;
     }
 
@@ -291,16 +297,19 @@ export async function PATCH(
  * Aqui eu checo antes se existe transação apontando para essa venda.
  * Se existir, retorno 409 com mensagem explicando.
  */
-export async function DELETE(
-  _req: Request,
-  context: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id: idStr } = context.params;
+    // só pra não dar warning de não usado
+    req;
+
+    const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {
-      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+      return NextResponse.json(
+        { error: parsed.error },
+        { status: parsed.status }
+      );
     }
 
     const vendaId = parsed.id as number;
