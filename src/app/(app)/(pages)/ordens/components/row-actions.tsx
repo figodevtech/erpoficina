@@ -72,8 +72,6 @@ export function RowActions<TRow extends RowBase>({
   setPayOpen,
   setDetailsId,
   setDetailsOpen,
-  setDelRow,
-  setDelOpen,
   setChecklistRow,
   setChecklistOpen,
 }: {
@@ -90,8 +88,6 @@ export function RowActions<TRow extends RowBase>({
   setPayOpen: (open: boolean) => void;
   setDetailsId: (id: number | null) => void;
   setDetailsOpen: (open: boolean) => void;
-  setDelRow: (row: TRow | null) => void;
-  setDelOpen: (open: boolean) => void;
   setChecklistRow: (row: TRow | null) => void;
   setChecklistOpen: (open: boolean) => void;
 }) {
@@ -132,7 +128,7 @@ export function RowActions<TRow extends RowBase>({
     policy.showSendToApproval &&
     (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
-  // Orçamento recusado: permitir cancelar OS
+  // Orçamento recusado: permitir cancelar OS (muda status p/ CANCELADO)
   const showCancelOSRecusado = st === "ORCAMENTO_RECUSADO";
 
   // Produção / Pagamento
@@ -231,7 +227,7 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )}
 
-        {/* Orçamento recusado: cancelar OS */}
+        {/* Orçamento recusado: cancelar OS (status CANCELADO, não excluir do sistema) */}
         {showCancelOSRecusado && (
           <DropdownMenuItem onClick={() => setStatus(row.id, "CANCELADO")}>
             <Trash2 className="mr-2 h-4 w-4" />
@@ -283,17 +279,6 @@ export function RowActions<TRow extends RowBase>({
         >
           <Eye className="mr-2 h-4 w-4" />
           Detalhes
-        </DropdownMenuItem>
-
-        {/* Excluir */}
-        <DropdownMenuItem
-          onClick={() => {
-            setDelRow(row);
-            setDelOpen(true);
-          }}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Excluir
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

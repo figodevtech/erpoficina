@@ -280,42 +280,42 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<Params> }
-) {
-  try {
-    if (!OPEN) {
-      const session = await auth();
-      if (!session) {
-        return NextResponse.json(
-          { ok: false, error: "Unauthorized" },
-          { status: 401 }
-        );
-      }
-    }
+// export async function DELETE(
+//   _req: NextRequest,
+//   { params }: { params: Promise<Params> }
+// ) {
+//   try {
+//     if (!OPEN) {
+//       const session = await auth();
+//       if (!session) {
+//         return NextResponse.json(
+//           { ok: false, error: "Unauthorized" },
+//           { status: 401 }
+//         );
+//       }
+//     }
 
-    const { id } = await params;
-    const modeloId = Number(id);
+//     const { id } = await params;
+//     const modeloId = Number(id);
 
-    if (!Number.isFinite(modeloId)) {
-      return NextResponse.json(
-        { ok: false, error: "ID inválido" },
-        { status: 400 }
-      );
-    }
+//     if (!Number.isFinite(modeloId)) {
+//       return NextResponse.json(
+//         { ok: false, error: "ID inválido" },
+//         { status: 400 }
+//       );
+//     }
 
-    const { error } = await supabaseAdmin
-      .from("checklist_modelo")
-      .delete()
-      .eq("id", modeloId);
-    if (error) throw error;
+//     const { error } = await supabaseAdmin
+//       .from("checklist_modelo")
+//       .delete()
+//       .eq("id", modeloId);
+//     if (error) throw error;
 
-    return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? "Erro ao excluir" },
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json({ ok: true }, { status: 200 });
+//   } catch (e: any) {
+//     return NextResponse.json(
+//       { ok: false, error: e?.message ?? "Erro ao excluir" },
+//       { status: 500 }
+//     );
+//   }
+// }

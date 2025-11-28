@@ -27,12 +27,12 @@ import {
   Loader,
   Loader2,
   Car,
-  AlertTriangle,
   ChevronsUpDown,
   ChevronUp,
   ChevronDown,
   Plus,
   Package,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Select,
@@ -58,7 +58,6 @@ import TableSkeleton from "../components/table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 import { ChecklistDialog } from "./dialogs/checklist-dialog";
-// utils & helpers
 import {
   statusClasses,
   prioClasses,
@@ -151,7 +150,6 @@ export function OrdensTabela({
       if (sts.length === 1) {
         url.searchParams.set("status", sts[0]);
       } else if (sts.length > 1) {
-        // backend pode aceitar csv: ?statuses=A,B
         url.searchParams.set("statuses", sts.join(","));
       }
       if (q) url.searchParams.set("q", q);
@@ -280,18 +278,6 @@ export function OrdensTabela({
     toast.success("Status atualizado");
   }
 
-  async function deleteOS(id: number) {
-    try {
-      const r = await fetch(`/api/ordens/${id}`, { method: "DELETE" });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || "Falha ao excluir OS");
-      toast.success(`OS #${id} excluída`);
-      window.dispatchEvent(new CustomEvent("os:refresh"));
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao excluir OS");
-    }
-  }
-
   // Estados de diálogos
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkRow, setLinkRow] = useState<OrdemComDatas | null>(null);
@@ -304,9 +290,6 @@ export function OrdensTabela({
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsId, setDetailsId] = useState<number | null>(null);
-
-  const [delOpen, setDelOpen] = useState(false);
-  const [delRow, setDelRow] = useState<OrdemComDatas | null>(null);
 
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [checklistRow, setChecklistRow] = useState<OrdemComDatas | null>(
@@ -447,9 +430,9 @@ export function OrdensTabela({
 
                   // VEÍCULO
                   const veiculoStr = r.veiculo
-                    ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${
-                        r.veiculo.placa ?? ""
-                      }`.trim()
+                    ? `${r.veiculo.marca ?? ""} ${
+                        r.veiculo.modelo ?? ""
+                      } - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
 
                   // PEÇA
@@ -566,10 +549,9 @@ export function OrdensTabela({
                           setPayOpen={setPayOpen}
                           setDetailsId={setDetailsId}
                           setDetailsOpen={setDetailsOpen}
-                          setDelRow={setDelRow}
-                          setDelOpen={setDelOpen}
                           setChecklistRow={setChecklistRow}
                           setChecklistOpen={setChecklistOpen}
+                          // >>> não passamos mais nada de delete aqui
                         />
                       </TableCell>
                     </TableRow>
@@ -742,35 +724,6 @@ export function OrdensTabela({
         }}
         osId={checklistRow?.id ?? 0}
       />
-
-      {/* Alerta: Excluir OS */}
-      <AlertDialog open={delOpen} onOpenChange={setDelOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              Excluir OS #{delRow?.id}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Essa ação é irreversível. Tem certeza que deseja excluir a OS{" "}
-              <b>#{delRow?.id}</b>?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={async () => {
-                if (!delRow) return;
-                await deleteOS(delRow.id);
-                setDelOpen(false);
-                setDelRow(null);
-              }}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }

@@ -508,159 +508,159 @@ export async function PUT(
  * DELETE: apaga anexos, itens, tokens, OS
  * (triggers devolvem estoque quando preciso)
  * ========================================= */
-export async function DELETE(
-  _req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await ctx.params;
-    const osId = Number(id);
-    if (!osId)
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+// export async function DELETE(
+//   _req: NextRequest,
+//   ctx: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     const { id } = await ctx.params;
+//     const osId = Number(id);
+//     if (!osId)
+//       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
-    // 0) Garantir que existe
-    {
-      const { data, error } = await supabase
-        .from("ordemservico")
-        .select("id")
-        .eq("id", osId)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data)
-        return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
-    }
+//     // 0) Garantir que existe
+//     {
+//       const { data, error } = await supabase
+//         .from("ordemservico")
+//         .select("id")
+//         .eq("id", osId)
+//         .maybeSingle();
+//       if (error) throw error;
+//       if (!data)
+//         return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
+//     }
 
-    // 1) DEVOLUÇÃO DE ESTOQUE com base em osproduto_baixa (quantidade realmente baixada)
-    const { data: baixas, error: baixaErr } = await supabase
-      .from("osproduto_baixa")
-      .select("produtoid, quantidade")
-      .eq("ordemservicoid", osId);
-    if (baixaErr) throw baixaErr;
+//     // 1) DEVOLUÇÃO DE ESTOQUE com base em osproduto_baixa (quantidade realmente baixada)
+//     const { data: baixas, error: baixaErr } = await supabase
+//       .from("osproduto_baixa")
+//       .select("produtoid, quantidade")
+//       .eq("ordemservicoid", osId);
+//     if (baixaErr) throw baixaErr;
 
-    if ((baixas ?? []).length) {
-      const totalPorProduto = new Map<number, number>();
-      for (const b of baixas!) {
-        const pid = Number(b.produtoid);
-        const q = Number(b.quantidade) || 0;
-        totalPorProduto.set(pid, (totalPorProduto.get(pid) || 0) + q);
-      }
+//     if ((baixas ?? []).length) {
+//       const totalPorProduto = new Map<number, number>();
+//       for (const b of baixas!) {
+//         const pid = Number(b.produtoid);
+//         const q = Number(b.quantidade) || 0;
+//         totalPorProduto.set(pid, (totalPorProduto.get(pid) || 0) + q);
+//       }
 
-      const produtoIds = Array.from(totalPorProduto.keys());
-      const { data: prodRows, error: prodErr } = await supabase
-        .from("produto")
-        .select("id, estoque")
-        .in("id", produtoIds);
-      if (prodErr) throw prodErr;
+//       const produtoIds = Array.from(totalPorProduto.keys());
+//       const { data: prodRows, error: prodErr } = await supabase
+//         .from("produto")
+//         .select("id, estoque")
+//         .in("id", produtoIds);
+//       if (prodErr) throw prodErr;
 
-      for (const pr of prodRows ?? []) {
-        const pid = Number(pr.id);
-        const delta = totalPorProduto.get(pid) || 0;
-        if (delta > 0) {
-          const novoEstoque = (Number(pr.estoque) || 0) + delta;
-          const upd = await supabase
-            .from("produto")
-            .update({ estoque: novoEstoque })
-            .eq("id", pid);
-          if (upd.error) throw upd.error;
-        }
-      }
+//       for (const pr of prodRows ?? []) {
+//         const pid = Number(pr.id);
+//         const delta = totalPorProduto.get(pid) || 0;
+//         if (delta > 0) {
+//           const novoEstoque = (Number(pr.estoque) || 0) + delta;
+//           const upd = await supabase
+//             .from("produto")
+//             .update({ estoque: novoEstoque })
+//             .eq("id", pid);
+//           if (upd.error) throw upd.error;
+//         }
+//       }
 
-      const delBaixa = await supabase
-        .from("osproduto_baixa")
-        .delete()
-        .eq("ordemservicoid", osId);
-      if (delBaixa.error) throw delBaixa.error;
-    }
+//       const delBaixa = await supabase
+//         .from("osproduto_baixa")
+//         .delete()
+//         .eq("ordemservicoid", osId);
+//       if (delBaixa.error) throw delBaixa.error;
+//     }
 
-    // 2) Apagar checklist (imagens -> itens)
-    {
-      const { data: checks, error: chkErr } = await supabase
-        .from("checklist")
-        .select("id")
-        .eq("ordemservicoid", osId);
-      if (chkErr) throw chkErr;
+//     // 2) Apagar checklist (imagens -> itens)
+//     {
+//       const { data: checks, error: chkErr } = await supabase
+//         .from("checklist")
+//         .select("id")
+//         .eq("ordemservicoid", osId);
+//       if (chkErr) throw chkErr;
 
-      const ids = (checks ?? []).map((c: any) => c.id);
-      if (ids.length) {
-        const delImgs = await supabase
-          .from("imagemvistoria")
-          .delete()
-          .in("checklistid", ids);
-        if (delImgs.error) throw delImgs.error;
+//       const ids = (checks ?? []).map((c: any) => c.id);
+//       if (ids.length) {
+//         const delImgs = await supabase
+//           .from("imagemvistoria")
+//           .delete()
+//           .in("checklistid", ids);
+//         if (delImgs.error) throw delImgs.error;
 
-        const delChecks = await supabase
-          .from("checklist")
-          .delete()
-          .eq("ordemservicoid", osId);
-        if (delChecks.error) throw delChecks.error;
-      }
-    }
+//         const delChecks = await supabase
+//           .from("checklist")
+//           .delete()
+//           .eq("ordemservicoid", osId);
+//         if (delChecks.error) throw delChecks.error;
+//       }
+//     }
 
-    // 3) Apagar itens do orçamento
-    {
-      const delP = await supabase
-        .from("osproduto")
-        .delete()
-        .eq("ordemservicoid", osId);
-      if (delP.error) throw delP.error;
+//     // 3) Apagar itens do orçamento
+//     {
+//       const delP = await supabase
+//         .from("osproduto")
+//         .delete()
+//         .eq("ordemservicoid", osId);
+//       if (delP.error) throw delP.error;
 
-      const delS = await supabase
-        .from("osservico")
-        .delete()
-        .eq("ordemservicoid", osId);
-      if (delS.error) throw delS.error;
-    }
+//       const delS = await supabase
+//         .from("osservico")
+//         .delete()
+//         .eq("ordemservicoid", osId);
+//       if (delS.error) throw delS.error;
+//     }
 
-    // 4) Apagar tokens de aprovação
-    {
-      const delTok = await supabase
-        .from("osaprovacao")
-        .delete()
-        .eq("ordemservicoid", osId);
-      if (delTok.error) throw delTok.error;
-    }
+//     // 4) Apagar tokens de aprovação
+//     {
+//       const delTok = await supabase
+//         .from("osaprovacao")
+//         .delete()
+//         .eq("ordemservicoid", osId);
+//       if (delTok.error) throw delTok.error;
+//     }
 
-    // 5) Apagar pagamentos/eventos (tolerante)
-    {
-      const { data: pays, error: paysErr } = await supabase
-        .from("pagamento")
-        .select("id")
-        .eq("ordemservicoid", osId);
-      if (paysErr) throw paysErr;
+//     // 5) Apagar pagamentos/eventos (tolerante)
+//     {
+//       const { data: pays, error: paysErr } = await supabase
+//         .from("pagamento")
+//         .select("id")
+//         .eq("ordemservicoid", osId);
+//       if (paysErr) throw paysErr;
 
-      const ids = (pays ?? []).map((p: any) => p.id);
-      if (ids.length) {
-        const delEvt = await supabase
-          .from("pagamento_evento")
-          .delete()
-          .in("pagamentoid", ids);
-        if (delEvt.error && delEvt.error.code !== "PGRST116")
-          throw delEvt.error;
+//       const ids = (pays ?? []).map((p: any) => p.id);
+//       if (ids.length) {
+//         const delEvt = await supabase
+//           .from("pagamento_evento")
+//           .delete()
+//           .in("pagamentoid", ids);
+//         if (delEvt.error && delEvt.error.code !== "PGRST116")
+//           throw delEvt.error;
 
-        const delPay = await supabase
-          .from("pagamento")
-          .delete()
-          .eq("ordemservicoid", osId);
-        if (delPay.error && delPay.error.code !== "PGRST116")
-          throw delPay.error;
-      }
-    }
+//         const delPay = await supabase
+//           .from("pagamento")
+//           .delete()
+//           .eq("ordemservicoid", osId);
+//         if (delPay.error && delPay.error.code !== "PGRST116")
+//           throw delPay.error;
+//       }
+//     }
 
-    // 6) Finalmente, a OS
-    {
-      const delOS = await supabase
-        .from("ordemservico")
-        .delete()
-        .eq("id", osId);
-      if (delOS.error) throw delOS.error;
-    }
+//     // 6) Finalmente, a OS
+//     {
+//       const delOS = await supabase
+//         .from("ordemservico")
+//         .delete()
+//         .eq("id", osId);
+//       if (delOS.error) throw delOS.error;
+//     }
 
-    return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    console.error("DELETE /api/ordens/[id]", e);
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao excluir OS" },
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json({ ok: true });
+//   } catch (e: any) {
+//     console.error("DELETE /api/ordens/[id]", e);
+//     return NextResponse.json(
+//       { error: e?.message ?? "Erro ao excluir OS" },
+//       { status: 500 }
+//     );
+//   }
+// }
