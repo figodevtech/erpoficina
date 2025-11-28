@@ -31,7 +31,21 @@ import {
   ListChecks,
   Calculator,
   X,
+  AlertTriangle,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  carregarDetalhesOS,
+  listarUsuariosAtivos,
+  atualizarResponsavelServico,
+  type UsuarioAtivo,
+} from "../../lib/api";
 
 const PUBLIC_APPROVAL_BASE = "/aprovacao";
 function approvalUrlFromToken(token: string) {
@@ -48,6 +62,7 @@ const statusClasses: Record<string, string> = {
   CONCLUIDO: "bg-green-600/15 text-green-400",
   CANCELADO: "bg-red-600/15 text-red-400",
 };
+
 const prioClasses: Record<string, string> = {
   ALTA: "bg-red-600/15 text-red-500",
   NORMAL: "bg-amber-600/15 text-amber-500",
@@ -59,10 +74,15 @@ function fmtDate(s?: string | null) {
   const d = new Date(s);
   return isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
+
 function fmtMoney(v: number | null | undefined) {
   if (v == null || isNaN(Number(v))) return "—";
-  return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return Number(v).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
+
 function fileNameFromUrl(url: string) {
   try {
     const u = new URL(url);
@@ -90,7 +110,9 @@ type OS = {
   datasaidareal?: string | null;
   setor?: { id: number; nome: string } | null;
   cliente?: { id: number; nomerazaosocial: string } | null;
-  veiculo?: { id: number; placa?: string | null; modelo?: string | null; marca?: string | null } | null;
+  veiculo?:
+    | { id: number; placa?: string | null; modelo?: string | null; marca?: string | null }
+    | null;
   alvo_tipo?: "VEICULO" | "PECA" | null;
   peca?: { id: number; titulo: string } | null;
 };
@@ -109,16 +131,27 @@ type ItemProduto = {
     unidade?: string | null;
   } | null;
 };
+
 type ItemServico = {
   ordemservicoid: number;
   servicoid: number;
   quantidade: number;
   precounitario: number;
   subtotal: number;
-  servico?: { id: number; codigo?: string | null; descricao?: string | null; precohora?: number | null } | null;
+  servico?:
+    | { id: number; codigo?: string | null; descricao?: string | null; precohora?: number | null }
+    | null;
+  idusuariorealizador?: string | null;
+  realizador?: { id: string; nome: string | null } | null;
 };
 
-type ChecklistImage = { id: number; url: string; descricao?: string | null; createdat?: string | null };
+type ChecklistImage = {
+  id: number;
+  url: string;
+  descricao?: string | null;
+  createdat?: string | null;
+};
+
 type ChecklistItem = {
   id: number;
   item: string;
@@ -127,6 +160,7 @@ type ChecklistItem = {
   createdat?: string | null;
   imagens?: ChecklistImage[];
 };
+
 type Aprovacao = {
   id: number;
   token: string;
@@ -142,6 +176,8 @@ type OSDetalhesResponse = {
   checklist: ChecklistItem[];
   aprovacoes?: Aprovacao[];
 };
+
+const SELECT_NONE_VALUE = "__none";
 
 function badgeClassForChecklistStatus(status?: string) {
   switch ((status || "").toUpperCase()) {
@@ -168,9 +204,28 @@ export function OSDetalhesDialog({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<OSDetalhesResponse | null>(null);
 
+  // usamos o tipo vindo do lib
+  const [responsaveis, setResponsaveis] = useState<UsuarioAtivo[]>([]);
+  const [loadingResponsaveis, setLoadingResponsaveis] = useState(false);
+  const [savingResponsavelKey, setSavingResponsavelKey] =
+    useState<string | null>(null);
+
   const canFetch = open && !!osId;
 
-  // ✅ Sem warning: lógica de fetch dentro do useEffect
+  const podeAtribuirResponsavel = useMemo(
+    () => (data?.os?.status || "").toUpperCase() === "ORCAMENTO_APROVADO",
+    [data?.os?.status]
+  );
+
+  const temServicoSemResponsavel = useMemo(
+    () =>
+      (data?.itensServico ?? []).some(
+        (s) => !s.idusuariorealizador || s.idusuariorealizador === ""
+      ),
+    [data?.itensServico]
+  );
+
+  // Fetch detalhes da OS
   useEffect(() => {
     if (!canFetch || !osId) return;
 
@@ -178,10 +233,8 @@ export function OSDetalhesDialog({
     (async () => {
       setLoading(true);
       try {
-        const r = await fetch(`/api/ordens/${osId}`, { cache: "no-store", signal: ac.signal });
-        const j = (await r.json()) as OSDetalhesResponse | { error?: string };
-        if (!r.ok) throw new Error((j as any)?.error || "Falha ao carregar OS");
-        if (!ac.signal.aborted) setData(j as OSDetalhesResponse);
+        const j = await carregarDetalhesOS<OSDetalhesResponse>(osId);
+        if (!ac.signal.aborted) setData(j);
       } catch (e: any) {
         if (e?.name === "AbortError") return;
         toast.error(e?.message || "Erro ao carregar detalhes");
@@ -194,27 +247,140 @@ export function OSDetalhesDialog({
     return () => ac.abort();
   }, [canFetch, osId]);
 
-  const titulo = useMemo(() => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"), [data?.os?.id]);
+  // Buscar TODOS usuários ativos quando o dialog abrir
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setLoadingResponsaveis(true);
+      try {
+        const lista = await listarUsuariosAtivos();
+        if (!cancelled) setResponsaveis(lista);
+      } catch (e: any) {
+        if (!cancelled) {
+          console.error(e);
+          toast.error("Não foi possível carregar os usuários ativos");
+        }
+      } finally {
+        if (!cancelled) setLoadingResponsaveis(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const titulo = useMemo(
+    () => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"),
+    [data?.os?.id]
+  );
 
   const statusBadge = useMemo(() => {
     const st = (data?.os?.status || "ORCAMENTO").toUpperCase();
-    return <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>;
+    return (
+      <Badge className={statusClasses[st] ?? ""}>
+        {st.replaceAll("_", " ")}
+      </Badge>
+    );
   }, [data?.os?.status]);
 
   const prioBadge = useMemo(() => {
     const p = (data?.os?.prioridade || "").toUpperCase();
-    return p ? <Badge className={prioClasses[p] ?? ""}>{p}</Badge> : null;
+    return p ? (
+      <Badge className={prioClasses[p] ?? ""}>{p}</Badge>
+    ) : null;
   }, [data?.os?.prioridade]);
 
   const totalProdutos = useMemo(
-    () => (data?.itensProduto || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0),
+    () =>
+      (data?.itensProduto || []).reduce(
+        (acc, it) => acc + Number(it.subtotal || 0),
+        0
+      ),
     [data?.itensProduto]
   );
   const totalServicos = useMemo(
-    () => (data?.itensServico || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0),
+    () =>
+      (data?.itensServico || []).reduce(
+        (acc, it) => acc + Number(it.subtotal || 0),
+        0
+      ),
     [data?.itensServico]
   );
-  const totalGeral = useMemo(() => totalProdutos + totalServicos, [totalProdutos, totalServicos]);
+  const totalGeral = useMemo(
+    () => totalProdutos + totalServicos,
+    [totalProdutos, totalServicos]
+  );
+
+  async function handleChangeRealizador(
+    item: ItemServico,
+    novoUsuarioId: string | null
+  ) {
+    if (!data?.os?.id) return;
+
+    const key = `${item.ordemservicoid}-${item.servicoid}`;
+    setSavingResponsavelKey(key);
+
+    // Atualização otimista
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            itensServico: prev.itensServico.map((s) =>
+              s.ordemservicoid === item.ordemservicoid &&
+              s.servicoid === item.servicoid
+                ? {
+                    ...s,
+                    idusuariorealizador: novoUsuarioId ?? undefined,
+                    realizador:
+                      novoUsuarioId == null
+                        ? null
+                        : responsaveis.find((u) => u.id === novoUsuarioId) ??
+                          s.realizador ??
+                          null,
+                  }
+                : s
+            ),
+          }
+        : prev
+    );
+
+    try {
+      const resp = await atualizarResponsavelServico(
+        data.os.id,
+        item.servicoid,
+        novoUsuarioId
+      );
+
+      // Sincroniza com o retorno do backend
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              itensServico: prev.itensServico.map((s) =>
+                s.ordemservicoid === resp.ordemservicoid &&
+                s.servicoid === resp.servicoid
+                  ? {
+                      ...s,
+                      idusuariorealizador: resp.idusuariorealizador,
+                      realizador: resp.realizador ?? null,
+                    }
+                  : s
+              ),
+            }
+          : prev
+      );
+
+      toast.success("Responsável atualizado");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao atualizar responsável");
+    } finally {
+      setSavingResponsavelKey(null);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -229,7 +395,13 @@ export function OSDetalhesDialog({
         {/* Header sticky + botão fechar */}
         <div className="top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b relative">
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" className="absolute right-2 top-2" aria-label="Fechar" title="Fechar">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-2"
+              aria-label="Fechar"
+              title="Fechar"
+            >
               <X className="h-4 w-4" />
             </Button>
           </DialogClose>
@@ -239,7 +411,10 @@ export function OSDetalhesDialog({
               <Link2 className="h-5 w-5 text-primary" />
               {titulo}
             </DialogTitle>
-            <DialogDescription>Informações completas da OS, itens, checklist e links de aprovação.</DialogDescription>
+            <DialogDescription>
+              Informações completas da OS, itens, checklist, responsáveis e
+              links de aprovação.
+            </DialogDescription>
           </DialogHeader>
 
           {/* Barra de estado */}
@@ -265,6 +440,23 @@ export function OSDetalhesDialog({
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Alerta para induzir seleção de responsável */}
+              {podeAtribuirResponsavel && temServicoSemResponsavel && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-300" />
+                  <div>
+                    <div className="font-medium text-amber-100">
+                      Defina o responsável pelos serviços antes de iniciar a OS.
+                    </div>
+                    <div className="text-amber-100/80">
+                      Há serviços sem responsável atribuído. Recomenda-se
+                      escolher quem irá executar cada serviço antes de clicar em{" "}
+                      <b>Iniciar</b>.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Resumo */}
               <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="rounded-lg border p-4">
@@ -272,7 +464,9 @@ export function OSDetalhesDialog({
                     <User2 className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Cliente</span>
                   </div>
-                  <div className="text-sm">{data.os.cliente?.nomerazaosocial ?? "—"}</div>
+                  <div className="text-sm">
+                    {data.os.cliente?.nomerazaosocial ?? "—"}
+                  </div>
                 </div>
 
                 <div className="rounded-lg border p-4">
@@ -290,16 +484,21 @@ export function OSDetalhesDialog({
                     ) : (
                       <Car className="h-4 w-4 text-primary" />
                     )}
-                    <span className="text-sm font-medium">{data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</span>
+                    <span className="text-sm font-medium">
+                      {data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}
+                    </span>
                   </div>
                   {data.os.alvo_tipo === "PECA" ? (
-                    <div className="text-sm">{data.os.peca?.titulo ?? "Peça (detalhes não informados)"}</div>
+                    <div className="text-sm">
+                      {data.os.peca?.titulo ??
+                        "Peça (detalhes não informados)"}
+                    </div>
                   ) : (
                     <div className="text-sm">
                       {data.os.veiculo
-                        ? `${data.os.veiculo.marca ?? ""} ${data.os.veiculo.modelo ?? ""} • ${
-                            data.os.veiculo.placa ?? ""
-                          }`.trim()
+                        ? `${data.os.veiculo.marca ?? ""} ${
+                            data.os.veiculo.modelo ?? ""
+                          } • ${data.os.veiculo.placa ?? ""}`.trim()
                         : "—"}
                     </div>
                   )}
@@ -308,9 +507,13 @@ export function OSDetalhesDialog({
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <CheckSquare className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Status de Aprovação</span>
+                    <span className="text-sm font-medium">
+                      Status de Aprovação
+                    </span>
                   </div>
-                  <div className="text-sm">{data.os.statusaprovacao ?? "—"}</div>
+                  <div className="text-sm">
+                    {data.os.statusaprovacao ?? "—"}
+                  </div>
                 </div>
               </section>
 
@@ -321,19 +524,24 @@ export function OSDetalhesDialog({
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Descrição</span>
                   </div>
-                  <div className="text-sm whitespace-pre-wrap">{data.os.descricao || "—"}</div>
+                  <div className="text-sm whitespace-pre-wrap">
+                    {data.os.descricao || "—"}
+                  </div>
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <StickyNote className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Observações</span>
                   </div>
-                  <div className="text-sm whitespace-pre-wrap">{data.os.observacoes || "—"}</div>
+                  <div className="text-sm whitespace-pre-wrap">
+                    {data.os.observacoes || "—"}
+                  </div>
                 </div>
               </section>
 
               {/* Produtos / Serviços / Totais */}
               <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* PRODUTOS */}
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Package className="h-4 w-4 text-primary" />
@@ -353,19 +561,24 @@ export function OSDetalhesDialog({
                         >
                           <div className="min-w-0">
                             <div className="font-medium truncate">
-                              {it.produto?.descricao || it.produto?.codigo || `Produto #${it.produtoid}`}
+                              {it.produto?.descricao ||
+                                it.produto?.codigo ||
+                                `Produto #${it.produtoid}`}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {it.quantidade} × {fmtMoney(it.precounitario)}
                             </div>
                           </div>
-                          <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
+                          <div className="shrink-0 font-medium">
+                            {fmtMoney(it.subtotal)}
+                          </div>
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
 
+                {/* SERVIÇOS */}
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Wrench className="h-4 w-4 text-primary" />
@@ -378,22 +591,107 @@ export function OSDetalhesDialog({
                     <div className="text-sm text-muted-foreground">—</div>
                   ) : (
                     <ul className="space-y-2 text-sm">
-                      {data.itensServico.map((it, idx) => (
-                        <li
-                          key={`${it.ordemservicoid}-${it.servicoid}-${idx}`}
-                          className="flex items-center justify-between gap-2"
-                        >
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">
-                              {it.servico?.descricao || it.servico?.codigo || `Serviço #${it.servicoid}`}
+                      {data.itensServico.map((it, idx) => {
+                        const rowKey = `${it.ordemservicoid}-${it.servicoid}-${idx}`;
+                        const isSaving =
+                          savingResponsavelKey ===
+                          `${it.ordemservicoid}-${it.servicoid}`;
+
+                        const selectValue =
+                          it.idusuariorealizador ?? SELECT_NONE_VALUE;
+
+                        const estaSemResponsavel =
+                          !it.idusuariorealizador ||
+                          it.idusuariorealizador === "";
+
+                        return (
+                          <li
+                            key={rowKey}
+                            className="flex flex-col gap-1 border-b last:border-b-0 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="font-medium truncate">
+                                  {it.servico?.descricao ||
+                                    it.servico?.codigo ||
+                                    `Serviço #${it.servicoid}`}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {it.quantidade} ×{" "}
+                                  {fmtMoney(it.precounitario)}
+                                </div>
+                              </div>
+                              <div className="shrink-0 font-medium">
+                                {fmtMoney(it.subtotal)}
+                              </div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {it.quantidade} × {fmtMoney(it.precounitario)}
+
+                            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <User2 className="h-3.5 w-3.5" />
+                                {podeAtribuirResponsavel ? (
+                                  <div className="flex items-center gap-2 w-full max-w-xs">
+                                    <span>Responsável:</span>
+                                    <Select
+                                      value={selectValue}
+                                      onValueChange={(value) =>
+                                        handleChangeRealizador(
+                                          it,
+                                          value === SELECT_NONE_VALUE
+                                            ? null
+                                            : value
+                                        )
+                                      }
+                                      disabled={
+                                        isSaving || loadingResponsaveis
+                                      }
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue
+                                          placeholder={
+                                            loadingResponsaveis
+                                              ? "Carregando..."
+                                              : isSaving
+                                              ? "Salvando..."
+                                              : "Selecione"
+                                          }
+                                        />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value={SELECT_NONE_VALUE}>
+                                          Sem responsável
+                                        </SelectItem>
+                                        {responsaveis.map((u) => (
+                                          <SelectItem
+                                            key={u.id}
+                                            value={u.id}
+                                          >
+                                            {u.nome || u.id}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                ) : (
+                                  <span>
+                                    Responsável:{" "}
+                                    <b>{it.realizador?.nome ?? "—"}</b>
+                                  </span>
+                                )}
+                              </div>
+
+                              {podeAtribuirResponsavel &&
+                                estaSemResponsavel && (
+                                  <span className="text-[11px] text-amber-400 flex items-center gap-1 ml-5">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Selecione o responsável antes de iniciar a
+                                    OS.
+                                  </span>
+                                )}
                             </div>
-                          </div>
-                          <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -403,11 +701,13 @@ export function OSDetalhesDialog({
                     <Calculator className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Total geral</span>
                   </div>
-                  <div className="text-lg font-semibold">{fmtMoney(totalGeral)}</div>
+                  <div className="text-lg font-semibold">
+                    {fmtMoney(totalGeral)}
+                  </div>
                 </div>
               </section>
 
-              {/* Checklist com badges personalizados e separadores */}
+              {/* Checklist */}
               <section className="rounded-lg border p-4">
                 <div className="flex items-center gap-2 mb-1.5">
                   <ListChecks className="h-4 w-4 text-primary" />
@@ -423,43 +723,51 @@ export function OSDetalhesDialog({
                         <li className="py-4">
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                              <div className="font-medium truncate">{c.item}</div>
+                              <div className="font-medium truncate">
+                                {c.item}
+                              </div>
                               <div className="text-xs text-muted-foreground">
                                 {fmtDate(c.createdat)}
                                 {c.observacao ? ` • ${c.observacao}` : ""}
                               </div>
                             </div>
-                            <Badge variant="outline" className={badgeClassForChecklistStatus(c.status)}>
+                            <Badge
+                              variant="outline"
+                              className={badgeClassForChecklistStatus(
+                                c.status
+                              )}
+                            >
                               {c.status}
                             </Badge>
                           </div>
 
-                          {Array.isArray(c.imagens) && c.imagens.length > 0 && (
-                            <div className="mt-3 space-y-1.5">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <ImageIcon className="h-3.5 w-3.5" />
-                                Imagens anexadas
+                          {Array.isArray(c.imagens) &&
+                            c.imagens.length > 0 && (
+                              <div className="mt-3 space-y-1.5">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                  Imagens anexadas
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {c.imagens.map((img) => {
+                                    const name = fileNameFromUrl(img.url);
+                                    return (
+                                      <a
+                                        key={img.id}
+                                        href={img.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted break-all"
+                                        title={img.descricao || name}
+                                      >
+                                        {name}
+                                        <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                                      </a>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                              <div className="flex flex-wrap gap-2">
-                                {c.imagens.map((img) => {
-                                  const name = fileNameFromUrl(img.url);
-                                  return (
-                                    <a
-                                      key={img.id}
-                                      href={img.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted break-all"
-                                      title={img.descricao || name}
-                                    >
-                                      {name}
-                                      <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-                                    </a>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
+                            )}
                         </li>
                       </Fragment>
                     ))}
@@ -470,7 +778,9 @@ export function OSDetalhesDialog({
               {/* Links de aprovação */}
               {Array.isArray(data.aprovacoes) && (
                 <section className="rounded-lg border p-4">
-                  <div className="text-sm font-medium mb-1.5">Links de aprovação</div>
+                  <div className="text-sm font-medium mb-1.5">
+                    Links de aprovação
+                  </div>
                   {data.aprovacoes.length === 0 ? (
                     <div className="text-sm text-muted-foreground">—</div>
                   ) : (
@@ -478,15 +788,26 @@ export function OSDetalhesDialog({
                       {data.aprovacoes.map((a) => {
                         const url = approvalUrlFromToken(a.token);
                         return (
-                          <li key={a.id} className="flex items-start justify-between gap-2">
+                          <li
+                            key={a.id}
+                            className="flex items-start justify-between gap-2"
+                          >
                             <div className="min-w-0">
                               <div className="truncate">
-                                <a href={url} target="_blank" rel="noreferrer" className="underline break-all" title={url}>
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="underline break-all"
+                                  title={url}
+                                >
                                   {url}
                                 </a>
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado: {fmtDate(a.usado_em)}
+                                criado: {fmtDate(a.created_at)} • expira:{" "}
+                                {fmtDate(a.expira_em)} • usado:{" "}
+                                {fmtDate(a.usado_em)}
                               </div>
                             </div>
                             <div className="shrink-0 flex gap-2">
@@ -499,7 +820,9 @@ export function OSDetalhesDialog({
                                     await navigator.clipboard.writeText(url);
                                     toast.success("Link copiado");
                                   } catch {
-                                    toast.error("Não foi possível copiar");
+                                    toast.error(
+                                      "Não foi possível copiar"
+                                    );
                                   }
                                 }}
                               >
@@ -509,7 +832,13 @@ export function OSDetalhesDialog({
                                 variant="outline"
                                 size="icon"
                                 title="Abrir link"
-                                onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+                                onClick={() =>
+                                  window.open(
+                                    url,
+                                    "_blank",
+                                    "noopener,noreferrer"
+                                  )
+                                }
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </Button>

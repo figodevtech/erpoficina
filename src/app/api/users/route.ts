@@ -1,7 +1,7 @@
 // app/api/users/route.ts
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ensureAccess } from "./_authz";
@@ -24,14 +24,28 @@ function gerarSenhaTemporaria() {
   );
 }
 
-async function carregarUsuarios() {
-  const { data: usuarios, error: uErr } = await supabaseAdmin
+// Agora recebe opções pra filtrar (ativos / busca)
+async function carregarUsuarios(opts?: { onlyActive?: boolean; q?: string }) {
+  const onlyActive = opts?.onlyActive ?? false;
+  const q = (opts?.q ?? "").trim();
+
+  let query = supabaseAdmin
     .from("usuario")
     .select(
       "id, nome, email, createdat, updatedat, ativo, perfil:perfilid(id,nome), setor:setorid(id,nome)"
     )
     .order("createdat", { ascending: false });
 
+  if (onlyActive) {
+    query = query.eq("ativo", true);
+  }
+
+  if (q) {
+    // busca simples por nome OU email
+    query = query.or(`nome.ilike.%${q}%,email.ilike.%${q}%`);
+  }
+
+  const { data: usuarios, error: uErr } = await query;
   if (uErr) throw uErr;
 
   return (usuarios ?? []).map((u: any) => ({
@@ -52,12 +66,22 @@ async function carregarUsuarios() {
   }));
 }
 
-export async function GET() {
+// GET /api/users
+// GET /api/users?ativos=1&q=fulano
+export async function GET(req: NextRequest) {
   try {
     const session = isOpen() ? null : await auth();
     await ensureAccess(session);
 
-    const users = await carregarUsuarios();
+    const { searchParams } = new URL(req.url);
+    const ativos = searchParams.get("ativos"); // "1" => só ativos
+    const q = searchParams.get("q") ?? "";
+
+    const users = await carregarUsuarios({
+      onlyActive: ativos === "1",
+      q,
+    });
+
     return NextResponse.json({ users });
   } catch (e: any) {
     console.error("[/api/users GET] error:", e);
@@ -150,6 +174,7 @@ export async function POST(req: Request) {
 
     if (upErr) throw upErr;
 
+    // Depois de criar, sigo retornando a lista completa (como antes)
     const users = await carregarUsuarios();
     return NextResponse.json({ users });
   } catch (e: any) {

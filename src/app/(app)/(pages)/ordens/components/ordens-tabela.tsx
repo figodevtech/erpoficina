@@ -1,3 +1,4 @@
+// ./src/app/(app)/(pages)/ordens/components/ordens-tabela.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -263,21 +264,6 @@ export function OrdensTabela({
     return fmtDuration((endMs ?? now) - startMs);
   };
 
-  async function setStatus(id: number, status: StatusOS) {
-    const r = await fetch(`/api/ordens/${id}/status`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (!r.ok) {
-      const j = await r.json().catch(() => ({}));
-      toast.error(j?.error || "Falha ao atualizar status");
-      return;
-    }
-    window.dispatchEvent(new CustomEvent("os:refresh"));
-    toast.success("Status atualizado");
-  }
-
   // Estados de diálogos
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkRow, setLinkRow] = useState<OrdemComDatas | null>(null);
@@ -295,6 +281,69 @@ export function OrdensTabela({
   const [checklistRow, setChecklistRow] = useState<OrdemComDatas | null>(
     null
   );
+
+  // ------- setStatus com checagem de responsáveis ao iniciar -------
+  async function setStatus(id: number, status: StatusOS) {
+    // SE for tentar iniciar (ORCAMENTO_APROVADO -> EM_ANDAMENTO),
+    // primeiro valida se todos os serviços têm responsável.
+    if (status === "EM_ANDAMENTO") {
+      try {
+        const r = await fetch(`/api/ordens/${id}`, {
+          cache: "no-store",
+        });
+        const j = await r.json().catch(() => ({}));
+
+        if (!r.ok) {
+          throw new Error(
+            j?.error || "Não foi possível validar responsáveis da OS."
+          );
+        }
+
+        const itens = (j?.itensServico ?? []) as Array<{
+          idusuariorealizador?: string | null;
+        }>;
+
+        const temSemResponsavel = itens.some(
+          (it) =>
+            !it.idusuariorealizador ||
+            it.idusuariorealizador === ""
+        );
+
+        if (temSemResponsavel) {
+          toast.error(
+            "Antes de iniciar, selecione o responsável para todos os serviços da OS."
+          );
+          // abre o diálogo de detalhes para o usuário já escolher os responsáveis
+          setDetailsId(id);
+          setDetailsOpen(true);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Erro ao validar responsáveis:", err);
+        toast.error(
+          err?.message ||
+            "Não foi possível verificar os responsáveis. Abra os detalhes da OS para conferir."
+        );
+        setDetailsId(id);
+        setDetailsOpen(true);
+        return;
+      }
+    }
+
+    // fluxo normal de mudança de status
+    const r = await fetch(`/api/ordens/${id}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      toast.error(j?.error || "Falha ao atualizar status");
+      return;
+    }
+    window.dispatchEvent(new CustomEvent("os:refresh"));
+    toast.success("Status atualizado");
+  }
 
   // ------- Ordenação em memória (só na página atual)
   const sortedRows = useMemo(() => {
