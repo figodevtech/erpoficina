@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Plus, X, Save, Edit3 } from "lucide-react";
 import { ItemDialog } from "./item-dialog";
+import { Switch } from "@/components/ui/switch";
 
 import {
   Card,
@@ -49,16 +50,25 @@ export function TemplateForm({
   onChange,
   exposeSubmit,
 }: Props) {
-  const [tpl, setTpl] = useState<ChecklistTemplate>(value);
+  // inicializa uma vez com "ativo" default true
+  const [tpl, setTpl] = useState<ChecklistTemplate>(() => ({
+    ...value,
+    ativo: value.ativo ?? true,
+  }));
+
   const [addOpen, setAddOpen] = useState(false);
   const [editItemOpen, setEditItemOpen] = useState(false);
   const [itemEditando, setItemEditando] = useState<ItemChecklist | null>(null);
 
+  // se você quiser que ao trocar totalmente de modelo (outro id) resete o form:
   useEffect(() => {
-    setTpl(value);
-  }, [value]);
+    setTpl((prev) => {
+      if (prev.id === value.id) return prev; // evita loop
+      return { ...value, ativo: value.ativo ?? true };
+    });
+  }, [value.id, value.ativo, value.nome, value.descricao]); // depende do id (principalmente)
 
-  // sobe alterações pro pai, pra ele conseguir validar no footer
+  // sobe alterações pro pai, pra ele conseguir validar/usar
   useEffect(() => {
     onChange?.(tpl);
   }, [tpl, onChange]);
@@ -100,19 +110,20 @@ export function TemplateForm({
 
   const salvar = async () => {
     if (!tpl.nome.trim() || tpl.itens.length === 0) return;
+
     const toSave: ChecklistTemplate = {
       ...tpl,
       id: tpl.id || uid(),
       criadoEm: tpl.criadoEm || new Date().toISOString(),
+      ativo: tpl.ativo ?? true,
     };
+
     await onSave(toSave);
   };
 
   // expõe função de submit pro DialogFooter
   useEffect(() => {
-    if (exposeSubmit) {
-      exposeSubmit(salvar);
-    }
+    exposeSubmit?.(salvar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tpl, exposeSubmit]);
 
@@ -163,6 +174,27 @@ export function TemplateForm({
               setTpl((p) => ({ ...p, descricao: e.target.value }))
             }
             rows={3}
+          />
+        </div>
+      </div>
+
+      {/* Status (ativo / inativo) */}
+      <div className="mt-1 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+        <div className="space-y-0.5">
+          <span className="text-sm font-medium">Checklist ativo</span>
+          <p className="text-xs text-muted-foreground">
+            Quando inativo, este modelo não aparecerá para seleção nas ordens de serviço.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {tpl.ativo === false ? "Inativo" : "Ativo"}
+          </span>
+          <Switch
+            checked={tpl.ativo !== false}
+            onCheckedChange={(val) =>
+              setTpl((p) => ({ ...p, ativo: val }))
+            }
           />
         </div>
       </div>
@@ -304,7 +336,7 @@ export function TemplateForm({
         <CardTitle className="text-base sm:text-lg">
           {editando ? "Editar Checklist" : "Novo Checklist"}
         </CardTitle>
-        <CardDescription>
+      <CardDescription>
           {editando
             ? "Atualize os campos e salve para aplicar as alterações."
             : "Preencha os campos para criar um novo modelo."}

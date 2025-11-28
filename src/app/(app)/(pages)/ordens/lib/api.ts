@@ -1,5 +1,22 @@
+// ./src/app/(app)/(pages)/ordens/lib/api.ts
 
 const JSONH = { "Content-Type": "application/json" };
+
+// Helper genérico
+async function handleJson<T = any>(r: Response, defaultError: string): Promise<T> {
+  const j = (await r.json().catch(() => ({}))) as any;
+
+  if (!r.ok) {
+    const msg = j?.error || j?.message || defaultError;
+    throw new Error(msg);
+  }
+
+  return j as T;
+}
+
+/* =========================================================================
+ * OS - criação / edição
+ * ========================================================================= */
 
 export async function criarOrdem(payload: any): Promise<{ id: number }> {
   const r = await fetch("/api/ordens/criar", {
@@ -7,20 +24,124 @@ export async function criarOrdem(payload: any): Promise<{ id: number }> {
     headers: JSONH,
     body: JSON.stringify(payload),
   });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
-  return j; // { id }
+
+  return handleJson<{ id: number }>(r, "Falha ao criar OS");
 }
 
 export async function editarOrdem(id: number, payload: any) {
-  const r = await fetch(`/api/ordens/${id}`, { method: "PUT", headers: JSONH, body: JSON.stringify(payload) });
-  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Falha ao salvar OS");
-  return r.json();
+  const r = await fetch(`/api/ordens/${id}`, {
+    method: "PUT",
+    headers: JSONH,
+    body: JSON.stringify(payload),
+  });
+
+  return handleJson<any>(r, "Falha ao salvar OS");
 }
+
+/* =========================================================================
+ * OS - status
+ * ========================================================================= */
+
+export type StatusOSApi =
+  | "ORCAMENTO"
+  | "APROVACAO_ORCAMENTO"
+  | "ORCAMENTO_APROVADO"
+  | "ORCAMENTO_RECUSADO"
+  | "AGUARDANDO_CHECKLIST"
+  | "EM_ANDAMENTO"
+  | "PAGAMENTO"
+  | "CONCLUIDO"
+  | "CANCELADO";
+
+export async function atualizarStatusOS(id: number, status: StatusOSApi) {
+  const r = await fetch(`/api/ordens/${id}/status`, {
+    method: "PUT",
+    headers: JSONH,
+    body: JSON.stringify({ status }),
+  });
+
+  return handleJson<any>(r, "Falha ao atualizar status da OS");
+}
+
+/* =========================================================================
+ * OS - detalhes
+ * ========================================================================= */
+
+export async function carregarDetalhesOS<T = any>(osId: number): Promise<T> {
+  const r = await fetch(`/api/ordens/${osId}`, {
+    cache: "no-store",
+  });
+
+  return handleJson<T>(r, "Falha ao carregar OS");
+}
+
+/* =========================================================================
+ * Responsáveis / usuários
+ * ========================================================================= */
+
+export type UsuarioAtivo = {
+  id: string;
+  nome: string | null;
+  email?: string;
+  setor?: { id: number; nome: string } | null;
+  perfil?: { id: number; nome: string } | null;
+};
+
+/**
+ * Lista TODOS os usuários ativos do sistema
+ * (rota /api/users?ativos=1)
+ */
+export async function listarUsuariosAtivos(): Promise<UsuarioAtivo[]> {
+  const r = await fetch("/api/users?ativos=1", {
+    cache: "no-store",
+  });
+
+  const j = await handleJson<any>(r, "Falha ao listar usuários ativos");
+  const items = Array.isArray(j) ? j : j.users ?? [];
+
+  return items.map((u: any) => ({
+    id: String(u.id),
+    nome: u.nome ?? u.email ?? null,
+    email: u.email,
+    setor: u.setor ?? null,
+    perfil: u.perfil ?? null,
+  }));
+}
+
+export type AtualizarResponsavelServicoResponse = {
+  ordemservicoid: number;
+  servicoid: number;
+  idusuariorealizador: string | null;
+  realizador?: { id: string; nome: string | null } | null;
+};
+
+/**
+ * Atualiza o responsável de um serviço da OS
+ */
+export async function atualizarResponsavelServico(
+  osId: number,
+  servicoId: number,
+  idusuariorealizador: string | null
+): Promise<AtualizarResponsavelServicoResponse> {
+  const r = await fetch(`/api/ordens/${osId}/servicos/${servicoId}/responsavel`, {
+    method: "PUT",
+    headers: JSONH,
+    body: JSON.stringify({ idusuariorealizador }),
+  });
+
+  return handleJson<AtualizarResponsavelServicoResponse>(
+    r,
+    "Falha ao salvar responsável"
+  );
+}
+
+/* =========================================================================
+ * Tipos / auxiliares (setores, checklist)
+ * ========================================================================= */
 
 export async function listarSetores(): Promise<{ id: number; nome: string }[]> {
   const r = await fetch("/api/tipos/setores", { cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
+  const j = await handleJson<any>(r, "Falha ao listar setores");
 
   const items = Array.isArray(j) ? j : j?.items ?? [];
 
@@ -32,8 +153,42 @@ export async function listarSetores(): Promise<{ id: number; nome: string }[]> {
     }));
 }
 
-export async function listarResponsaveis(): Promise<{ id: number; nome: string }[]> {
-  const r = await fetch("/api/usuarios?role=tecnico", { cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  return j?.items ?? [];
+export type ChecklistTemplateItem = {
+  titulo: string;
+  descricao?: string | null;
+  obrigatorio?: boolean;
+};
+
+export type ChecklistTemplateModel = {
+  id: string;
+  nome: string;
+  itens: ChecklistTemplateItem[];
+};
+
+/**
+ * Lista modelos de checklist.
+ * - onlyAtivos=true => adiciona ?ativos=1 na query
+ */
+export async function listarChecklistModelos(
+  onlyAtivos: boolean = true
+): Promise<ChecklistTemplateModel[]> {
+  const qs = onlyAtivos ? "?ativos=1" : "";
+  const r = await fetch(`/api/checklist-modelos${qs}`, {
+    cache: "no-store",
+  });
+
+  const j = await handleJson<any>(r, "Falha ao listar modelos de checklist");
+  const raw = Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : [];
+
+  return raw.map((t: any) => ({
+    id: String(t.id ?? t.uuid ?? ""),
+    nome: String(t.nome ?? t.titulo ?? ""),
+    itens: Array.isArray(t.itens)
+      ? t.itens.map((it: any) => ({
+          titulo: String(it.titulo ?? it.nome ?? ""),
+          descricao: it.descricao ?? null,
+          obrigatorio: it.obrigatorio ?? false,
+        }))
+      : [],
+  }));
 }

@@ -5,23 +5,12 @@ import { DialogShell } from "./dialog-shell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { UploadCloud, X, CarFront, ClipboardList, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadChecklistImages } from "../../lib/upload-checklist-images";
-
-type ChecklistTemplateModel = {
-  id: string;
-  nome: string;
-  itens: { titulo: string; descricao?: string | null; obrigatorio?: boolean }[];
-};
+import { listarChecklistModelos, type ChecklistTemplateModel } from "../../lib/api";
 
 const CHECK_OPTIONS = ["OK", "ALERTA", "FALHA"] as const;
 type Marcacao = (typeof CHECK_OPTIONS)[number] | "";
@@ -58,13 +47,13 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
       try {
         setLoadingTemplates(true);
         setTemplatesError(null);
-        const url = new URL("/api/checklist-modelos", window.location.origin);
-        url.searchParams.set("ativos", "1");
-        const r = await fetch(url.toString(), { cache: "no-store" });
-        const j = await r.json();
-        setTemplates(Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : []);
+
+        // usa helper centralizado – retorna só ativos
+        const list = await listarChecklistModelos(true);
+        setTemplates(list);
       } catch (e: any) {
         setTemplatesError(e?.message ?? "Não foi possível carregar os modelos de checklist.");
+        setTemplates([]);
       } finally {
         setLoadingTemplates(false);
       }
@@ -104,18 +93,14 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
     if (!templateId) return "Selecione um modelo de checklist.";
 
     if (templateItems?.length) {
-      const faltando = templateItems
-        .filter((it) => it.obrigatorio)
-        .filter((it) => !checklist[it.titulo]);
+      const faltando = templateItems.filter((it) => it.obrigatorio).filter((it) => !checklist[it.titulo]);
 
       if (faltando.length) {
         const nomes = faltando
           .slice(0, 3)
           .map((f) => f.titulo)
           .join(", ");
-        return `Marque todos os itens obrigatórios do checklist. Ex.: ${nomes}${
-          faltando.length > 3 ? "…" : ""
-        }`;
+        return `Marque todos os itens obrigatórios do checklist. Ex.: ${nomes}${faltando.length > 3 ? "…" : ""}`;
       }
     }
 
@@ -123,9 +108,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
       (k) => (imagesByItem[k]?.length ?? 0) > 0 && !toDbStatus(checklist[k] as Marcacao)
     );
     if (semStatusComImagem.length) {
-      return `Há imagens em itens sem status: ${semStatusComImagem
-        .slice(0, 3)
-        .join(", ")}${
+      return `Há imagens em itens sem status: ${semStatusComImagem.slice(0, 3).join(", ")}${
         semStatusComImagem.length > 3 ? "…" : ""
       }. Marque OK/ALERTA/FALHA antes de anexar imagens.`;
     }
@@ -242,12 +225,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
       maxW="lg:max-w-5xl xl:max-w-6xl"
       footer={
         <>
-          <Button
-            variant="outline"
-            className="bg-transparent"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+          <Button variant="outline" className="bg-transparent" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
           <Button onClick={salvar} disabled={saving || !osId}>
@@ -288,11 +266,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                   }
                 />
               </SelectTrigger>
-              <SelectContent
-                position="popper"
-                sideOffset={6}
-                className="w-[var(--radix-select-trigger-width)]"
-              >
+              <SelectContent position="popper" sideOffset={6} className="w-[var(--radix-select-trigger-width)]">
                 {templates.map((t) => (
                   <SelectItem key={t.id} value={t.id} className="truncate">
                     {t.nome}
@@ -330,18 +304,11 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
               const obs = obsByItem[key] ?? "";
 
               return (
-                <div
-                  key={key}
-                  className="p-3 rounded-lg border bg-muted/50 border-border text-foreground"
-                >
+                <div key={key} className="p-3 rounded-lg border bg-muted/50 border-border text-foreground">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="text-sm font-medium">{it.titulo}</div>
-                      {it.descricao ? (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {it.descricao}
-                        </div>
-                      ) : null}
+                      {it.descricao ? <div className="text-xs text-muted-foreground mt-1">{it.descricao}</div> : null}
                     </div>
                     {it.obrigatorio && (
                       <Badge variant="secondary" className="text-[11px]">
@@ -353,16 +320,14 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {CHECK_OPTIONS.map((status) => {
                       const selected = marcado === status;
-                      const base =
-                        "px-3 py-1.5 rounded-md text-sm border transition";
+                      const base = "px-3 py-1.5 rounded-md text-sm border transition";
                       const selectedClass =
                         status === "OK"
                           ? "bg-emerald-600 text-white border-emerald-600"
                           : status === "ALERTA"
                           ? "bg-amber-500 text-white border-amber-500"
                           : "bg-red-600 text-white border-red-600";
-                      const unselectedClass =
-                        "bg-background hover:bg-muted border-border text-foreground";
+                      const unselectedClass = "bg-background hover:bg-muted border-border text-foreground";
                       return (
                         <button
                           key={status}
@@ -373,10 +338,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                               [key]: selected ? "" : status,
                             }))
                           }
-                          className={[
-                            base,
-                            selected ? selectedClass : unselectedClass,
-                          ].join(" ")}
+                          className={[base, selected ? selectedClass : unselectedClass].join(" ")}
                         >
                           {status}
                         </button>
@@ -388,18 +350,14 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                     <Label className="text-xs">Observação (opcional)</Label>
                     <Textarea
                       value={obs}
-                      onChange={(e) =>
-                        setObsByItem((p) => ({ ...p, [key]: e.target.value }))
-                      }
+                      onChange={(e) => setObsByItem((p) => ({ ...p, [key]: e.target.value }))}
                       placeholder="Observações sobre o item…"
                       rows={3}
                     />
                   </div>
 
                   <div className="mt-3 space-y-2">
-                    <Label className="text-xs text-muted-foreground">
-                      Imagens do item (opcional)
-                    </Label>
+                    <Label className="text-xs text-muted-foreground">Imagens do item (opcional)</Label>
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted">
                         <UploadCloud className="h-4 w-4" />
@@ -413,9 +371,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                         />
                       </label>
                       {files.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {files.length} arquivo(s) selecionado(s)
-                        </span>
+                        <span className="text-xs text-muted-foreground">{files.length} arquivo(s) selecionado(s)</span>
                       )}
                     </div>
 
@@ -426,9 +382,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                             key={`${f.name}-${idx}`}
                             className="inline-flex items-center gap-2 border rounded px-2 py-1 text-xs"
                           >
-                            <span className="max-w-[180px] truncate">
-                              {f.name}
-                            </span>
+                            <span className="max-w-[180px] truncate">{f.name}</span>
                             <button
                               type="button"
                               className="opacity-70 hover:opacity-100"
@@ -448,9 +402,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {templateId
-              ? "Este modelo não possui itens."
-              : "Selecione um modelo para exibir os itens do checklist."}
+            {templateId ? "Este modelo não possui itens." : "Selecione um modelo para exibir os itens do checklist."}
           </p>
         )}
       </div>

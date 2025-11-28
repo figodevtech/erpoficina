@@ -3,17 +3,36 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChecklistTemplate } from "./types";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   ChevronsLeft,
@@ -24,12 +43,16 @@ import {
   MoreHorizontal,
   Eye,
   Edit3,
-  Trash2,
   Plus,
   Loader,
 } from "lucide-react";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type Props = {
@@ -39,10 +62,17 @@ type Props = {
   onReload?: () => void;
   onNew?: () => void;
   onEdit: (tpl: ChecklistTemplate) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void; // mantido pra não quebrar quem chama, mas não é usado
 };
 
-export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, onDelete }: Props) {
+export function TemplatesList({
+  items,
+  loading,
+  error,
+  onReload,
+  onNew,
+  onEdit,
+}: Props) {
   // visualização
   const [openView, setOpenView] = useState(false);
   const [selected, setSelected] = useState<ChecklistTemplate | null>(null);
@@ -53,6 +83,7 @@ export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, 
 
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
   useEffect(() => {
     if (page > totalPages) setPage(1);
   }, [totalPages, page]);
@@ -151,7 +182,7 @@ export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, 
               <TableHead>Categoria</TableHead>
               <TableHead>Itens</TableHead>
               <TableHead>Criado em</TableHead>
-              <TableHead>Ativo</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -161,59 +192,80 @@ export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, 
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                  Nenhum checklist criado. Clique em <b>Novo checklist</b> para começar.
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-10 text-muted-foreground"
+                >
+                  Nenhum checklist criado. Clique em <b>Novo checklist</b> para
+                  começar.
                 </TableCell>
               </TableRow>
             ) : (
-              pageItems.map((c) => (
-                <TableRow key={c.id} className="hover:cursor-default">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">{c.nome}</span>
-                      {c.descricao && (
-                        <span className="text-xs text-muted-foreground hidden lg:inline max-w-[36ch] truncate">
-                          — {c.descricao}
-                        </span>
+              pageItems.map((c) => {
+                const isActive = c.ativo !== false; // default = ativo
+                return (
+                  <TableRow key={c.id} className="hover:cursor-default">
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">{c.nome}</span>
+                        {c.descricao && (
+                          <span className="text-xs text-muted-foreground hidden lg:inline max-w-[36ch] truncate">
+                            — {c.descricao}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {c.categoria ? (
+                        <Badge variant="secondary">{c.categoria}</Badge>
+                      ) : (
+                        "—"
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{c.categoria ? <Badge variant="secondary">{c.categoria}</Badge> : "—"}</TableCell>
-                  <TableCell className="tabular-nums">{c.itens.length}</TableCell>
-                  <TableCell>{c.criadoEm ? new Date(c.criadoEm).toLocaleDateString("pt-BR") : "—"}</TableCell>
-                  <TableCell>
-                    {c.ativo ? <Badge variant="outline">Ativo</Badge> : <Badge variant="destructive">Inativo</Badge>}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelected(c);
-                            setOpenView(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-2" /> Visualizar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEdit(c)}>
-                          <Edit3 className="h-4 w-4 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => onDelete(c.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {c.itens.length}
+                    </TableCell>
+                    <TableCell>
+                      {c.criadoEm
+                        ? new Date(c.criadoEm).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={isActive ? "default" : "outline"}
+                        className={
+                          isActive ? "" : "border-destructive bg-destructive"
+                        }
+                      >
+                        {isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelected(c);
+                              setOpenView(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" /> Visualizar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEdit(c)}>
+                            <Edit3 className="h-4 w-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          {/* opção Excluir removida como você pediu */}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -230,7 +282,9 @@ export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, 
               <span>0 de 0</span>
             )}
             <Loader
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${loading ? "opacity-100" : ""}`}
+              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
+                loading ? "opacity-100" : ""
+              }`}
             />
           </div>
 
@@ -307,7 +361,7 @@ export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, 
         </div>
       </CardContent>
 
-      {/* Dialog de visualização (somente leitura) — visual consistente */}
+      {/* Dialog de visualização (somente leitura) */}
       <Dialog open={openView} onOpenChange={setOpenView}>
         <DialogContent
           className="
@@ -320,18 +374,28 @@ export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, 
         >
           <div className="grid grid-rows-[auto_1px_1fr] h-[85vh]">
             <DialogHeader className="px-6 pt-4 pb-3 text-center">
-              <DialogTitle className="text-lg font-semibold">{selected?.nome}</DialogTitle>
-              {selected?.descricao && <CardDescription className="pt-1">{selected.descricao}</CardDescription>}
+              <DialogTitle className="text-lg font-semibold">
+                {selected?.nome}
+              </DialogTitle>
+              {selected?.descricao && (
+                <CardDescription className="pt-1">
+                  {selected.descricao}
+                </CardDescription>
+              )}
             </DialogHeader>
-            <div className="bg-border" /> {/* Separator */}
-            {/* lista com scroll e sem “vazar” */}
+            <div className="bg-border" />
             <div className="overflow-y-auto px-6 py-4 space-y-3">
               {selected?.itens.map((item) => (
-                <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/50 max-w-full">
+                <div
+                  key={item.id}
+                  className="flex items-start gap-3 p-3 border rounded-lg bg-muted/50 max-w-full"
+                >
                   <Checkbox disabled className="mt-1" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium truncate">{item.titulo}</h4>
+                      <h4 className="font-medium truncate">
+                        {item.titulo}
+                      </h4>
                       {item.obrigatorio && (
                         <Badge variant="destructive" className="text-xs">
                           Obrigatório
@@ -343,7 +407,11 @@ export function TemplatesList({ items, loading, error, onReload, onNew, onEdit, 
                         </Badge>
                       )}
                     </div>
-                    {item.descricao && <p className="text-sm text-muted-foreground break-words">{item.descricao}</p>}
+                    {item.descricao && (
+                      <p className="text-sm text-muted-foreground break-words">
+                        {item.descricao}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

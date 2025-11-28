@@ -1,3 +1,4 @@
+// ./src/app/(app)/(pages)/ordens/components/ordens-tabela.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -27,12 +28,12 @@ import {
   Loader,
   Loader2,
   Car,
-  AlertTriangle,
   ChevronsUpDown,
   ChevronUp,
   ChevronDown,
   Plus,
   Package,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Select,
@@ -58,7 +59,6 @@ import TableSkeleton from "../components/table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 import { ChecklistDialog } from "./dialogs/checklist-dialog";
-// utils & helpers
 import {
   statusClasses,
   prioClasses,
@@ -151,7 +151,6 @@ export function OrdensTabela({
       if (sts.length === 1) {
         url.searchParams.set("status", sts[0]);
       } else if (sts.length > 1) {
-        // backend pode aceitar csv: ?statuses=A,B
         url.searchParams.set("statuses", sts.join(","));
       }
       if (q) url.searchParams.set("q", q);
@@ -265,33 +264,6 @@ export function OrdensTabela({
     return fmtDuration((endMs ?? now) - startMs);
   };
 
-  async function setStatus(id: number, status: StatusOS) {
-    const r = await fetch(`/api/ordens/${id}/status`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (!r.ok) {
-      const j = await r.json().catch(() => ({}));
-      toast.error(j?.error || "Falha ao atualizar status");
-      return;
-    }
-    window.dispatchEvent(new CustomEvent("os:refresh"));
-    toast.success("Status atualizado");
-  }
-
-  async function deleteOS(id: number) {
-    try {
-      const r = await fetch(`/api/ordens/${id}`, { method: "DELETE" });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || "Falha ao excluir OS");
-      toast.success(`OS #${id} excluída`);
-      window.dispatchEvent(new CustomEvent("os:refresh"));
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao excluir OS");
-    }
-  }
-
   // Estados de diálogos
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkRow, setLinkRow] = useState<OrdemComDatas | null>(null);
@@ -305,13 +277,73 @@ export function OrdensTabela({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsId, setDetailsId] = useState<number | null>(null);
 
-  const [delOpen, setDelOpen] = useState(false);
-  const [delRow, setDelRow] = useState<OrdemComDatas | null>(null);
-
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [checklistRow, setChecklistRow] = useState<OrdemComDatas | null>(
     null
   );
+
+  // ------- setStatus com checagem de responsáveis ao iniciar -------
+  async function setStatus(id: number, status: StatusOS) {
+    // SE for tentar iniciar (ORCAMENTO_APROVADO -> EM_ANDAMENTO),
+    // primeiro valida se todos os serviços têm responsável.
+    if (status === "EM_ANDAMENTO") {
+      try {
+        const r = await fetch(`/api/ordens/${id}`, {
+          cache: "no-store",
+        });
+        const j = await r.json().catch(() => ({}));
+
+        if (!r.ok) {
+          throw new Error(
+            j?.error || "Não foi possível validar responsáveis da OS."
+          );
+        }
+
+        const itens = (j?.itensServico ?? []) as Array<{
+          idusuariorealizador?: string | null;
+        }>;
+
+        const temSemResponsavel = itens.some(
+          (it) =>
+            !it.idusuariorealizador ||
+            it.idusuariorealizador === ""
+        );
+
+        if (temSemResponsavel) {
+          toast.error(
+            "Antes de iniciar, selecione o responsável para todos os serviços da OS."
+          );
+          // abre o diálogo de detalhes para o usuário já escolher os responsáveis
+          setDetailsId(id);
+          setDetailsOpen(true);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Erro ao validar responsáveis:", err);
+        toast.error(
+          err?.message ||
+            "Não foi possível verificar os responsáveis. Abra os detalhes da OS para conferir."
+        );
+        setDetailsId(id);
+        setDetailsOpen(true);
+        return;
+      }
+    }
+
+    // fluxo normal de mudança de status
+    const r = await fetch(`/api/ordens/${id}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      toast.error(j?.error || "Falha ao atualizar status");
+      return;
+    }
+    window.dispatchEvent(new CustomEvent("os:refresh"));
+    toast.success("Status atualizado");
+  }
 
   // ------- Ordenação em memória (só na página atual)
   const sortedRows = useMemo(() => {
@@ -447,9 +479,9 @@ export function OrdensTabela({
 
                   // VEÍCULO
                   const veiculoStr = r.veiculo
-                    ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${
-                        r.veiculo.placa ?? ""
-                      }`.trim()
+                    ? `${r.veiculo.marca ?? ""} ${
+                        r.veiculo.modelo ?? ""
+                      } - ${r.veiculo.placa ?? ""}`.trim()
                     : "";
 
                   // PEÇA
@@ -566,10 +598,9 @@ export function OrdensTabela({
                           setPayOpen={setPayOpen}
                           setDetailsId={setDetailsId}
                           setDetailsOpen={setDetailsOpen}
-                          setDelRow={setDelRow}
-                          setDelOpen={setDelOpen}
                           setChecklistRow={setChecklistRow}
                           setChecklistOpen={setChecklistOpen}
+                          // >>> não passamos mais nada de delete aqui
                         />
                       </TableCell>
                     </TableRow>
@@ -742,35 +773,6 @@ export function OrdensTabela({
         }}
         osId={checklistRow?.id ?? 0}
       />
-
-      {/* Alerta: Excluir OS */}
-      <AlertDialog open={delOpen} onOpenChange={setDelOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              Excluir OS #{delRow?.id}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Essa ação é irreversível. Tem certeza que deseja excluir a OS{" "}
-              <b>#{delRow?.id}</b>?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={async () => {
-                if (!delRow) return;
-                await deleteOS(delRow.id);
-                setDelOpen(false);
-                setDelRow(null);
-              }}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }
