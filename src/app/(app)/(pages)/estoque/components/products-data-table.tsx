@@ -31,6 +31,8 @@ import {
   CircleOff,
   Store,
   Plus,
+  ArrowBigDown,
+  FileText,
 } from "lucide-react";
 import {
   Select,
@@ -57,6 +59,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import EntradaDialog from "./entradaDialog/entradaDialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import BotaoNf from "./entradaDialog/botaoNf";
+import EntradaFiscalDialog from "./entradaDialog/entradaFiscalDialog";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -132,6 +141,7 @@ export default function ProductsDataTable({
 }: ProductsDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isEntradaOpen, setIsEntradaOpen] = useState(false);
+  const [isEntradaOpenFiscal, setIsEntradaOpenFiscal] = useState(false);
   const [, setIsDeleting] = useState(false);
 
   const handleDeleteProduct = async (id: number) => {
@@ -195,12 +205,37 @@ export default function ProductsDataTable({
           {/* 👉 Botão “Novo Produto” movido para cá */}
           <div className="flex items-center gap-2">
             <ExportProductsButton />
-            <Button
-              className="hover:cursor-pointer"
-              onClick={() => setIsOpen(true)}
-            >
-              Novo Produto
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant={"outline"} className="hover:cursor-pointer">
+                  Ações <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="space-y-1">
+                <Button
+                  className="hover:cursor-pointer w-full text-xs"
+                  onClick={() => setIsOpen(true)}
+                >
+                 <Plus/> Novo Produto
+                </Button>
+
+                <EntradaFiscalDialog
+
+                  handleGetProducts={handleGetProducts}
+                  isOpen={isEntradaOpenFiscal}
+                  setIsOpen={setIsEntradaOpenFiscal}
+                >
+                  <Button
+                    variant={"outline"}
+                    className="flex justify-start text-xs px-0 rounded-sm py-2 hover:cursor-pointer"
+                  >
+                    <FileText className="-ml-1 -mr-1 h-4 w-4" />  
+                    <span>Entrada Fiscal (NF-e)</span>
+                  </Button>
+                </EntradaFiscalDialog>
+                
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -322,16 +357,16 @@ export default function ProductsDataTable({
                             <span>Editar</span>
                           </Button>
                         </ProductDialog>
-                        
+
                         <EntradaDialog
-                        handleGetProducts={handleGetProducts}
-                        status={status}
-                        search={search}
-                        isOpen={isEntradaOpen}
-                        setIsOpen={setIsEntradaOpen}
-                        currentQuantity={p.estoque ||  0}
-                        productDescription={p.titulo || ""}
-                        productId={p.id}
+                          handleGetProducts={handleGetProducts}
+                          status={status}
+                          search={search}
+                          isOpen={isEntradaOpen}
+                          setIsOpen={setIsEntradaOpen}
+                          currentQuantity={p.estoque || 0}
+                          productDescription={p.titulo || ""}
+                          productId={p.id}
                         >
                           <Button
                             variant={"default"}
