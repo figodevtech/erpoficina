@@ -99,10 +99,9 @@ export default function RegisterContent({
           description: "Produto cadastrado.",
           duration: 2000,
         });
-        if(setSelectedProductId){
 
-          setSelectedProductId(response.data.data.id);
-        }
+          setSelectedProductId?.(response.data.data.id);
+        
         console.log("criado:", response.data);
       }
     } catch (error) {

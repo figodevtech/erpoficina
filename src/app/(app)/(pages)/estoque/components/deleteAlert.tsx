@@ -16,7 +16,7 @@ interface DeleteAlertProps{
     handleDeleteProduct: (value: number)=>void
     isAlertOpen: boolean
     setIsAlertOpen: (value: boolean)=>void
-    idToDelete: number
+    idToDelete?: number
   
 }
 export default function DeleteAlert({children, handleDeleteProduct, isAlertOpen, setIsAlertOpen, idToDelete}: DeleteAlertProps) {
@@ -35,7 +35,9 @@ export default function DeleteAlert({children, handleDeleteProduct, isAlertOpen,
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="hover:cursor-pointer">Cancelar</AlertDialogCancel>
-          <AlertDialogAction className="hover:cursor-pointer" onClick={()=>handleDeleteProduct(idToDelete)}>Continuar</AlertDialogAction>
+          <AlertDialogAction className="hover:cursor-pointer" onClick={()=>{
+            if(!idToDelete) return;
+            handleDeleteProduct(idToDelete)}}>Continuar</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

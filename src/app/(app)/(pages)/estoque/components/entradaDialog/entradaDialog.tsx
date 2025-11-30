@@ -36,20 +36,13 @@ import ValueInput from "../productDialog/valueInput";
 import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
 import { Estoque_status, Fornecedor, Pagination } from "../../types";
-import BotaoNf from "./botaoNf";
-import { Separator } from "@/components/ui/separator";
-import { Accordion } from "@radix-ui/react-accordion";
-import {
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
-  productId: number;
+  productId?: number;
   productDescription: string;
   currentQuantity: number;
   search?: string;

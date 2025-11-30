@@ -12,9 +12,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { Search, UserRoundPlus, X } from "lucide-react";
+import { PackagePlus, Search, UserRoundPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Estoque_status, Pagination } from "../../types";
+import { Estoque_status, Pagination, Unidade_medida } from "../../types";
 import BotaoNf from "./botaoNf";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { set } from "nprogress";
 import FornecedorSelect from "@/app/(app)/components/fornecedorSelect";
 import FornecedorDialog from "../../../configuracoes/tipos/components/fornecedorDialog";
+import { ProductDialog } from "../productDialog/productDialog";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -62,6 +63,8 @@ export default function EntradaFiscalDialog({
   const [isProductOpen, setIsProductOpen] = useState<boolean>(false);
   const [isFornecedorOpen, setIsFornecedorOpen] = useState<boolean>(false);
   const [isLoadingFornecedor, setIsLoadingFornecedor] = useState<boolean>(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | undefined>(undefined);
+  const [isProductEditOpen, setIsProductEditOpen] = useState<boolean>(false);
 
   const handleGetFornecedor = async () => {
     setIsLoadingFornecedor(true);
@@ -440,6 +443,27 @@ export default function EntradaFiscalDialog({
                               <Search className="w-4 h-4" />
                             </div>
                           </ProductSelect>
+                          <ProductDialog
+                          productId={selectedProductId}
+                          isOpen={isProductEditOpen}
+                          setIsOpen={setIsProductEditOpen}
+                          setSelectedProductId={setSelectedProductId}
+                          newProductData={{
+                            titulo: item.descricao,
+                            referencia: item.codigo,
+                            ncm: item.ncm.toString(),
+                            cfop: item.cfop.toString(),
+                            precovenda: item.valorUnitario,
+                            estoque: 0,
+                            fornecedorid: parsed.fornecedorReferenteId || undefined,
+                            codigofornecedor: item.codigo,
+                          }}
+                          >
+
+                          <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
+                              <PackagePlus className="w-4 h-4" />
+                          </div>
+                          </ProductDialog>
                         </div>
 
                         {/* Total value highlighted */}

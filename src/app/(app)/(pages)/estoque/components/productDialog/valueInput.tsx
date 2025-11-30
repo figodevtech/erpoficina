@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 
 interface ValueInputProps {
   setPrice: (value: number) => void;
-  price: number;
+  price?: number ;
 }
 
 export default function ValueInput({ setPrice, price }: ValueInputProps) {

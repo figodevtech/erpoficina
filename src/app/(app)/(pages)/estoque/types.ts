@@ -112,14 +112,14 @@ export interface Fornecedor {
 }
 
 export interface Produto {
-  id: number;
-  precovenda: number;
+  id?: number;
+  precovenda?: number;
   descricao?: string;
   estoque?: number; // default 0 no banco, mas pode ser null
   estoqueminimo?: number; // default 0 no banco, mas pode ser null
   ncm?: string;
   cfop?: string;
-  unidade: Unidade_medida;
+  unidade?: Unidade_medida;
   cest?: string;
   csosn?: string;
   aliquotaicms?: number;
@@ -131,7 +131,7 @@ export interface Produto {
   fornecedor?: string;
   fabricante?: string;
   grupo?: Grupo_produto; // grupo_produto no banco, default 'OUTROS'
-  status_estoque: Estoque_status;
+  status_estoque?: Estoque_status;
   imgLink?: string;
   exibirPdv?: boolean;
   tituloMarketplace?: string;
@@ -139,6 +139,8 @@ export interface Produto {
   entradas?: Produtoentrada[]
   vendasdoproduto?: Vendaproduto[];
   ordensdoproduto?: OSProduto[];
+  fornecedorid?: number;
+  codigofornecedor?: string;
 }
 
 export interface Pagination {

@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/collapsible";
 import BotaoNf from "./entradaDialog/botaoNf";
 import EntradaFiscalDialog from "./entradaDialog/entradaFiscalDialog";
+import { stat } from "fs";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -88,7 +89,10 @@ interface ProductsDataTableProps {
   setIsOpen: (value: boolean) => void;
 }
 
-const getStatusBadge = (status: Estoque_status) => {
+const getStatusBadge = (status: Estoque_status | undefined) => {
+  if(!status) {
+    return
+  }
   if (status === "CRITICO") {
     return (
       <Badge variant="destructive" className="text-xs">
@@ -278,7 +282,7 @@ export default function ProductsDataTable({
 
           <TableBody>
             {products.map((p) => {
-              const valorTotal = (p.estoque ?? 0) * p.precovenda;
+              const valorTotal = (p.estoque ?? 0) * (p.precovenda || 0);
 
               return (
                 <TableRow
@@ -291,7 +295,7 @@ export default function ProductsDataTable({
                     <div className="flex items-center gap-2">
                       <div>
                         <div className="flex flex-row gap-2 items-center">
-                          <p className="font-medium">{p.titulo}</p>
+                          <p className="font-medium">{p.titulo || "-"}</p>
                           {p.exibirPdv && (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -304,12 +308,12 @@ export default function ProductsDataTable({
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {p.unidade}
-                          {p.fabricante ? ` • ${p.fabricante}` : ""}
+                          {p.unidade || "-"}
+                          {p.fabricante ? ` • ${p.fabricante}` : "-"}
                         </p>
                         {p.codigobarras && (
                           <p className="text-xs text-muted-foreground">
-                            CODIGOBARRAS: {p.codigobarras}
+                            CODIGOBARRAS: {p.codigobarras || "-"}
                           </p>
                         )}
                       </div>
@@ -317,9 +321,9 @@ export default function ProductsDataTable({
                   </TableCell>
 
                   <TableCell className="font-mono text-xs">
-                    {p.referencia}
+                    {p.referencia || "-"}
                   </TableCell>
-                  <TableCell>{p.fabricante}</TableCell>
+                  <TableCell>{p.fabricante || "-"}</TableCell>
 
                   <TableCell className="font-medium">
                     {p.estoque ?? 0}
@@ -332,7 +336,7 @@ export default function ProductsDataTable({
 
                   <TableCell>
                     R{"$ "}
-                    {p.precovenda.toLocaleString("pt-BR", {
+                    {p.precovenda?.toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
                     })}
                   </TableCell>
