@@ -65,6 +65,7 @@ export default function EntradaFiscalDialog({
   const [isLoadingFornecedor, setIsLoadingFornecedor] = useState<boolean>(false);
   const [selectedProductId, setSelectedProductId] = useState<number | undefined>(undefined);
   const [isProductEditOpen, setIsProductEditOpen] = useState<boolean>(false);
+  const [searchingFornecedor, setSearchingFornecedor] = useState(false);
 
   const handleGetFornecedor = async () => {
     setIsLoadingFornecedor(true);
@@ -108,6 +109,57 @@ export default function EntradaFiscalDialog({
     }
   };
 
+   const handleSearchFornecedor = async () => {
+    if(!parsed?.fornecedorReferenteId){
+      return;
+    }
+
+    setSearchingFornecedor(true);
+    parsed.itens.map(async (item) => {
+      if(item.produtoReferenciaId){
+        return;
+      }
+      console.log("Buscando produto para código do fornecedor:", item.codigo)
+      try {
+        const response = await axios.get("/api/tipos/fornecedores/produtos", {
+          params: {
+            fornecedorId: parsed.fornecedorReferenteId,
+            codigoFornecedor: item.codigo,
+            limit: 1,
+          },
+        });
+        if (response.status === 200) {
+          const produtos = response.data.data;
+          if (produtos.length > 1) {
+            toast.warning(`Mais de um produto encontrado para o código ${item.codigo}.`);
+          }
+          if (produtos.length === 1) {
+            const produto = produtos[0].produto;
+            setParsed((prev) => {
+              if (!prev) return prev; // aqui prev é null, então só devolve null
+
+              return {
+                ...prev,
+                itens: prev.itens.map((it) =>
+                  it.codigo === item.codigo
+                    ? {
+                        ...it,
+                        produtoReferencia: produto,
+                        produtoReferenciaId: produto.id,
+                      }
+                    : it
+                ),
+              }
+            })
+            console.log("Produto do fornecedor encontrado:", produto);
+          }
+        }
+      } catch (error) {
+        console.log("Erro ao buscar produto do fornecedor:", error);
+      }
+    })
+    
+  }
   function handleClearFile() {
     setFile(undefined);
     setParsed(null);
@@ -117,6 +169,10 @@ export default function EntradaFiscalDialog({
   useEffect(() => {
     console.log(parsed);
   }, [parsed]);
+
+  useEffect(()=> {
+    handleSearchFornecedor();
+  }, [parsed?.fornecedorReferenteId]);
 
   useEffect(() => {
     if (parsed?.emitente.cnpj){
@@ -444,6 +500,7 @@ export default function EntradaFiscalDialog({
                             </div>
                           </ProductSelect>
                           <ProductDialog
+                          handleSearchFornecedor={handleSearchFornecedor}
                           productId={selectedProductId}
                           isOpen={isProductEditOpen}
                           setIsOpen={setIsProductEditOpen}

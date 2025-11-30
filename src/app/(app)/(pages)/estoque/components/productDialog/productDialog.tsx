@@ -14,6 +14,7 @@ interface ProductDialogProps {
   setIsOpen?: (value: boolean) => void;
   setSelectedProductId?: (value: number | undefined) => void;
   newProductData?: Produto | undefined;
+  handleSearchFornecedor?: () => void;
 }
 
 export function ProductDialog({
@@ -23,6 +24,7 @@ export function ProductDialog({
   setIsOpen,
   setSelectedProductId,
   newProductData,
+  handleSearchFornecedor
 }: ProductDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isOpen ?? internalOpen;
@@ -65,6 +67,7 @@ export function ProductDialog({
         <EditContent productId={productId} />
       ) : (
         <RegisterContent
+          handleSearchFornecedor={handleSearchFornecedor}
           setSelectedProductId={setSelectedProductId}
           newProduct={newProduct}
           setNewProduct={setNewProduct}

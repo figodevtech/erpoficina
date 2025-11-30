@@ -97,7 +97,15 @@ export default function ProductSelect({
 
   return (
     <Dialog
-    onOpenChange={setOpen} open={open}>
+    onOpenChange={(nextOpen)=>{
+      if(setOpen){
+        setOpen(nextOpen)
+      }
+
+      if(!nextOpen){
+        setSearch("");
+      }
+    }} open={open}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="h-lvh min-w-screen max-h-[600px] p-0 overflow-hidden sm:max-w-[500px] sm:max-h-[600px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
@@ -151,8 +159,8 @@ export default function ProductSelect({
                         key={p.id}
                       >
                         <TableCell>{p.id}</TableCell>
-                        <TableCell>{p.titulo}</TableCell>
-                        <TableCell>{p.fabricante}</TableCell>
+                        <TableCell className="max-w-[120px] truncate">{p.titulo}</TableCell>
+                        <TableCell>{p.fabricante || "-"}</TableCell>
                         <TableCell>{p.precovenda}</TableCell>
                       </TableRow>
                     ))}
