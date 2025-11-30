@@ -1,4 +1,4 @@
-import { Produto } from "../../types";
+import { Fornecedor, Produto } from "../../types";
 
 export interface NF {
   chaveAcesso: number; // ideal seria string, mas mantive number como está no JSON
@@ -11,6 +11,8 @@ export interface NF {
   destinatario: Destinatario;
   totais: Totais;
   itens: ItemNF[];
+  fornecedorReferenteId?: number;
+  fornecedorReferente?: Fornecedor;
 }
 
 export interface Emitente {

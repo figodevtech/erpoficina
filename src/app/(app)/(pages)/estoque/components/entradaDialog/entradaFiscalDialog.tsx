@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { Search, X } from "lucide-react";
+import { Search, UserRoundPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Estoque_status, Pagination } from "../../types";
 import BotaoNf from "./botaoNf";
@@ -29,16 +29,12 @@ import formatarEmReal from "@/utils/formatarEmReal";
 import { NF } from "./types";
 import { formatCpfCnpj } from "../../../clientes/components/customerDialogRegister/utils";
 import { formatDate } from "@/utils/formatDate";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import ProductSelect from "@/app/(app)/components/productSelect";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
 import { set } from "nprogress";
+import FornecedorSelect from "@/app/(app)/components/fornecedorSelect";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -63,9 +59,27 @@ export default function EntradaFiscalDialog({
   const [parsed, setParsed] = useState<NF | null>(null);
   const [file, setFile] = useState<File | undefined>(undefined);
   const [isProductOpen, setIsProductOpen] = useState<boolean>(false);
+  const [isFornecedorOpen, setIsFornecedorOpen] = useState<boolean>(false);
+  const [isLoadingFornecedor, setIsLoadingFornecedor] = useState<boolean>(false);
 
   const handleGetFornecedor = async () => {
-    console.log("Fetching fornecedores...");
+    setIsLoadingFornecedor(true);
+    try {
+      const response = await axios.get(`/api/tipos/fornecedores/${parsed?.emitente.cnpj}?by=cpfcnpj`);
+      if(response.status === 200){
+        const fornecedorData = response.data.item;
+        console.log("Fornecedor encontrado:", fornecedorData);
+      }
+    } catch (error) {
+      if(isAxiosError(error)){
+        if(error.response?.status === 404){
+          return
+        }
+      }
+      
+    }finally{
+      setIsLoadingFornecedor(false);
+    }
   };
 
   const handleCreateEntradas = async () => {
@@ -81,6 +95,13 @@ export default function EntradaFiscalDialog({
   useEffect(() => {
     console.log(parsed);
   }, [parsed]);
+
+  useEffect(() => {
+    if (parsed?.emitente.cnpj){
+      console.log("Buscando fornecedor para CNPJ:", parsed.emitente.cnpj);
+      handleGetFornecedor();
+    }
+  }, [parsed?.emitente.cnpj]);
 
   const formatNumber = (value: number, decimals = 2) => {
     return value.toLocaleString("pt-BR", {
@@ -103,7 +124,7 @@ export default function EntradaFiscalDialog({
       >
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle>Entrada de fiscal produto</DialogTitle>
+            <DialogTitle>Entrada de Produto</DialogTitle>
             <DialogDescription className="flex flex-row items-center justify-between"></DialogDescription>
           </DialogHeader>
 
@@ -163,6 +184,30 @@ export default function EntradaFiscalDialog({
                           )}
                         </div>
                       )}
+
+
+                      {/* verificador de fornecedor */}
+
+                      <div className="flex felx-row items-center gap-2">
+                          <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
+                            <span
+                              className={`text-xs text-muted-foreground ${
+                                !parsed.fornecedorReferenteId && "text-red-400"
+                              }`}
+                            >
+                              {parsed.fornecedorReferenteId
+                                ? `Fornecedor vinculado: ${parsed.fornecedorReferente?.nomefantasia}`
+                                : "Fornecedor não cadastrado no sistema"}
+                            </span>
+
+                            
+                          </div>
+                         
+                            <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
+                              <UserRoundPlus className="w-4 h-4" />
+                            </div>
+                          
+                        </div>
                     </div>
 
                     <div className="text-xs text-muted-foreground text-right space-y-1 min-w-0">
@@ -349,7 +394,7 @@ export default function EntradaFiscalDialog({
                               });
                             }}
                           >
-                            <div className="p-1.5 rounded-full hover:bg-muted hover:cursor-pointer transition-all">
+                            <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
                               <Search className="w-4 h-4" />
                             </div>
                           </ProductSelect>
@@ -387,7 +432,7 @@ export default function EntradaFiscalDialog({
                 onClick={handleCreateEntradas}
                 className="hover:cursor-pointer"
               >
-                Confirmar entrada fiscal
+                Registrar
               </Button>
               <DialogClose asChild>
                 <Button

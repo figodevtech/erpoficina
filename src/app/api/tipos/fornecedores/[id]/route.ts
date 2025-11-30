@@ -213,3 +213,98 @@ export async function PATCH(
     );
   }
 }
+
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    await ensureAuth();
+
+    const { id } = await context.params;
+    const searchParams = req.nextUrl.searchParams;
+    const by = searchParams.get("by"); // 'cnpj' ou 'id'
+
+    let query = supabaseAdmin
+      .from("fornecedor")
+      .select(`
+        id,
+        cpfcnpj,
+        nomerazaosocial,
+        nomefantasia,
+        endereco,
+        cidade,
+        estado,
+        cep,
+        contato,
+        endereconumero,
+        enderecocomplemento,
+        bairro,
+        ativo,
+        createdat,
+        updatedat
+      `);
+
+    if (by === "cpfcnpj") {
+      const cnpj = id.trim();
+      if (!cnpj) {
+        return NextResponse.json(
+          { error: "CNPJ inválido." },
+          { status: 400 }
+        );
+      }
+      query = query.eq("cpfcnpj", cnpj);
+    } else {
+      // modo padrão = busca por id numérico
+      const fornecedorId = parseId(id);
+      if (!fornecedorId) {
+        return NextResponse.json(
+          { error: "ID inválido." },
+          { status: 400 }
+        );
+      }
+      query = query.eq("id", fornecedorId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      return NextResponse.json(
+        { error: "Fornecedor não encontrado." },
+        { status: 404 }
+      );
+    }
+
+    const item = {
+      id: data.id as number,
+      cpfcnpj: data.cpfcnpj as string,
+      nomerazaosocial: data.nomerazaosocial as string,
+      nomefantasia: (data.nomefantasia as string | null) ?? null,
+      endereco: (data.endereco as string | null) ?? null,
+      cidade: (data.cidade as string | null) ?? null,
+      estado: (data.estado as string | null) ?? null,
+      cep: (data.cep as string | null) ?? null,
+      contato: (data.contato as string | null) ?? null,
+      endereconumero: (data.endereconumero as string | null) ?? null,
+      enderecocomplemento: (data.enderecocomplemento as string | null) ?? null,
+      bairro: (data.bairro as string | null) ?? null,
+      ativo: typeof data.ativo === "boolean" ? data.ativo : true,
+      createdat: data.createdat ?? null,
+      updatedat: data.updatedat ?? null,
+    };
+
+    return NextResponse.json({ item });
+  } catch (e: any) {
+    console.error("[/api/tipos/fornecedores/:id GET] error:", e);
+    const status = /auth|unauth|não autenticado/i.test(String(e?.message))
+      ? 401
+      : 500;
+
+    return NextResponse.json(
+      { error: e?.message ?? "Erro ao buscar fornecedor" },
+      { status }
+    );
+  }
+}
