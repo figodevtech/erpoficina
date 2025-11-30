@@ -136,9 +136,9 @@ export interface Produto {
   exibirPdv?: boolean;
   tituloMarketplace?: string;
   descricaoMarketplace?: string;
-  entradas: Produtoentrada[]
-  vendasdoproduto: Vendaproduto[];
-  ordensdoproduto: OSProduto[];
+  entradas?: Produtoentrada[]
+  vendasdoproduto?: Vendaproduto[];
+  ordensdoproduto?: OSProduto[];
 }
 
 export interface Pagination {

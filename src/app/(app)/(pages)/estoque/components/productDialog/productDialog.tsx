@@ -35,6 +35,7 @@ export function ProductDialog({
     status_estoque: Estoque_status.OK,
     unidade: Unidade_medida.UN,
     fornecedor: "DESCONHECIDO",
+    
   });
 
 

@@ -35,6 +35,7 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { set } from "nprogress";
 import FornecedorSelect from "@/app/(app)/components/fornecedorSelect";
+import FornecedorDialog from "../../../configuracoes/tipos/components/fornecedorDialog";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -69,6 +70,13 @@ export default function EntradaFiscalDialog({
       if(response.status === 200){
         const fornecedorData = response.data.item;
         console.log("Fornecedor encontrado:", fornecedorData);
+        setParsed((prev) => {
+          return{
+            ...prev!,
+            fornecedorReferente: fornecedorData,
+            fornecedorReferenteId: fornecedorData.id
+          }
+        })
       }
     } catch (error) {
       if(isAxiosError(error)){
@@ -83,7 +91,18 @@ export default function EntradaFiscalDialog({
   };
 
   const handleCreateEntradas = async () => {
-    console.log("Creating entrada fiscal...");
+    if(!parsed){
+      toast.error("Nenhum arquivo processado.");
+      return;
+    }
+    if(parsed.itens.some(item => !item.produtoReferenciaId)){
+      toast.error("Todos os itens devem estar vinculados a um produto no sistema.");
+      return;
+    }
+    if(!parsed.fornecedorReferenteId){
+      toast.error("A nota deve estar vinculada a um fornecedor no sistema.");
+      return;
+    }
   };
 
   function handleClearFile() {
@@ -191,33 +210,56 @@ export default function EntradaFiscalDialog({
                       <div className="flex felx-row items-center gap-2">
                           <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
                             <span
-                              className={`text-xs text-muted-foreground ${
+                              className={`text-xs text-muted-foreground max-w-[250px] ${
                                 !parsed.fornecedorReferenteId && "text-red-400"
                               }`}
                             >
-                              {parsed.fornecedorReferenteId
-                                ? `Fornecedor vinculado: ${parsed.fornecedorReferente?.nomefantasia}`
+                              {isLoadingFornecedor ? "Buscando fornecedor..." :
+                              parsed.fornecedorReferenteId
+                                ? `Fornecedor vinculado: ${parsed.fornecedorReferente?.nomefantasia || parsed.fornecedorReferente?.nomerazaosocial}`
                                 : "Fornecedor não cadastrado no sistema"}
                             </span>
 
                             
                           </div>
-                         
+                          {parsed.fornecedorReferenteId === undefined && !isLoadingFornecedor && (
+
+                            <FornecedorDialog
+                            dialogOpen={isFornecedorOpen}
+                            handleGetFornecedor={handleGetFornecedor}
+                            setDialogOpen={setIsFornecedorOpen}
+                            dadosNovoFornecedor={{
+                              cpfcnpj: parsed.emitente.cnpj.toString(),
+                              nomefantasia: parsed.emitente.nomeFantasia,
+                              ativo: true,
+                              cep: parsed.emitente.endereco.cep.toString(),
+                              endereco: parsed.emitente.endereco.logradouro,
+                              cidade: parsed.emitente.endereco.municipio,
+                              estado: parsed.emitente.endereco.uf,
+                              contato: "",
+                              nomerazaosocial: parsed.emitente.nome,
+
+                            }}
+
+                            >
+
                             <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
                               <UserRoundPlus className="w-4 h-4" />
                             </div>
+                            </FornecedorDialog>
+                          )}
                           
                         </div>
                     </div>
 
                     <div className="text-xs text-muted-foreground text-right space-y-1 min-w-0">
                       {parsed?.dataEmissao && (
-                        <p className="text-nowrap">
-                          Emissão:{" "}
-                          <span className="font-medium">
-                            {formatDate(parsed.dataEmissao)}
+                        <div className="flex flex-col">
+                          <span>Emissão:</span>
+                          <span className="">
+                            {formatDate(parsed?.dataEmissao)}
                           </span>
-                        </p>
+                        </div>
                       )}
                       {parsed?.totais.valorNota != null && (
                         <p>
