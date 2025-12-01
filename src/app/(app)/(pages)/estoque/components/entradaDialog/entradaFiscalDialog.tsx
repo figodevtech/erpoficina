@@ -115,6 +115,9 @@ export default function EntradaFiscalDialog({
     }
 
     setSearchingFornecedor(true);
+    try {
+      
+   
     parsed.itens.map(async (item) => {
       if(item.produtoReferenciaId){
         return;
@@ -158,6 +161,12 @@ export default function EntradaFiscalDialog({
         console.log("Erro ao buscar produto do fornecedor:", error);
       }
     })
+     } catch (error) {
+      console.log("Erro ao buscar produtos do fornecedor:", error);
+      toast.error("Erro ao buscar produtos do fornecedor.", {description: String(error)});
+    }finally{
+      setSearchingFornecedor(false);
+    }
     
   }
   function handleClearFile() {
@@ -499,6 +508,8 @@ export default function EntradaFiscalDialog({
                               <Search className="w-4 h-4" />
                             </div>
                           </ProductSelect>
+                          {!item.produtoReferenciaId &&(
+
                           <ProductDialog
                           handleSearchFornecedor={handleSearchFornecedor}
                           productId={selectedProductId}
@@ -521,6 +532,7 @@ export default function EntradaFiscalDialog({
                               <PackagePlus className="w-4 h-4" />
                           </div>
                           </ProductDialog>
+                          )}
                         </div>
 
                         {/* Total value highlighted */}
@@ -554,6 +566,7 @@ export default function EntradaFiscalDialog({
               <Button
                 onClick={handleCreateEntradas}
                 className="hover:cursor-pointer"
+                disabled={isLoadingFornecedor || searchingFornecedor}
               >
                 Registrar
               </Button>
