@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { PackagePlus, Search, UserRoundPlus, X } from "lucide-react";
+import { Minus, PackagePlus, Plus, Search, UserRoundPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Estoque_status, Pagination, Unidade_medida } from "../../types";
 import BotaoNf from "./botaoNf";
@@ -35,6 +35,9 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import FornecedorDialog from "../../../configuracoes/tipos/components/fornecedorDialog";
 import { ProductDialog } from "../productDialog/productDialog";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import ValueInput from "../productDialog/valueInput";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -51,6 +54,12 @@ interface EntradaDialogProps {
   status?: Estoque_status;
 }
 
+interface Parcela {
+  id?: number;
+  dataVencimento?: Date;
+  valor?: number;
+}
+
 export default function EntradaFiscalDialog({
   children,
   isOpen,
@@ -61,16 +70,25 @@ export default function EntradaFiscalDialog({
 
   // estados de modais de produto / fornecedor
   const [isProductOpen, setIsProductOpen] = useState<boolean>(false);
-  const [productSelectItemIndex, setProductSelectItemIndex] = useState<number | null>(null);
+  const [productSelectItemIndex, setProductSelectItemIndex] = useState<
+    number | null
+  >(null);
 
   const [isFornecedorOpen, setIsFornecedorOpen] = useState<boolean>(false);
-  const [isLoadingFornecedor, setIsLoadingFornecedor] = useState<boolean>(false);
+  const [isLoadingFornecedor, setIsLoadingFornecedor] =
+    useState<boolean>(false);
 
-  const [selectedProductId, setSelectedProductId] = useState<number | undefined>(undefined);
+  const [selectedProductId, setSelectedProductId] = useState<
+    number | undefined
+  >(undefined);
   const [isProductEditOpen, setIsProductEditOpen] = useState<boolean>(false);
-  const [productDialogItemIndex, setProductDialogItemIndex] = useState<number | null>(null);
+  const [productDialogItemIndex, setProductDialogItemIndex] = useState<
+    number | null
+  >(null);
 
   const [searchingFornecedor, setSearchingFornecedor] = useState(false);
+  const [isPagamentoFuturo, setIsPagamentoFuturo] = useState(false);
+  const [parcelas, setParcelas] = useState<Parcela[]>([]);
 
   const handleGetFornecedor = async () => {
     if (!parsed?.emitente.cnpj) return;
@@ -110,12 +128,21 @@ export default function EntradaFiscalDialog({
       return;
     }
     if (parsed.itens.some((item) => !item.produtoReferenciaId)) {
-      toast.error("Todos os itens devem estar vinculados a um produto no sistema.");
+      toast.error(
+        "Todos os itens devem estar vinculados a um produto no sistema."
+      );
       return;
     }
     if (!parsed.fornecedorReferenteId) {
       toast.error("A nota deve estar vinculada a um fornecedor no sistema.");
       return;
+    }
+
+    if(isPagamentoFuturo){
+      const somaParcelas = parcelas.reduce((sum, parcela)=>sum + (parcela.valor ?? 0),0);
+      if( somaParcelas < parsed.totais.valorNota || somaParcelas > parsed.totais.valorNota)
+      toast.error("A soma das parcelas deve ser igual ao valor da nota")
+    return
     }
 
     // aqui entra a chamada real de criação de entradas
@@ -300,7 +327,7 @@ export default function EntradaFiscalDialog({
                       )}
 
                       {/* verificador de fornecedor */}
-                      <div className="flex felx-row items-center gap-2">
+                      <div className="flex flex-row items-center gap-2">
                         <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
                           <span
                             className={`text-xs text-muted-foreground max-w-[250px] ${
@@ -468,7 +495,7 @@ export default function EntradaFiscalDialog({
                           </p>
                         </div>
                         <Separator />
-                        <div className="flex felx-row items-center gap-2">
+                        <div className="flex flex-row items-center gap-2">
                           <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
                             <span
                               className={`text-xs text-muted-foreground ${
@@ -506,7 +533,9 @@ export default function EntradaFiscalDialog({
 
                           {/* SELECT de produto - controlado por índice */}
                           <ProductSelect
-                            open={isProductOpen && productSelectItemIndex === index}
+                            open={
+                              isProductOpen && productSelectItemIndex === index
+                            }
                             setOpen={(open) => {
                               if (open) {
                                 setIsProductOpen(true);
@@ -541,10 +570,9 @@ export default function EntradaFiscalDialog({
                           </ProductSelect>
 
                           {/* DIALOG de novo produto / edição após criar */}
-                          {(
-                            !item.produtoReferenciaId ||
-                            (isProductEditOpen && productDialogItemIndex === index)
-                          ) && (
+                          {(!item.produtoReferenciaId ||
+                            (isProductEditOpen &&
+                              productDialogItemIndex === index)) && (
                             <ProductDialog
                               handleSearchFornecedor={handleSearchFornecedor}
                               productId={selectedProductId}
@@ -595,6 +623,144 @@ export default function EntradaFiscalDialog({
                   </div>
                 )}
               </div>
+
+              <Separator />
+
+              {/* PAGAMENTO FUTURO / PARCELAS */}
+              <div className="space-y-2 mt-4">
+                <div className="flex w-full justify-start flex-col gap-4">
+                  <div className="flex flex-row items-center gap-2">
+                    <span
+                      className={`text-xs ${
+                        isPagamentoFuturo
+                          ? "text-accent-foreground"
+                          : "text-muted-foreground"
+                      } transition-all`}
+                    >
+                      Lançar como pagamento futuro
+                    </span>
+                    <Switch
+                      checked={isPagamentoFuturo}
+                      onCheckedChange={(b) => {
+                        setIsPagamentoFuturo(b);
+                        if (b) {
+                          setParcelas((prev) =>
+                            prev.length
+                              ? prev
+                              : [{ id: 1, dataVencimento: undefined, valor: 0 }]
+                          );
+                        } else {
+                          setParcelas([]);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {isPagamentoFuturo && (
+                    <div className="flex flex-col gap-2">
+                      {parcelas.map((parcela, index) => (
+                        <div
+                          key={parcela.id ?? index}
+                          className="flex flex-row bg-black/30 py-6 px-3 rounded-xl gap-4 items-center justify-between relative"
+                        >
+                          {/* Remover parcela */}
+                          <span className="absolute left-3 top-1 text-xs text-muted-foreground">{index+1}x parcela{index+1>1 && "s"}</span>
+                          <button
+                            type="button"
+                            className="bg-red-500 hover:cursor-pointer rounded-full w-5 h-5 flex items-center justify-center"
+                            onClick={() => {
+                              setParcelas((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              );
+                            }}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+
+                          {/* Data vencimento */}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">
+                              Data Vencimento:
+                            </span>
+                            <Input
+                              type="date"
+                              value={
+                                parcela.dataVencimento
+                                  ? new Date(parcela.dataVencimento)
+                                      .toISOString()
+                                      .slice(0, 10)
+                                  : ""
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setParcelas((prev) =>
+                                  prev.map((p, i) =>
+                                    i === index
+                                      ? {
+                                          ...p,
+                                          dataVencimento: value
+                                            ? new Date(`${value}T00:00:00`)
+                                            : undefined,
+                                        }
+                                      : p
+                                  )
+                                );
+                              }}
+                            />
+                          </div>
+
+                          {/* Valor */}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground">
+                              Valor:
+                            </span>
+                            <ValueInput
+                              price={parcela.valor ?? 0}
+                              setPrice={(valor) =>
+                                setParcelas((prev) =>
+                                  prev.map((p, i) =>
+                                    i === index
+                                      ? {
+                                          ...p,
+                                          valor,
+                                        }
+                                      : p
+                                  )
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Adicionar parcela */}
+                      <div className="text-xs text-muted-foreground flex flex-row items-center justify-between">
+                        <span>Valor total: {formatarEmReal(parsed.totais.valorNota)}</span>
+                        <span>Soma das parcelas: {formatarEmReal(parcelas.reduce((sum, parcela)=>sum + (parcela.valor ?? 0),0))}</span>
+                      </div>
+                      <div
+                        className="flex flex-row gap-2 items-center mt-3 hover:cursor-pointer group w-max"
+                        onClick={() =>
+                          setParcelas((prev) => [
+                            ...prev,
+                            {
+                              id: Date.now(),
+                              dataVencimento: undefined,
+                              valor: 0,
+                            },
+                          ])
+                        }
+                      >
+                        <Plus className="w-4 h-4 text-green-300 group-hover:text-green-600" />
+                        <span className="text-xs text-card-foreground">
+                          Adicionar Parcela
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <Separator />
               <details className="mt-2">
                 <summary className="cursor-pointer text-xs text-muted-foreground">
@@ -617,10 +783,7 @@ export default function EntradaFiscalDialog({
                 Registrar
               </Button>
               <DialogClose asChild>
-                <Button
-                  className="hover:cursor-pointer"
-                  variant="outline"
-                >
+                <Button className="hover:cursor-pointer" variant="outline">
                   Cancelar
                 </Button>
               </DialogClose>

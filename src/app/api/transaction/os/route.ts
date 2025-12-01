@@ -19,11 +19,12 @@ const WRITABLE_FIELDS = new Set([
   "banco_id",
   "nomepagador",
   "cpfcnpjpagador",
+  "pendente",
 ]);
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
-  "id, descricao, valor, valorLiquido, data, ordemservicoid, vendaid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
+  "id, descricao, valor, valorLiquido, data, ordemservicoid, vendaid, metodopagamento, categoria, tipo, pendente, cliente_id, banco_id, created_at, updated_at";
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
 const BANCO_FIELDS =

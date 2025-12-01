@@ -72,6 +72,7 @@ export interface Transaction {
   cpfcnpjpagador?: string;
   ordemservicoid?: number | null
   vendaid?: number | null
+  pendente?: boolean
 
 }
 export interface NewTransaction {

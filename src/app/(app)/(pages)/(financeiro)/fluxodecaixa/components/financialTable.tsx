@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import {
   Calendar,
+  Check,
   ChevronDown,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -49,6 +50,7 @@ import axios, { isAxiosError } from "axios";
 import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { getCategoryIcon, getTypeColor } from "../utils";
 import { ExportTransactionsButton } from "./ExportTransactionsButton";
+import ConculidoAlert from "./concluidoAlert";
 
 interface FinancialTableProps {
   dateTo: string,
@@ -83,6 +85,7 @@ export default function FinancialTable({
   >(undefined);
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isAlertOpen2, setIsAlertOpen2] = useState(false);
   const [, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -237,7 +240,7 @@ export default function FinancialTable({
                   <TableCell className="hidden md:table-cell">
                     {formatDate(t.data)}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{t.tipo}</TableCell>
+                  <TableCell className={`hidden md:table-cell ${t.pendente && "text-primary font-semibold"}`}>{t.pendente ? "PAGAMENTO FUTURO" : t.tipo}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     {t.categoria}
                   </TableCell>
@@ -295,6 +298,25 @@ export default function FinancialTable({
                             <span>Excluir</span>
                           </Button>
                         </DeleteAlert>
+                        {t.pendente && (
+
+                        <ConculidoAlert
+                        isAlertOpen={isAlertOpen2}
+                        setIsAlertOpen={setIsAlertOpen2}
+                        handleSetConcluido={(value)=>console.log("sdfsd")}
+                        idConcluido={t.id}
+
+                        >
+                          <Button
+                            variant="default"
+                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
+                          >
+                            <Check className="-ml-1 -mr-1 h-4 w-4" />
+                            <span>Pago</span>
+                          </Button>
+
+                        </ConculidoAlert>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

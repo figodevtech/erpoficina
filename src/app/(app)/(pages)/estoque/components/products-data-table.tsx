@@ -287,7 +287,7 @@ export default function ProductsDataTable({
                     <div className="flex items-center gap-2">
                       <div>
                         <div className="flex flex-row gap-2 items-center">
-                          <p className="font-medium">{p.titulo || "-"}</p>
+                          <p className="font-medium max-w-[350px] truncate">{p.titulo || "-"}</p>
                           {p.exibirPdv && (
                             <Tooltip>
                               <TooltipTrigger asChild>

@@ -8,7 +8,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const TRANSACAO_FIELDS = `
   id, descricao, valor, data, metodopagamento, categoria, tipo, cliente_id,
-  banco_id, nomepagador, cpfcnpjpagador, created_at, updated_at
+  banco_id, nomepagador, cpfcnpjpagador, pendente, created_at, updated_at
 `;
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
@@ -26,6 +26,7 @@ const WRITABLE_FIELDS = new Set([
   "cliente_id",
   "banco_id",
   "nomepagador",
+  "pendente",
   "cpfcnpjpagador",
 ]);
 
