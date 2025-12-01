@@ -33,8 +33,6 @@ import { formatDate } from "@/utils/formatDate";
 import ProductSelect from "@/app/(app)/components/productSelect";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { set } from "nprogress";
-import FornecedorSelect from "@/app/(app)/components/fornecedorSelect";
 import FornecedorDialog from "../../../configuracoes/tipos/components/fornecedorDialog";
 import { ProductDialog } from "../productDialog/productDialog";
 
@@ -60,134 +58,162 @@ export default function EntradaFiscalDialog({
 }: EntradaDialogProps) {
   const [parsed, setParsed] = useState<NF | null>(null);
   const [file, setFile] = useState<File | undefined>(undefined);
+
+  // estados de modais de produto / fornecedor
   const [isProductOpen, setIsProductOpen] = useState<boolean>(false);
+  const [productSelectItemIndex, setProductSelectItemIndex] = useState<number | null>(null);
+
   const [isFornecedorOpen, setIsFornecedorOpen] = useState<boolean>(false);
   const [isLoadingFornecedor, setIsLoadingFornecedor] = useState<boolean>(false);
+
   const [selectedProductId, setSelectedProductId] = useState<number | undefined>(undefined);
   const [isProductEditOpen, setIsProductEditOpen] = useState<boolean>(false);
+  const [productDialogItemIndex, setProductDialogItemIndex] = useState<number | null>(null);
+
   const [searchingFornecedor, setSearchingFornecedor] = useState(false);
 
   const handleGetFornecedor = async () => {
+    if (!parsed?.emitente.cnpj) return;
+
     setIsLoadingFornecedor(true);
     try {
-      const response = await axios.get(`/api/tipos/fornecedores/${parsed?.emitente.cnpj}?by=cpfcnpj`);
-      if(response.status === 200){
+      const response = await axios.get(
+        `/api/tipos/fornecedores/${parsed.emitente.cnpj}?by=cpfcnpj`
+      );
+      if (response.status === 200) {
         const fornecedorData = response.data.item;
         console.log("Fornecedor encontrado:", fornecedorData);
         setParsed((prev) => {
-          return{
-            ...prev!,
+          if (!prev) return prev;
+          return {
+            ...prev,
             fornecedorReferente: fornecedorData,
-            fornecedorReferenteId: fornecedorData.id
-          }
-        })
+            fornecedorReferenteId: fornecedorData.id,
+          };
+        });
       }
     } catch (error) {
-      if(isAxiosError(error)){
-        if(error.response?.status === 404){
-          return
+      if (isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          // fornecedor não encontrado, segue a vida
+          return;
         }
       }
-      
-    }finally{
+    } finally {
       setIsLoadingFornecedor(false);
     }
   };
 
   const handleCreateEntradas = async () => {
-    if(!parsed){
+    if (!parsed) {
       toast.error("Nenhum arquivo processado.");
       return;
     }
-    if(parsed.itens.some(item => !item.produtoReferenciaId)){
+    if (parsed.itens.some((item) => !item.produtoReferenciaId)) {
       toast.error("Todos os itens devem estar vinculados a um produto no sistema.");
       return;
     }
-    if(!parsed.fornecedorReferenteId){
+    if (!parsed.fornecedorReferenteId) {
       toast.error("A nota deve estar vinculada a um fornecedor no sistema.");
       return;
     }
+
+    // aqui entra a chamada real de criação de entradas
+    // ...
   };
 
-   const handleSearchFornecedor = async () => {
-    if(!parsed?.fornecedorReferenteId){
+  const handleSearchFornecedor = async () => {
+    if (!parsed?.fornecedorReferenteId || !parsed.itens?.length) {
       return;
     }
 
     setSearchingFornecedor(true);
-    try {
-      
-   
-    parsed.itens.map(async (item) => {
-      if(item.produtoReferenciaId){
-        return;
-      }
-      console.log("Buscando produto para código do fornecedor:", item.codigo)
-      try {
-        const response = await axios.get("/api/tipos/fornecedores/produtos", {
-          params: {
-            fornecedorId: parsed.fornecedorReferenteId,
-            codigoFornecedor: item.codigo,
-            limit: 1,
-          },
-        });
-        if (response.status === 200) {
-          const produtos = response.data.data;
-          if (produtos.length > 1) {
-            toast.warning(`Mais de um produto encontrado para o código ${item.codigo}.`);
-          }
-          if (produtos.length === 1) {
-            const produto = produtos[0].produto;
-            setParsed((prev) => {
-              if (!prev) return prev; // aqui prev é null, então só devolve null
 
-              return {
-                ...prev,
-                itens: prev.itens.map((it) =>
-                  it.codigo === item.codigo
-                    ? {
-                        ...it,
-                        produtoReferencia: produto,
-                        produtoReferenciaId: produto.id,
-                      }
-                    : it
-                ),
-              }
-            })
-            console.log("Produto do fornecedor encontrado:", produto);
+    try {
+      const fornecedorId = parsed.fornecedorReferenteId;
+      const itensSnapshot = parsed.itens;
+
+      for (const [index, item] of itensSnapshot.entries()) {
+        // se já está vinculado, pula
+        if (item.produtoReferenciaId) continue;
+
+        console.log("Buscando produto para código do fornecedor:", item.codigo);
+
+        try {
+          const response = await axios.get("/api/tipos/fornecedores/produtos", {
+            params: {
+              fornecedorId: fornecedorId,
+              codigoFornecedor: item.codigo,
+              limit: 1,
+            },
+          });
+
+          if (response.status === 200) {
+            const produtos = response.data.data;
+
+            if (produtos.length > 1) {
+              toast.warning(
+                `Mais de um produto encontrado para o código ${item.codigo}.`
+              );
+            }
+
+            if (produtos.length === 1) {
+              const produto = produtos[0].produto;
+
+              setParsed((prev) => {
+                if (!prev) return prev;
+
+                return {
+                  ...prev,
+                  itens: prev.itens.map((it, i) =>
+                    i === index
+                      ? {
+                          ...it,
+                          produtoReferencia: produto,
+                          produtoReferenciaId: produto.id,
+                        }
+                      : it
+                  ),
+                };
+              });
+
+              console.log("Produto do fornecedor encontrado:", produto);
+            }
           }
+        } catch (error) {
+          console.log("Erro ao buscar produto do fornecedor:", error);
         }
-      } catch (error) {
-        console.log("Erro ao buscar produto do fornecedor:", error);
       }
-    })
-     } catch (error) {
+    } catch (error) {
       console.log("Erro ao buscar produtos do fornecedor:", error);
-      toast.error("Erro ao buscar produtos do fornecedor.", {description: String(error)});
-    }finally{
+      toast.error("Erro ao buscar produtos do fornecedor.", {
+        description: String(error),
+      });
+    } finally {
       setSearchingFornecedor(false);
     }
-    
-  }
+  };
+
   function handleClearFile() {
     setFile(undefined);
     setParsed(null);
-    // limpa o input de arquivo também
   }
 
   useEffect(() => {
     console.log(parsed);
   }, [parsed]);
 
-  useEffect(()=> {
+  useEffect(() => {
     handleSearchFornecedor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed?.fornecedorReferenteId]);
 
   useEffect(() => {
-    if (parsed?.emitente.cnpj){
+    if (parsed?.emitente.cnpj) {
       console.log("Buscando fornecedor para CNPJ:", parsed.emitente.cnpj);
       handleGetFornecedor();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed?.emitente.cnpj]);
 
   const formatNumber = (value: number, decimals = 2) => {
@@ -251,10 +277,11 @@ export default function EntradaFiscalDialog({
                         Fornecedor:
                       </p>
                       <span className="text-xs text-wrap max-w-[250px]">
-                        {parsed.emitente.nome ||
-                          "Fornecedor não identificado"}
+                        {parsed.emitente.nome || "Fornecedor não identificado"}
                       </span>
-                      <span className="text-[12px] text-muted-foreground">{parsed.emitente.nomeFantasia}</span>
+                      <span className="text-[12px] text-muted-foreground">
+                        {parsed.emitente.nomeFantasia}
+                      </span>
                       {(parsed.emitente.cnpj || parsed.emitente.ie) && (
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           {parsed.emitente.cnpj && (
@@ -272,61 +299,55 @@ export default function EntradaFiscalDialog({
                         </div>
                       )}
 
-
                       {/* verificador de fornecedor */}
-
                       <div className="flex felx-row items-center gap-2">
-                          <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
-                            <span
-                              className={`text-xs text-muted-foreground max-w-[250px] ${
-                                !parsed.fornecedorReferenteId && "text-red-400"
-                              }`}
-                            >
-                              {isLoadingFornecedor ? "Buscando fornecedor..." :
-                              parsed.fornecedorReferenteId
-                                ? `Fornecedor vinculado: ${parsed.fornecedorReferente?.nomefantasia || parsed.fornecedorReferente?.nomerazaosocial}`
-                                : "Fornecedor não cadastrado no sistema"}
-                            </span>
-
-                            
-                          </div>
-                          {parsed.fornecedorReferenteId === undefined && !isLoadingFornecedor && (
-
+                        <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
+                          <span
+                            className={`text-xs text-muted-foreground max-w-[250px] ${
+                              !parsed.fornecedorReferenteId && "text-red-400"
+                            }`}
+                          >
+                            {isLoadingFornecedor
+                              ? "Buscando fornecedor..."
+                              : parsed.fornecedorReferenteId
+                              ? `Fornecedor vinculado: ${
+                                  parsed.fornecedorReferente?.nomefantasia ||
+                                  parsed.fornecedorReferente?.nomerazaosocial
+                                }`
+                              : "Fornecedor não cadastrado no sistema"}
+                          </span>
+                        </div>
+                        {parsed.fornecedorReferenteId === undefined &&
+                          !isLoadingFornecedor && (
                             <FornecedorDialog
-                            dialogOpen={isFornecedorOpen}
-                            handleGetFornecedor={handleGetFornecedor}
-                            setDialogOpen={setIsFornecedorOpen}
-                            dadosNovoFornecedor={{
-                              cpfcnpj: parsed.emitente.cnpj.toString(),
-                              nomefantasia: parsed.emitente.nomeFantasia,
-                              ativo: true,
-                              cep: parsed.emitente.endereco.cep.toString(),
-                              endereco: parsed.emitente.endereco.logradouro,
-                              cidade: parsed.emitente.endereco.municipio,
-                              estado: parsed.emitente.endereco.uf,
-                              contato: "",
-                              nomerazaosocial: parsed.emitente.nome,
-
-                            }}
-
+                              dialogOpen={isFornecedorOpen}
+                              handleGetFornecedor={handleGetFornecedor}
+                              setDialogOpen={setIsFornecedorOpen}
+                              dadosNovoFornecedor={{
+                                cpfcnpj: parsed.emitente.cnpj.toString(),
+                                nomefantasia: parsed.emitente.nomeFantasia,
+                                ativo: true,
+                                cep: parsed.emitente.endereco.cep.toString(),
+                                endereco: parsed.emitente.endereco.logradouro,
+                                cidade: parsed.emitente.endereco.municipio,
+                                estado: parsed.emitente.endereco.uf,
+                                contato: "",
+                                nomerazaosocial: parsed.emitente.nome,
+                              }}
                             >
-
-                            <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
-                              <UserRoundPlus className="w-4 h-4" />
-                            </div>
+                              <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
+                                <UserRoundPlus className="w-4 h-4" />
+                              </div>
                             </FornecedorDialog>
                           )}
-                          
-                        </div>
+                      </div>
                     </div>
 
                     <div className="text-xs text-muted-foreground text-right space-y-1 min-w-0">
                       {parsed?.dataEmissao && (
                         <div className="flex flex-col">
                           <span>Emissão:</span>
-                          <span className="">
-                            {formatDate(parsed?.dataEmissao)}
-                          </span>
+                          <span>{formatDate(parsed?.dataEmissao)}</span>
                         </div>
                       )}
                       {parsed?.totais.valorNota != null && (
@@ -337,7 +358,6 @@ export default function EntradaFiscalDialog({
                           </span>
                         </p>
                       )}
-                      
                     </div>
                   </div>
                   <Separator />
@@ -444,9 +464,7 @@ export default function EntradaFiscalDialog({
                             <span className="text-muted-foreground font-medium">
                               ICMS:
                             </span>{" "}
-                            {/* <span className="font-semibold">
-                        {item.icms.aliquota ? `${formatNumber(item.icms.aliquota)}%` : "-"}
-                      </span> */}
+                            {/* futuro: exibir aliquota / valor */}
                           </p>
                         </div>
                         <Separator />
@@ -467,38 +485,51 @@ export default function EntradaFiscalDialog({
                                   setParsed((prev) => {
                                     if (!prev) return prev;
 
-                                    return{
+                                    return {
                                       ...prev,
-                                      itens: prev.itens.map((it, i)=> i=== index ? {
-                                        ...it,
-                                        produtoReferenciaId: undefined,
-                                        produtoReferencia: undefined
-                                      } : it)
-                                    }
-                                  })
+                                      itens: prev.itens.map((it, i) =>
+                                        i === index
+                                          ? {
+                                              ...it,
+                                              produtoReferenciaId: undefined,
+                                              produtoReferencia: undefined,
+                                            }
+                                          : it
+                                      ),
+                                    };
+                                  });
                                 }}
                                 className="w-4 h-4 hover:cursor-pointer text-red-200 hover:text-red-400"
                               />
                             )}
                           </div>
-                          <ProductSelect
-                          open={isProductOpen}
-                          setOpen={setIsProductOpen}
 
+                          {/* SELECT de produto - controlado por índice */}
+                          <ProductSelect
+                            open={isProductOpen && productSelectItemIndex === index}
+                            setOpen={(open) => {
+                              if (open) {
+                                setIsProductOpen(true);
+                                setProductSelectItemIndex(index);
+                              } else {
+                                setIsProductOpen(false);
+                                setProductSelectItemIndex(null);
+                              }
+                            }}
                             OnSelect={(p) => {
                               setParsed((prev) => {
-                                if (!prev) return prev; // aqui prev é null, então só devolve null
+                                if (!prev) return prev;
 
                                 return {
                                   ...prev,
-                                  itens: prev.itens.map((item, i) =>
+                                  itens: prev.itens.map((it, i) =>
                                     i === index
                                       ? {
-                                          ...item,
+                                          ...it,
                                           produtoReferencia: p,
                                           produtoReferenciaId: p.id,
                                         }
-                                      : item
+                                      : it
                                   ),
                                 };
                               });
@@ -508,30 +539,48 @@ export default function EntradaFiscalDialog({
                               <Search className="w-4 h-4" />
                             </div>
                           </ProductSelect>
-                          {!item.produtoReferenciaId &&(
 
-                          <ProductDialog
-                          handleSearchFornecedor={handleSearchFornecedor}
-                          productId={selectedProductId}
-                          isOpen={isProductEditOpen}
-                          setIsOpen={setIsProductEditOpen}
-                          setSelectedProductId={setSelectedProductId}
-                          newProductData={{
-                            titulo: item.descricao,
-                            referencia: item.codigo,
-                            ncm: item.ncm.toString(),
-                            cfop: item.cfop.toString(),
-                            precovenda: item.valorUnitario,
-                            estoque: 0,
-                            fornecedorid: parsed.fornecedorReferenteId || undefined,
-                            codigofornecedor: item.codigo,
-                          }}
-                          >
-
-                          <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
-                              <PackagePlus className="w-4 h-4" />
-                          </div>
-                          </ProductDialog>
+                          {/* DIALOG de novo produto / edição após criar */}
+                          {(
+                            !item.produtoReferenciaId ||
+                            (isProductEditOpen && productDialogItemIndex === index)
+                          ) && (
+                            <ProductDialog
+                              handleSearchFornecedor={handleSearchFornecedor}
+                              productId={selectedProductId}
+                              isOpen={
+                                isProductEditOpen &&
+                                productDialogItemIndex === index
+                              }
+                              setIsOpen={(open) => {
+                                if (open) {
+                                  setIsProductEditOpen(true);
+                                  setProductDialogItemIndex(index);
+                                } else {
+                                  setIsProductEditOpen(false);
+                                  setProductDialogItemIndex(null);
+                                }
+                              }}
+                              setSelectedProductId={setSelectedProductId}
+                              newProductData={{
+                                titulo: item.descricao,
+                                referencia: item.codigo,
+                                ncm: item.ncm.toString(),
+                                cfop: item.cfop.toString(),
+                                precovenda: item.valorUnitario,
+                                estoque: 0,
+                                fornecedorid:
+                                  parsed.fornecedorReferenteId || undefined,
+                                codigofornecedor: item.codigo,
+                              }}
+                            >
+                              {/* Só mostra o botão de criar se ainda NÃO tem produto vinculado */}
+                              {!item.produtoReferenciaId && (
+                                <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
+                                  <PackagePlus className="w-4 h-4" />
+                                </div>
+                              )}
+                            </ProductDialog>
                           )}
                         </div>
 
@@ -548,15 +597,12 @@ export default function EntradaFiscalDialog({
               </div>
               <Separator />
               <details className="mt-2">
-                {" "}
                 <summary className="cursor-pointer text-xs text-muted-foreground">
-                  {" "}
-                  Ver JSON completo{" "}
-                </summary>{" "}
+                  Ver JSON completo
+                </summary>
                 <pre className="mt-2 text-xs max-h-80 text-wrap text-muted-foreground">
-                  {" "}
-                  {JSON.stringify(parsed, null, 1)}{" "}
-                </pre>{" "}
+                  {JSON.stringify(parsed, null, 1)}
+                </pre>
               </details>
             </div>
           )}
@@ -572,7 +618,6 @@ export default function EntradaFiscalDialog({
               </Button>
               <DialogClose asChild>
                 <Button
-                  // disabled={isSubmitting}
                   className="hover:cursor-pointer"
                   variant="outline"
                 >

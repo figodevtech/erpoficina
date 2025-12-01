@@ -34,19 +34,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Fornecedor, Pagination, } from "../(pages)/estoque/types";
+import { Fornecedor, Pagination } from "../(pages)/estoque/types";
+import { set } from "nprogress";
 
 interface FornecedorSelectProps {
   children?: ReactNode;
   OnSelect?: (value: Fornecedor) => void;
-  setOpen?: (value: boolean)=> void;
-  open?: boolean
+  setOpen?: (value: boolean) => void;
+  open?: boolean;
 }
 export default function FornecedorSelect({
   children,
   OnSelect,
   setOpen,
-  open
+  open,
 }: FornecedorSelectProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
@@ -57,13 +58,12 @@ export default function FornecedorSelect({
   });
   const [fornecedorItems, setFornecedorItems] = useState<Fornecedor[] | []>([]);
   const [search, setSearch] = useState("");
-   
-  
+
   const handleGetFornecedores = async (
     pageNumber?: number,
-        limit?: number,
-        searchText?: string,
-  )=> {
+    limit?: number,
+    searchText?: string
+  ) => {
     setIsLoading(true);
     try {
       const response = await axios.get("/api/tipos/fornecedores", {
@@ -71,18 +71,17 @@ export default function FornecedorSelect({
           page: pageNumber || 1,
           limit: pagination.limit,
           search: searchText || undefined,
-      }});
-      if(response.status === 200){
+        },
+      });
+      if (response.status === 200) {
         setFornecedorItems(response.data.items);
         setPagination(response.data.pagination);
       }
     } catch (error) {
-      
-    }finally{
+    } finally {
       setIsLoading(false);
     }
-  }
-
+  };
 
   useEffect(() => {
     handleGetFornecedores();
@@ -94,7 +93,17 @@ export default function FornecedorSelect({
 
   return (
     <Dialog
-    onOpenChange={setOpen} open={open}>
+      onOpenChange={(nextOpen) => {
+        if (setOpen) {
+          setOpen(nextOpen);
+        }
+
+        if (!nextOpen) {
+          setSearch("");
+        }
+      }}
+      open={open}
+    >
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="h-lvh min-w-screen max-h-[600px] p-0 overflow-hidden sm:max-w-[500px] sm:max-h-[600px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
@@ -111,154 +120,149 @@ export default function FornecedorSelect({
                 className="pl-10"
               />
             </div>
-            
-                <div
-                  className={`${
-                    isLoading && " opacity-100"
-                  } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
-                >
-                  <div
-                    className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
-                      isLoading && "animate-slideIn "
-                    } `}
-                  ></div>
-                </div>
-                <Table className="text-xs mt-6">
-                  <TableHeader>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>NOME</TableCell>
-                      <TableCell>CPF/CNPJ</TableCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {fornecedorItems.map((f) => (
-                      <TableRow
-                        className="hover:cursor-pointer"
-                        onClick={() => {
-                          if (OnSelect) {
-                            OnSelect(f);
-                          }
-                          if(setOpen){
-                            
-                            setOpen(false)
-                          }
-                        }}
-                        key={f.id}
-                      >
-                        <TableCell>{f.id}</TableCell>
-                        <TableCell>{f.nomerazaosocial}</TableCell>
-                        <TableCell>{f.cpfcnpj}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                
-             
+
+            <div
+              className={`${
+                isLoading && " opacity-100"
+              } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+            >
+              <div
+                className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
+                  isLoading && "animate-slideIn "
+                } `}
+              ></div>
+            </div>
+            <Table className="text-xs mt-6">
+              <TableHeader>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>NOME</TableCell>
+                  <TableCell>CPF/CNPJ</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fornecedorItems.map((f) => (
+                  <TableRow
+                    className="hover:cursor-pointer"
+                    onClick={() => {
+                      if (OnSelect) {
+                        OnSelect(f);
+                      }
+                      if (setOpen) {
+                        setOpen(false);
+                        setSearch("");
+                      }
+                    }}
+                    key={f.id}
+                  >
+                    <TableCell>{f.id}</TableCell>
+                    <TableCell>{f.nomerazaosocial}</TableCell>
+                    <TableCell>{f.cpfcnpj}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </div>
         <DialogFooter>
           <div className="flex flex-row items-center pb-5 w-full h-full justify-center">
-                  <div className="text-xs text-muted-foreground flex flex-nowrap">
-                    <span>{pagination.limit * (pagination.page - 1) + 1}</span>{" "}
-                    -{" "}
-                    <span>
-                      {pagination.limit * (pagination.page - 1) +
-                        (pagination.pageCount || 0)}
-                    </span>
-                    <span className="ml-1 hidden sm:block">
-                      de {pagination.total}
-                    </span>
-                    <Loader
-                      className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${
-                        isLoading && "opacity-100"
-                      }`}
-                    />
-                  </div>
+            <div className="text-xs text-muted-foreground flex flex-nowrap">
+              <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
+              <span>
+                {pagination.limit * (pagination.page - 1) +
+                  (pagination.pageCount || 0)}
+              </span>
+              <span className="ml-1 hidden sm:block">
+                de {pagination.total}
+              </span>
+              <Loader
+                className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${
+                  isLoading && "opacity-100"
+                }`}
+              />
+            </div>
 
-                  <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="hover:cursor-pointer"
-                      onClick={() =>
-                        handleGetFornecedores(1, pagination.limit, search)
-                      }
-                      disabled={pagination.page === 1}
-                    >
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="hover:cursor-pointer"
-                      onClick={() =>
-                        handleGetFornecedores(
-                          pagination.page - 1,
-                          pagination.limit,
-                          search
-                        )
-                      }
-                      disabled={pagination.page === 1}
-                    >
-                      <ChevronLeftIcon className="h-4 w-4" />
-                    </Button>
-                    <span className="text-xs font-medium text-nowrap">
-                      Pg. {pagination.page} de {pagination.totalPages || 1}
-                    </span>
+            <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() =>
+                  handleGetFornecedores(1, pagination.limit, search)
+                }
+                disabled={pagination.page === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() =>
+                  handleGetFornecedores(
+                    pagination.page - 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={pagination.page === 1}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <span className="text-xs font-medium text-nowrap">
+                Pg. {pagination.page} de {pagination.totalPages || 1}
+              </span>
 
-                    <Button
-                      className="hover:cursor-pointer"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        handleGetFornecedores(
-                          pagination.page + 1,
-                          pagination.limit,
-                          search
-                        )
-                      }
-                      disabled={
-                        pagination.page === pagination.totalPages ||
-                        pagination.totalPages === 0
-                      }
-                    >
-                      <ChevronRightIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      className="hover:cursor-pointer"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        handleGetFornecedores(
-                          pagination.totalPages,
-                          pagination.limit,
-                          search
-                        )
-                      }
-                      disabled={
-                        pagination.page === pagination.totalPages ||
-                        pagination.totalPages === 0
-                      }
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="">
-                    <Select>
-                      <SelectTrigger className="hover:cursor-pointer ml-2">
-                        <SelectValue
-                          placeholder={pagination.limit}
-                        ></SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="">
-                        <SelectItem className="hover:cursor-pointer" value="20">
-                          {pagination.limit}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetFornecedores(
+                    pagination.page + 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetFornecedores(
+                    pagination.totalPages,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="">
+              <Select>
+                <SelectTrigger className="hover:cursor-pointer ml-2">
+                  <SelectValue placeholder={pagination.limit}></SelectValue>
+                </SelectTrigger>
+                <SelectContent className="">
+                  <SelectItem className="hover:cursor-pointer" value="20">
+                    {pagination.limit}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -35,18 +35,19 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
+import { set } from "nprogress";
 
 interface ProductSelectProps {
   children?: ReactNode;
   OnSelect?: (value: Produto) => void;
-  setOpen?: (value: boolean)=> void;
-  open?: boolean
+  setOpen?: (value: boolean) => void;
+  open?: boolean;
 }
 export default function ProductSelect({
   children,
   OnSelect,
   setOpen,
-  open
+  open,
 }: ProductSelectProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
@@ -57,7 +58,7 @@ export default function ProductSelect({
   });
   const [productItems, setProductItems] = useState<Produto[] | []>([]);
   const [search, setSearch] = useState("");
-   
+
   const handleGetProducts = async (
     pageNumber?: number,
     limit?: number,
@@ -87,7 +88,6 @@ export default function ProductSelect({
     }
   };
 
-
   useEffect(() => {
     handleGetProducts();
   }, []);
@@ -97,15 +97,17 @@ export default function ProductSelect({
 
   return (
     <Dialog
-    onOpenChange={(nextOpen)=>{
-      if(setOpen){
-        setOpen(nextOpen)
-      }
+      onOpenChange={(nextOpen) => {
+        if (setOpen) {
+          setOpen(nextOpen);
+        }
 
-      if(!nextOpen){
-        setSearch("");
-      }
-    }} open={open}>
+        if (!nextOpen) {
+          setSearch("");
+        }
+      }}
+      open={open}
+    >
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="h-lvh min-w-screen max-h-[600px] p-0 overflow-hidden sm:max-w-[500px] sm:max-h-[600px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
@@ -122,156 +124,151 @@ export default function ProductSelect({
                 className="pl-10"
               />
             </div>
-            
-                <div
-                  className={`${
-                    isLoading && " opacity-100"
-                  } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
-                >
-                  <div
-                    className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
-                      isLoading && "animate-slideIn "
-                    } `}
-                  ></div>
-                </div>
-                <Table className="text-xs mt-6">
-                  <TableHeader>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>NOME</TableCell>
-                      <TableCell>FRABRICANTE</TableCell>
-                      <TableCell>VALOR</TableCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {productItems.map((p) => (
-                      <TableRow
-                        className="hover:cursor-pointer"
-                        onClick={() => {
-                          if (OnSelect) {
-                            OnSelect(p);
-                          }
-                          if(setOpen){
-                            
-                            setOpen(false)
-                          }
-                        }}
-                        key={p.id}
-                      >
-                        <TableCell>{p.id}</TableCell>
-                        <TableCell className="max-w-[120px] truncate">{p.titulo}</TableCell>
-                        <TableCell>{p.fabricante || "-"}</TableCell>
-                        <TableCell>{p.precovenda}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                
-             
+
+            <div
+              className={`${
+                isLoading && " opacity-100"
+              } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+            >
+              <div
+                className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
+                  isLoading && "animate-slideIn "
+                } `}
+              ></div>
+            </div>
+            <Table className="text-xs mt-6">
+              <TableHeader>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>NOME</TableCell>
+                  <TableCell>FRABRICANTE</TableCell>
+                  <TableCell>VALOR</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {productItems.map((p) => (
+                  <TableRow
+                    className="hover:cursor-pointer"
+                    onClick={() => {
+                      if (OnSelect) {
+                        OnSelect(p);
+                      }
+                      if (setOpen) {
+                        setOpen(false);
+                        setSearch("");
+                      }
+                    }}
+                    key={p.id}
+                  >
+                    <TableCell>{p.id}</TableCell>
+                    <TableCell className="max-w-[120px] truncate">
+                      {p.titulo}
+                    </TableCell>
+                    <TableCell>{p.fabricante || "-"}</TableCell>
+                    <TableCell>{p.precovenda}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </div>
         <DialogFooter>
           <div className="flex flex-row items-center pb-5 w-full h-full justify-center">
-                  <div className="text-xs text-muted-foreground flex flex-nowrap">
-                    <span>{pagination.limit * (pagination.page - 1) + 1}</span>{" "}
-                    -{" "}
-                    <span>
-                      {pagination.limit * (pagination.page - 1) +
-                        (pagination.pageCount || 0)}
-                    </span>
-                    <span className="ml-1 hidden sm:block">
-                      de {pagination.total}
-                    </span>
-                    <Loader
-                      className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${
-                        isLoading && "opacity-100"
-                      }`}
-                    />
-                  </div>
+            <div className="text-xs text-muted-foreground flex flex-nowrap">
+              <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
+              <span>
+                {pagination.limit * (pagination.page - 1) +
+                  (pagination.pageCount || 0)}
+              </span>
+              <span className="ml-1 hidden sm:block">
+                de {pagination.total}
+              </span>
+              <Loader
+                className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${
+                  isLoading && "opacity-100"
+                }`}
+              />
+            </div>
 
-                  <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="hover:cursor-pointer"
-                      onClick={() =>
-                        handleGetProducts(1, pagination.limit, search)
-                      }
-                      disabled={pagination.page === 1}
-                    >
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="hover:cursor-pointer"
-                      onClick={() =>
-                        handleGetProducts(
-                          pagination.page - 1,
-                          pagination.limit,
-                          search
-                        )
-                      }
-                      disabled={pagination.page === 1}
-                    >
-                      <ChevronLeftIcon className="h-4 w-4" />
-                    </Button>
-                    <span className="text-xs font-medium text-nowrap">
-                      Pg. {pagination.page} de {pagination.totalPages || 1}
-                    </span>
+            <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() => handleGetProducts(1, pagination.limit, search)}
+                disabled={pagination.page === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() =>
+                  handleGetProducts(
+                    pagination.page - 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={pagination.page === 1}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <span className="text-xs font-medium text-nowrap">
+                Pg. {pagination.page} de {pagination.totalPages || 1}
+              </span>
 
-                    <Button
-                      className="hover:cursor-pointer"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        handleGetProducts(
-                          pagination.page + 1,
-                          pagination.limit,
-                          search
-                        )
-                      }
-                      disabled={
-                        pagination.page === pagination.totalPages ||
-                        pagination.totalPages === 0
-                      }
-                    >
-                      <ChevronRightIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      className="hover:cursor-pointer"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        handleGetProducts(
-                          pagination.totalPages,
-                          pagination.limit,
-                          search
-                        )
-                      }
-                      disabled={
-                        pagination.page === pagination.totalPages ||
-                        pagination.totalPages === 0
-                      }
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="">
-                    <Select>
-                      <SelectTrigger className="hover:cursor-pointer ml-2">
-                        <SelectValue
-                          placeholder={pagination.limit}
-                        ></SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="">
-                        <SelectItem className="hover:cursor-pointer" value="20">
-                          {pagination.limit}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetProducts(
+                    pagination.page + 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetProducts(
+                    pagination.totalPages,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="">
+              <Select>
+                <SelectTrigger className="hover:cursor-pointer ml-2">
+                  <SelectValue placeholder={pagination.limit}></SelectValue>
+                </SelectTrigger>
+                <SelectContent className="">
+                  <SelectItem className="hover:cursor-pointer" value="20">
+                    {pagination.limit}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

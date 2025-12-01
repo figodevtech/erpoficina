@@ -36,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Servico } from "@/types/servico";
 import { Pagination } from "../(pages)/estoque/types";
+import { set } from "nprogress";
 
 interface ServiceSelectProps {
   children?: ReactNode;
@@ -95,7 +96,17 @@ export default function ServiceSelect({
   }, [search, pagination.limit, pagination.page]);
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
+    <Dialog
+      onOpenChange={(nextOpen) => {
+        if (setOpen) {
+          setOpen(nextOpen);
+        }
+        if (!nextOpen) {
+          setSearch("");
+        }
+      }}
+      open={open}
+    >
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="h-lvh min-w-screen max-h-[600px] p-0 overflow-hidden sm:max-w-[500px] sm:max-h-[600px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
@@ -143,6 +154,7 @@ export default function ServiceSelect({
                       }
                       if (setOpen) {
                         setOpen(false);
+                        setSearch("");
                       }
                     }}
                     key={s.id}
@@ -154,96 +166,105 @@ export default function ServiceSelect({
                 ))}
               </TableBody>
             </Table>
-            
           </div>
         </div>
 
         <DialogFooter className="">
           <div className="flex flex-row w-full h-full items-center justify-center pb-5">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
-            <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
-            <span>
-              {pagination.limit * (pagination.page - 1) +
-                (pagination.pageCount || 0)}
-            </span>
-            <span className="ml-1 hidden sm:block">de {pagination.total}</span>
-            <Loader
-              className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${
-                isLoading && "opacity-100"
-              }`}
-            />
-          </div>
+            <div className="text-xs text-muted-foreground flex flex-nowrap">
+              <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
+              <span>
+                {pagination.limit * (pagination.page - 1) +
+                  (pagination.pageCount || 0)}
+              </span>
+              <span className="ml-1 hidden sm:block">
+                de {pagination.total}
+              </span>
+              <Loader
+                className={`ml-2 w-4 h-full animate-spin transition-all opacity-0 ${
+                  isLoading && "opacity-100"
+                }`}
+              />
+            </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-            <Button
-              variant="outline"
-              size="icon"
-              className="hover:cursor-pointer"
-              onClick={() => handleGetServices(1, pagination.limit, search)}
-              disabled={pagination.page === 1}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetServices(pagination.page - 1, pagination.limit, search)
-              }
-              disabled={pagination.page === 1}
-            >
-              <ChevronLeftIcon className="h-4 w-4" />
-            </Button>
-            <span className="text-xs font-medium text-nowrap">
-              Pg. {pagination.page} de {pagination.totalPages || 1}
-            </span>
+            <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() => handleGetServices(1, pagination.limit, search)}
+                disabled={pagination.page === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() =>
+                  handleGetServices(
+                    pagination.page - 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={pagination.page === 1}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <span className="text-xs font-medium text-nowrap">
+                Pg. {pagination.page} de {pagination.totalPages || 1}
+              </span>
 
-            <Button
-              className="hover:cursor-pointer"
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                handleGetServices(pagination.page + 1, pagination.limit, search)
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
-            >
-              <ChevronRightIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              className="hover:cursor-pointer"
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                handleGetServices(
-                  pagination.totalPages,
-                  pagination.limit,
-                  search
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="">
-            <Select>
-              <SelectTrigger className="hover:cursor-pointer ml-2">
-                <SelectValue placeholder={pagination.limit}></SelectValue>
-              </SelectTrigger>
-              <SelectContent className="">
-                <SelectItem className="hover:cursor-pointer" value="20">
-                  {pagination.limit}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetServices(
+                    pagination.page + 1,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetServices(
+                    pagination.totalPages,
+                    pagination.limit,
+                    search
+                  )
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="">
+              <Select>
+                <SelectTrigger className="hover:cursor-pointer ml-2">
+                  <SelectValue placeholder={pagination.limit}></SelectValue>
+                </SelectTrigger>
+                <SelectContent className="">
+                  <SelectItem className="hover:cursor-pointer" value="20">
+                    {pagination.limit}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </DialogFooter>
       </DialogContent>

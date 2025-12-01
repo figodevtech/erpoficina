@@ -59,14 +59,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import EntradaDialog from "./entradaDialog/entradaDialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import BotaoNf from "./entradaDialog/botaoNf";
+
 import EntradaFiscalDialog from "./entradaDialog/entradaFiscalDialog";
-import { stat } from "fs";
 
 interface ProductsDataTableProps {
   isLoading: boolean;
@@ -90,8 +84,8 @@ interface ProductsDataTableProps {
 }
 
 const getStatusBadge = (status: Estoque_status | undefined) => {
-  if(!status) {
-    return
+  if (!status) {
+    return;
   }
   if (status === "CRITICO") {
     return (
@@ -220,11 +214,10 @@ export default function ProductsDataTable({
                   className="hover:cursor-pointer w-full text-xs"
                   onClick={() => setIsOpen(true)}
                 >
-                 <Plus/> Novo Produto
+                  <Plus /> Novo Produto
                 </Button>
 
                 <EntradaFiscalDialog
-
                   handleGetProducts={handleGetProducts}
                   isOpen={isEntradaOpenFiscal}
                   setIsOpen={setIsEntradaOpenFiscal}
@@ -233,11 +226,10 @@ export default function ProductsDataTable({
                     variant={"outline"}
                     className="flex justify-start text-xs px-0 rounded-sm py-2 hover:cursor-pointer"
                   >
-                    <FileText className="-ml-1 -mr-1 h-4 w-4" />  
+                    <FileText className="-ml-1 -mr-1 h-4 w-4" />
                     <span>Entrada Fiscal (NF-e)</span>
                   </Button>
                 </EntradaFiscalDialog>
-                
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
