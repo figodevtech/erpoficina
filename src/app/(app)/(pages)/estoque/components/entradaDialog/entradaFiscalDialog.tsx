@@ -644,13 +644,13 @@ export default function EntradaFiscalDialog({
                         </div>
                         <Separator />
                         <div className="flex flex-row items-center gap-2">
-                          <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
+                          <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md relative">
                             <span
-                              className={`text-xs text-muted-foreground ${
-                                !item.produtoReferenciaId && "text-red-400"
-                              }`}
-                            >
-                              {item.produtoReferenciaId
+                              className={`text-xs text-muted-foreground max-w-[300px] mr-4 ${
+                               searchingFornecedor ? "text-primary" : !item.produtoReferenciaId && "text-red-400"
+                              } `}
+                            >{searchingFornecedor ? "Buscando produto vinculado..." :
+                              item.produtoReferenciaId
                                 ? `Produto vinculado: ${item.produtoReferencia?.titulo}`
                                 : "Produto não vinculado ao estoque"}
                             </span>
@@ -674,7 +674,7 @@ export default function EntradaFiscalDialog({
                                     };
                                   });
                                 }}
-                                className="w-6 h-6 hover:cursor-pointer text-red-200 hover:text-red-400"
+                                className="w-4 h-4 hover:cursor-pointer text-red-200 hover:text-red-400 absolute right-1"
                               />
                             )}
                           </div>
