@@ -13,10 +13,13 @@ import {
 } from "@/components/ui/dialog";
 
 import {
+  AlertCircle,
+  Loader2,
   Minus,
   PackagePlus,
   Plus,
   Search,
+  TriangleAlert,
   UserRoundPlus,
   X,
 } from "lucide-react";
@@ -45,9 +48,19 @@ import { ProductDialog } from "../productDialog/productDialog";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import ValueInput from "../productDialog/valueInput";
-import { Label } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Banco } from "../../../(financeiro)/fluxodecaixa/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Banco,
+  Categoria_transacao,
+  Metodo_pagamento,
+} from "../../../(financeiro)/fluxodecaixa/types";
+import { Label } from "@/components/ui/label";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -77,6 +90,7 @@ export default function EntradaFiscalDialog({
 }: EntradaDialogProps) {
   const [parsed, setParsed] = useState<NF | null>(null);
   const [file, setFile] = useState<File | undefined>(undefined);
+  const [isSubmiting, setIsSubmiting] = useState(false);
 
   // estados de modais de produto / fornecedor
   const [isProductOpen, setIsProductOpen] = useState<boolean>(false);
@@ -99,17 +113,25 @@ export default function EntradaFiscalDialog({
   const [searchingFornecedor, setSearchingFornecedor] = useState(false);
   const [isPagamentoFuturo, setIsPagamentoFuturo] = useState(false);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
-    const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
 
-    const [banks, setBanks] = useState<Banco[]>([]);
+  const [banks, setBanks] = useState<Banco[]>([]);
+
+  // estados controlados para banco / método / categoria
+  const [selectedBankId, setSelectedBankId] = useState<string>("");
+  const [selectedMetodo, setSelectedMetodo] = useState<Metodo_pagamento | "">(
+    ""
+  );
+  const [selectedCategoria, setSelectedCategoria] = useState<
+    Categoria_transacao | ""
+  >("");
+
   
-
   const handleGetBanks = async () => {
     setIsLoadingBanks(true);
     try {
-      const response = await axios.get("/api/banks", {});
+      const response = await axios.get("/api/banks");
       if (response.status === 200) {
-        // console.log(response)
         const { data } = response;
         setBanks(data.data);
         console.log("Bancos carregados:", data.data);
@@ -154,41 +176,56 @@ export default function EntradaFiscalDialog({
   };
 
   async function handleCreateEntradas() {
-    if (!parsed) return;
-
     if (!parsed) {
       toast.error("Nenhum arquivo processado.");
       return;
     }
+
     if (parsed.itens.some((item) => !item.produtoReferenciaId)) {
       toast.error(
         "Todos os itens devem estar vinculados a um produto no sistema."
       );
       return;
     }
+
     if (!parsed.fornecedorReferenteId) {
       toast.error("A nota deve estar vinculada a um fornecedor no sistema.");
       return;
     }
 
+    // Validações específicas de pagamento futuro
     if (isPagamentoFuturo) {
       const somaParcelas = parcelas.reduce(
         (sum, parcela) => sum + (parcela.valor ?? 0),
         0
       );
-      if (
-        somaParcelas < parsed.totais.valorNota ||
-        somaParcelas > parsed.totais.valorNota
-      )
-        toast.error("A soma das parcelas deve ser igual ao valor da nota");
-      return;
+
+      if (somaParcelas !== parsed.totais.valorNota) {
+        toast.error("A soma das parcelas deve ser igual ao valor da nota.");
+        return;
+      }
+
+      if (!selectedBankId) {
+        toast.error("Selecione um banco para as parcelas.");
+        return;
+      }
+
+      if (!selectedMetodo) {
+        toast.error("Selecione um método de pagamento para as parcelas.");
+        return;
+      }
+
+      if (!selectedCategoria) {
+        toast.error("Selecione uma categoria para as parcelas.");
+        return;
+      }
     }
 
     const payload = {
       fornecedorId: parsed.fornecedorReferenteId ?? null,
       numeroNota: parsed.numeroNota ?? null,
-      notaChave: parsed.chaveAcesso ?? null, // OU o nome que você tiver
-      fiscal: true, // porque vem de NF; entradas manuais podem mandar false
+      notaChave: parsed.chaveAcesso ?? null,
+      fiscal: true,
 
       itens: parsed.itens
         .filter((item) => item.produtoReferenciaId)
@@ -207,9 +244,13 @@ export default function EntradaFiscalDialog({
             }))
         : [],
 
-      bancoId: 1,
-      metodoPagamento: "PIX",
-      categoria: "DESPESAS_OPERACIONAIS",
+      bancoId: isPagamentoFuturo ? Number(selectedBankId) : 1,
+      metodoPagamento: isPagamentoFuturo
+        ? selectedMetodo
+        : Metodo_pagamento.PIX ?? "PIX",
+      categoria: isPagamentoFuturo
+        ? selectedCategoria
+        : Categoria_transacao.OUTROS ?? "DESPESAS_OPERACIONAIS",
       tipo: "DESPESA",
       nomePagador:
         parsed.fornecedorReferente?.nomerazaosocial ??
@@ -222,21 +263,33 @@ export default function EntradaFiscalDialog({
           : "Compra de mercadorias",
     };
 
-    const res = await fetch("/api/entradas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    setIsSubmiting(true);
+    toast(
+      <div className="flex flex-row gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span>Registrando...</span>
+      </div>
+    );
 
-    const data = await res.json();
+    try {
+      const response = await axios.post(
+        "/api/entradas/fiscal",
+        JSON.stringify(payload)
+      );
 
-    if (!res.ok) {
-      toast.error("Erro ao registrar entrada", { description: data.error });
-      return;
+      if (response.status === 201) {
+        toast.success("Entrada registrada com sucesso!");
+        // se quiser, pode limpar estado/fechar modal aqui
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro ao registrar entrada", {
+          description: error.message,
+        });
+      }
+    } finally {
+      setIsSubmiting(false);
     }
-
-    toast.success("Entrada registrada com sucesso!");
-    // aqui você pode limpar estado, fechar modal, etc.
   }
 
   const handleSearchFornecedor = async () => {
@@ -251,7 +304,6 @@ export default function EntradaFiscalDialog({
       const itensSnapshot = parsed.itens;
 
       for (const [index, item] of itensSnapshot.entries()) {
-        // se já está vinculado, pula
         if (item.produtoReferenciaId) continue;
 
         console.log("Buscando produto para código do fornecedor:", item.codigo);
@@ -332,6 +384,12 @@ export default function EntradaFiscalDialog({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed?.emitente.cnpj]);
+
+  useEffect(() => {
+    if (isPagamentoFuturo) {
+      handleGetBanks();
+    }
+  }, [isPagamentoFuturo]);
 
   const formatNumber = (value: number, decimals = 2) => {
     return value.toLocaleString("pt-BR", {
@@ -616,7 +674,7 @@ export default function EntradaFiscalDialog({
                                     };
                                   });
                                 }}
-                                className="w-4 h-4 hover:cursor-pointer text-red-200 hover:text-red-400"
+                                className="w-6 h-6 hover:cursor-pointer text-red-200 hover:text-red-400"
                               />
                             )}
                           </div>
@@ -692,7 +750,6 @@ export default function EntradaFiscalDialog({
                                 codigofornecedor: item.codigo,
                               }}
                             >
-                              {/* Só mostra o botão de criar se ainda NÃO tem produto vinculado */}
                               {!item.produtoReferenciaId && (
                                 <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
                                   <PackagePlus className="w-4 h-4" />
@@ -702,8 +759,31 @@ export default function EntradaFiscalDialog({
                           )}
                         </div>
 
-                        {/* Total value highlighted */}
-                        <div className="pt-2 border-t mt-3"></div>
+                        {/* Avisos de entradas já registradas desta mesma NF para este produto */}
+                        <div className="pt-2 border-t mt-3 space-y-1">
+                          {item.produtoReferencia?.entradas
+                            ?.filter((entrada: any) => {
+                              return (
+                                String(entrada?.notachave ?? "") ===
+                                String(parsed.chaveAcesso ?? "")
+                              );
+                            })
+                            .map((entrada: any) => (
+                              <div
+                                key={entrada.id}
+                                className="inline-flex items-center gap-2 px-2 py-1 bg-amber-50 rounded-md border border-amber-200"
+                              >
+                                <span className="text-[10px] text-amber-700 flex flex-row flex-nowrap items-center gap-1">
+                                <TriangleAlert className="w-3 h-3"/>
+                                  Existe entrada de{" "}
+                                  <span className="font-semibold">
+                                    {entrada.quantidade}
+                                  </span>{" "}
+                                  un. desta mesma NF para este produto em:{" "} <span>{formatDate(entrada.created_at)}</span>
+                                </span>
+                              </div>
+                            ))}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -741,6 +821,9 @@ export default function EntradaFiscalDialog({
                           );
                         } else {
                           setParcelas([]);
+                          setSelectedBankId("");
+                          setSelectedMetodo("");
+                          setSelectedCategoria("");
                         }
                       }}
                     />
@@ -753,17 +836,18 @@ export default function EntradaFiscalDialog({
                           key={parcela.id ?? index}
                           className="flex flex-row bg-muted-foreground/5 py-6 px-3 rounded-xl gap-4 items-center justify-between relative"
                         >
-                          {/* Remover parcela */}
                           <span className="absolute left-3 top-1 text-xs text-muted-foreground">
-                            {index + 1}x parcela{index + 1 > 1 && "s"}
+                            {index + 1}ª parcela
                           </span>
                           <button
                             type="button"
                             className="bg-red-500 not-dark:bg-red-400 hover:cursor-pointer rounded-full w-5 h-5 flex items-center justify-center"
                             onClick={() => {
-                              if(parcelas.length === 1){
-                                toast.error("É necessário ao menos uma parcela")
-                                return
+                              if (parcelas.length === 1) {
+                                toast.error(
+                                  "É necessário ao menos uma parcela"
+                                );
+                                return;
                               }
                               setParcelas((prev) =>
                                 prev.filter((_, i) => i !== index)
@@ -830,7 +914,7 @@ export default function EntradaFiscalDialog({
                         </div>
                       ))}
 
-                      {/* Adicionar parcela */}
+                      {/* Totais */}
                       <div className="text-xs text-muted-foreground flex flex-row items-center justify-between">
                         <span>
                           Valor total: {formatarEmReal(parsed.totais.valorNota)}
@@ -845,6 +929,8 @@ export default function EntradaFiscalDialog({
                           )}
                         </span>
                       </div>
+
+                      {/* Adicionar parcela */}
                       <div
                         className="flex flex-row gap-2 items-center mt-3 hover:cursor-pointer group w-max"
                         onClick={() =>
@@ -862,26 +948,79 @@ export default function EntradaFiscalDialog({
                         <span className="text-xs text-card-foreground">
                           Adicionar Parcela
                         </span>
-
                       </div>
-                      <div className="grid">
-                        <div className="flex flex-col">
-                          <Label>Banco</Label>
+
+                      {/* Banco / método / categoria */}
+                      <div className="grid mt-2 space-y-2">
+                        <div className="flex flex-row space-x-2">
+                          <Label className="text-muted-foreground w-1/2">
+                            Banco:
+                          </Label>
                           <Select
-                  value={""}
-                  onValueChange={(v) =>{return} }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {banks.map((b) => (
-                      <SelectItem key={b.id} value={b.id.toString()}>
-                        {b.titulo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                            value={selectedBankId}
+                            onValueChange={(v) => setSelectedBankId(v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue
+                                placeholder={
+                                  isLoadingBanks ? "Carregando..." : "Selecione"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {banks.map((b) => (
+                                <SelectItem key={b.id} value={b.id.toString()}>
+                                  {b.titulo}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-row space-x-2">
+                          <Label className="text-muted-foreground w-1/2">
+                            Método:
+                          </Label>
+                          <Select
+                            value={selectedMetodo}
+                            onValueChange={(v) =>
+                              setSelectedMetodo(v as Metodo_pagamento)
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.values(Metodo_pagamento).map((u) => (
+                                <SelectItem key={u} value={u}>
+                                  {u}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-row space-x-2">
+                          <Label className="text-muted-foreground w-1/2">
+                            Categoria:
+                          </Label>
+                          <Select
+                            value={selectedCategoria}
+                            onValueChange={(v) =>
+                              setSelectedCategoria(v as Categoria_transacao)
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.values(Categoria_transacao).map((u) => (
+                                <SelectItem key={u} value={u}>
+                                  {u}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </div>
@@ -906,7 +1045,9 @@ export default function EntradaFiscalDialog({
               <Button
                 onClick={handleCreateEntradas}
                 className="hover:cursor-pointer"
-                disabled={isLoadingFornecedor || searchingFornecedor}
+                disabled={
+                  isLoadingFornecedor || searchingFornecedor || isSubmiting
+                }
               >
                 Registrar
               </Button>

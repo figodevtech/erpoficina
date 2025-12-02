@@ -33,7 +33,9 @@ export async function GET(req: NextRequest) {
         codigobarras,
         precovenda,
         unidade,
-        ncm
+        ncm,
+        entradas: produtoentrada (id, fornecedorid, quantidade, created_at, fiscal, notachave)
+
       )
     `,
       { count: "exact" }

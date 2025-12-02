@@ -1,4 +1,4 @@
-// app/api/entradas/route.ts
+// app/api/entradas/fiscal/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -193,6 +193,7 @@ export async function POST(req: NextRequest) {
         return {
           descricao,
           valor: parcela.valor,
+          valorLiquido: parcela.valor,
           data,
           metodopagamento: metodoPagamento,
           categoria,

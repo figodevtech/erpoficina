@@ -68,6 +68,8 @@ export interface Produtoentrada{
   quantidade: number;
   created_at: Date;
   fornecedor: Fornecedor;
+  fiscal: boolean;
+  notachave?: string;
 }
 
 export interface Vendaproduto {
