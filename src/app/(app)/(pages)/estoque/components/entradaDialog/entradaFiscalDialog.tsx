@@ -12,7 +12,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { Minus, PackagePlus, Plus, Search, UserRoundPlus, X } from "lucide-react";
+import {
+  Minus,
+  PackagePlus,
+  Plus,
+  Search,
+  UserRoundPlus,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Estoque_status, Pagination, Unidade_medida } from "../../types";
 import BotaoNf from "./botaoNf";
@@ -38,6 +45,9 @@ import { ProductDialog } from "../productDialog/productDialog";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import ValueInput from "../productDialog/valueInput";
+import { Label } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Banco } from "../../../(financeiro)/fluxodecaixa/types";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -89,6 +99,27 @@ export default function EntradaFiscalDialog({
   const [searchingFornecedor, setSearchingFornecedor] = useState(false);
   const [isPagamentoFuturo, setIsPagamentoFuturo] = useState(false);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
+    const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+
+    const [banks, setBanks] = useState<Banco[]>([]);
+  
+
+  const handleGetBanks = async () => {
+    setIsLoadingBanks(true);
+    try {
+      const response = await axios.get("/api/banks", {});
+      if (response.status === 200) {
+        // console.log(response)
+        const { data } = response;
+        setBanks(data.data);
+        console.log("Bancos carregados:", data.data);
+      }
+    } catch (error) {
+      console.log("Erro ao buscar bancos:", error);
+    } finally {
+      setIsLoadingBanks(false);
+    }
+  };
 
   const handleGetFornecedor = async () => {
     if (!parsed?.emitente.cnpj) return;
@@ -122,7 +153,9 @@ export default function EntradaFiscalDialog({
     }
   };
 
-  const handleCreateEntradas = async () => {
+  async function handleCreateEntradas() {
+    if (!parsed) return;
+
     if (!parsed) {
       toast.error("Nenhum arquivo processado.");
       return;
@@ -138,16 +171,73 @@ export default function EntradaFiscalDialog({
       return;
     }
 
-    if(isPagamentoFuturo){
-      const somaParcelas = parcelas.reduce((sum, parcela)=>sum + (parcela.valor ?? 0),0);
-      if( somaParcelas < parsed.totais.valorNota || somaParcelas > parsed.totais.valorNota)
-      toast.error("A soma das parcelas deve ser igual ao valor da nota")
-    return
+    if (isPagamentoFuturo) {
+      const somaParcelas = parcelas.reduce(
+        (sum, parcela) => sum + (parcela.valor ?? 0),
+        0
+      );
+      if (
+        somaParcelas < parsed.totais.valorNota ||
+        somaParcelas > parsed.totais.valorNota
+      )
+        toast.error("A soma das parcelas deve ser igual ao valor da nota");
+      return;
     }
 
-    // aqui entra a chamada real de criação de entradas
-    // ...
-  };
+    const payload = {
+      fornecedorId: parsed.fornecedorReferenteId ?? null,
+      numeroNota: parsed.numeroNota ?? null,
+      notaChave: parsed.chaveAcesso ?? null, // OU o nome que você tiver
+      fiscal: true, // porque vem de NF; entradas manuais podem mandar false
+
+      itens: parsed.itens
+        .filter((item) => item.produtoReferenciaId)
+        .map((item) => ({
+          produtoId: item.produtoReferenciaId!,
+          quantidade: item.quantidade,
+        })),
+
+      isPagamentoFuturo,
+      parcelas: isPagamentoFuturo
+        ? parcelas
+            .filter((p) => p.valor && p.dataVencimento)
+            .map((p) => ({
+              valor: p.valor!,
+              dataVencimento: p.dataVencimento!.toISOString().slice(0, 10),
+            }))
+        : [],
+
+      bancoId: 1,
+      metodoPagamento: "PIX",
+      categoria: "DESPESAS_OPERACIONAIS",
+      tipo: "DESPESA",
+      nomePagador:
+        parsed.fornecedorReferente?.nomerazaosocial ??
+        parsed.emitente.nome ??
+        "",
+      cpfCnpjPagador: parsed.emitente.cnpj?.toString() ?? "",
+      descricaoTransacao:
+        parsed.numeroNota != null
+          ? `Compra NF ${parsed.numeroNota}`
+          : "Compra de mercadorias",
+    };
+
+    const res = await fetch("/api/entradas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      toast.error("Erro ao registrar entrada", { description: data.error });
+      return;
+    }
+
+    toast.success("Entrada registrada com sucesso!");
+    // aqui você pode limpar estado, fechar modal, etc.
+  }
 
   const handleSearchFornecedor = async () => {
     if (!parsed?.fornecedorReferenteId || !parsed.itens?.length) {
@@ -275,7 +365,7 @@ export default function EntradaFiscalDialog({
           )}
 
           {parsed && (
-            <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 bg-muted px-6 py-10 space-y-2 relative">
+            <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 bg-blue-700/5 px-6 py-10 space-y-2 relative">
               <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
                 <span className="text-xs text-muted-foreground">
                   1 arquivo selecionado
@@ -661,14 +751,20 @@ export default function EntradaFiscalDialog({
                       {parcelas.map((parcela, index) => (
                         <div
                           key={parcela.id ?? index}
-                          className="flex flex-row bg-black/30 py-6 px-3 rounded-xl gap-4 items-center justify-between relative"
+                          className="flex flex-row bg-muted-foreground/5 py-6 px-3 rounded-xl gap-4 items-center justify-between relative"
                         >
                           {/* Remover parcela */}
-                          <span className="absolute left-3 top-1 text-xs text-muted-foreground">{index+1}x parcela{index+1>1 && "s"}</span>
+                          <span className="absolute left-3 top-1 text-xs text-muted-foreground">
+                            {index + 1}x parcela{index + 1 > 1 && "s"}
+                          </span>
                           <button
                             type="button"
-                            className="bg-red-500 hover:cursor-pointer rounded-full w-5 h-5 flex items-center justify-center"
+                            className="bg-red-500 not-dark:bg-red-400 hover:cursor-pointer rounded-full w-5 h-5 flex items-center justify-center"
                             onClick={() => {
+                              if(parcelas.length === 1){
+                                toast.error("É necessário ao menos uma parcela")
+                                return
+                              }
                               setParcelas((prev) =>
                                 prev.filter((_, i) => i !== index)
                               );
@@ -684,6 +780,7 @@ export default function EntradaFiscalDialog({
                             </span>
                             <Input
                               type="date"
+                              className="not-dark:bg-white"
                               value={
                                 parcela.dataVencimento
                                   ? new Date(parcela.dataVencimento)
@@ -735,8 +832,18 @@ export default function EntradaFiscalDialog({
 
                       {/* Adicionar parcela */}
                       <div className="text-xs text-muted-foreground flex flex-row items-center justify-between">
-                        <span>Valor total: {formatarEmReal(parsed.totais.valorNota)}</span>
-                        <span>Soma das parcelas: {formatarEmReal(parcelas.reduce((sum, parcela)=>sum + (parcela.valor ?? 0),0))}</span>
+                        <span>
+                          Valor total: {formatarEmReal(parsed.totais.valorNota)}
+                        </span>
+                        <span>
+                          Soma das parcelas:{" "}
+                          {formatarEmReal(
+                            parcelas.reduce(
+                              (sum, parcela) => sum + (parcela.valor ?? 0),
+                              0
+                            )
+                          )}
+                        </span>
                       </div>
                       <div
                         className="flex flex-row gap-2 items-center mt-3 hover:cursor-pointer group w-max"
@@ -755,6 +862,27 @@ export default function EntradaFiscalDialog({
                         <span className="text-xs text-card-foreground">
                           Adicionar Parcela
                         </span>
+
+                      </div>
+                      <div className="grid">
+                        <div className="flex flex-col">
+                          <Label>Banco</Label>
+                          <Select
+                  value={""}
+                  onValueChange={(v) =>{return} }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {banks.map((b) => (
+                      <SelectItem key={b.id} value={b.id.toString()}>
+                        {b.titulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                        </div>
                       </div>
                     </div>
                   )}
