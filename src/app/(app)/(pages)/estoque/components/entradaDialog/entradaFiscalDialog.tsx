@@ -730,6 +730,10 @@ export default function EntradaFiscalDialog({
                               }
                               setIsOpen={(open) => {
                                 if (open) {
+                                  if(!parsed.fornecedorReferenteId){
+                                    toast.error("Cadastre um fornecedor para habilitar o cadastro de produto")
+                                    return
+                                  }
                                   setIsProductEditOpen(true);
                                   setProductDialogItemIndex(index);
                                 } else {
