@@ -34,21 +34,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
+import { Fornecedor, Pagination } from "../(pages)/estoque/types";
 import { set } from "nprogress";
 
-interface ProductSelectProps {
+interface FornecedorSelectProps {
   children?: ReactNode;
-  OnSelect?: (value: Produto) => void;
+  OnSelect?: (value: Fornecedor) => void;
   setOpen?: (value: boolean) => void;
   open?: boolean;
 }
-export default function ProductSelect({
+export default function FornecedorSelect({
   children,
   OnSelect,
   setOpen,
   open,
-}: ProductSelectProps) {
+}: FornecedorSelectProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -56,43 +56,39 @@ export default function ProductSelect({
     limit: 20,
     totalPages: 0,
   });
-  const [productItems, setProductItems] = useState<Produto[] | []>([]);
+  const [fornecedorItems, setFornecedorItems] = useState<Fornecedor[] | []>([]);
   const [search, setSearch] = useState("");
 
-  const handleGetProducts = async (
+  const handleGetFornecedores = async (
     pageNumber?: number,
     limit?: number,
-    searchText?: string,
-    statusValue?: Estoque_status
+    searchText?: string
   ) => {
     setIsLoading(true);
     try {
-      const response = await axios.get("/api/products", {
+      const response = await axios.get("/api/tipos/fornecedores", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
           search: searchText || undefined,
-          status: "TODOS",
         },
       });
       if (response.status === 200) {
-        const { data } = response;
-        setProductItems(data.data);
-        setPagination(data.pagination);
-        console.log("Produtos carregados:", data.data);
+        setFornecedorItems(response.data.items);
+        setPagination(response.data.pagination);
       }
     } catch (error) {
-      console.log("Erro ao buscar Produtos:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    handleGetProducts();
+    handleGetFornecedores();
   }, []);
+
   useEffect(() => {
-    handleGetProducts(pagination.page, pagination.limit, search);
+    handleGetFornecedores(pagination.page, pagination.limit, search);
   }, [search, pagination.limit, pagination.page]);
 
   return (
@@ -112,7 +108,7 @@ export default function ProductSelect({
       <DialogContent className="h-lvh min-w-screen max-h-[600px] p-0 overflow-hidden sm:max-w-[500px] sm:max-h-[600px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle>Selecione um Produto</DialogTitle>
+            <DialogTitle>Selecione um Fornecedor</DialogTitle>
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
@@ -141,31 +137,27 @@ export default function ProductSelect({
                 <TableRow>
                   <TableCell>ID</TableCell>
                   <TableCell>NOME</TableCell>
-                  <TableCell>FRABRICANTE</TableCell>
-                  <TableCell>VALOR</TableCell>
+                  <TableCell>CPF/CNPJ</TableCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {productItems.map((p) => (
+                {fornecedorItems.map((f) => (
                   <TableRow
                     className="hover:cursor-pointer"
                     onClick={() => {
                       if (OnSelect) {
-                        OnSelect(p);
+                        OnSelect(f);
                       }
                       if (setOpen) {
                         setOpen(false);
                         setSearch("");
                       }
                     }}
-                    key={p.id}
+                    key={f.id}
                   >
-                    <TableCell>{p.id}</TableCell>
-                    <TableCell className="max-w-[120px] truncate">
-                      {p.titulo}
-                    </TableCell>
-                    <TableCell>{p.fabricante || "-"}</TableCell>
-                    <TableCell>{p.precovenda}</TableCell>
+                    <TableCell>{f.id}</TableCell>
+                    <TableCell>{f.nomerazaosocial}</TableCell>
+                    <TableCell>{f.cpfcnpj}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -195,7 +187,9 @@ export default function ProductSelect({
                 variant="outline"
                 size="icon"
                 className="hover:cursor-pointer"
-                onClick={() => handleGetProducts(1, pagination.limit, search)}
+                onClick={() =>
+                  handleGetFornecedores(1, pagination.limit, search)
+                }
                 disabled={pagination.page === 1}
               >
                 <ChevronsLeft className="h-4 w-4" />
@@ -205,7 +199,7 @@ export default function ProductSelect({
                 size="icon"
                 className="hover:cursor-pointer"
                 onClick={() =>
-                  handleGetProducts(
+                  handleGetFornecedores(
                     pagination.page - 1,
                     pagination.limit,
                     search
@@ -224,7 +218,7 @@ export default function ProductSelect({
                 variant="outline"
                 size="icon"
                 onClick={() =>
-                  handleGetProducts(
+                  handleGetFornecedores(
                     pagination.page + 1,
                     pagination.limit,
                     search
@@ -242,7 +236,7 @@ export default function ProductSelect({
                 variant="outline"
                 size="icon"
                 onClick={() =>
-                  handleGetProducts(
+                  handleGetFornecedores(
                     pagination.totalPages,
                     pagination.limit,
                     search

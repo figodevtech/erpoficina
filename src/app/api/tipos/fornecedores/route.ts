@@ -16,13 +16,33 @@ async function ensureAuth() {
 }
 
 // GET /api/tipos/fornecedores
-export async function GET() {
+export async function GET(req: Request) {
   try {
     await ensureAuth();
 
-    const { data, error } = await supabaseAdmin
+    const url = new URL(req.url);
+
+    // pagination
+    const pageParam = url.searchParams.get("page");
+    const limitParam = url.searchParams.get("limit");
+    const search = (url.searchParams.get("search") ?? "").trim();
+
+    let page = Number(pageParam || "1");
+    let limit = Number(limitParam || "20");
+
+    if (!Number.isFinite(page) || page < 1) page = 1;
+    if (!Number.isFinite(limit) || limit < 1) limit = 20;
+    // limite de segurança
+    if (limit > 100) limit = 100;
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    // base query
+    let query = supabaseAdmin
       .from("fornecedor")
-      .select(`
+      .select(
+        `
         id,
         cpfcnpj,
         nomerazaosocial,
@@ -33,8 +53,21 @@ export async function GET() {
         cep,
         contato,
         ativo
-      `)
+      `,
+        { count: "exact" }
+      )
       .order("nomerazaosocial", { ascending: true });
+
+    // filtro de busca
+    if (search) {
+      const pattern = `%${search}%`;
+      // busca em razão social, fantasia e cpf/cnpj
+      query = query.or(
+        `nomerazaosocial.ilike.${pattern},nomefantasia.ilike.${pattern},cpfcnpj.ilike.${pattern}`
+      );
+    }
+
+    const { data, error, count } = await query.range(from, to);
 
     if (error) throw error;
 
@@ -51,7 +84,20 @@ export async function GET() {
       ativo: typeof f.ativo === "boolean" ? f.ativo : true,
     }));
 
-    return NextResponse.json({ items });
+    const total = count ?? 0;
+    const totalPages =
+      limit > 0 ? Math.max(1, Math.ceil(total / limit)) : 1;
+    const pageCount = items.length;
+
+    const pagination = {
+      total,
+      page,
+      limit,
+      totalPages,
+      pageCount,
+    };
+
+    return NextResponse.json({ items, pagination });
   } catch (e: any) {
     console.error("[/api/tipos/fornecedores GET] error:", e);
     const status = /auth|unauth|não autenticado/i.test(String(e?.message)) ? 401 : 500;

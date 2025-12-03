@@ -44,18 +44,6 @@ export default function ValueInput({ setPrice, price }: ValueInputProps) {
     }
   };
 
-  // Opcional: Backspace sempre remove o último dígito
-  // const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-  //   if (e.key === "Backspace") {
-  //     e.preventDefault();
-  //     setDigits((prev) => {
-  //       const nextDigits = prev.slice(0, -1);
-  //       const next = nextDigits ? parseInt(nextDigits, 10) / 100 : 0;
-  //       if (next !== price) setPrice(next);
-  //       return nextDigits;
-  //     });
-  //   }
-  // };
 
   return (
     <Input

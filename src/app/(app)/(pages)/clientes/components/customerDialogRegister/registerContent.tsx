@@ -139,14 +139,26 @@ export default function RegisterContent({
           cidade: juridica.estabelecimento.cidade.nome,
           endereco: juridica.estabelecimento.logradouro,
           enderecocomplemento: juridica.estabelecimento.complemento,
-          bairro: juridica.estabelecimento.bairro
-    
-
+          bairro: juridica.estabelecimento.bairro,
         });
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast.error(error.status, { description: error.message });
+        if (error.status === 429) {
+          toast.error("Muitas tentativas", {
+            description: "Aguarde um pouco e tente novamente",
+          });
+        }
+        if (error.status === 400) {
+          toast.error("CNPJ não encontrado", {
+            description: "Verifique o dado informado",
+          });
+        }
+        if (error.status === 404) {
+          toast.error("Error no servidor de consulta", {
+            description: "Verifique com o administrador",
+          });
+        }
       }
     } finally {
       setIsLoadingCNPJ(false);
@@ -184,29 +196,14 @@ export default function RegisterContent({
     }
   };
 
-  useEffect(()=>{
-    setNewCustomer({
-            tipopessoa: newCustomer.tipopessoa,
-            cpfcnpj: "",
-            nomerazaosocial: "",
-            email: "",
-            bairro:"",
-            telefone: "",
-            endereco: "",
-            enderecocomplemento: "",
-            endereconumero: "",
-            cidade: "",
-            estado: "",
-            cep: "",
-            inscricaoestadual: "",
-            inscricaomunicipal: "",
-            codigomunicipio: "",
-            status: "ATIVO",
-            foto: "",
-          });
-  },[
-    newCustomer.tipopessoa
-  ])
+  useEffect(() => {
+    setNewCustomer({...newCustomer,
+      tipopessoa: newCustomer.tipopessoa,
+      cpfcnpj: "",
+      nomerazaosocial: "",
+      
+    });
+  }, [newCustomer.tipopessoa]);
 
   useEffect(() => {
     if (newCustomer.cpfcnpj.length === 14) {
@@ -328,26 +325,31 @@ export default function RegisterContent({
                 {newCustomer.tipopessoa === "FISICA" ? "CPF" : "CNPJ"} *
               </Label>
               <div className=" relative">
-                {isLoadingCNPJ &&
+                {isLoadingCNPJ && (
+                  <Loader2 className="w-4 h-4 absolute right-2 top-2.5 animate-spin text-primary" />
+                )}
+                <Input
+                  inputMode="numeric"
+                  id="cpfcnpj"
+                  className=""
+                  value={
+                    formatCpfCnpj(
+                      newCustomer.cpfcnpj,
+                      newCustomer.tipopessoa
+                    ) || ""
+                  }
+                  onChange={(e) => {
+                    const onlyNumbers = e.target.value.replace(/\D/g, "");
 
-              <Loader2 className="w-4 h-4 absolute right-2 top-2.5 animate-spin text-primary"/>
-                }
-              <Input
-                inputMode="numeric"
-                id="cpfcnpj"
-                className=""
-                value={formatCpfCnpj(
-                  newCustomer.cpfcnpj,
-                  newCustomer.tipopessoa
-                ) || ""}
-                onChange={(e) => handleInputChange("cpfcnpj", e.target.value)}
-                placeholder={
-                  newCustomer.tipopessoa === "FISICA"
-                    ? "000.000.000-00"
-                    : "00.000.000/0000-00"
-                }
-                maxLength={newCustomer.tipopessoa === "FISICA" ? 14 : 18}
-              />
+                    handleInputChange("cpfcnpj", onlyNumbers);
+                  }}
+                  placeholder={
+                    newCustomer.tipopessoa === "FISICA"
+                      ? "000.000.000-00"
+                      : "00.000.000/0000-00"
+                  }
+                  maxLength={newCustomer.tipopessoa === "FISICA" ? 14 : 18}
+                />
               </div>
             </div>
 

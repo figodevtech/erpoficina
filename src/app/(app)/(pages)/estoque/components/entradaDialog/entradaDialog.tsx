@@ -37,11 +37,12 @@ import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
 import { Estoque_status, Fornecedor, Pagination } from "../../types";
 
+
 interface EntradaDialogProps {
   children?: React.ReactNode;
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
-  productId: number;
+  productId?: number;
   productDescription: string;
   currentQuantity: number;
   search?: string;
@@ -69,6 +70,7 @@ export default function EntradaDialog({
 }: EntradaDialogProps) {
   const [newQtd, setNewQtd] = useState(0);
   const [value, setValue] = useState(0);
+  const [parsed, setParsed] = useState<any>(null);
   const isMobile = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingFornecedor, setIsLoadingFornecedor] = useState(false);
@@ -168,15 +170,7 @@ export default function EntradaDialog({
             </DrawerHeader>
 
             <div className="p-4 space-y-4 relative">
-              <Button
-                variant={"outline"}
-                size="sm"
-                className="absolute top-4 right-4 hover:cursor-pointer"
-              >
-                <Paperclip className="mr-1 h-4 w-4" />
-                Anexo
-              </Button>
-
+    
               <div className="space-y-2">
                 <Label>Quantidade:</Label>
                 <Input
@@ -268,7 +262,7 @@ export default function EntradaDialog({
       >
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent
-          className="p-0 overflow-hidden"
+          className="p-0 overflow-hidden h-[600px]"
           onDoubleClick={(e) => e.stopPropagation()}
         >
           <div className="flex h-full min-h-0 flex-col">
@@ -280,18 +274,11 @@ export default function EntradaDialog({
               </DialogDescription>
             </DialogHeader>
             <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 bg-muted px-6 py-10 space-y-2 relative">
-              <Button
-                variant={"outline"}
-                className="absolute top-5 right-5 hover:cursor-pointer"
-              >
-                <Paperclip />
-                Anexo
-              </Button>
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+
+              <div className="h-full min-h-0 rounded-md px-4 py-8 space-y-4">
                 <div className="space-y-2">
                   <Label>Quantidade:</Label>
                   <Input
-                  
                     value={newQtd}
                     onChange={(e) => setNewQtd(Number(e.target.value))}
                     className="w-20 not-dark:bg-white"
@@ -329,6 +316,7 @@ export default function EntradaDialog({
                     </SelectContent>
                   </Select>
                 </div>
+               
               </div>
             </div>
 

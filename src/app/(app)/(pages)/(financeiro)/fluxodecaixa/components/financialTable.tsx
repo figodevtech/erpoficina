@@ -3,12 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -25,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import {
   Calendar,
+  Check,
   ChevronDown,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -49,16 +45,19 @@ import axios, { isAxiosError } from "axios";
 import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { getCategoryIcon, getTypeColor } from "../utils";
 import { ExportTransactionsButton } from "./ExportTransactionsButton";
+import ConculidoAlert from "./concluidoAlert";
 
 interface FinancialTableProps {
-  dateTo: string,
-  dateFrom: string,
+  dateTo: string;
+  dateFrom: string;
   transactions: Transaction[];
   pagination: Pagination;
   handleGetTransactions: (
     pageNumber?: number,
     limit?: number,
     search?: string,
+    dateFrom?: string,
+    dateTo?: string,
     tipo?: Tipo_transacao | ""
   ) => void;
   search: string;
@@ -83,6 +82,7 @@ export default function FinancialTable({
   >(undefined);
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isAlertOpen2, setIsAlertOpen2] = useState(false);
   const [, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -101,7 +101,14 @@ export default function FinancialTable({
       const response = await axios.delete(`/api/transaction/${id}`, {});
       if (response.status === 204) {
         toast("Transação deletada!");
-        handleGetTransactions(pagination.page, pagination.limit, search, tipo);
+        handleGetTransactions(
+          pagination.page,
+          pagination.limit,
+          search,
+          dateFrom,
+          dateTo,
+          tipo
+        );
         handleGetStatusCounter();
       } else {
         toast.warning(`Status inesperado: ${response.status}`);
@@ -133,28 +140,27 @@ export default function FinancialTable({
             </span>
           </CardTitle>
           <div className="flex flex-row gap-4 items-center">
-
             <ExportTransactionsButton
-             search={search}
-             tipo={tipo}
-             dateFrom={dateFrom}
-             dateTo={dateTo}
+              search={search}
+              tipo={tipo}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
             />
 
-          <TransactionDialog
-            open={isOpen}
-            setOpen={setIsOpen}
-            selectedTransactionId={selectedTransactionId}
-            setSelectedTransactionId={setSelectedTransactionId}
-          >
-            <Button
-              className="hover:cursor-pointer"
-              onClick={() => setSelectedTransactionId(undefined)}
+            <TransactionDialog
+              open={isOpen}
+              setOpen={setIsOpen}
+              selectedTransactionId={selectedTransactionId}
+              setSelectedTransactionId={setSelectedTransactionId}
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Transação
-            </Button>
-          </TransactionDialog>
+              <Button
+                className="hover:cursor-pointer"
+                onClick={() => setSelectedTransactionId(undefined)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Transação
+              </Button>
+            </TransactionDialog>
           </div>
         </div>
 
@@ -164,6 +170,8 @@ export default function FinancialTable({
               pagination.page,
               pagination.limit,
               search,
+              dateFrom,
+              dateTo,
               tipo
             );
             handleGetStatusCounter();
@@ -237,7 +245,13 @@ export default function FinancialTable({
                   <TableCell className="hidden md:table-cell">
                     {formatDate(t.data)}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{t.tipo}</TableCell>
+                  <TableCell
+                    className={`hidden md:table-cell ${
+                      t.pendente && "text-primary font-semibold"
+                    }`}
+                  >
+                    {t.pendente ? "PAGAMENTO FUTURO" : t.tipo}
+                  </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {t.categoria}
                   </TableCell>
@@ -258,7 +272,6 @@ export default function FinancialTable({
                           Bruto: {formatarEmReal(t.valor)}
                         </span>
                       )}
-
                     </div>
                   </TableCell>
 
@@ -280,7 +293,6 @@ export default function FinancialTable({
                         aria-labelledby={triggerId}
                         className="space-y-1"
                       >
-                        
                         <DeleteAlert
                           handleDeleteTransaction={handleDeleteTransaction}
                           isAlertOpen={isAlertOpen}
@@ -295,6 +307,22 @@ export default function FinancialTable({
                             <span>Excluir</span>
                           </Button>
                         </DeleteAlert>
+                        {t.pendente && (
+                          <ConculidoAlert
+                            isAlertOpen={isAlertOpen2}
+                            setIsAlertOpen={setIsAlertOpen2}
+                            handleSetConcluido={(value) => console.log("sdfsd")}
+                            idConcluido={t.id}
+                          >
+                            <Button
+                              variant="default"
+                              className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
+                            >
+                              <Check className="-ml-1 -mr-1 h-4 w-4" />
+                              <span>Pago</span>
+                            </Button>
+                          </ConculidoAlert>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -319,7 +347,14 @@ export default function FinancialTable({
               size="icon"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetTransactions(1, pagination.limit, search, tipo)
+                handleGetTransactions(
+                  1,
+                  pagination.limit,
+                  search,
+                  dateFrom,
+                  dateTo,
+                  tipo
+                )
               }
               disabled={pagination.page === 1}
             >
@@ -335,6 +370,8 @@ export default function FinancialTable({
                   pagination.page - 1,
                   pagination.limit,
                   search,
+                  dateFrom,
+                  dateTo,
                   tipo
                 )
               }
@@ -356,6 +393,8 @@ export default function FinancialTable({
                   pagination.page + 1,
                   pagination.limit,
                   search,
+                  dateFrom,
+                  dateTo,
                   tipo
                 )
               }
@@ -376,6 +415,8 @@ export default function FinancialTable({
                   pagination.totalPages,
                   pagination.limit,
                   search,
+                  dateFrom,
+                  dateTo,
                   tipo
                 )
               }

@@ -19,6 +19,7 @@ const WRITABLE_FIELDS = new Set([
   "banco_id",
   "nomepagador",
   "cpfcnpjpagador",
+  "pendente",
   
 ]);
 const FORTALEZA_OFFSET = "-03:00";
@@ -36,7 +37,7 @@ function localNextDayStartToUtcIso(dateStr: string) {
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
-  "id, descricao, valor, valorLiquido, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
+  "id, descricao, valor, valorLiquido, pendente, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
 const BANCO_FIELDS =
@@ -150,6 +151,7 @@ export async function GET(req: Request) {
     ).trim(); // public.metodo_pagamento
     const bancoId = toNumberOrNull(searchParams.get("bancoId"));
     const clienteId = toNumberOrNull(searchParams.get("clienteId"));
+    const pendente = (searchParams.get("pendente"))
 
     // Intervalo de datas (inclusive)
     const dateFrom = searchParams.get("dateFrom");
@@ -182,7 +184,7 @@ export async function GET(req: Request) {
     if (metodo) query = query.eq("metodopagamento", metodo);
     if (bancoId != null) query = query.eq("banco_id", bancoId);
     if (clienteId != null) query = query.eq("cliente_id", clienteId);
-
+    if (pendente) query = query.eq("pendente", pendente)
     if (dateFrom) {
   query = query.gte("data", localDayStartToUtcIso(dateFrom));
 }
@@ -219,6 +221,7 @@ if (dateTo) {
         metodopagamento: metodo || null,
         bancoId: bancoId ?? null,
         clienteId: clienteId ?? null,
+        pendente: pendente ?? null,
         dateFrom: dateFrom ?? null,
         dateTo: dateTo ?? null,
       },

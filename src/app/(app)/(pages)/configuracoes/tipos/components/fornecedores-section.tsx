@@ -45,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import FornecedorDialog from "./fornecedorDialog";
 
 type Fornecedor = {
   id: number;
@@ -174,12 +175,6 @@ export default function FornecedoresSection() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function openNovo() {
-    setEditing(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
-  }
-
   function openEditar(f: Fornecedor) {
     setEditing(f);
     setForm({
@@ -275,129 +270,13 @@ export default function FornecedoresSection() {
         </div>
 
         {/* Botão Novo fornecedor + Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
-              <Plus className="mr-1 h-4 w-4" />
-              Novo fornecedor
-            </Button>
-          </DialogTrigger>
-
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editing ? "Editar fornecedor" : "Novo fornecedor"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="mt-4 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)]">
-                <div className="space-y-1.5">
-                  <Label>CNPJ</Label>
-                  <Input
-                    value={form.cpfcnpj}
-                    onChange={(e) => handleChange("cpfcnpj", e.target.value)}
-                    placeholder="Somente números"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Razão Social</Label>
-                  <Input
-                    value={form.nomerazaosocial}
-                    onChange={(e) => handleChange("nomerazaosocial", e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Nome Fantasia (opcional)</Label>
-                <Input
-                  value={form.nomefantasia}
-                  onChange={(e) => handleChange("nomefantasia", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Endereço</Label>
-                <Input
-                  value={form.endereco}
-                  onChange={(e) => handleChange("endereco", e.target.value)}
-                  placeholder="Rua, número, bairro..."
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
-                <div className="space-y-1.5">
-                  <Label>Cidade</Label>
-                  <Input
-                    value={form.cidade}
-                    onChange={(e) => handleChange("cidade", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Estado</Label>
-                  <Input
-                    value={form.estado}
-                    onChange={(e) => handleChange("estado", e.target.value)}
-                    placeholder="UF"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>CEP</Label>
-                  <Input
-                    value={form.cep}
-                    onChange={(e) => handleChange("cep", e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Contato (telefone/email)</Label>
-                <Input
-                  value={form.contato}
-                  onChange={(e) => handleChange("contato", e.target.value)}
-                />
-              </div>
-
-              {/* Status dentro do diálogo */}
-              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-                <div className="space-y-0.5">
-                  <Label>Status do fornecedor</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Defina se este fornecedor está ativo para uso nas telas do sistema.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativo" : "Inativo"}
-                  </span>
-                  <Switch
-                    checked={form.ativo}
-                    onCheckedChange={(val) => handleChange("ativo", val)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <FornecedorDialog
+        dialogOpen={dialogOpen}
+        setDialogOpen={setDialogOpen}
+        loadFornecedores={loadFornecedores}
+        fornecedorToEdit={editing}
+        setFornecedorToEdit={setEditing}
+        />
       </div>
 
       {/* Container da tabela (padrão das outras páginas, sem Card) */}

@@ -65,9 +65,11 @@ interface RegisterContentProps {
   setSelectedProductId?: (value: number | undefined) => void;
   newProduct: Produto;
   setNewProduct: (value: Produto) => void;
+  handleSearchFornecedor?: () => void;
 }
 
 export default function RegisterContent({
+  handleSearchFornecedor,
   setSelectedProductId,
   newProduct,
   setNewProduct,
@@ -99,10 +101,9 @@ export default function RegisterContent({
           description: "Produto cadastrado.",
           duration: 2000,
         });
-        if(setSelectedProductId){
 
-          setSelectedProductId(response.data.data.id);
-        }
+          setSelectedProductId?.(response.data.data.id);
+          handleSearchFornecedor?.()
         console.log("criado:", response.data);
       }
     } catch (error) {

@@ -23,7 +23,6 @@ const WRITABLE_FIELDS = new Set([
   'codigobarras',
   'referencia',
   'titulo',
-  'fornecedor',
   'fabricante',
   'grupo',
   'exibirPdv',
@@ -33,7 +32,7 @@ const WRITABLE_FIELDS = new Set([
 
 /** Campos a retornar ao criar/listar/atualizar se quiser o objeto completo */
 const PRODUTO_FIELDS =
-  'id, descricao, titulo, referencia, precovenda, estoque, estoqueminimo, unidade, ncm, cfop, csosn, cest, aliquotaicms, codigobarras, status_estoque, fornecedor, fabricante, grupo, exibirPdv, tituloMarketplace, descricaoMarketplace, createdat, updatedat';
+  'id, descricao, titulo, referencia, precovenda, estoque, estoqueminimo, unidade, ncm, cfop, csosn, cest, aliquotaicms, codigobarras, status_estoque, fabricante, grupo, exibirPdv, tituloMarketplace, descricaoMarketplace, createdat, updatedat';
 
 function toNullIfEmpty(v: unknown) {
   return typeof v === 'string' && v.trim() === '' ? null : v;
@@ -111,7 +110,7 @@ export async function GET(req: Request) {
       .from('produto')
       .select(
         `
-        id, titulo, precovenda, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, fornecedor, exibirPdv
+        id, titulo, precovenda, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, exibirPdv
         `,
         { count: 'exact' }
       )
@@ -120,7 +119,7 @@ export async function GET(req: Request) {
 
     if (q) {
       query = query.or(
-        `referencia.ilike.%${q}%,titulo.ilike.%${q}%,fornecedor.ilike.%${q}%,fabricante.ilike.%${q}%`
+        `referencia.ilike.%${q}%,titulo.ilike.%${q}%,fabricante.ilike.%${q}%`
       );
     }
 
@@ -166,6 +165,8 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as any;
     console.log(body);
+
+    // Produto pode vir em body.newProduct ou direto no body
     const json =
       body?.newProduct && typeof body.newProduct === "object"
         ? body.newProduct
@@ -178,27 +179,83 @@ export async function POST(req: Request) {
       );
     }
 
+    // Dados para relação com fornecedorprodutos
+    const fornecedorIdRaw =
+      body.fornecedorId ??
+      body.fornecedorid ??
+      json.fornecedorId ??
+      json.fornecedorid;
+
+    const codigoFornecedor: string | undefined =
+      body.codigoFornecedor ??
+      body.codigofornecedor ??
+      json.codigoFornecedor ??
+      json.codigofornecedor;
+
+    const ultimoValorDeCompraRaw =
+      body.ultimoValorDeCompra ??
+      body.ultimovalordecompra ??
+      json.ultimoValorDeCompra ??
+      json.ultimovalordecompra;
+
+    const fornecedorId = fornecedorIdRaw ? Number(fornecedorIdRaw) : undefined;
+    const ultimoValorDeCompra = toNumberOrNull(ultimoValorDeCompraRaw);
+
     const payload = sanitizeProdutoPayload(json, { strict: true });
 
     // Deixe validações de ENUMs/constraints a cargo do banco (unidade, grupo, etc.)
     const { data, error } = await supabaseAdmin
-      .from('produto')
+      .from("produto")
       .insert(payload)
       .select(PRODUTO_FIELDS)
       .single();
 
     if (error) {
       // 23505 = unique_violation (ex.: se você criar UNIQUE em codigobarras)
-      if ((error as any).code === '23505') {
+      if ((error as any).code === "23505") {
         return NextResponse.json(
-          { error: 'Violação de unicidade (já cadastrado).' },
+          { error: "Violação de unicidade (já cadastrado)." },
           { status: 409 }
         );
       }
       return NextResponse.json(
-        { error: (error as any).message ?? 'Erro ao criar produto.' },
+        { error: (error as any).message ?? "Erro ao criar produto." },
         { status: 500 }
       );
+    }
+
+    // Se veio fornecedorId + codigoFornecedor, cria vínculo em fornecedorprodutos
+    if (fornecedorId && codigoFornecedor) {
+      const vinculoPayload = {
+        fornecedorid: fornecedorId,
+        produtoid: data.id,
+        codigofornecedor: String(codigoFornecedor),
+        // se não vier ultimoValorDeCompra, usamos o precovenda do produto como base
+        ultimovalordecompra:
+          ultimoValorDeCompra != null
+            ? ultimoValorDeCompra
+            : toNumberOrNull(payload.precovenda),
+      };
+
+      const { error: relError } = await supabaseAdmin
+        .from("fornecedorprodutos")
+        .insert(vinculoPayload);
+
+      if (relError) {
+        console.error(
+          "[POST /products] Erro ao criar vínculo fornecedorprodutos:",
+          relError
+        );
+        // Produto foi criado, mas o vínculo falhou – retornamos 201 com warning
+        return NextResponse.json(
+          {
+            data,
+            id: data.id,
+            warning: "Produto criado, porém não foi possível vincular ao fornecedor.",
+          },
+          { status: 201 }
+        );
+      }
     }
 
     // 201 Created
@@ -206,10 +263,11 @@ export async function POST(req: Request) {
   } catch (e: any) {
     const msg =
       e?.message ??
-      'Erro ao criar produto. Verifique os campos obrigatórios e os tipos.';
+      "Erro ao criar produto. Verifique os campos obrigatórios e os tipos.";
     const isBadReq =
-      msg.includes('Campos obrigatórios ausentes') ||
-      msg.toLowerCase().includes('obrigatório');
+      msg.includes("Campos obrigatórios ausentes") ||
+      msg.toLowerCase().includes("obrigatório");
     return NextResponse.json({ error: msg }, { status: isBadReq ? 400 : 500 });
   }
 }
+

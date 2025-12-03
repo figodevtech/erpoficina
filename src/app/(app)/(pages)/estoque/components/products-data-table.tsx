@@ -31,6 +31,8 @@ import {
   CircleOff,
   Store,
   Plus,
+  ArrowBigDown,
+  FileText,
 } from "lucide-react";
 import {
   Select,
@@ -58,6 +60,8 @@ import {
 } from "@/components/ui/tooltip";
 import EntradaDialog from "./entradaDialog/entradaDialog";
 
+import EntradaFiscalDialog from "./entradaDialog/entradaFiscalDialog";
+
 interface ProductsDataTableProps {
   isLoading: boolean;
   products: Produto[];
@@ -79,7 +83,10 @@ interface ProductsDataTableProps {
   setIsOpen: (value: boolean) => void;
 }
 
-const getStatusBadge = (status: Estoque_status) => {
+const getStatusBadge = (status: Estoque_status | undefined) => {
+  if (!status) {
+    return;
+  }
   if (status === "CRITICO") {
     return (
       <Badge variant="destructive" className="text-xs">
@@ -132,6 +139,7 @@ export default function ProductsDataTable({
 }: ProductsDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isEntradaOpen, setIsEntradaOpen] = useState(false);
+  const [isEntradaOpenFiscal, setIsEntradaOpenFiscal] = useState(false);
   const [, setIsDeleting] = useState(false);
 
   const handleDeleteProduct = async (id: number) => {
@@ -195,12 +203,35 @@ export default function ProductsDataTable({
           {/* 👉 Botão “Novo Produto” movido para cá */}
           <div className="flex items-center gap-2">
             <ExportProductsButton />
-            <Button
-              className="hover:cursor-pointer"
-              onClick={() => setIsOpen(true)}
-            >
-              Novo Produto
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant={"outline"} className="hover:cursor-pointer">
+                  Ações <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="space-y-1">
+                <Button
+                  className="hover:cursor-pointer w-full text-xs"
+                  onClick={() => setIsOpen(true)}
+                >
+                  <Plus /> Novo Produto
+                </Button>
+
+                <EntradaFiscalDialog
+                  handleGetProducts={handleGetProducts}
+                  isOpen={isEntradaOpenFiscal}
+                  setIsOpen={setIsEntradaOpenFiscal}
+                >
+                  <Button
+                    variant={"outline"}
+                    className="flex justify-start text-xs px-0 rounded-sm py-2 hover:cursor-pointer"
+                  >
+                    <FileText className="-ml-1 -mr-1 h-4 w-4" />
+                    <span>Entrada Fiscal (NF-e)</span>
+                  </Button>
+                </EntradaFiscalDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -243,7 +274,7 @@ export default function ProductsDataTable({
 
           <TableBody>
             {products.map((p) => {
-              const valorTotal = (p.estoque ?? 0) * p.precovenda;
+              const valorTotal = (p.estoque ?? 0) * (p.precovenda || 0);
 
               return (
                 <TableRow
@@ -256,7 +287,7 @@ export default function ProductsDataTable({
                     <div className="flex items-center gap-2">
                       <div>
                         <div className="flex flex-row gap-2 items-center">
-                          <p className="font-medium">{p.titulo}</p>
+                          <p className="font-medium max-w-[350px] truncate">{p.titulo || "-"}</p>
                           {p.exibirPdv && (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -269,12 +300,12 @@ export default function ProductsDataTable({
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {p.unidade}
-                          {p.fabricante ? ` • ${p.fabricante}` : ""}
+                          {p.unidade || "-"}
+                          {p.fabricante ? ` • ${p.fabricante}` : "-"}
                         </p>
                         {p.codigobarras && (
                           <p className="text-xs text-muted-foreground">
-                            CODIGOBARRAS: {p.codigobarras}
+                            CODIGOBARRAS: {p.codigobarras || "-"}
                           </p>
                         )}
                       </div>
@@ -282,9 +313,9 @@ export default function ProductsDataTable({
                   </TableCell>
 
                   <TableCell className="font-mono text-xs">
-                    {p.referencia}
+                    {p.referencia || "-"}
                   </TableCell>
-                  <TableCell>{p.fabricante}</TableCell>
+                  <TableCell>{p.fabricante || "-"}</TableCell>
 
                   <TableCell className="font-medium">
                     {p.estoque ?? 0}
@@ -297,7 +328,7 @@ export default function ProductsDataTable({
 
                   <TableCell>
                     R{"$ "}
-                    {p.precovenda.toLocaleString("pt-BR", {
+                    {p.precovenda?.toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
                     })}
                   </TableCell>
@@ -322,16 +353,16 @@ export default function ProductsDataTable({
                             <span>Editar</span>
                           </Button>
                         </ProductDialog>
-                        
+
                         <EntradaDialog
-                        handleGetProducts={handleGetProducts}
-                        status={status}
-                        search={search}
-                        isOpen={isEntradaOpen}
-                        setIsOpen={setIsEntradaOpen}
-                        currentQuantity={p.estoque ||  0}
-                        productDescription={p.titulo || ""}
-                        productId={p.id}
+                          handleGetProducts={handleGetProducts}
+                          status={status}
+                          search={search}
+                          isOpen={isEntradaOpen}
+                          setIsOpen={setIsEntradaOpen}
+                          currentQuantity={p.estoque || 0}
+                          productDescription={p.titulo || ""}
+                          productId={p.id}
                         >
                           <Button
                             variant={"default"}

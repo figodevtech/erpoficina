@@ -13,13 +13,13 @@ import { ReactNode } from "react";
 
 interface DeleteAlertProps{
     children?: ReactNode;
-    handleDeleteProduct: (value: number)=>void
     isAlertOpen: boolean
     setIsAlertOpen: (value: boolean)=>void
-    idToDelete?: number
+    idConcluido: number
+    handleSetConcluido: (id: number)=> void
   
 }
-export default function DeleteAlert({children, handleDeleteProduct, isAlertOpen, setIsAlertOpen, idToDelete}: DeleteAlertProps) {
+export default function ConculidoAlert({children, handleSetConcluido, isAlertOpen, setIsAlertOpen, idConcluido}: DeleteAlertProps) {
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
       <AlertDialogTrigger asChild>
@@ -30,14 +30,12 @@ export default function DeleteAlert({children, handleDeleteProduct, isAlertOpen,
         <AlertDialogHeader>
           <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta ação não pode ser desfeita. Deletará o produto e todos os dados atrelados a ele.
+            Esta ação modificará o pagamento pendente para CONCLUÍDO.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="hover:cursor-pointer">Cancelar</AlertDialogCancel>
-          <AlertDialogAction className="hover:cursor-pointer" onClick={()=>{
-            if(!idToDelete) return;
-            handleDeleteProduct(idToDelete)}}>Continuar</AlertDialogAction>
+          <AlertDialogAction className="hover:cursor-pointer" onClick={()=>handleSetConcluido(idConcluido)}>Continuar</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

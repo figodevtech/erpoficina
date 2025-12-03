@@ -573,7 +573,7 @@ export default function EditContent({ productId }: EditContentProps) {
                 <div className="flex flex-row items-center justify-between">
                   <span className="text-xs">Participações em vendas</span>
                   <span className="text-xs">
-                    Quantidade: {selectedProduct.vendasdoproduto.length}
+                    Quantidade: {selectedProduct.vendasdoproduto?.length}
                   </span>
                 </div>
                 <Table className="text-xs border-1">
@@ -587,7 +587,8 @@ export default function EditContent({ productId }: EditContentProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedProduct.vendasdoproduto?.length > 0 ? (
+                    {selectedProduct.vendasdoproduto?.length &&
+                    selectedProduct.vendasdoproduto?.length > 0 ? (
                       selectedProduct.vendasdoproduto.map((v) => (
                         <TableRow
                           key={v.id}
@@ -643,7 +644,7 @@ export default function EditContent({ productId }: EditContentProps) {
                     Participações em Ordens de Serviço
                   </span>
                   <span className="text-xs">
-                    Quantidade: {selectedProduct.ordensdoproduto.length}
+                    Quantidade: {selectedProduct.ordensdoproduto?.length}
                   </span>
                 </div>
                 <Table className="text-xs border-1">
@@ -656,7 +657,8 @@ export default function EditContent({ productId }: EditContentProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedProduct.ordensdoproduto?.length > 0 ? (
+                    {selectedProduct.ordensdoproduto?.length &&
+                    selectedProduct.ordensdoproduto?.length > 0 ? (
                       selectedProduct.ordensdoproduto.map((o) => (
                         <TableRow
                           key={o.ordem.id}
@@ -708,7 +710,7 @@ export default function EditContent({ productId }: EditContentProps) {
                 <div className="flex flex-row items-center justify-between">
                   <span className="text-xs">Movimentações em estoque</span>
                   <span className="text-xs">
-                    Quantidade: {selectedProduct.entradas.length}
+                    Quantidade: {selectedProduct.entradas?.length}
                   </span>
                 </div>
                 <Table className="text-xs border-1">
@@ -722,16 +724,19 @@ export default function EditContent({ productId }: EditContentProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedProduct.entradas?.length > 0 ? (
+                    {selectedProduct.entradas?.length &&
+                    selectedProduct.entradas?.length > 0 ? (
                       selectedProduct.entradas.map((e) => (
                         <TableRow
                           key={e.id}
                           className="hover:cursor-pointer text-center"
                         >
                           <TableCell>{e.id}</TableCell>
-                          <TableCell>{formatDate(e.created_at) }</TableCell>
+                          <TableCell>{formatDate(e.created_at)}</TableCell>
                           <TableCell>{e.fornecedor.nomerazaosocial}</TableCell>
-                          <TableCell className="text-green-600 font-bold">+ {e.quantidade}</TableCell>
+                          <TableCell className="text-green-600 font-bold">
+                            + {e.quantidade}
+                          </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -750,9 +755,7 @@ export default function EditContent({ productId }: EditContentProps) {
                                   <Edit className="-ml-1 -mr-1 h-4 w-4" />
                                   <span>Editar</span>
                                 </Button>
-                                <Button
-                                  className="size-full flex justify-start gap-5 bg-red-500/50 hover:bg-red-500 px-0 rounded-sm py-2 hover:cursor-pointer"
-                                >
+                                <Button className="size-full flex justify-start gap-5 bg-red-500/50 hover:bg-red-500 px-0 rounded-sm py-2 hover:cursor-pointer">
                                   <Undo2 className="-ml-1 -mr-1 h-4 w-4" />
                                   <span>Cancelar Entrada</span>
                                 </Button>

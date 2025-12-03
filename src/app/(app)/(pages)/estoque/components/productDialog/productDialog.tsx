@@ -13,6 +13,8 @@ interface ProductDialogProps {
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
   setSelectedProductId?: (value: number | undefined) => void;
+  newProductData?: Produto | undefined;
+  handleSearchFornecedor?: () => void;
 }
 
 export function ProductDialog({
@@ -21,14 +23,14 @@ export function ProductDialog({
   isOpen,
   setIsOpen,
   setSelectedProductId,
+  newProductData,
+  handleSearchFornecedor
 }: ProductDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
 
-  const [ , setSelectedProduct] = useState<Produto | undefined>(
-    undefined
-  );
+  const [, setSelectedProduct] = useState<Produto | undefined>(undefined);
   const [newProduct, setNewProduct] = useState<Produto>({
     id: 0,
     precovenda: 0,
@@ -37,7 +39,6 @@ export function ProductDialog({
     fornecedor: "DESCONHECIDO",
   });
 
-
   return (
     <Dialog
       open={open}
@@ -45,17 +46,18 @@ export function ProductDialog({
         // sempre sincroniza o estado (controlado ou interno)
         setOpen(nextOpen);
 
+        if( newProductData && nextOpen ) {
+          setNewProduct({
+            ...newProductData
+          });
+        }
+
         if (!nextOpen) {
           setSelectedProductId?.(undefined);
           setSelectedProduct(undefined);
-          setNewProduct({
-            id: 0,
-            precovenda: 0,
-            status_estoque: Estoque_status.OK,
-            unidade: Unidade_medida.UN,
-            fornecedor: "DESCONHECIDO",
-          });
+          setNewProduct({});
         }
+        
       }}
     >
       <DialogTrigger autoFocus={false} asChild>
@@ -65,6 +67,7 @@ export function ProductDialog({
         <EditContent productId={productId} />
       ) : (
         <RegisterContent
+          handleSearchFornecedor={handleSearchFornecedor}
           setSelectedProductId={setSelectedProductId}
           newProduct={newProduct}
           setNewProduct={setNewProduct}
