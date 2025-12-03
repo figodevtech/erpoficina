@@ -1,5 +1,6 @@
 // src/app/api/tipos/setores/[id]/route.ts
-import { NextResponse } from "next/server";
+
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -8,15 +9,26 @@ export const revalidate = 0;
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false, autoRefreshToken: false } }
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  }
 );
 
-type Params = { params: { id: string } };
+// 👇 Tipo correto para o contexto em Next 15 (params é um Promise)
+type Params = {
+  params: Promise<{ id: string }>;
+};
 
-export async function PUT(request: Request, { params }: Params) {
+export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const id = Number(params.id);
-    if (!id || Number.isNaN(id)) {
+    // 👇 agora precisamos "await" nos params
+    const { id } = await params;
+    const setorId = Number(id);
+
+    if (!setorId || Number.isNaN(setorId)) {
       return NextResponse.json(
         { error: "ID inválido" },
         { status: 400 }
@@ -24,6 +36,7 @@ export async function PUT(request: Request, { params }: Params) {
     }
 
     const body = await request.json();
+
     const nome = (body?.nome ?? "").trim();
     const descricao = (body?.descricao ?? null) as string | null;
     const responsavel = (body?.responsavel ?? null) as string | null;
@@ -45,7 +58,7 @@ export async function PUT(request: Request, { params }: Params) {
         responsavel,
         ativo,
       })
-      .eq("id", id)
+      .eq("id", setorId)
       .select("id,nome,descricao,responsavel,ativo")
       .single();
 
@@ -53,7 +66,11 @@ export async function PUT(request: Request, { params }: Params) {
 
     return NextResponse.json(
       { item: data },
-      { headers: { "Cache-Control": "no-store" } }
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (err: any) {
     console.error("PUT /api/tipos/setores/[id]", err);
@@ -64,10 +81,12 @@ export async function PUT(request: Request, { params }: Params) {
   }
 }
 
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const id = Number(params.id);
-    if (!id || Number.isNaN(id)) {
+    const { id } = await params;
+    const setorId = Number(id);
+
+    if (!setorId || Number.isNaN(setorId)) {
       return NextResponse.json(
         { error: "ID inválido" },
         { status: 400 }
@@ -94,7 +113,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const { data, error } = await supabase
       .from("setor")
       .update(patch)
-      .eq("id", id)
+      .eq("id", setorId)
       .select("id,nome,descricao,responsavel,ativo")
       .single();
 
@@ -102,7 +121,11 @@ export async function PATCH(request: Request, { params }: Params) {
 
     return NextResponse.json(
       { item: data },
-      { headers: { "Cache-Control": "no-store" } }
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (err: any) {
     console.error("PATCH /api/tipos/setores/[id]", err);

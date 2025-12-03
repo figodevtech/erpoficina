@@ -22,7 +22,6 @@ import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import axios from "axios";
-import { Upload } from "lucide-react";
 import {
   Banco,
   Categoria_transacao,
@@ -47,7 +46,6 @@ export default function EditContent({
   const [selectedTransaction, setSelectedTransaction] = useState<
     Transaction | undefined
   >(undefined);
-  const [isSubmitting] = useState(false);
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);

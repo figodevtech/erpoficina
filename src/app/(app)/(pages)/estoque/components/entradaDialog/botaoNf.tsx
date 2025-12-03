@@ -1,15 +1,10 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { UploadCloud, X } from "lucide-react";
+import { UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { NF } from "./types";
 
-type ParsedInvoice = {
-  chaveAcesso: string | null;
-  numeroNota: string | null;
-};
 
 interface BotaoNfProps {
   setParsed: (parsed: NF | null) => void;

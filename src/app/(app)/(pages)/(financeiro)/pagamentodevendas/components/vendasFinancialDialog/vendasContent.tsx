@@ -1,4 +1,3 @@
-import { Ordem } from "@/app/(app)/(pages)/ordens/types";
 import {
   DialogContent,
   DialogDescription,

@@ -16,10 +16,6 @@ function isOpen() {
 
 /**
  * POST /api/users/[id]
- * body: { acao?: "convite" | "definir_senha"; senha?: string }
- *
- * - acao "convite"       → envia e-mail de redefinição/primeiro acesso
- * - acao "definir_senha" → define a senha diretamente no Auth
  */
 export async function POST(
   req: NextRequest,
@@ -36,7 +32,6 @@ export async function POST(
       senha?: string;
     };
 
-    // normaliza + aceita sinônimos antigos ("invite", "set_password")
     const rawAcao = (body.acao ?? "convite").toString().toLowerCase().trim();
 
     let acao: "convite" | "definir_senha";
@@ -54,7 +49,6 @@ export async function POST(
       );
     }
 
-    // Carrega usuário na tabela "usuario" para obter email e nome
     const { data: usuario, error: uErr } = await supabaseAdmin
       .from("usuario")
       .select("id, email, nome")
@@ -76,7 +70,6 @@ export async function POST(
       );
     }
 
-    // 1) ENVIAR CONVITE (e-mail de redefinição / primeiro acesso)
     if (acao === "convite") {
       const redirectTo =
         process.env.SUPABASE_RESET_REDIRECT_URL ||
@@ -100,7 +93,6 @@ export async function POST(
       );
     }
 
-    // 2) DEFINIR SENHA DIRETAMENTE
     if (acao === "definir_senha") {
       const senha = (body.senha || "").trim();
 
@@ -130,7 +122,6 @@ export async function POST(
       );
     }
 
-    // fallback (não deveria chegar aqui)
     return NextResponse.json(
       { error: "Ação inválida." },
       { status: 400 }
@@ -270,8 +261,9 @@ export async function PUT(
       }
     }
 
+    // 👇 AQUI O AJUSTE
     const { GET: listUsers } = await import("../route");
-    return listUsers();
+    return listUsers(req); // passa o req esperado pelo GET
   } catch (e: any) {
     console.error("[/api/users/:id PUT] error:", e);
     const status = /não autenticado|unauth|auth/i.test(String(e?.message))
@@ -284,31 +276,36 @@ export async function PUT(
   }
 }
 
-// export async function DELETE(
-//   req: NextRequest,
-//   context: { params: Promise<{ id: string }> }
-// ) {
-//   try {
-//     const session = isOpen() ? null : await auth();
-//     await ensureAccess(session);
+// Se quiser reativar o DELETE, já deixe assim:
+///*
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = isOpen() ? null : await auth();
+    await ensureAccess(session);
 
-//     const { id: userId } = await context.params;
+    const { id: userId } = await context.params;
 
-//     const { error: dErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-//     if (dErr) throw dErr;
+    const { error: dErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (dErr) throw dErr;
 
-//     await supabaseAdmin.from("usuario").delete().eq("id", userId);
+    await supabaseAdmin.from("usuario").delete().eq("id", userId);
 
-//     const { GET: listUsers } = await import("../route");
-//     return listUsers();
-//   } catch (e: any) {
-//     console.error("[/api/users/:id DELETE] error:", e);
-//     const status = /não autenticado|unauth|auth/i.test(String(e?.message))
-//       ? 401
-//       : 500;
-//     return NextResponse.json(
-//       { error: e?.message ?? "Erro ao remover usuário" },
-//       { status }
-//     );
-//   }
-// }
+    const { GET: listUsers } = await import("../route");
+    return listUsers(req); // idem aqui
+  } catch (e: any) {
+    console.error("[/api/users/:id DELETE] error:", e);
+    const status = /não autenticado|unauth|auth/i.test(String(e?.message))
+      ? 401
+      : 500;
+    return NextResponse.json(
+      { error: e?.message ?? "Erro ao remover usuário" },
+      { status }
+    );
+  }
+}
+//*/
+
+

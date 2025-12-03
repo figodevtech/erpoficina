@@ -96,33 +96,41 @@ export function POSSystem() {
     return matchesText && matchesCategory;
   });
   const addToCart = (product: Produto) => {
-    if (product.estoque === undefined) return;
-    if (product.estoque <= 0) return;
+  // Garante que tem estoque válido
+  if (product.estoque == null || product.estoque <= 0) return;
 
-    const existingItem = cart.find((item) => item.id === product.id);
-    if (existingItem) {
-      const newQuantity = existingItem.quantity + 1;
-      if (newQuantity <= product.estoque) {
-        setCart(
-          cart.map((item) =>
-            item.id === product.id ? { ...item, quantity: newQuantity } : item
-          )
-        );
-      }
-    } else {
-      setCart([
-        ...cart,
-        {
-          id: product.id,
-          titulo: product.titulo || "SEM TÍTULO",
-          precovenda: product.precovenda,
-          quantity: 1,
-          grupo: product.grupo || "SEM GRUPO",
-          estoque: product.estoque || 0,
-        },
-      ]);
+  // Garante que id e precovenda não são undefined/null
+  if (product.id == null || product.precovenda == null) {
+    console.error("Produto inválido para o PDV (id ou precovenda ausentes)", product);
+    return;
+  }
+
+  const existingItem = cart.find((item) => item.id === product.id);
+
+  if (existingItem) {
+    const newQuantity = existingItem.quantity + 1;
+    if (newQuantity <= product.estoque) {
+      setCart(
+        cart.map((item) =>
+          item.id === product.id ? { ...item, quantity: newQuantity } : item
+        )
+      );
     }
-  };
+  } else {
+    setCart([
+      ...cart,
+      {
+        id: product.id,                     // agora é number garantido
+        titulo: product.titulo || "SEM TÍTULO",
+        precovenda: product.precovenda,     // agora é number garantido
+        quantity: 1,
+        grupo: product.grupo || "SEM GRUPO",
+        estoque: product.estoque,          // já garantimos que não é null/undefined
+      },
+    ]);
+  }
+};
+
 
   const removeFromCart = (productId: number) => {
     setCart(cart.filter((item) => item.id !== productId));
@@ -342,7 +350,7 @@ console.log(cart)
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-border">
                       <span className="font-bold text-primary">
-                        R$ {product.precovenda.toFixed(2)}
+                        R$ {product.precovenda?.toFixed(2)}
                       </span>
                       <Button
                         onClick={() => addToCart(product)}

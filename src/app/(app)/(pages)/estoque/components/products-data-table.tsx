@@ -31,7 +31,6 @@ import {
   CircleOff,
   Store,
   Plus,
-  ArrowBigDown,
   FileText,
 } from "lucide-react";
 import {
@@ -274,7 +273,6 @@ export default function ProductsDataTable({
 
           <TableBody>
             {products.map((p) => {
-              const valorTotal = (p.estoque ?? 0) * (p.precovenda || 0);
 
               return (
                 <TableRow

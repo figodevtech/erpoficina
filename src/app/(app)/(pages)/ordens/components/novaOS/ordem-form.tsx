@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, User2, ClipboardList, Building2, Wrench } from "lucide-react";
+import { Search, User2, ClipboardList, Building2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "../../../clientes/types";
@@ -40,11 +40,11 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   // Atendimento/cliente
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
   const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
-  const [docBusca, setDocBusca] = useState("");
+  const [docBusca, ] = useState("");
   const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
-  const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [, setBuscandoCliente] = useState(false);
   const [openCustomer, setOpenCustomer] = useState(false);
   const [erroCliente, setErroCliente] = useState<string | null>(null);
 
@@ -97,28 +97,28 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     [veiculosDoCliente]
   );
 
-  const buscarClientePorDocumento = async () => {
-    const raw = docBusca.trim();
-    if (!raw) return setErroCliente("Informe um CPF/CNPJ para buscar.");
-    setErroCliente(null);
-    setBuscandoCliente(true);
-    setCliente(null);
-    setVeiculosDoCliente([]);
-    setVeiculoSelecionadoId(null);
-    try {
-      const url = new URL("/api/clientes/buscar-documento", window.location.origin);
-      url.searchParams.set("doc", raw);
-      const r = await fetch(url.toString(), { cache: "no-store" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "Não foi possível buscar o cliente.");
-      setCliente(j?.cliente ?? null);
-      setVeiculosDoCliente(j?.veiculos ?? []);
-    } catch (e: any) {
-      setErroCliente(e?.message ?? "Erro ao consultar o cliente.");
-    } finally {
-      setBuscandoCliente(false);
-    }
-  };
+  // const buscarClientePorDocumento = async () => {
+  //   const raw = docBusca.trim();
+  //   if (!raw) return setErroCliente("Informe um CPF/CNPJ para buscar.");
+  //   setErroCliente(null);
+  //   setBuscandoCliente(true);
+  //   setCliente(null);
+  //   setVeiculosDoCliente([]);
+  //   setVeiculoSelecionadoId(null);
+  //   try {
+  //     const url = new URL("/api/clientes/buscar-documento", window.location.origin);
+  //     url.searchParams.set("doc", raw);
+  //     const r = await fetch(url.toString(), { cache: "no-store" });
+  //     const j = await r.json();
+  //     if (!r.ok) throw new Error(j?.error || "Não foi possível buscar o cliente.");
+  //     setCliente(j?.cliente ?? null);
+  //     setVeiculosDoCliente(j?.veiculos ?? []);
+  //   } catch (e: any) {
+  //     setErroCliente(e?.message ?? "Erro ao consultar o cliente.");
+  //   } finally {
+  //     setBuscandoCliente(false);
+  //   }
+  // };
 
   // expõe submit (mantendo o padrão)
   useEffect(() => {

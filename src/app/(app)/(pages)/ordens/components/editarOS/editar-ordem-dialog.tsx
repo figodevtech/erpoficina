@@ -11,12 +11,12 @@ export function EditarOSDialog({
   open,
   onOpenChange,
   defaultValues,
-  onEdit,
+  // onEdit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultValues: any | null;
-  onEdit?: (dados: any) => Promise<void> | void;
+  // onEdit?: (dados: any) => Promise<void> | void;
 }) {
   const submitRef = useRef<null | (() => void)>(null);
   const [saving, setSaving] = useState(false);

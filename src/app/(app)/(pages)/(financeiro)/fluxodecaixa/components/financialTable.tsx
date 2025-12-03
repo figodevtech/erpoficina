@@ -311,7 +311,7 @@ export default function FinancialTable({
                           <ConculidoAlert
                             isAlertOpen={isAlertOpen2}
                             setIsAlertOpen={setIsAlertOpen2}
-                            handleSetConcluido={(value) => console.log("sdfsd")}
+                            handleSetConcluido={(value) => console.log(value)}
                             idConcluido={t.id}
                           >
                             <Button

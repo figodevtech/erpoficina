@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Fornecedor, Pagination } from "../(pages)/estoque/types";
-import { set } from "nprogress";
 
 interface FornecedorSelectProps {
   children?: ReactNode;
@@ -78,6 +77,7 @@ export default function FornecedorSelect({
         setPagination(response.data.pagination);
       }
     } catch (error) {
+      console.log(error)
     } finally {
       setIsLoading(false);
     }

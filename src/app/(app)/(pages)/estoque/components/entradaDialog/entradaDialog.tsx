@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Paperclip } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import ValueInput from "../productDialog/valueInput";
 import { toast } from "sonner";
@@ -70,7 +70,6 @@ export default function EntradaDialog({
 }: EntradaDialogProps) {
   const [newQtd, setNewQtd] = useState(0);
   const [value, setValue] = useState(0);
-  const [parsed, setParsed] = useState<any>(null);
   const isMobile = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingFornecedor, setIsLoadingFornecedor] = useState(false);
