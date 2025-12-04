@@ -41,7 +41,10 @@ export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
 
-  const token = await getToken({ req });
+  const token = await getToken({
+  req,
+  secret: process.env.AUTH_SECRET,
+});
 
   let isLoggedIn = false;
   let reason: "inactive" | null = null;
