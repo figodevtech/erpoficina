@@ -17,7 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  AlertTriangle,
   Clock,
   ChevronDown,
   Trash2Icon,
@@ -26,12 +25,8 @@ import {
   ChevronLeftIcon,
   ChevronsLeft,
   Loader2,
-  Edit,
   Loader,
-  CircleOff,
-  Store,
   DollarSign,
-  Handshake,
   Check,
   EyeIcon,
 } from "lucide-react";
@@ -124,10 +119,7 @@ export default function VendasDataTable({
   handleGetVendas,
   fetchStatusCounts,
   status,
-  selectedVendaId,
   setSelectedVendaId,
-  isOpen,
-  setIsOpen,
 }: VendasDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   return (

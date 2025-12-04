@@ -27,14 +27,14 @@ export async function GET(req: Request) {
       .from('produto')
       .select(
         `
-        id, titulo, precovenda, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, fornecedor, grupo, imgUrl, exibirPdv, tituloMarketplace, descricaoMarketplace
+        id, titulo, descricao, precovenda, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, grupo, imgUrl, exibirPdv, tituloMarketplace, descricaoMarketplace
         `
       )
       .order('id', { ascending: false });
 
     if (q) {
       query = query.or(
-        `referencia.ilike.%${q}%,titulo.ilike.%${q}%,fornecedor.ilike.%${q}%,fabricante.ilike.%${q}%`
+        `referencia.ilike.%${q}%,titulo.ilike.%${q}%,,descricao.ilike.%${q}%fabricante.ilike.%${q}%`
       );
     }
 

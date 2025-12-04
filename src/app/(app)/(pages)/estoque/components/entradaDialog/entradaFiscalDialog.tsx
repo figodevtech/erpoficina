@@ -1,4 +1,4 @@
-import { useIsMobile } from "@/app/(app)/hooks/use-mobile";
+// import { useIsMobile } from "@/app/(app)/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 
 import {
-  AlertCircle,
   Loader2,
   Minus,
   PackagePlus,
@@ -24,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Estoque_status, Pagination, Unidade_medida } from "../../types";
+import { Estoque_status, Pagination } from "../../types";
 import BotaoNf from "./botaoNf";
 import { Separator } from "@/components/ui/separator";
 import {

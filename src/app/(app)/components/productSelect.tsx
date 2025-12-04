@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
-import { set } from "nprogress";
 
 interface ProductSelectProps {
   children?: ReactNode;

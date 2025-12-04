@@ -3,7 +3,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ReactNode, } from "react";
-import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
 import VendasContent from "./vendasContent";
 import { vendaStatus } from "@/app/(app)/(pages)/historicovendas/types";
 

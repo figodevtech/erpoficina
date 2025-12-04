@@ -36,7 +36,9 @@ export async function GET() {
         id_csc = nfe.data.id_csc ?? "";
         natureza_operacao = nfe.data.natureza_operacao ?? "";
       }
-    } catch (_) {}
+    } catch (error) {
+      console.log(error)
+    }
 
     return NextResponse.json({
       serieNFe: serie_nfe,
@@ -84,7 +86,8 @@ export async function PUT(req: NextRequest) {
         .maybeSingle();
       if (upNfe.error) throw upNfe.error;
       saved = upNfe.data;
-    } catch (_) {
+    } catch (error) {
+      console.log(error)
       // se tabela não existir, apenas segue (CSCs já foram salvos)
     }
 

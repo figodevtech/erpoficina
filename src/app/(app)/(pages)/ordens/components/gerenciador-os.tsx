@@ -46,11 +46,11 @@ export default function GerenciadorOS() {
         open={abrirEditar}
         onOpenChange={(v) => setAbrirEditar(v)}
         defaultValues={selecionada}
-        onEdit={async (payload) => {
-          await editarOrdem(payload.id, payload);
-          setAbrirEditar(false);
-          window.dispatchEvent(new CustomEvent("os:refresh"));
-        }}
+        // onEdit={async (payload) => {
+        //   await editarOrdem(payload.id, payload);
+        //   setAbrirEditar(false);
+        //   window.dispatchEvent(new CustomEvent("os:refresh"));
+        // }}
       />
 
       {/* Orçamento */}
