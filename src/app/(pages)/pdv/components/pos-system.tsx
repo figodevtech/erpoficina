@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Store,
   UserRoundX,
+  CircleOff,
 } from "lucide-react";
 import {
   Estoque_status,
@@ -35,7 +36,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "@/app/(app)/(pages)/clientes/types";
@@ -68,12 +69,16 @@ export function POSSystem() {
     const fetchProdutos = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/pdv/products");
-        if (!response.ok) throw new Error("Erro ao carregar produtos");
-        const result = await response.json();
-        setProdutos(result.data || []);
+        const response = await axios.get("/api/pdv/products");
+        if(response.status === 200){
+          const items =  response.data.data;
+          setProdutos(items);
+        }
       } catch (error) {
-        console.error("[v0] Erro ao buscar produtos:", error);
+        if(isAxiosError(error)){
+          toast.error("Falha ao buscar produtos", {description: error.message})
+          console.log(error)
+        }
         setProdutos([]);
       } finally {
         setLoading(false);
@@ -303,7 +308,7 @@ console.log(cart)
             </Card>
 
             {/* Products Grid */}
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
+            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
               {filteredProducts.map((product) => (
                 <Card
                   key={product.id}
@@ -336,6 +341,16 @@ console.log(cart)
                         </Tooltip>
                         </div>
                       )}
+                      {product.status_estoque === Estoque_status.SEM_ESTOQUE && (
+                        <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-purple-800 not-dark:bg-purple-300">
+                          <Tooltip>
+                          <TooltipTrigger>
+                          <CircleOff className="h-4 w-4" />
+                           </TooltipTrigger>
+                          <TooltipContent>Sem estoque</TooltipContent>
+                        </Tooltip>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <h3 className="font-semibold text-foreground text-sm line-clamp-2">
@@ -358,7 +373,7 @@ console.log(cart)
                           product.estoque && product.estoque <= 0 ? true : false
                         }
                         size="sm"
-                        className="bg-primary hover:cursor-pointer hover:bg-primary/90 text-primary-foreground h-8 px-2 disabled:opacity-50"
+                        className={`bg-primary hover:cursor-pointer hover:bg-primary/90 text-primary-foreground h-8 px-2 disabled:opacity-50 ${product.estoque ? "hover:cursor-pointer" : "hover:cursor-not-allowed"}`}
                       >
                         <Plus className="h-4 w-4" />
                       </Button>

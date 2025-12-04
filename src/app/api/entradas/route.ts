@@ -5,12 +5,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const ENTRADA_FIELDS = `
-  id, quantidade, created_at, produtoid, fornecedorid, fiscal, notachave
+  id, quantidade, created_at, produtoid, fornecedorid, fiscal, notachave, quantidade
 `;
 
 // Resumo do produto para retornar após a entrada
 const PRODUTO_SUMMARY_FIELDS = `
-  id, titulo, estoque, estoqueminimo, status_estoque, fiscal, notachave
+  id, titulo, estoque, estoqueminimo, status_estoque
 `;
 
 // ============= Helpers =============
