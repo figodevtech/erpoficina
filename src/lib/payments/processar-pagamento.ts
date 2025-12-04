@@ -12,6 +12,9 @@ export const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 // Literal já usado nas suas rotas de transação
 const TIPO_TRANSACAO_RECEITA = "RECEITA";
 
+// Categoria fixa da transação (enum categoria_transacao no banco)
+const CATEGORIA_TRANSACAO_ORDEM_SERVICO = "ORDEM_SERVICO";
+
 /**
  * Mapeia o método do pagamento (texto livre da tabela `pagamento.metodo`)
  * para um valor VÁLIDO do enum `metodo_pagamento` da tabela `transacao`.
@@ -58,7 +61,7 @@ function mapearMetodoPagamentoEnum(metodoBruto: any): string | null {
  * - Se PAGO:
  *   - Marca OS como CONCLUIDO
  *   - Se tiver flag EMITIR_NFE_PRODUTOS_QUANDO_PAGO → cria stub de NFE/NFSE
- *   - Cria transação de RECEITA na tabela transacao
+ *   - Cria transação de RECEITA na tabela transacao (categoria ORDEM_SERVICO)
  * - Fecha pedido no Pagar.me (provider_tx_id)
  */
 export async function processarPagamentoConcluido(opts: {
@@ -237,7 +240,7 @@ async function criarNotaFiscalStubParaOs(
 /**
  * Cria uma transação de RECEITA na tabela transacao
  * quando o pagamento da OS é marcado como PAGO.
- * - Usa categoria vinda da tabela categoriatransacao (primeira ativa)
+ * - Categoria FIXA: ORDEM_SERVICO (enum categoria_transacao)
  * - Usa cliente da OS como pagador
  * - Usa pagamento.metodo mapeado para o enum de metodopagamento
  */
@@ -302,25 +305,8 @@ async function criarTransacaoReceitaParaPagamento(pagamento: any) {
 
     const bancoId = conta.id;
 
-    // 4) Categoria da transação: pega da tabela categoriatransacao (primeira ativa)
-    const { data: categoriaRow, error: catErr } = await supabaseAdmin
-      .from("categoriatransacao")
-      .select("id, nome")
-      .eq("ativo", true)
-      .order("id", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (catErr || !categoriaRow || !categoriaRow.nome) {
-      console.error(
-        "Não foi possível determinar categoria de transação válida (enum):",
-        catErr,
-        categoriaRow
-      );
-      return;
-    }
-
-    const categoriaEnum = categoriaRow.nome as string;
+    // 4) Categoria da transação: fixa ORDEM_SERVICO (enum categoria_transacao)
+    const categoriaEnum = CATEGORIA_TRANSACAO_ORDEM_SERVICO;
 
     // 5) Ajusta valor: pagamento.valor está em centavos → converte para reais
     const valorEmCentavos = Number(pagamento.valor ?? 0);
@@ -353,7 +339,7 @@ async function criarTransacaoReceitaParaPagamento(pagamento: any) {
       valorLiquido: valor,
       data: agoraIso,
       metodopagamento: metodoEnum, // enum válido: PIX, DEBITO, CREDITO, TRANSFERENCIA, BOLETO, DINHEIRO
-      categoria: categoriaEnum, // enum válido de categoria_transacao
+      categoria: categoriaEnum, // enum categoria_transacao = 'ORDEM_SERVICO'
       tipo: TIPO_TRANSACAO_RECEITA, // "RECEITA"
       cliente_id: cliente.id,
       banco_id: bancoId,
