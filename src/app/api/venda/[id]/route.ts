@@ -2,12 +2,8 @@
 
 export const runtime = "nodejs";
 
-<<<<<<< HEAD
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-=======
-import { NextRequest, NextResponse } from "next/server";
->>>>>>> d6987748f0049604ad91ff2dbaa29ba8839ba2c4
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type Status = "ABERTA" | "PAGAMENTO" | "FINALIZADA" | "CANCELADA";
@@ -97,18 +93,12 @@ type RouteContext = {
 /**
  * Retorna uma venda específica com itens + produto
  */
-<<<<<<< HEAD
 export async function GET(req: NextRequest, ctx: ParamsCtx) {
   try {
     // só pra não dar warning de variável não usada
     req;
 
     const { id: idStr } = await ctx.params;
-=======
-export async function GET(_req: NextRequest, context: RouteContext) {
-  try {
-    const { id: idStr } = await context.params; // 👈 await nos params
->>>>>>> d6987748f0049604ad91ff2dbaa29ba8839ba2c4
     const parsed = parseId(idStr);
 
     if (parsed.error) {
@@ -168,15 +158,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
  * Obs: aqui NÃO estou atualizando itens da venda (vendaproduto),
  * apenas campos diretos da tabela venda.
  */
-<<<<<<< HEAD
 export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
   try {
     const { id: idStr } = await ctx.params;
-=======
-export async function PATCH(req: NextRequest, context: RouteContext) {
-  try {
-    const { id: idStr } = await context.params; // 👈 await nos params
->>>>>>> d6987748f0049604ad91ff2dbaa29ba8839ba2c4
     const parsed = parseId(idStr);
 
     if (parsed.error) {
@@ -318,18 +302,12 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
  * Aqui eu checo antes se existe transação apontando para essa venda.
  * Se existir, retorno 409 com mensagem explicando.
  */
-<<<<<<< HEAD
 export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
   try {
     // só pra não dar warning de não usado
     req;
 
     const { id: idStr } = await ctx.params;
-=======
-export async function DELETE(_req: NextRequest, context: RouteContext) {
-  try {
-    const { id: idStr } = await context.params; // 👈 await nos params
->>>>>>> d6987748f0049604ad91ff2dbaa29ba8839ba2c4
     const parsed = parseId(idStr);
 
     if (parsed.error) {

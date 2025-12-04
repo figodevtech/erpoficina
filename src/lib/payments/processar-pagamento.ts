@@ -126,7 +126,7 @@ export async function processarPagamentoConcluido(opts: {
     }
   }
 
-  // 5) Se tiver evento EMITIR_NFE_PRODUTOS_QUANDO_PAGO → cria stub de nota
+  // 5) Se tiver evento EMITIR_NFE_PRODUTOS_QUANDO_PAGO → cria stub de notas
   if (novoStatus === "PAGO") {
     const { data: eventosNfe } = await supabaseAdmin
       .from("pagamento_evento")
@@ -150,29 +150,19 @@ export async function processarPagamentoConcluido(opts: {
 
 /**
  * Stub de emissão de Nota Fiscal baseada nos itens da OS:
- * - se só tiver serviços -> tipo "NFSE"
- * - se tiver produtos (com ou sem serviços) -> tipo "NFE"
- * - grava em notafiscal e coloca um JSON dos itens no campo xml só para debug/simulação
+ * - se só tiver serviços -> cria apenas NFSE
+ * - se só tiver produtos -> cria apenas NFE
+ * - se tiver produtos E serviços -> cria UMA NFE (produtos) e UMA NFSE (serviços)
+ *
+ * Cada registro vai para a tabela notafiscal, com:
+ *  - tipo: "NFE" ou "NFSE"
+ *  - xml: JSON com os itens usados na nota (apenas pra debug/simulação)
  */
 async function criarNotaFiscalStubParaOs(
   ordemServicoId: number,
   pagamentoId: number
 ) {
   try {
-    // Evita criar nota duplicada para mesma OS
-    const { data: notasExistentes } = await supabaseAdmin
-      .from("notafiscal")
-      .select("id")
-      .eq("ordemservicoid", ordemServicoId)
-      .limit(1);
-
-    if (notasExistentes && notasExistentes.length) {
-      console.log(
-        "Já existe nota fiscal vinculada à OS. Não será criado stub duplicado."
-      );
-      return;
-    }
-
     // Busca itens de produtos e serviços da OS
     const { data: itensProduto, error: errProd } = await supabaseAdmin
       .from("osproduto")
@@ -194,44 +184,83 @@ async function criarNotaFiscalStubParaOs(
     const temProdutos = (itensProduto?.length ?? 0) > 0;
     const temServicos = (itensServico?.length ?? 0) > 0;
 
-    // Regra:
-    // - só serviços -> NFSE
-    // - produtos (com ou sem serviços) -> NFE
-    const tipoNota = !temProdutos && temServicos ? "NFSE" : "NFE";
-
-    const resumoItens = {
-      produtos: itensProduto ?? [],
-      servicos: itensServico ?? [],
-    };
-
-    const { data: nota, error: errNota } = await supabaseAdmin
-      .from("notafiscal")
-      .insert({
-        ordemservicoid: ordemServicoId,
-        tipo: tipoNota, // "NFE" ou "NFSE"
-        numero: "SIMULACAO",
-        serie: "1",
-        status: "PENDENTE_EMISSAO",
-        xml: JSON.stringify(resumoItens), // só pra simulação
-        protocolo: null,
-      })
-      .select()
-      .single();
-
-    if (errNota) {
-      console.error("Erro ao criar stub de nota fiscal:", errNota);
+    if (!temProdutos && !temServicos) {
+      console.log(
+        "OS não possui produtos nem serviços para emissão de nota (stub)."
+      );
       return;
     }
 
-    await supabaseAdmin.from("pagamento_evento").insert({
-      pagamentoid: pagamentoId,
-      tipo: "NFE_STUB_CRIADA",
-      payload: { notafiscalid: nota.id, tipo: tipoNota },
-    });
+    // Verifica se já existem notas dessa OS por tipo,
+    // para não criar NFE/NFSE duplicadas.
+    const { data: notasExistentes, error: errNotas } = await supabaseAdmin
+      .from("notafiscal")
+      .select("id, tipo")
+      .eq("ordemservicoid", ordemServicoId);
 
-    console.log(
-      `Stub de Nota Fiscal (${tipoNota}) criada para OS ${ordemServicoId}, nota ${nota.id}.`
-    );
+    if (errNotas) {
+      console.error("Erro ao buscar notas fiscais existentes da OS:", errNotas);
+    }
+
+    const jaTemNfe =
+      notasExistentes?.some(
+        (n) => String(n.tipo).toUpperCase() === "NFE"
+      ) ?? false;
+    const jaTemNfse =
+      notasExistentes?.some(
+        (n) => String(n.tipo).toUpperCase() === "NFSE"
+      ) ?? false;
+
+    // Helper para inserir uma nota
+    async function inserirNota(tipo: "NFE" | "NFSE", payloadItens: any) {
+      const { data: nota, error: errNota } = await supabaseAdmin
+        .from("notafiscal")
+        .insert({
+          ordemservicoid: ordemServicoId,
+          tipo, // "NFE" ou "NFSE"
+          numero: "SIMULACAO",
+          serie: "1",
+          status: "PENDENTE_EMISSAO",
+          xml: JSON.stringify(payloadItens), // só pra simulação
+          protocolo: null,
+        })
+        .select()
+        .single();
+
+      if (errNota) {
+        console.error(
+          `Erro ao criar stub de nota fiscal (${tipo}):`,
+          errNota
+        );
+        return;
+      }
+
+      await supabaseAdmin.from("pagamento_evento").insert({
+        pagamentoid: pagamentoId,
+        tipo: "NFE_STUB_CRIADA",
+        payload: { notafiscalid: nota.id, tipo },
+      });
+
+      console.log(
+        `Stub de Nota Fiscal (${tipo}) criada para OS ${ordemServicoId}, nota ${nota.id}.`
+      );
+    }
+
+    // 1) Nota de produtos (NFE)
+    if (temProdutos && !jaTemNfe) {
+      await inserirNota("NFE", {
+        produtos: itensProduto ?? [],
+        servicos: [],
+      });
+    }
+
+    // 2) Nota de serviços (NFSE)
+    if (temServicos && !jaTemNfse) {
+      await inserirNota("NFSE", {
+        produtos: [],
+        servicos: itensServico ?? [],
+      });
+    }
   } catch (erro) {
     console.error("Erro em criarNotaFiscalStubParaOs:", erro);
   }

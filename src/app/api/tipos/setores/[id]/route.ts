@@ -1,11 +1,4 @@
 // src/app/api/tipos/setores/[id]/route.ts
-<<<<<<< HEAD
-=======
-
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
->>>>>>> d6987748f0049604ad91ff2dbaa29ba8839ba2c4
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -24,7 +17,6 @@ const supabase = createClient(
   }
 );
 
-<<<<<<< HEAD
 // Contexto esperado pelo validator do Next 15
 type ParamsCtx = { params: Promise<{ id: string }> };
 
@@ -39,28 +31,6 @@ export async function PUT(request: NextRequest, ctx: ParamsCtx) {
     }
 
     const body = await request.json().catch(() => ({}));
-=======
-// 👇 Tipo correto para o contexto em Next 15 (params é um Promise)
-type Params = {
-  params: Promise<{ id: string }>;
-};
-
-export async function PUT(request: NextRequest, { params }: Params) {
-  try {
-    // 👇 agora precisamos "await" nos params
-    const { id } = await params;
-    const setorId = Number(id);
-
-    if (!setorId || Number.isNaN(setorId)) {
-      return NextResponse.json(
-        { error: "ID inválido" },
-        { status: 400 }
-      );
-    }
-
-    const body = await request.json();
-
->>>>>>> d6987748f0049604ad91ff2dbaa29ba8839ba2c4
     const nome = (body?.nome ?? "").trim();
     const descricao = (body?.descricao ?? null) as string | null;
     const responsavel = (body?.responsavel ?? null) as string | null;
@@ -112,7 +82,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
   }
 }
 
-<<<<<<< HEAD
 // PATCH /api/tipos/setores/[id] -> atualização parcial
 export async function PATCH(request: NextRequest, ctx: ParamsCtx) {
   try {
@@ -121,18 +90,6 @@ export async function PATCH(request: NextRequest, ctx: ParamsCtx) {
 
     if (!Number.isFinite(setorId)) {
       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-=======
-export async function PATCH(request: NextRequest, { params }: Params) {
-  try {
-    const { id } = await params;
-    const setorId = Number(id);
-
-    if (!setorId || Number.isNaN(setorId)) {
-      return NextResponse.json(
-        { error: "ID inválido" },
-        { status: 400 }
-      );
->>>>>>> d6987748f0049604ad91ff2dbaa29ba8839ba2c4
     }
 
     const body = await request.json().catch(() => ({}));
