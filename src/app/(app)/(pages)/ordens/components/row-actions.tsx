@@ -26,6 +26,7 @@ import {
   Eye,
   Trash2,
   ClipboardList,
+  CreditCard,
 } from "lucide-react";
 
 /** Tipo base mínimo da linha */
@@ -55,6 +56,7 @@ type Policy = {
   showStart: boolean;
   showSendToPayment: boolean;
   showReceivePayment: boolean;
+  showStonePayment: boolean;
 };
 
 export function RowActions<TRow extends RowBase>({
@@ -74,6 +76,8 @@ export function RowActions<TRow extends RowBase>({
   setDetailsOpen,
   setChecklistRow,
   setChecklistOpen,
+  setStoneRow,
+  setStoneOpen,
 }: {
   row: TRow;
   policy: Policy;
@@ -90,6 +94,8 @@ export function RowActions<TRow extends RowBase>({
   setDetailsOpen: (open: boolean) => void;
   setChecklistRow: (row: TRow | null) => void;
   setChecklistOpen: (open: boolean) => void;
+  setStoneRow: (row: TRow | null) => void;
+  setStoneOpen: (open: boolean) => void;
 }) {
   const st = String(row.status ?? "").toUpperCase();
 
@@ -99,44 +105,33 @@ export function RowActions<TRow extends RowBase>({
   // ===== Regras baseadas em STATUS + POLICY =====
 
   // Orçamento (abrir tela de orçamento)
-  const showBudget =
-    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO") &&
-    policy.canEditBudget;
+  const showBudget = (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO") && policy.canEditBudget;
 
   // Editar OS
   const showEditOS = st === "ORCAMENTO" && policy.showEditOS;
 
   // Link de aprovação (NÃO mostra em ORCAMENTO_RECUSADO)
-  const showLinkAprov =
-    policy.showLinkAprov &&
-    (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
+  const showLinkAprov = policy.showLinkAprov && (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
 
   // Fluxo de aprovação
-  const showApproveBudget =
-    policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
+  const showApproveBudget = policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
 
-  const showRejectBudget =
-    policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
+  const showRejectBudget = policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
 
   // Cancelar orçamento: em APROVACAO_ORCAMENTO ou ORCAMENTO_RECUSADO
-  const showCancelBudget =
-    policy.showCancelBudget &&
-    (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+  const showCancelBudget = policy.showCancelBudget && (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   // Enviar orçamento para aprovação (ORCAMENTO ou ORCAMENTO_RECUSADO)
-  const showSendToApproval =
-    policy.showSendToApproval &&
-    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+  const showSendToApproval = policy.showSendToApproval && (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   // Orçamento recusado: permitir cancelar OS (muda status p/ CANCELADO)
   const showCancelOSRecusado = st === "ORCAMENTO_RECUSADO";
 
   // Produção / Pagamento
   const showStart = policy.showStart && st === "ORCAMENTO_APROVADO"; // -> EM_ANDAMENTO
-  const showSendToPayment =
-    policy.showSendToPayment && st === "EM_ANDAMENTO"; // -> PAGAMENTO
-  const showReceivePayment =
-    policy.showReceivePayment && st === "PAGAMENTO"; // finalizar pagamento
+  const showSendToPayment = policy.showSendToPayment && st === "EM_ANDAMENTO"; // -> PAGAMENTO
+  const showReceivePayment = policy.showReceivePayment && st === "PAGAMENTO"; // finalizar pagamento
+  const showStonePayment = policy.showStonePayment && st === "PAGAMENTO"; // maquineta Stone
 
   return (
     <DropdownMenu>
@@ -180,9 +175,7 @@ export function RowActions<TRow extends RowBase>({
 
         {/* Enviar para aprovação */}
         {showSendToApproval && (
-          <DropdownMenuItem
-            onClick={() => setStatus(row.id, "APROVACAO_ORCAMENTO")}
-          >
+          <DropdownMenuItem onClick={() => setStatus(row.id, "APROVACAO_ORCAMENTO")}>
             <ThumbsUp className="mr-2 h-4 w-4" />
             Enviar para aprovação
           </DropdownMenuItem>
@@ -190,18 +183,14 @@ export function RowActions<TRow extends RowBase>({
 
         {/* Fluxo de aprovação */}
         {showApproveBudget && (
-          <DropdownMenuItem
-            onClick={() => setStatus(row.id, "ORCAMENTO_APROVADO")}
-          >
+          <DropdownMenuItem onClick={() => setStatus(row.id, "ORCAMENTO_APROVADO")}>
             <ThumbsUp className="mr-2 h-4 w-4" />
             Aprovar orçamento
           </DropdownMenuItem>
         )}
 
         {showRejectBudget && (
-          <DropdownMenuItem
-            onClick={() => setStatus(row.id, "ORCAMENTO_RECUSADO")}
-          >
+          <DropdownMenuItem onClick={() => setStatus(row.id, "ORCAMENTO_RECUSADO")}>
             <XCircle className="mr-2 h-4 w-4" />
             Reprovar orçamento
           </DropdownMenuItem>
@@ -265,6 +254,18 @@ export function RowActions<TRow extends RowBase>({
           >
             <Wallet className="mr-2 h-4 w-4" />
             Receber pagamento
+          </DropdownMenuItem>
+        )}
+
+        {showStonePayment && (
+          <DropdownMenuItem
+            onClick={() => {
+              setStoneRow(row);
+              setStoneOpen(true);
+            }}
+          >
+            <CreditCard className="mr-2 h-4 w-4" />
+            Cobrar na maquineta
           </DropdownMenuItem>
         )}
 

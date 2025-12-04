@@ -2,7 +2,8 @@
 
 export const runtime = "nodejs";
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type Status = "ABERTA" | "PAGAMENTO" | "FINALIZADA" | "CANCELADA";
@@ -57,6 +58,9 @@ type VendaPatchBody = {
   dataVenda?: string | null; // ISO string
 };
 
+// Contexto esperado pelo typed routes do Next 15
+type ParamsCtx = { params: Promise<{ id: string }> };
+
 /* ========================= Helpers ========================= */
 
 function parseId(idStr: string) {
@@ -89,9 +93,12 @@ type RouteContext = {
 /**
  * Retorna uma venda específica com itens + produto
  */
-export async function GET(_req: NextRequest, context: RouteContext) {
+export async function GET(req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id: idStr } = await context.params; // 👈 await nos params
+    // só pra não dar warning de variável não usada
+    req;
+
+    const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {
@@ -151,9 +158,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
  * Obs: aqui NÃO estou atualizando itens da venda (vendaproduto),
  * apenas campos diretos da tabela venda.
  */
-export async function PATCH(req: NextRequest, context: RouteContext) {
+export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id: idStr } = await context.params; // 👈 await nos params
+    const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {
@@ -246,7 +253,6 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     }
 
     if (dataVenda !== undefined) {
-      // poderia validar ISO aqui se quiser ser mais rígido
       updatePayload.datavenda = dataVenda;
     }
 
@@ -296,9 +302,12 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
  * Aqui eu checo antes se existe transação apontando para essa venda.
  * Se existir, retorno 409 com mensagem explicando.
  */
-export async function DELETE(_req: NextRequest, context: RouteContext) {
+export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
   try {
-    const { id: idStr } = await context.params; // 👈 await nos params
+    // só pra não dar warning de não usado
+    req;
+
+    const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {

@@ -40,11 +40,11 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   // Atendimento/cliente
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
   const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
-  const [docBusca, ] = useState("");
+  const [docBusca, setDocBusca] = useState("");
   const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
-  const [, setBuscandoCliente] = useState(false);
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [openCustomer, setOpenCustomer] = useState(false);
   const [erroCliente, setErroCliente] = useState<string | null>(null);
 
@@ -97,28 +97,28 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     [veiculosDoCliente]
   );
 
-  // const buscarClientePorDocumento = async () => {
-  //   const raw = docBusca.trim();
-  //   if (!raw) return setErroCliente("Informe um CPF/CNPJ para buscar.");
-  //   setErroCliente(null);
-  //   setBuscandoCliente(true);
-  //   setCliente(null);
-  //   setVeiculosDoCliente([]);
-  //   setVeiculoSelecionadoId(null);
-  //   try {
-  //     const url = new URL("/api/clientes/buscar-documento", window.location.origin);
-  //     url.searchParams.set("doc", raw);
-  //     const r = await fetch(url.toString(), { cache: "no-store" });
-  //     const j = await r.json();
-  //     if (!r.ok) throw new Error(j?.error || "Não foi possível buscar o cliente.");
-  //     setCliente(j?.cliente ?? null);
-  //     setVeiculosDoCliente(j?.veiculos ?? []);
-  //   } catch (e: any) {
-  //     setErroCliente(e?.message ?? "Erro ao consultar o cliente.");
-  //   } finally {
-  //     setBuscandoCliente(false);
-  //   }
-  // };
+  const buscarClientePorDocumento = async () => {
+    const raw = docBusca.trim();
+    if (!raw) return setErroCliente("Informe um CPF/CNPJ para buscar.");
+    setErroCliente(null);
+    setBuscandoCliente(true);
+    setCliente(null);
+    setVeiculosDoCliente([]);
+    setVeiculoSelecionadoId(null);
+    try {
+      const url = new URL("/api/clientes/buscar-documento", window.location.origin);
+      url.searchParams.set("doc", raw);
+      const r = await fetch(url.toString(), { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "Não foi possível buscar o cliente.");
+      setCliente(j?.cliente ?? null);
+      setVeiculosDoCliente(j?.veiculos ?? []);
+    } catch (e: any) {
+      setErroCliente(e?.message ?? "Erro ao consultar o cliente.");
+    } finally {
+      setBuscandoCliente(false);
+    }
+  };
 
   // expõe submit (mantendo o padrão)
   useEffect(() => {
@@ -291,7 +291,15 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
             </div>
 
             {modoAtendimento === "cadastrado" && (
-              <CustomerSelect open={openCustomer} setOpen={setOpenCustomer} OnSelect={(c) => setCliente(c ?? null)}>
+              <CustomerSelect
+                open={openCustomer}
+                setOpen={setOpenCustomer}
+                OnSelect={(c) => {
+                  setCliente(c ?? null);
+                  setVeiculoSelecionadoId(null);
+                  setVeiculosDoCliente(c?.veiculos ?? []); // <<< popula os veículos do cliente
+                }}
+              >
                 <Button className="w-full md:w-auto hover:cursor-pointer">
                   <Search className="mr-2 h-4 w-4" />
                   Selecionar cliente

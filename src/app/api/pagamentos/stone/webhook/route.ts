@@ -1,0 +1,114 @@
+// src/app/api/pagamentos/stone/webhook/route.ts
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+export async function POST(req: NextRequest) {
+  try {
+    const payload = await req.json();
+
+    const tipoEvento = payload.type as string;
+    const dados = payload.data;
+
+    if (!tipoEvento || !dados) {
+      return NextResponse.json(
+        { ok: false, erro: "Payload inválido" },
+        { status: 400 }
+      );
+    }
+
+    console.log("Webhook recebido:", tipoEvento, dados?.id);
+
+    const codigoPagarme =
+      dados?.id || dados?.code || dados?.order?.id || dados?.order?.code;
+
+    if (!codigoPagarme) {
+      return NextResponse.json(
+        { ok: false, erro: "Sem identificador da transação" },
+        { status: 400 }
+      );
+    }
+
+    // Localiza pagamento pelo provider_tx_id
+    const { data: pagamentos } = await supabaseAdmin
+      .from("pagamento")
+      .select("*")
+      .eq("provider_tx_id", codigoPagarme)
+      .limit(1);
+
+    const pagamento = pagamentos?.[0];
+    if (!pagamento) {
+      console.warn("Pagamento não encontrado para webhook:", codigoPagarme);
+      await supabaseAdmin.from("pagamento_evento").insert({
+        tipo: "WEBHOOK_DESCONHECIDO",
+        payload,
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // Define novo status
+    let novoStatus: string = pagamento.status || "CRIADO";
+    if (tipoEvento === "charge.paid") novoStatus = "PAGO";
+    if (tipoEvento === "charge.refunded") novoStatus = "ESTORNADO";
+
+    // Atualiza pagamento
+    await supabaseAdmin
+      .from("pagamento")
+      .update({
+        status: novoStatus,
+        atualizado_em: new Date().toISOString(),
+        nsu: dados?.transaction_id || dados?.id || null,
+        autorizacao: dados?.authorization_code || null,
+        bandeira: dados?.card?.brand || null,
+      })
+      .eq("id", pagamento.id);
+
+    // Registra evento bruto
+    await supabaseAdmin.from("pagamento_evento").insert({
+      pagamentoid: pagamento.id,
+      tipo: tipoEvento.toUpperCase(),
+      payload,
+    });
+
+    // Se pagamento aprovado, marcar OS como CONCLUIDO
+    if (tipoEvento === "charge.paid" && pagamento.ordemservicoid) {
+      await supabaseAdmin
+        .from("ordemservico")
+        .update({ status: "CONCLUIDO" })
+        .eq("id", pagamento.ordemservicoid);
+    }
+
+    // (Opcional) checar evento de NFe futura
+    if (tipoEvento === "charge.paid") {
+      const { data: eventosNfe } = await supabaseAdmin
+        .from("pagamento_evento")
+        .select("*")
+        .eq("pagamentoid", pagamento.id)
+        .eq("tipo", "EMITIR_NFE_PRODUTOS_QUANDO_PAGO");
+
+      if (eventosNfe?.length) {
+        console.log(
+          `→ Marcar OS ${pagamento.ordemservicoid} para emissão de NFe (implementação futura)`
+        );
+        // aqui depois você chama o serviço que gera a nota
+      }
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Erro no webhook Stone:", err);
+    return NextResponse.json(
+      { ok: false, erro: "Erro interno" },
+      { status: 500 }
+    );
+  }
+}

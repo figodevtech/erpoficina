@@ -1,7 +1,7 @@
 // src/app/api/tipos/grupos-produto/route.ts
 export const runtime = "nodejs";
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -16,7 +16,7 @@ async function ensureAuth() {
 }
 
 // GET /api/tipos/grupos-produto -> listar
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     await ensureAuth();
 
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/tipos/grupos-produto -> criar
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     await ensureAuth();
 
