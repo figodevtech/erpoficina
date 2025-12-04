@@ -1,11 +1,8 @@
 // src/middleware.ts
-
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { auth } from "@/lib/auth"; // MESMO import que você usa no layout
 
-// Rotas realmente públicas (login, recovery e APIs públicas)
 const PUBLIC_PATHS = [
   "/login",
   "/recuperar-senha",
@@ -37,45 +34,40 @@ function isPublicPath(pathname: string) {
   );
 }
 
-export async function middleware(req: NextRequest) {
+// O middleware AGORA é o `auth` do v5 envolvendo a sua lógica
+export default auth(async (req: NextRequest & { auth?: any }) => {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
 
-  const token = await getToken({ req });
+  const session = req.auth; // <- sessão já resolvida pelo Auth v5
+  const user = session?.user;
 
-  let isLoggedIn = false;
-  let reason: "inactive" | null = null;
+  const isLoggedIn = !!user;
+  const isInactive = user && user.ativo === false;
 
-  if (token?.sub) {
-    const { data: row, error } = await supabaseAdmin
-      .from("usuario")
-      .select("ativo")
-      .eq("id", token.sub as string)
-      .maybeSingle();
-
-    if (!error && row && row.ativo === true) {
-      isLoggedIn = true;
-    } else if (!error && row && row.ativo === false) {
-      isLoggedIn = false;
-      reason = "inactive";
-    }
-  }
-
-  if (pathname === "/login" && isLoggedIn) {
+  // Usuário logado ativo tentando ir pra /login -> manda pro /dashboard
+  if (pathname === "/login" && isLoggedIn && !isInactive) {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
-  if (!isLoggedIn && !isPublicPath(pathname)) {
+  // Usuário inativo: manda pra /login com reason=inactive (ajusta se quiser)
+  if (isInactive && !pathname.startsWith("/login")) {
     const url = new URL("/login", nextUrl);
-    url.searchParams.set("callbackUrl", pathname + nextUrl.search);
-    if (reason === "inactive") {
-      url.searchParams.set("reason", "inactive");
-    }
+    url.searchParams.set("reason", "inactive");
     return NextResponse.redirect(url);
   }
 
+  // Usuário NÃO logado tentando rota protegida -> /login com callbackUrl
+  if (!isLoggedIn && !isPublicPath(pathname)) {
+    const url = new URL("/login", nextUrl);
+    url.searchParams.set("callbackUrl", pathname + nextUrl.search);
+    return NextResponse.redirect(url);
+  }
+
+  // Caso normal: segue o fluxo
   return NextResponse.next();
-}
+});
+
 export const config = {
   matcher: ["/:path*"],
 };
