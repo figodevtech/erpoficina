@@ -1,11 +1,8 @@
 // src/middleware.ts
-
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-// Rotas realmente públicas (login, recovery e APIs públicas)
 const PUBLIC_PATHS = [
   "/login",
   "/recuperar-senha",
@@ -41,44 +38,29 @@ export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
 
+  // Lê o token da sessão (Auth v5 usa AUTH_SECRET)
   const token = await getToken({
-  req,
-  secret: process.env.AUTH_SECRET,
-});
+    req,
+    secret: process.env.AUTH_SECRET,
+  });
 
-  let isLoggedIn = false;
-  let reason: "inactive" | null = null;
+  const isLoggedIn = !!token;
 
-  if (token?.sub) {
-    const { data: row, error } = await supabaseAdmin
-      .from("usuario")
-      .select("ativo")
-      .eq("id", token.sub as string)
-      .maybeSingle();
-
-    if (!error && row && row.ativo === true) {
-      isLoggedIn = true;
-    } else if (!error && row && row.ativo === false) {
-      isLoggedIn = false;
-      reason = "inactive";
-    }
-  }
-
+  // Usuário logado tentando acessar /login -> manda pro /dashboard
   if (pathname === "/login" && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
+  // Usuário NÃO logado tentando acessar rota protegida -> manda pro /login
   if (!isLoggedIn && !isPublicPath(pathname)) {
     const url = new URL("/login", nextUrl);
     url.searchParams.set("callbackUrl", pathname + nextUrl.search);
-    if (reason === "inactive") {
-      url.searchParams.set("reason", "inactive");
-    }
     return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
 }
+
 export const config = {
   matcher: ["/:path*"],
 };
