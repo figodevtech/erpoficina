@@ -1,3 +1,4 @@
+// ./src/app/(app)/(pages)/ordens/components/row-actions.tsx
 "use client";
 
 import * as React from "react";
@@ -65,6 +66,7 @@ export function RowActions<TRow extends RowBase>({
   onOpenOrcamento,
   onEditar,
   setStatus,
+  onSendToApproval, // NOVO
   // dialogs
   setLinkRow,
   setLinkDialogOpen,
@@ -84,6 +86,7 @@ export function RowActions<TRow extends RowBase>({
   onOpenOrcamento: (row: TRow) => void;
   onEditar: (row: TRow) => void;
   setStatus: (id: number, status: any) => Promise<any> | void;
+  onSendToApproval: (row: TRow) => void; // NOVO
   setLinkRow: (row: TRow | null) => void;
   setLinkDialogOpen: (open: boolean) => void;
   setConfirmRow: (row: TRow | null) => void;
@@ -105,33 +108,46 @@ export function RowActions<TRow extends RowBase>({
   // ===== Regras baseadas em STATUS + POLICY =====
 
   // Orçamento (abrir tela de orçamento)
-  const showBudget = (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO") && policy.canEditBudget;
+  const showBudget =
+    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO") &&
+    policy.canEditBudget;
 
   // Editar OS
   const showEditOS = st === "ORCAMENTO" && policy.showEditOS;
 
   // Link de aprovação (NÃO mostra em ORCAMENTO_RECUSADO)
-  const showLinkAprov = policy.showLinkAprov && (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
+  const showLinkAprov =
+    policy.showLinkAprov &&
+    (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
 
   // Fluxo de aprovação
-  const showApproveBudget = policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
+  const showApproveBudget =
+    policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
 
-  const showRejectBudget = policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
+  const showRejectBudget =
+    policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
 
   // Cancelar orçamento: em APROVACAO_ORCAMENTO ou ORCAMENTO_RECUSADO
-  const showCancelBudget = policy.showCancelBudget && (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+  const showCancelBudget =
+    policy.showCancelBudget &&
+    (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   // Enviar orçamento para aprovação (ORCAMENTO ou ORCAMENTO_RECUSADO)
-  const showSendToApproval = policy.showSendToApproval && (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+  const showSendToApproval =
+    policy.showSendToApproval &&
+    (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   // Orçamento recusado: permitir cancelar OS (muda status p/ CANCELADO)
   const showCancelOSRecusado = st === "ORCAMENTO_RECUSADO";
 
   // Produção / Pagamento
   const showStart = policy.showStart && st === "ORCAMENTO_APROVADO"; // -> EM_ANDAMENTO
-  const showSendToPayment = policy.showSendToPayment && st === "EM_ANDAMENTO"; // -> PAGAMENTO
-  const showReceivePayment = policy.showReceivePayment && st === "PAGAMENTO"; // finalizar pagamento
-  const showStonePayment = policy.showStonePayment && st === "PAGAMENTO"; // maquineta Stone
+  const showSendToPayment =
+    policy.showSendToPayment && st === "EM_ANDAMENTO"; // -> PAGAMENTO
+  const showReceivePayment =
+    policy.showReceivePayment && st === "PAGAMENTO"; // finalizar pagamento
+  const showStonePayment =
+    policy.showStonePayment && st === "PAGAMENTO"; // maquineta Stone
 
   return (
     <DropdownMenu>
@@ -173,9 +189,9 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )}
 
-        {/* Enviar para aprovação */}
+        {/* Enviar para aprovação -> agora passa pelo callback do pai */}
         {showSendToApproval && (
-          <DropdownMenuItem onClick={() => setStatus(row.id, "APROVACAO_ORCAMENTO")}>
+          <DropdownMenuItem onClick={() => onSendToApproval(row)}>
             <ThumbsUp className="mr-2 h-4 w-4" />
             Enviar para aprovação
           </DropdownMenuItem>
