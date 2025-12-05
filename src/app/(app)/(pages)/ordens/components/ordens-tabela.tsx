@@ -239,6 +239,10 @@ export function OrdensTabela({
   const [stoneDialogOpen, setStoneDialogOpen] = useState(false);
   const [stoneDialogRow, setStoneDialogRow] = useState<OrdemComDatas | null>(null);
 
+  // NOVO: dialog de confirmação para “Enviar para aprovação”
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveRow, setApproveRow] = useState<OrdemComDatas | null>(null);
+
   // ------- setStatus com checagem de responsáveis ao iniciar -------
   async function setStatus(id: number, status: StatusOS) {
     // SE for tentar iniciar (ORCAMENTO_APROVADO -> EM_ANDAMENTO),
@@ -291,6 +295,35 @@ export function OrdensTabela({
     }
     window.dispatchEvent(new CustomEvent("os:refresh"));
     toast.success("Status atualizado");
+  }
+
+  // NOVO: validar orçamento antes de enviar para aprovação
+  async function handleSendToApproval(row: OrdemComDatas) {
+    try {
+      const r = await fetch(`/api/ordens/${row.id}`, { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+
+      if (!r.ok) {
+        throw new Error(j?.error || "Não foi possível verificar o orçamento da OS.");
+      }
+
+      // Ajuste estes campos conforme o payload real de /api/ordens/:id
+      const itensServico = (j?.itensServico ?? []) as any[];
+      const itensProduto = (j?.itensProduto ?? []) as any[]; // se não tiver produtos, pode deixar como []
+      const totalItens = itensServico.length + itensProduto.length;
+
+      if (totalItens === 0) {
+        toast.error("O orçamento desta OS está vazio. Adicione ao menos 1 item antes de enviar para aprovação.");
+        return;
+      }
+
+      // Tem itens -> abre diálogo de confirmação
+      setApproveRow(row);
+      setApproveDialogOpen(true);
+    } catch (err: any) {
+      console.error("Erro ao validar orçamento:", err);
+      toast.error(err?.message || "Não foi possível verificar o orçamento da OS.");
+    }
   }
 
   // ------- Ordenação em memória (só na página atual)
@@ -490,6 +523,7 @@ export function OrdensTabela({
                           onOpenOrcamento={onOpenOrcamento}
                           onEditar={onEditar}
                           setStatus={setStatus}
+                          onSendToApproval={handleSendToApproval} // NOVO
                           setLinkRow={setLinkRow}
                           setLinkDialogOpen={setLinkDialogOpen}
                           setConfirmRow={setConfirmRow}
@@ -500,7 +534,7 @@ export function OrdensTabela({
                           setDetailsOpen={setDetailsOpen}
                           setChecklistRow={setChecklistRow}
                           setChecklistOpen={setChecklistOpen}
-                          setStoneRow={setStoneDialogRow} // NOVO
+                          setStoneRow={setStoneDialogRow}
                           setStoneOpen={setStoneDialogOpen}
                         />
                       </TableCell>
@@ -628,6 +662,35 @@ export function OrdensTabela({
               }}
             >
               Enviar p/ pagamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* NOVO: Alerta “Enviar para aprovação” */}
+      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confira o orçamento antes de enviar para aprovação
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ao confirmar, a OS <b>#{approveRow?.id}</b> irá alterar o status para{" "}
+              <b>APROVAÇÃO ORCAMENTO</b>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!approveRow) return;
+                await setStatus(approveRow.id, "APROVACAO_ORCAMENTO");
+                setApproveDialogOpen(false);
+                setApproveRow(null);
+              }}
+            >
+              Enviar para aprovação
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

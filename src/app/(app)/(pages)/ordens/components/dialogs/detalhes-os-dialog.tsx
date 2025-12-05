@@ -212,9 +212,13 @@ export function OSDetalhesDialog({
 
   const canFetch = open && !!osId;
 
-  const podeAtribuirResponsavel = useMemo(
-    () => (data?.os?.status || "").toUpperCase() === "ORCAMENTO_APROVADO",
-    [data?.os?.status]
+  const statusUpper = (data?.os?.status || "").toUpperCase();
+
+  // Agora permite editar responsável em ORCAMENTO_APROVADO e EM_ANDAMENTO
+  const podeEditarResponsavel = useMemo(
+    () =>
+      statusUpper === "ORCAMENTO_APROVADO" || statusUpper === "EM_ANDAMENTO",
+    [statusUpper]
   );
 
   const temServicoSemResponsavel = useMemo(
@@ -223,6 +227,12 @@ export function OSDetalhesDialog({
         (s) => !s.idusuariorealizador || s.idusuariorealizador === ""
       ),
     [data?.itensServico]
+  );
+
+  // Alerta de “antes de iniciar” só faz sentido quando ainda está aprovado e não iniciado
+  const mostrarAlertaAntesDeIniciar = useMemo(
+    () => statusUpper === "ORCAMENTO_APROVADO" && temServicoSemResponsavel,
+    [statusUpper, temServicoSemResponsavel]
   );
 
   // Fetch detalhes da OS
@@ -440,8 +450,9 @@ export function OSDetalhesDialog({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Alerta para induzir seleção de responsável */}
-              {podeAtribuirResponsavel && temServicoSemResponsavel && (
+              {/* Alerta para induzir seleção de responsável
+                  (apenas antes de iniciar, em ORCAMENTO_APROVADO) */}
+              {mostrarAlertaAntesDeIniciar && (
                 <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-300" />
                   <div>
@@ -629,7 +640,7 @@ export function OSDetalhesDialog({
                             <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <User2 className="h-3.5 w-3.5" />
-                                {podeAtribuirResponsavel ? (
+                                {podeEditarResponsavel ? (
                                   <div className="flex items-center gap-2 w-full max-w-xs">
                                     <span>Responsável:</span>
                                     <Select
@@ -680,8 +691,9 @@ export function OSDetalhesDialog({
                                 )}
                               </div>
 
-                              {podeAtribuirResponsavel &&
-                                estaSemResponsavel && (
+                              {podeEditarResponsavel &&
+                                estaSemResponsavel && statusUpper ===
+                                  "ORCAMENTO_APROVADO" && (
                                   <span className="text-[11px] text-amber-400 flex items-center gap-1 ml-5">
                                     <AlertTriangle className="h-3 w-3" />
                                     Selecione o responsável antes de iniciar a
