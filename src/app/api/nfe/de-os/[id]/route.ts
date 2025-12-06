@@ -1,17 +1,15 @@
 // src/app/api/nfe/de-os/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string,
-);
+export const runtime = 'nodejs';
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  ctx: { params: Promise<{ id: string }> },
 ) {
-  const osId = Number(params.id);
+  const { id } = await ctx.params;
+  const osId = Number(id);
 
   if (!osId || Number.isNaN(osId)) {
     return NextResponse.json(
@@ -94,7 +92,7 @@ export async function POST(
       );
     }
 
-    // 4) Buscar a NF-e pronta pra devolver pro front (opcional, mas ajuda)
+    // 4) Buscar a NF-e pra devolver pro front (opcional mas bem útil)
     const { data: nfe, error: nfeError } = await supabaseAdmin
       .from('nfe')
       .select(

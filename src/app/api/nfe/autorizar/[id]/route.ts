@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
+import { XMLParser } from 'fast-xml-parser';
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { buildNFePreviewXml } from '@/lib/nfe/buildNFe';
@@ -13,15 +14,6 @@ import { buildEnviNFeXml } from '@/lib/nfe/enviNFe';
 import type { EmpresaRow } from '@/lib/nfe/types';
 
 export const runtime = 'nodejs';
-
-/**
- * Helper para extrair conteúdo simples de tags XML (primeira ocorrência).
- */
-function getTagValue(xml: string, tag: string): string | null {
-  const regex = new RegExp(`<${tag}>([^<]+)</${tag}>`);
-  const match = xml.match(regex);
-  return match ? match[1] : null;
-}
 
 /**
  * Envia SOAP via https.request usando client-cert (PFX).
@@ -71,6 +63,33 @@ function postSoapComCert(
     req.write(soapEnvelope);
     req.end();
   });
+}
+
+/**
+ * Monta o XML <nfeProc> a partir do XML da NFe assinada + XML do protNFe.
+ */
+function buildNfeProcXml(xmlAssinado: string, protNFeXml: string | null): string | null {
+  if (!protNFeXml) return null;
+
+  // Remove declaração XML do início da NFe, se existir
+  const nfeSemDecl = xmlAssinado.replace(/<\?xml[^>]*\?>\s*/i, '');
+
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">' +
+    nfeSemDecl +
+    protNFeXml +
+    '</nfeProc>'
+  );
+}
+
+/**
+ * Extrai o XML bruto do <protNFe> de dentro da resposta SOAP.
+ * (Usamos regex aqui só pra montar o nfeProc bonitinho.)
+ */
+function extrairProtNFeXml(respostaSoap: string): string | null {
+  const match = respostaSoap.match(/<protNFe[^>]*>[\s\S]*?<\/protNFe>/);
+  return match ? match[0] : null;
 }
 
 async function autorizarHandler(req: Request, nfeIdParam: string) {
@@ -275,37 +294,102 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     }
 
     // -------------------------------------------------------------------
-    // 13) Extrair cStat, xMotivo e nRec do XML de retorno
+    // 13) Parse do XML de retorno (retEnviNFe + protNFe)
     // -------------------------------------------------------------------
-    const cStat = getTagValue(respostaText, 'cStat');
-    const xMotivo = getTagValue(respostaText, 'xMotivo');
-    const nRec = getTagValue(respostaText, 'nRec');
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+    });
+
+    let retEnviNFe: any = null;
+    let lote_cStat: string | null = null;
+    let lote_xMotivo: string | null = null;
+    let prot_cStat: string | null = null;
+    let prot_xMotivo: string | null = null;
+    let nRec: string | null = null;
+    let nProt: string | null = null;
+
+    try {
+      const parsed = parser.parse(respostaText);
+      const envelope = parsed['soap:Envelope'] ?? parsed.Envelope;
+      const body = envelope?.['soap:Body'] ?? envelope?.Body;
+      const resultMsg = body?.nfeResultMsg;
+      retEnviNFe = resultMsg?.retEnviNFe;
+
+      lote_cStat = retEnviNFe?.cStat ?? null;
+      lote_xMotivo = retEnviNFe?.xMotivo ?? null;
+      nRec = retEnviNFe?.nRec ?? null;
+
+      const protNFe = retEnviNFe?.protNFe;
+      const infProt = protNFe?.infProt;
+
+      prot_cStat = infProt?.cStat ?? null;
+      prot_xMotivo = infProt?.xMotivo ?? null;
+      nProt = infProt?.nProt ?? null;
+    } catch (parseErr) {
+      console.warn('[nfe] erro ao parsear XML de retorno da SEFAZ:', parseErr);
+    }
 
     // -------------------------------------------------------------------
-    // 14) (Opcional) Atualizar tabela nfe com status / xml, se você já criou
-    //     colunas como: status, xml_assinado, xml_autorizado, sefaz_cstat, etc.
+    // 14) Montar nfeProc (xml_autorizado), se tivermos protNFe no retorno
+    // -------------------------------------------------------------------
+    const protNFeXml = extrairProtNFeXml(respostaText);
+    const xmlAutorizado = buildNfeProcXml(xmlAssinado, protNFeXml);
+
+    // -------------------------------------------------------------------
+    // 15) Determinar novo status da NF-e
+    // -------------------------------------------------------------------
+    let novoStatus: string | null = null;
+
+    if (prot_cStat === '100') {
+      // Autorizado o uso da NF-e
+      novoStatus = 'AUTORIZADA';
+    } else if (prot_cStat === '110' || prot_cStat === '301' || prot_cStat === '302') {
+      // Denegada
+      novoStatus = 'DENEGADA';
+    } else if (prot_cStat && prot_cStat !== '100') {
+      // Qualquer outra rejeição de protocolo
+      novoStatus = 'REJEITADA';
+    } else if (lote_cStat === '103' || (lote_cStat === '104' && !prot_cStat)) {
+      // 103: Lote recebido; 104 sem prot -> poderia ser um fluxo assíncrono
+      novoStatus = 'ENVIADA';
+    }
+
+    // -------------------------------------------------------------------
+    // 16) Atualizar tabela nfe com status / protocolo / xml
     // -------------------------------------------------------------------
     try {
-      await supabaseAdmin
-        .from('nfe')
-        .update({
-          // status: cStat === '100' ? 'AUTORIZADA' : 'ENVIADA',
-          // sefaz_cstat: cStat,
-          // sefaz_xmotivo: xMotivo,
-          // sefaz_nrec: nRec,
-          // xml_assinado: xmlAssinado,
-          // xml_ultima_resposta: respostaText,
-        })
-        .eq('id', nfeId);
+      const updatePayload: any = {
+        xml_assinado: xmlAssinado,
+        updatedat: new Date().toISOString(),
+      };
+
+      if (xmlAutorizado) {
+        updatePayload.xml_autorizado = xmlAutorizado;
+      }
+
+      if (novoStatus) {
+        updatePayload.status = novoStatus;
+      }
+
+      if (nProt) {
+        updatePayload.protocolo = nProt;
+      }
+
+      if (novoStatus === 'AUTORIZADA') {
+        // Usamos "agora" como data de autorização (poderia ser dhRecbto do infProt também)
+        updatePayload.dataautorizacao = new Date().toISOString();
+      }
+
+      await supabaseAdmin.from('nfe').update(updatePayload).eq('id', nfeId);
     } catch (updateErr) {
       console.warn(
-        '[nfe] falha ao atualizar status da NF-e (pode ser apenas falta de colunas):',
+        '[nfe] falha ao atualizar status/infos da NF-e:',
         updateErr,
       );
     }
 
     // -------------------------------------------------------------------
-    // 15) Responder JSON para o frontend
+    // 17) Responder JSON para o frontend
     // -------------------------------------------------------------------
     return NextResponse.json({
       ok: true,
@@ -314,9 +398,21 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       idNFe: id, // Id lógico da NFe no XML, não o id da tabela
       httpStatus,
       sefaz: {
-        cStat,
-        xMotivo,
-        nRec,
+        lote: {
+          cStat: lote_cStat,
+          xMotivo: lote_xMotivo,
+          nRec,
+        },
+        protocolo: {
+          cStat: prot_cStat,
+          xMotivo: prot_xMotivo,
+          nProt,
+        },
+      },
+      nfeDb: {
+        id: nfeId,
+        status: novoStatus,
+        protocolo: nProt,
       },
       soap: {
         xmlEnviado: soapEnvelope,
