@@ -92,17 +92,15 @@ export async function GET(
     }
 
     // 5) Carregar chave privada + certificado a partir do PFX
-    const { chavePrivadaPem, certificadoPem } = carregarCertificadoA1(
-      empresa.certificadocaminho,
-      empresa.certificadosenha
-    );
+const { privateKeyPem, certificatePem } = await carregarCertificadoA1(empresa);
 
-    // 6) Assinar XML
-    const xmlAssinado = assinarNFeXml (
-      xmlOriginal,
-      chavePrivadaPem,
-      certificadoPem
-    );
+// 6) Assinar XML
+const xmlAssinado = assinarNFeXml(
+  xmlOriginal,
+  privateKeyPem,
+  certificatePem
+);
+
 
     return NextResponse.json({
       ok: true,

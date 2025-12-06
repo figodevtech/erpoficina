@@ -133,7 +133,7 @@ export default function CustomerSelect({
                 } `}
               ></div>
             </div>
-            <Table className="text-xs mt-6">
+            <Table className="text-[11px] mt-6">
               <TableHeader>
                 <TableRow>
                   <TableCell>ID</TableCell>
@@ -157,7 +157,7 @@ export default function CustomerSelect({
                     key={c.id}
                   >
                     <TableCell>{c.id}</TableCell>
-                    <TableCell>{c.nomerazaosocial}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{c.nomerazaosocial}</TableCell>
                     <TableCell>{c.tipopessoa}</TableCell>
                   </TableRow>
                 ))}
