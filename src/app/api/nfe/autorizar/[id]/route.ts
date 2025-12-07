@@ -157,6 +157,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
 
     const numeroNota = Number(nfe.numero);
     const serie = Number(nfe.serie);
+    const statusAtual: string | null = nfe.status ?? null;
 
     // -------------------------------------------------------------------
     // 3) Buscar empresa no Supabase (usando nfe.empresaid)
@@ -190,8 +191,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       empresa.ambiente === 'PRODUCAO' ? 'PRODUCAO' : 'HOMOLOGACAO';
 
     // -------------------------------------------------------------------
-    // 4) Montar XML da NFe (sem assinatura), a partir da empresa + numero/série
-    //    (buildNFePreviewXml pode internamente usar OS, venda, cliente, etc.)
+    // 4) Montar XML da NFe (sem assinatura)
     // -------------------------------------------------------------------
     const { xml: xmlOriginal, chave, id } = buildNFePreviewXml(
       empresa,
@@ -315,16 +315,21 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       const resultMsg = body?.nfeResultMsg;
       retEnviNFe = resultMsg?.retEnviNFe;
 
-      lote_cStat = retEnviNFe?.cStat ?? null;
+      // normaliza para string (fast-xml-parser pode trazer número)
+      const rawLoteCStat = retEnviNFe?.cStat;
+      lote_cStat = rawLoteCStat != null ? String(rawLoteCStat) : null;
       lote_xMotivo = retEnviNFe?.xMotivo ?? null;
       nRec = retEnviNFe?.nRec ?? null;
 
       const protNFe = retEnviNFe?.protNFe;
       const infProt = protNFe?.infProt;
 
-      prot_cStat = infProt?.cStat ?? null;
+      const rawProtCStat = infProt?.cStat;
+      prot_cStat = rawProtCStat != null ? String(rawProtCStat) : null;
       prot_xMotivo = infProt?.xMotivo ?? null;
-      nProt = infProt?.nProt ?? null;
+
+      const rawNProt = infProt?.nProt;
+      nProt = rawNProt != null ? String(rawNProt) : null;
     } catch (parseErr) {
       console.warn('[nfe] erro ao parsear XML de retorno da SEFAZ:', parseErr);
     }
@@ -343,20 +348,23 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     if (prot_cStat === '100') {
       // Autorizado o uso da NF-e
       novoStatus = 'AUTORIZADA';
-    } else if (prot_cStat === '110' || prot_cStat === '301' || prot_cStat === '302') {
+    } else if (['110', '301', '302'].includes(prot_cStat || '')) {
       // Denegada
       novoStatus = 'DENEGADA';
     } else if (prot_cStat && prot_cStat !== '100') {
       // Qualquer outra rejeição de protocolo
       novoStatus = 'REJEITADA';
     } else if (lote_cStat === '103' || (lote_cStat === '104' && !prot_cStat)) {
-      // 103: Lote recebido; 104 sem prot -> poderia ser um fluxo assíncrono
+      // 103: Lote recebido; 104 sem prot -> fluxo assíncrono
       novoStatus = 'ENVIADA';
     }
 
     // -------------------------------------------------------------------
     // 16) Atualizar tabela nfe com status / protocolo / xml
     // -------------------------------------------------------------------
+    let statusFinal = statusAtual;
+    let protocoloFinal: string | null = nfe.protocolo ?? null;
+
     try {
       const updatePayload: any = {
         xml_assinado: xmlAssinado,
@@ -367,15 +375,24 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
         updatePayload.xml_autorizado = xmlAutorizado;
       }
 
+      // NÃO rebaixar AUTORIZADA para REJEITADA em caso de duplicidade/testes
       if (novoStatus) {
-        updatePayload.status = novoStatus;
+        if (statusAtual === 'AUTORIZADA' && novoStatus === 'REJEITADA') {
+          console.warn(
+            `[nfe] tentativa de mudar NF-e ${nfeId} de AUTORIZADA para REJEITADA. Mantendo AUTORIZADA.`,
+          );
+        } else {
+          updatePayload.status = novoStatus;
+          statusFinal = novoStatus;
+        }
       }
 
       if (nProt) {
         updatePayload.protocolo = nProt;
+        protocoloFinal = nProt;
       }
 
-      if (novoStatus === 'AUTORIZADA') {
+      if (statusFinal === 'AUTORIZADA') {
         // Usamos "agora" como data de autorização (poderia ser dhRecbto do infProt também)
         updatePayload.dataautorizacao = new Date().toISOString();
       }
@@ -411,8 +428,8 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       },
       nfeDb: {
         id: nfeId,
-        status: novoStatus,
-        protocolo: nProt,
+        status: statusFinal ?? novoStatus ?? statusAtual ?? null,
+        protocolo: protocoloFinal,
       },
       soap: {
         xmlEnviado: soapEnvelope,

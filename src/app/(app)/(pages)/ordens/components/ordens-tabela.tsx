@@ -44,6 +44,7 @@ import { statusClasses, prioClasses, fmtDate, fmtDuration, toMs, useNowTick, saf
 import { RowActions } from "./row-actions";
 import OsFinancialDialog from "../../(financeiro)/pagamentodeordens/components/osFinancialDialog/osFinancialDialog";
 import OsStonePaymentDialog from "../../(financeiro)/pagamentodeordens/components/osStonePaymentDialog/osStonePaymentDialog";
+import { EmissaoNotaDialog } from "./dialogs/emissao-nota-dialog/emissao-nota-dialog";
 
 // ---- Tipos locais (datas amigas p/ tabela)
 type OrdemComDatas = Ordem & {
@@ -239,9 +240,13 @@ export function OrdensTabela({
   const [stoneDialogOpen, setStoneDialogOpen] = useState(false);
   const [stoneDialogRow, setStoneDialogRow] = useState<OrdemComDatas | null>(null);
 
+  const [emissaoId, setEmissaoId] = useState<number | null>(null)
+  const [emissaoOpen, setEmissaoOpen] = useState(false)
+
   // NOVO: dialog de confirmação para “Enviar para aprovação”
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [approveRow, setApproveRow] = useState<OrdemComDatas | null>(null);
+  
 
   // ------- setStatus com checagem de responsáveis ao iniciar -------
   async function setStatus(id: number, status: StatusOS) {
@@ -536,6 +541,8 @@ export function OrdensTabela({
                           setChecklistOpen={setChecklistOpen}
                           setStoneRow={setStoneDialogRow}
                           setStoneOpen={setStoneDialogOpen}
+                          setEmissaoId={setEmissaoId}
+                          setEmissaoOpen={setEmissaoOpen}
                         />
                       </TableCell>
                     </TableRow>
@@ -706,6 +713,14 @@ export function OrdensTabela({
         osId={payRow?.id || 0}
         handleGetOrdens={() => fetchNow(currentParamsRef.current)}
       />
+      
+      <EmissaoNotaDialog
+      osId={emissaoId}
+      open={emissaoOpen}
+      onOpenChange={setEmissaoOpen}
+      >
+
+      </EmissaoNotaDialog>
 
       <OsStonePaymentDialog
         open={stoneDialogOpen}
