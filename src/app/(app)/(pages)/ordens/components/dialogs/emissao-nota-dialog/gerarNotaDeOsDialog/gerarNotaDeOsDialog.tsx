@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 type OsProdutoParaNfe = {
+  titulo: string;
   osProdutoId: number;
   produtoId: number;
   descricao: string;
@@ -373,6 +374,7 @@ export function GerarNotaDeOsDialog({
                         <div className="flex-1 min-w-0 space-y-0.5">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium">
+                              {item.titulo}
                               {item.descricao || "Produto sem descrição"}
                             </span>
                             {item.ncm && (

@@ -222,6 +222,7 @@ export function EmissaoNotaDialog({
           {osId && (
             <div className="flex justify-end">
               <Button
+                disabled={loading}
                 variant="secondary"
                 onClick={() => setOpenGerarNfe(true)}
                 className="text-xs hover:cursor-pointer"
@@ -250,8 +251,8 @@ export function EmissaoNotaDialog({
                 <div className="font-medium">Nenhuma NF-e encontrada</div>
                 <div className="text-muted-foreground text-xs">
                   Esta OS ainda não possui notas fiscais eletrônicas
-                  registradas. Clique em <b>Nova Nota</b> para gerar um
-                  rascunho a partir dos produtos.
+                  registradas. Clique em <b>Nova Nota</b> para gerar um rascunho
+                  a partir dos produtos.
                 </div>
               </div>
             </div>
@@ -285,28 +286,34 @@ export function EmissaoNotaDialog({
 
                   const observacao = buildObservacao(nfe);
                   return (
-                    <li key={nfe.id} className="relative">
+                    <li key={nfe.id}>
                       {idx > 0 && <Separator className="my-3" />}
 
-                      {nfe.status !== "AUTORIZADA" && (
-                        <AutorizarNfeButton
-                          nfeId={nfe.id}
-                          size="sm"
-                          variant="outline"
-                          className="text-xs absolute top-2 right-2 hover:cursor-pointer"
-                          onAfterAuthorize={() => {
-                            handleFetchNfe();
-                          }}
-                        >
-                          Autorizar NF-e
-                        </AutorizarNfeButton>
-                      )}
 
+
+                      <div className="flex items-start gap-3 p-3 hover:bg-muted/15 rounded-xl relative">
+                      {nfe.status !== "AUTORIZADA" && (
+                        <div className="absolute top-2 right-2 flex flex-col gap-2">
+                          <AutorizarNfeButton
+                            nfeId={nfe.id}
+                            size="sm"
+                            variant="outline"
+                            className="text-xs hover:cursor-pointer"
+                            onAfterAuthorize={() => {
+                              handleFetchNfe();
+                            }}
+                          >
+                            Autorizar NF-e
+                          </AutorizarNfeButton>
+                        </div>
+                      )}
                       {nfe.status === "AUTORIZADA" && (
+                        <div className="absolute right-2 top-2 flex flex-col gap-2">
+                          
                         <Button
                           variant="outline"
                           size="sm"
-                          className="absolute text-xs hover:cursor-pointer right-2 top-2"
+                          className="text-xs hover:cursor-pointer"
                           onClick={() =>
                             window.open(
                               `/nfe/${nfe.id}/danfe`,
@@ -317,9 +324,36 @@ export function EmissaoNotaDialog({
                         >
                           Ver DANFE
                         </Button>
-                      )}
+                          <Button
+                          className="text-xs hover:cursor-pointer"
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const res = await fetch(
+                                `/api/nfe/consultar/${nfe.id}`,
+                                { method: "POST" }
+                              );
+                              const json = await res.json();
+                              if (!res.ok || !json.ok) {
+                                toast.error(
+                                  json.message ||
+                                    "Erro ao consultar NF-e na SEFAZ."
+                                );
+                                return;
+                              }
 
-                      <div className="flex items-start gap-3 p-3 hover:bg-muted/15 rounded-xl">
+                              toast.success(
+                                `SEFAZ: ${json.sefaz?.cStat} - ${
+                                  json.sefaz?.xMotivo || ""
+                                }`
+                              );
+                              // se quiser, refetch da listagem de NF-e aqui
+                            }}
+                          >
+                            Consultar NF-e
+                          </Button>
+                        </div>
+                      )}
                         <div className="mt-0.5">
                           {isAutorizada ? (
                             <CheckCircle2 className="h-5 w-5 text-emerald-400" />

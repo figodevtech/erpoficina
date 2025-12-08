@@ -74,3 +74,43 @@ export function gerarChaveAcesso(params: ParamsChave): {
 
   return { chave, id, dv };
 }
+
+/**
+ * Quebra uma chave de acesso (44 dígitos) em seus componentes:
+ * cUF, ano, mês, CNPJ, modelo, série, nNF, tpEmis, cNF, dv.
+ *
+ * Usamos isso para "ler" a chave gerada pelo banco e montar
+ * o bloco <ide> e o Id="NFe########..." coerentes com ela.
+ */
+export function decomporChaveAcesso(chave: string) {
+  const s = chave.replace(/\D/g, '');
+  if (s.length !== 44) {
+    throw new Error(
+      `Chave de acesso deve ter 44 dígitos numéricos. Recebido: "${chave}"`
+    );
+  }
+
+  const cUF = s.substring(0, 2);
+  const aa = s.substring(2, 4);
+  const mm = s.substring(4, 6);
+  const cnpj = s.substring(6, 20);
+  const mod = s.substring(20, 22);
+  const serie = s.substring(22, 25);
+  const nNF = s.substring(25, 34);
+  const tpEmis = s.substring(34, 35);
+  const cNF = s.substring(35, 43);
+  const dv = s.substring(43, 44);
+
+  return {
+    cUF,
+    aa,
+    mm,
+    cnpj,
+    mod,
+    serie,
+    nNF,
+    tpEmis,
+    cNF,
+    dv,
+  };
+}

@@ -4,26 +4,32 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
-// Tipo que representa exatamente o que vem do Supabase (produto como ARRAY)
+// Produto como vem do join
+type ProdutoDb = {
+  id: number;
+  titulo: string;
+  descricao: string | null;
+  ncm: string | null;
+  cfop: string | null;
+  codigobarras: string | null;
+};
+
+// Linha do osproduto + embed do produto
 type OsProdutoDbRow = {
   ordemservicoid: number;
   produtoid: number;
-  quantidade: number;
+  quantidade: number | null;
   precounitario: number;
   subtotal: number;
-  produto: {
-    id: number;
-    titulo: string | null;
-    descricao: string | null;
-    ncm: string | null;
-    cfop: string | null;
-    codigobarras: string | null;
-  }[] | null;
+  // Mantemos compatibilidade com os dois formatos possíveis
+  produto: ProdutoDb | ProdutoDb[] | null;
 };
 
 // Tipo que vamos devolver para o frontend
 type ProdutoParaNfeDTO = {
-  osProdutoId: number;
+  // id estável baseado na PK composta da tabela osproduto
+  osProdutoId: string;
+  ordemservicoId: number;
   produtoId: number;
   descricao: string;
   quantidade: number;
@@ -37,15 +43,22 @@ type ProdutoParaNfeDTO = {
 // Extrai o osId direto da URL: /api/ordens/95/produtos-para-nfe
 function getOsIdFromUrl(req: Request): number | null {
   const url = new URL(req.url);
-  const parts = url.pathname.split("/"); // ["", "api", "ordens", "95", "produtos-para-nfe"]
+  const parts = url.pathname.split("/"); 
+  // Ex.: ["", "api", "ordens", "95", "produtos-para-nfe"]
+
   const idx = parts.indexOf("ordens");
   if (idx === -1 || idx + 1 >= parts.length) return null;
 
   const raw = parts[idx + 1];
   const n = Number(raw);
 
-  if (Number.isNaN(n)) return null;
+  if (!Number.isFinite(n)) return null;
   return n;
+}
+
+function normalizarProduto(campo: OsProdutoDbRow["produto"]): ProdutoDb | null {
+  if (!campo) return null;
+  return Array.isArray(campo) ? campo[0] ?? null : campo;
 }
 
 export async function GET(req: Request) {
@@ -100,22 +113,23 @@ export async function GET(req: Request) {
       .from("osproduto")
       .select(
         `
-        ordemservicoid,
-        produtoid,
-        quantidade,
-        precounitario,
-        subtotal,
-        produto:produto (
-          id,
-          titulo,
-          descricao,
-          ncm,
-          cfop,
-          codigobarras
-        )
-      `
+          ordemservicoid,
+          produtoid,
+          quantidade,
+          precounitario,
+          subtotal,
+          produto:produto (
+            id,
+            titulo,
+            descricao,
+            ncm,
+            cfop,
+            codigobarras
+          )
+        `
       )
-      .eq("ordemservicoid", idOs);
+      .eq("ordemservicoid", idOs)
+      .returns<OsProdutoDbRow[]>();
 
     if (itensError) {
       console.error("Erro ao buscar produtos da OS:", itensError);
@@ -128,17 +142,16 @@ export async function GET(req: Request) {
       );
     }
 
-    // Cast passando por any para não brigar com o TS
-    const itensTyped = ((itens ?? []) as any) as OsProdutoDbRow[];
+    const resposta: ProdutoParaNfeDTO[] = (itens ?? []).map((i) => {
+      const p = normalizarProduto(i.produto);
 
-    const resposta: ProdutoParaNfeDTO[] = itensTyped.map((i) => {
-      // Supabase trouxe produto como array -> pegamos o primeiro
-      const p = i.produto?.[0] ?? null;
       const descricao =
         p?.titulo || p?.descricao || `Produto #${i.produtoid}`;
 
       return {
-        osProdutoId: i.produtoid, // usamos produtoid como identificador no front
+        // PK composta real
+        osProdutoId: `${i.ordemservicoid}-${i.produtoid}`,
+        ordemservicoId: i.ordemservicoid,
         produtoId: i.produtoid,
         descricao,
         quantidade: Number(i.quantidade ?? 0),
