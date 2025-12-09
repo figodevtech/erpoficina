@@ -241,7 +241,7 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
       );
     }
 
-    // 9) Parse do XML de retorno (retConsSitNFe)
+    // 9) Parse do XML de retorno (retConsSitNFe + eventos de cancelamento)
     const parser = new XMLParser({ ignoreAttributes: false });
 
     let cStat: string | null = null;
@@ -251,12 +251,32 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
     let nProt: string | null = null;
     let dhRecbto: string | null = null;
 
+    // Dados de EVENTO DE CANCELAMENTO, se existirem
+    let ev_cStatCancel: string | null = null;
+    let ev_xMotivoCancel: string | null = null;
+    let ev_nProtCancel: string | null = null;
+    let ev_dhRegEventoCancel: string | null = null;
+
     try {
       const parsed = parser.parse(respostaText);
-      const envelope = parsed['soap:Envelope'] ?? parsed.Envelope;
-      const body = envelope?.['soap:Body'] ?? envelope?.Body;
-      const resultMsg = body?.nfeResultMsg ?? body?.['nfeResultMsg'];
-      const retConsSitNFe = resultMsg?.retConsSitNFe;
+
+      const envelope =
+        parsed['soap:Envelope'] ??
+        parsed['soap12:Envelope'] ??
+        parsed.Envelope;
+
+      const body =
+        envelope?.['soap:Body'] ??
+        envelope?.Body ??
+        envelope?.['soap12:Body'];
+
+      const resultMsg =
+        body?.nfeResultMsg ??
+        body?.['nfeResultMsg'] ??
+        body?.NfeConsultaNFResult;
+
+      const retConsSitNFe =
+        resultMsg?.retConsSitNFe ?? resultMsg?.['retConsSitNFe'];
 
       const rawCStat = retConsSitNFe?.cStat;
       cStat = rawCStat != null ? String(rawCStat) : null;
@@ -271,6 +291,51 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
       nProt =
         infProt?.nProt != null ? String(infProt.nProt) : nfe.protocolo ?? null;
       dhRecbto = infProt?.dhRecbto ?? null;
+
+      // ---- PROC EVENTO (procEventoNFe) – detectar cancelamento (tpEvento=110111) ---
+      const procEventoNFeRaw =
+        retConsSitNFe?.procEventoNFe ?? retConsSitNFe?.['procEventoNFe'];
+
+      const procEventoList: any[] = [];
+
+      if (Array.isArray(procEventoNFeRaw)) {
+        procEventoList.push(...procEventoNFeRaw);
+      } else if (procEventoNFeRaw) {
+        procEventoList.push(procEventoNFeRaw);
+      }
+
+      for (const pe of procEventoList) {
+        const evento = pe?.evento ?? pe?.['evento'];
+        const infEvento = evento?.infEvento ?? evento?.['infEvento'];
+
+        if (!infEvento) continue;
+
+        const tpEvento =
+          infEvento?.tpEvento != null ? String(infEvento.tpEvento) : null;
+        const cStatEv =
+          infEvento?.cStat != null ? String(infEvento.cStat) : null;
+
+        // tpEvento=110111 -> Cancelamento
+        if (tpEvento === '110111' && (cStatEv === '135' || cStatEv === '155')) {
+          ev_cStatCancel = cStatEv;
+          ev_xMotivoCancel = infEvento?.xMotivo ?? null;
+          ev_nProtCancel =
+            infEvento?.nProt != null ? String(infEvento.nProt) : null;
+          ev_dhRegEventoCancel = infEvento?.dhRegEvento ?? null;
+          break;
+        }
+      }
+
+      // Em alguns casos, o próprio cStat de retConsSitNFe pode indicar cancelamento
+      if (
+        !ev_cStatCancel &&
+        (cStat === '101' || cStat === '135' || cStat === '155')
+      ) {
+        ev_cStatCancel = cStat;
+        ev_xMotivoCancel = xMotivo;
+        // nProt de cancelamento pode não vir claramente aqui, então mantemos o do banco / protNFe
+        ev_nProtCancel = nProt ?? nfe.protocolo ?? null;
+      }
     } catch (parseErr) {
       console.warn(
         '[nfe/consultar] erro ao parsear XML de retorno da SEFAZ:',
@@ -278,18 +343,27 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
       );
     }
 
-    // 10) Atualizar status/protocolo no banco (se fizer sentido)
+    // 10) Atualizar status/protocolo no banco (respeitando CANCELADA)
     let statusFinal: string | null = nfe.status;
     let protocoloFinal: string | null = nfe.protocolo ?? null;
 
-    if (prot_cStat === '100') {
-      statusFinal = 'AUTORIZADA';
-      protocoloFinal = nProt ?? protocoloFinal;
-    } else if (['110', '301', '302'].includes(prot_cStat || '')) {
-      statusFinal = 'DENEGADA';
-      protocoloFinal = nProt ?? protocoloFinal;
-    } else if (prot_cStat && prot_cStat !== '100') {
-      statusFinal = 'REJEITADA';
+    // 10.1 – Se houver evento de cancelamento homologado, PRIORIDADE TOTAL
+    if (ev_cStatCancel === '135' || ev_cStatCancel === '155') {
+      statusFinal = 'CANCELADA';
+      if (ev_nProtCancel) {
+        protocoloFinal = ev_nProtCancel;
+      }
+    } else if (statusFinal !== 'CANCELADA') {
+      // 10.2 – Só mexe em status se ainda NÃO estiver cancelada
+      if (prot_cStat === '100') {
+        statusFinal = 'AUTORIZADA';
+        protocoloFinal = nProt ?? protocoloFinal;
+      } else if (['110', '301', '302'].includes(prot_cStat || '')) {
+        statusFinal = 'DENEGADA';
+        protocoloFinal = nProt ?? protocoloFinal;
+      } else if (prot_cStat && prot_cStat !== '100') {
+        statusFinal = 'REJEITADA';
+      }
     }
 
     try {
@@ -309,6 +383,7 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
         updatePayload.dataautorizacao = dhRecbto;
       }
 
+      // Não grava se só tiver updatedat
       if (Object.keys(updatePayload).length > 1) {
         await supabaseAdmin.from('nfe').update(updatePayload).eq('id', nfeId);
       }
@@ -330,6 +405,15 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
           nProt: protocoloFinal ?? nProt,
           dhRecbto,
         },
+        // Bloco adicional com info do evento de cancelamento, se houver
+        eventoCancelamento: ev_cStatCancel
+          ? {
+              cStat: ev_cStatCancel,
+              xMotivo: ev_xMotivoCancel,
+              nProt: ev_nProtCancel,
+              dhRegEvento: ev_dhRegEventoCancel,
+            }
+          : null,
       },
       nfeDb: {
         id: nfeId,

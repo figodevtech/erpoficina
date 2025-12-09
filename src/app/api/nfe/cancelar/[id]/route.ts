@@ -248,9 +248,7 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
       certificatePem,
     );
 
-    // *** PONTO CRÍTICO: remover declaração XML interna ***
-    // Aqui garantimos que NÃO haja "<?xml ...?>" dentro de <nfeDadosMsg>,
-    // pois isso quebra o SOAP e gera HTTP 400 na SEFAZ.
+    // Remove declaração XML interna (<?xml ...?>) antes de colocar dentro de <nfeDadosMsg>
     const xmlEventoAssinadoSemDecl = xmlEventoAssinado.replace(
       /^\s*<\?xml[^>]*\?>\s*/i,
       '',
@@ -277,8 +275,8 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
     // -------------------------------------------------------------------
     const url =
       ambiente === 'PRODUCAO'
-        ? 'https://nfe.svrs.rs.gov.br/ws/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx'
-        : 'https://nfe-homologacao.svrs.rs.gov.br/ws/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx';
+        ? 'https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx'
+        : 'https://nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx';
 
     // -------------------------------------------------------------------
     // 10) Montar agente HTTPS com o PFX

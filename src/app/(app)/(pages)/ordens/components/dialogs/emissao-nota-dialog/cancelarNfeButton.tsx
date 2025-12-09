@@ -1,4 +1,3 @@
-// src/app/(app)/(pages)/nfe/[id]/danfe/components/CancelarNfeButton.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,9 +8,14 @@ import { Loader2, XCircle } from "lucide-react";
 type Props = {
   nfeId: number;
   status: string;
+  /**
+   * Callback opcional pra o componente pai (EmissaoNotaDialog)
+   * recarregar a lista de NF-e sem dar reload na página toda.
+   */
+  onAfterCancel?: () => void;
 };
 
-export function CancelarNfeButton({ nfeId, status }: Props) {
+export function CancelarNfeButton({ nfeId, status, onAfterCancel }: Props) {
   const [loading, setLoading] = useState(false);
 
   const statusUpper = (status || "").toUpperCase();
@@ -48,18 +52,22 @@ export function CancelarNfeButton({ nfeId, status }: Props) {
       if (!res.ok || !data?.ok) {
         const msg =
           data?.mensagem ||
-          data?.evento?.infEvento?.xMotivo ||
+          data?.evento?.retorno?.xMotivo ||
           "Falha ao cancelar a NF-e.";
         toast.error(msg);
         return;
       }
 
       toast.success(
-        data.evento?.infEvento?.xMotivo ||
+        data.evento?.retorno?.xMotivo ||
           "NF-e cancelada com sucesso."
       );
 
-      window.location.reload();
+      // 👉 Aqui a mágica: avisa o pai pra recarregar a lista,
+      // em vez de dar window.location.reload()
+      if (onAfterCancel) {
+        onAfterCancel();
+      }
     } catch (e: any) {
       console.error("[CancelarNfeButton] erro inesperado:", e);
       toast.error("Erro inesperado ao cancelar a NF-e.");
@@ -73,8 +81,7 @@ export function CancelarNfeButton({ nfeId, status }: Props) {
       size="sm"
       onClick={handleClick}
       disabled={disabled}
-                                  className="size-full flex items-center gap-1 text-xs justify-start px-0 rounded-sm py-2 hover:cursor-pointer not-dark:text-gray-800 bg-red-500/20 hover:bg-red-900 group hover:text-white transition-all"
-
+      className="size-full flex items-center gap-1 text-xs justify-start px-0 rounded-sm py-2 hover:cursor-pointer not-dark:text-gray-800 bg-red-500/20 hover:bg-red-900 group hover:text-white transition-all"
     >
       {loading ? (
         <>
