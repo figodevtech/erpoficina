@@ -51,7 +51,6 @@ export function CancelarNfeButton({ nfeId, status }: Props) {
           data?.evento?.infEvento?.xMotivo ||
           "Falha ao cancelar a NF-e.";
         toast.error(msg);
-        console.error("[CancelarNfeButton] erro:", data);
         return;
       }
 

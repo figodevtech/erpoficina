@@ -86,7 +86,6 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
     // -------------------------------------------------------------------
     const body = (await req.json().catch(() => null)) as BodyRequest | null;
     const justificativaRaw = (body?.justificativa ?? '').trim();
-    console.log("body: ",body)
 
     if (justificativaRaw.length < 15) {
       return NextResponse.json(
@@ -214,8 +213,7 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
 
     const ambiente =
       empresa.ambiente === 'PRODUCAO' ? 'PRODUCAO' : 'HOMOLOGACAO';
-    const tpAmb: 1 | 2 =
-      ambiente === 'PRODUCAO' ? 1 : 2;
+    const tpAmb: 1 | 2 = ambiente === 'PRODUCAO' ? 1 : 2;
 
     // cOrgao = código da UF (primeiros 2 dígitos do codigomunicipio)
     const cOrgao =
@@ -250,6 +248,14 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
       certificatePem,
     );
 
+    // *** PONTO CRÍTICO: remover declaração XML interna ***
+    // Aqui garantimos que NÃO haja "<?xml ...?>" dentro de <nfeDadosMsg>,
+    // pois isso quebra o SOAP e gera HTTP 400 na SEFAZ.
+    const xmlEventoAssinadoSemDecl = xmlEventoAssinado.replace(
+      /^\s*<\?xml[^>]*\?>\s*/i,
+      '',
+    );
+
     // -------------------------------------------------------------------
     // 8) Montar SOAP Envelope para o serviço NFeRecepcaoEvento4
     // -------------------------------------------------------------------
@@ -261,7 +267,7 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
       'xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">' +
       '<soap12:Body>' +
       '<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4">' +
-      xmlEventoAssinado +
+      xmlEventoAssinadoSemDecl +
       '</nfeDadosMsg>' +
       '</soap12:Body>' +
       '</soap12:Envelope>';
@@ -271,8 +277,8 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
     // -------------------------------------------------------------------
     const url =
       ambiente === 'PRODUCAO'
-        ? 'https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx'
-        : 'https://nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx';
+        ? 'https://nfe.svrs.rs.gov.br/ws/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx'
+        : 'https://nfe-homologacao.svrs.rs.gov.br/ws/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx';
 
     // -------------------------------------------------------------------
     // 10) Montar agente HTTPS com o PFX
