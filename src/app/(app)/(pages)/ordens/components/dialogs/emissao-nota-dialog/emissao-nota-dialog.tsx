@@ -23,9 +23,19 @@ import {
   XCircle,
   Info,
   X,
+  Plus,
+  LoaderIcon,
+  LoaderPinwheel,
+  LucideLoader,
+  LucideLoaderCircle,
+  RotateCcw,
+  RotateCw,
+  Ellipsis,
 } from "lucide-react";
 import { AutorizarNfeButton } from "./autorizarNfe-button";
 import { GerarNotaDeOsDialog } from "./gerarNotaDeOsDialog/gerarNotaDeOsDialog";
+import { CancelarNfeButton } from "./cancelarNfeButton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type NfeResumo = {
   id: number;
@@ -188,16 +198,16 @@ export function EmissaoNotaDialog({
         className="
           w-[95vw] sm:max-w-3xl
           max-h-[85vh] sm:max-h-[85vh] supports-[height:100svh]:max-h-[85svh]
-          overflow-y-auto overscroll-contain
+          overflow-y-auto overscroll-contain min-h-[85vh]
           p-0
         "
       >
-        <div className="top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b relative">
+        <div className="top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
           <DialogClose asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-2"
+              className="absolute right-2 top-2 hover:cursor-pointer"
               aria-label="Fechar"
               title="Fechar"
             >
@@ -205,7 +215,7 @@ export function EmissaoNotaDialog({
             </Button>
           </DialogClose>
 
-          <DialogHeader className="px-5 pt-5 pb-3">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b-1">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-primary" />
               {titulo}
@@ -214,23 +224,43 @@ export function EmissaoNotaDialog({
               Visualize as notas fiscais eletrônicas vinculadas a esta OS e gere
               novas NF-e a partir dos produtos.
             </DialogDescription>
-          </DialogHeader>
-        </div>
-
-        <div className="px-5 pb-5 pt-3 space-y-4">
-          {/* Botão Nova Nota */}
-          {osId && (
-            <div className="flex justify-end">
+              {osId && (
+            <div className="flex justify-between">
+              <Button
+                disabled={loading}
+                variant="secondary"
+                onClick={() => handleFetchNfe()}
+                className="text-xs hover:cursor-pointer"
+              >
+               <RotateCw className={`${loading && "animate-spin"}`}/>
+              </Button>
+            
               <Button
                 disabled={loading}
                 variant="secondary"
                 onClick={() => setOpenGerarNfe(true)}
                 className="text-xs hover:cursor-pointer"
               >
-                Nova Nota
+               <Plus/> Nova Nota
               </Button>
             </div>
           )}
+          </DialogHeader>
+          
+        <div className="pt-5 pb-5 space-y-4 relative">
+          <div
+          className={`${
+            osId && loading &&  " opacity-100"
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+        >
+          <div
+            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
+             osId && loading && "animate-slideIn "
+            } `}
+          ></div>
+        </div>
+          {/* Botão Nova Nota */}
+          
 
           {!osId && (
             <div className="h-24 grid place-items-center text-sm text-muted-foreground">
@@ -238,11 +268,6 @@ export function EmissaoNotaDialog({
             </div>
           )}
 
-          {osId && loading && (
-            <div className="h-32 grid place-items-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          )}
 
           {osId && !loading && nfes && nfes.length === 0 && (
             <div className="rounded-lg border border-dashed p-4 text-sm flex gap-3">
@@ -258,22 +283,12 @@ export function EmissaoNotaDialog({
             </div>
           )}
 
-          {osId && !loading && nfes && nfes.length > 0 && (
-            <section className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <FileText className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">
-                  Notas fiscais desta OS
-                </span>
-              </div>
-
-              <div className="text-xs text-muted-foreground">
-                Abaixo estão todas as NF-e vinculadas à OS <b>#{osId}</b>, com
-                seus respectivos status e observações.
-              </div>
+          {osId && nfes && nfes.length > 0 && (
+            <div className="px-5">
+              
+             
 
               <ul className="text-sm">
-                <Separator className="my-3" />
 
                 {nfes.map((nfe, idx) => {
                   const statusUpper = (nfe.status || "").toUpperCase();
@@ -291,9 +306,16 @@ export function EmissaoNotaDialog({
 
 
 
-                      <div className="flex items-start gap-3 p-3 hover:bg-muted/15 rounded-xl relative">
+                      <div className="flex items-start gap- p-3 hover:bg-muted/15 rounded-xl relative">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="text-xs hover:cursor-pointer absolute top-2 right-2" size="sm"><Ellipsis className="h-3 w-3"/></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+
+                       
                       {nfe.status !== "AUTORIZADA" && (
-                        <div className="absolute top-2 right-2 flex flex-col gap-2">
+                        <div className="flex flex-col gap-1">
                           <AutorizarNfeButton
                             nfeId={nfe.id}
                             size="sm"
@@ -308,7 +330,7 @@ export function EmissaoNotaDialog({
                         </div>
                       )}
                       {nfe.status === "AUTORIZADA" && (
-                        <div className="absolute right-2 top-2 flex flex-col gap-2">
+                        <div className="flex flex-col gap-1">
                           
                         <Button
                           variant="outline"
@@ -329,6 +351,7 @@ export function EmissaoNotaDialog({
                             variant="outline"
                             size="sm"
                             onClick={async () => {
+                              toast(<div className="flex flex-row flex-nowrap items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/><span>Consultando Nota Fiscal</span></div>)
                               const res = await fetch(
                                 `/api/nfe/consultar/${nfe.id}`,
                                 { method: "POST" }
@@ -352,9 +375,16 @@ export function EmissaoNotaDialog({
                           >
                             Consultar NF-e
                           </Button>
+
+                          <CancelarNfeButton
+                          nfeId={nfe.id}
+                          status={nfe.status}
+                          />
                         </div>
                       )}
-                        <div className="mt-0.5">
+                       </DropdownMenuContent>
+                      </DropdownMenu>
+                        <div className=" mr-1.5">
                           {isAutorizada ? (
                             <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                           ) : isRejeitada ? (
@@ -425,9 +455,12 @@ export function EmissaoNotaDialog({
                   );
                 })}
               </ul>
-            </section>
+            </div>
+
           )}
         </div>
+        </div>
+
 
         {/* Dialog de GERAR NF-e sempre montado enquanto a EmissaoNotaDialog estiver aberta */}
         {osId && (

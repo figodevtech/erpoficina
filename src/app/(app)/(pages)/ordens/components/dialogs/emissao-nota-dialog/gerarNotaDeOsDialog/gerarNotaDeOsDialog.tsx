@@ -15,13 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import {
-  Loader2,
-  Receipt,
-  Package,
-  Info,
-  X,
-} from "lucide-react";
+import { Loader2, Receipt, Package, Info, X } from "lucide-react";
 
 type OsProdutoParaNfe = {
   titulo: string;
@@ -65,6 +59,12 @@ export interface GerarNotaDeOsDialogProps {
   onAfterGenerate?: (nfeId: number | null) => void;
 }
 
+/**
+ * IMPORTANTE:
+ * Este dialog agora seleciona e envia `produtoId` (não `osProdutoId`),
+ * para que o body fique no formato esperado:
+ * { itens: ["142", "141"] } (ou números equivalentes)
+ */
 export function GerarNotaDeOsDialog({
   open,
   onOpenChange,
@@ -74,6 +74,8 @@ export function GerarNotaDeOsDialog({
   const [carregandoItens, setCarregandoItens] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [itens, setItens] = useState<OsProdutoParaNfe[] | null>(null);
+
+  // Agora guardamos IDs de PRODUTO
   const [selecionados, setSelecionados] = useState<number[]>([]);
 
   const podeBuscar = open && !!osId;
@@ -110,9 +112,11 @@ export function GerarNotaDeOsDialog({
         }
 
         if (!ac.signal.aborted) {
-          setItens(json.itens ?? []);
-          // Por padrão, todos selecionados
-          const ids = (json.itens ?? []).map((i) => i.osProdutoId);
+          const lista = json.itens ?? [];
+          setItens(lista);
+
+          // Por padrão, todos selecionados (por produtoId)
+          const ids = lista.map((i) => i.produtoId);
           setSelecionados(ids);
         }
       } catch (e: any) {
@@ -163,7 +167,7 @@ export function GerarNotaDeOsDialog({
   const toggleSelecionarTodos = (checked: boolean) => {
     if (!itens || itens.length === 0) return;
     if (checked) {
-      setSelecionados(itens.map((i) => i.osProdutoId));
+      setSelecionados(itens.map((i) => i.produtoId));
     } else {
       setSelecionados([]);
     }
@@ -179,7 +183,7 @@ export function GerarNotaDeOsDialog({
     }
 
     const selecionadosSet = new Set(selecionados);
-    const itensSel = itens.filter((i) => selecionadosSet.has(i.osProdutoId));
+    const itensSel = itens.filter((i) => selecionadosSet.has(i.produtoId));
 
     const valorSelecionado = itensSel.reduce(
       (acc, i) => acc + Number(i.subtotal || 0),
@@ -221,7 +225,8 @@ export function GerarNotaDeOsDialog({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          itens: selecionados, // array de osProdutoId
+          // Agora enviamos produtoId
+          itens: selecionados,
         }),
       });
 
@@ -357,7 +362,8 @@ export function GerarNotaDeOsDialog({
 
                 <div className="space-y-2 text-sm">
                   {itens.map((item) => {
-                    const checked = selecionados.includes(item.osProdutoId);
+                    const checked = selecionados.includes(item.produtoId);
+
                     return (
                       <div
                         key={item.osProdutoId}
@@ -366,7 +372,7 @@ export function GerarNotaDeOsDialog({
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(c) =>
-                            toggleItem(item.osProdutoId, !!c)
+                            toggleItem(item.produtoId, !!c)
                           }
                           className="mt-1"
                         />
@@ -375,8 +381,15 @@ export function GerarNotaDeOsDialog({
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium">
                               {item.titulo}
-                              {item.descricao || "Produto sem descrição"}
+                              {item.descricao ? ` — ${item.descricao}` : ""}
                             </span>
+
+                            {!item.descricao && (
+                              <span className="text-xs text-muted-foreground">
+                                Produto sem descrição
+                              </span>
+                            )}
+
                             {item.ncm && (
                               <Badge variant="outline" className="text-[10px]">
                                 NCM {item.ncm}
