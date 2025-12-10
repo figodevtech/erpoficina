@@ -328,6 +328,13 @@ export async function POST(req: Request) {
       destinatario
     );
 
+    console.log(
+      "[gerar-rascunho] chave_acesso gerada:",
+      chave,
+      "len:",
+      (chave || "").length
+    );
+
     // 8) Gravar XML de rascunho (não assinado) em xml_assinado e chave
     await supabaseAdmin
       .from("nfe")

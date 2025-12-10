@@ -62,6 +62,11 @@ export default function EditorNfePage({ params }: Props) {
       .join("\n");
   }
 
+  function compactarXml(raw: string): string {
+    const semQuebras = raw.replace(/[\r\n\t]/g, "");
+    return semQuebras.replace(/>\s+</g, "><").trim();
+  }
+
   useEffect(() => {
     let active = true;
     async function load() {
@@ -106,10 +111,15 @@ export default function EditorNfePage({ params }: Props) {
   async function salvar() {
     setSaving(true);
     try {
+      const xmlParaSalvar = compactarXml(xml);
+      if (!xmlParaSalvar) {
+        throw new Error("XML nao pode ser vazio apos compactar.");
+      }
+
       const res = await fetch(`/api/nfe/${nfeId}/xml`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ xml }),
+        body: JSON.stringify({ xml: xmlParaSalvar }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.ok) {
@@ -128,16 +138,6 @@ export default function EditorNfePage({ params }: Props) {
 
   const isRascunho = status === "RASCUNHO";
 
-  const formatarAtual = () => {
-    try {
-      const novo = formatXml(xml);
-      setXml(novo);
-      toast.success("XML formatado");
-    } catch (err: any) {
-      toast.error(err?.message || "Nao foi possivel formatar o XML");
-    }
-  };
-
   return (
     <div className="container mx-auto max-w-5xl py-8">
       <div className="flex items-center justify-between mb-6 gap-3">
@@ -151,15 +151,6 @@ export default function EditorNfePage({ params }: Props) {
               Status: {status}
             </Badge>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={formatarAtual}
-            disabled={loading || !xml}
-          >
-            <Wand2 className="h-4 w-4 mr-2" />
-            Formatar
-          </Button>
           <Button onClick={salvar} disabled={!isRascunho || saving || loading}>
             {saving ? (
               <>

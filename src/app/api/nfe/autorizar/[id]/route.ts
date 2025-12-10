@@ -96,6 +96,22 @@ function extrairProtNFeXml(respostaSoap: string): string | null {
   return match ? match[0] : null;
 }
 
+/**
+ * Extrai o Id do <infNFe> e a chave de acesso (44 dígitos) do XML.
+ */
+function extrairChaveEIdDoXml(
+  xml: string
+): { chave: string | null; id: string | null } {
+  const match = xml.match(/<infNFe[^>]*\sId=['"]([^'"]+)['"][^>]*>/i);
+  if (!match) return { chave: null, id: null };
+
+  const id = match[1];
+  const chavePossivel = id.replace(/^NFe/i, "");
+  const chaveValida = /^\d{44}$/.test(chavePossivel) ? chavePossivel : null;
+
+  return { chave: chaveValida, id };
+}
+
 async function autorizarHandler(req: Request, nfeIdParam: string) {
   try {
     // -------------------------------------------------------------------
@@ -310,15 +326,40 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     }));
 
     // -------------------------------------------------------------------
-    // 6) Montar XML da NFe (sem assinatura) com itens reais
+    // 6) Usar o XML salvo no rascunho (xml_assinado) ou gerar um novo
     // -------------------------------------------------------------------
-    const { xml: xmlOriginal, chave, id } = buildNFePreviewXml(
-      empresa,
-      numeroNota,
-      serie,
-      itens,
-      destinatario
-    );
+    const xmlRascunhoSalvo =
+      typeof nfe.xml_assinado === "string" ? nfe.xml_assinado.trim() : "";
+
+    const chaveDoBanco =
+      typeof nfe.chave_acesso === "string" && nfe.chave_acesso.trim()
+        ? nfe.chave_acesso.trim()
+        : null;
+
+    let chave: string | null = chaveDoBanco;
+    let idNFeXml: string | null = null;
+
+    if (xmlRascunhoSalvo) {
+      const extraida = extrairChaveEIdDoXml(xmlRascunhoSalvo);
+      if (extraida.chave) chave = extraida.chave;
+      if (extraida.id) idNFeXml = extraida.id;
+    }
+
+    let xmlSemAssinatura = xmlRascunhoSalvo;
+
+    // Se nÇœo houver XML salvo, gera um novo com base nos itens atuais
+    if (!xmlSemAssinatura) {
+      const { xml: xmlGerado, chave: chaveGerada, id } = buildNFePreviewXml(
+        empresa,
+        numeroNota,
+        serie,
+        itens,
+        destinatario
+      );
+      xmlSemAssinatura = xmlGerado;
+      if (!chave) chave = chaveGerada;
+      if (!idNFeXml) idNFeXml = id;
+    }
 
     // -------------------------------------------------------------------
     // 7) Carregar certificado A1 (chave privada + certificado em PEM)
@@ -331,7 +372,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     // 8) Assinar XML da NFe (tag <infNFe>)
     // -------------------------------------------------------------------
     const xmlAssinado = assinarNFeXml(
-      xmlOriginal,
+      xmlSemAssinatura,
       privateKeyPem,
       certificatePem
     );
@@ -402,8 +443,8 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
         {
           ok: false,
           ambiente,
-          chave,
-          idNFe: id, // Id lógico da NFe (ex: NFe3525...)
+          chave: chave ?? null,
+          idNFe: idNFeXml ?? null, // Id lógico da NFe (ex: NFe3525...)
           httpStatus,
           mensagem: "Erro HTTP ao chamar NFeAutorizacao4",
           soap: {
@@ -489,11 +530,14 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
 
     try {
       const updatePayload: any = {
-  xml_assinado: xmlAssinado,
-  updatedat: new Date().toISOString(),
-  // garante que o banco sempre fique com a MESMA chave usada no XML
-  chave_acesso: chave,
-};
+        xml_assinado: xmlAssinado,
+        updatedat: new Date().toISOString(),
+      };
+
+      // garante que o banco sempre fique com a MESMA chave usada no XML
+      if (chave) {
+        updatePayload.chave_acesso = chave;
+      }
 
       if (xmlAutorizado) {
         updatePayload.xml_autorizado = xmlAutorizado;
@@ -535,8 +579,8 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     return NextResponse.json({
       ok: true,
       ambiente,
-      chave,
-      idNFe: id, // Id lógico da NFe no XML, não o id da tabela
+      chave: chave ?? null,
+      idNFe: idNFeXml ?? null, // Id lógico da NFe no XML, não o id da tabela
       httpStatus,
       sefaz: {
         lote: {
