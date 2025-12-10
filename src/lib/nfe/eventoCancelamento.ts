@@ -23,8 +23,7 @@ function formatDateTimeNFe(date: Date): string {
 
   // Garante hora no fuso -03:00 independentemente do fuso do host (ex: Vercel em UTC)
   const targetOffsetMinutes = -3 * 60; // UTC-3 (America/Fortaleza)
-  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
-  const targetMs = utcMs + targetOffsetMinutes * 60000;
+  const targetMs = date.getTime() + targetOffsetMinutes * 60000;
   const targetDate = new Date(targetMs);
 
   const ano = targetDate.getUTCFullYear();
