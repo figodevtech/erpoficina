@@ -1,26 +1,11 @@
 "use client";
 
 import type { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import type { FormValues } from "../types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Info } from "lucide-react";
-
-type NFeCfg = {
-  serieNFe: string;
-  serieNFCe?: string;
-  cscHomologacao?: string;
-  cscProducao?: string;
-  idCSC?: string;
-  naturezaOperacao: string;
-};
-
-type FormValues = {
-  empresa: any;
-  nfe: NFeCfg;
-  nfse: any;
-  pagamentos: any;
-};
 
 export function NFeTab({
   register,

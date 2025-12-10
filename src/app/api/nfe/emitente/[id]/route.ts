@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapEmpresaToEmitente } from '@/lib/nfe/mapEmpresaToEmitente';
 import { buildEmitXml } from '@/lib/nfe/xmlEmitente';
@@ -7,13 +7,17 @@ import type { EmpresaRow } from '@/lib/nfe/types';
 
 export const runtime = 'nodejs';
 
+type Contexto = { params: Promise<{ id: string }> };
+
 export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
+  _req: NextRequest,
+  { params }: Contexto
 ) {
   try {
-    const id = Number(params.id);
-    if (Number.isNaN(id)) {
+    const { id } = await params;
+    const idNumber = Number(id);
+
+    if (Number.isNaN(idNumber)) {
       return NextResponse.json(
         { ok: false, mensagem: 'ID inválido' },
         { status: 400 }
@@ -23,7 +27,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from('empresa')
       .select('*')
-      .eq('id', id)
+      .eq('id', idNumber)
       .single<EmpresaRow>();
 
     if (error) {
@@ -41,7 +45,6 @@ export async function GET(
       );
     }
 
-    // 1) Validação dos campos obrigatórios do emitente
     const erros = validarEmitenteEmpresa(data);
 
     if (erros.length > 0) {
@@ -56,12 +59,7 @@ export async function GET(
       );
     }
 
-    // 2) Se passou na validação, mapeia para NFeEmitente
-    // Por enquanto, vou fixar o nome do município aqui.
-    // Se quiser, você pode adicionar uma coluna "nomemunicipio" na tabela e usar de lá.
     const emitente = mapEmpresaToEmitente(data, 'JOAO PESSOA');
-
-    // 3) Gera XML <emit>
     const emitXml = buildEmitXml(emitente);
 
     return NextResponse.json({

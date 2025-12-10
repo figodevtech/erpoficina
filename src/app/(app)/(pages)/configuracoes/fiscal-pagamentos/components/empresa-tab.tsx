@@ -1,43 +1,12 @@
 "use client";
 
 import type { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import type { FormValues } from "../types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
-
-type Empresa = {
-  id?: number;
-  cnpj: string;
-  razaosocial: string;
-  nomefantasia?: string;
-  inscricaoestadual?: string;
-  inscricaomunicipal?: string;
-  inscricaoestadualst?: string;
-  endereco: string;
-  numero?: string;
-  complemento?: string;
-  bairro?: string;
-  cep?: string;
-  uf?: string;
-  codigomunicipio: string;
-  codigopais?: string;
-  nomepais?: string;
-  telefone?: string;
-  cnae?: string;
-  regimetributario: "1" | "2" | "3";
-  ambiente: "HOMOLOGACAO" | "PRODUCAO";
-  certificadocaminho?: string;
-  certificadosenha?: string;
-};
-
-type FormValues = {
-  empresa: Empresa;
-  nfe?: any;
-  nfse?: any;
-  pagamentos?: any;
-};
 
 type Props = {
   register: UseFormRegister<FormValues>;

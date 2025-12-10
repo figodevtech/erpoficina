@@ -1,29 +1,12 @@
 "use client";
 
 import type { UseFormRegister, UseFormSetValue } from "react-hook-form";
+import type { FormValues } from "../types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Info } from "lucide-react";
-
-type NFSecfg = {
-  provedor: string;
-  inscricaoMunicipal?: string;
-  serieRPS?: string;
-  usuario?: string;
-  senha?: string;
-  token?: string;
-  certificadoA1Base64?: string;
-  senhaCertificado?: string;
-};
-
-type FormValues = {
-  empresa: any;
-  nfe: any;
-  nfse: NFSecfg;
-  pagamentos: any;
-};
 
 export function NFSeTab({
   register,

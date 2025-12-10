@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { EmpresaRow } from '@/lib/nfe/types';
 import { validarEmitenteEmpresa } from '@/lib/nfe/validarEmitente';
@@ -8,13 +8,17 @@ import { assinarNFeXml } from '@/lib/nfe/assinatura';
 
 export const runtime = 'nodejs';
 
+type Contexto = { params: Promise<{ id: string }> };
+
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: Contexto
 ) {
   try {
-    const id = Number(params.id);
-    if (Number.isNaN(id)) {
+    const { id } = await params;
+    const idNumber = Number(id);
+
+    if (Number.isNaN(idNumber)) {
       return NextResponse.json(
         { ok: false, mensagem: 'ID inválido' },
         { status: 400 }
@@ -39,7 +43,7 @@ export async function GET(
     const { data: empresa, error } = await supabaseAdmin
       .from('empresa')
       .select('*')
-      .eq('id', id)
+      .eq('id', idNumber)
       .single<EmpresaRow>();
 
     if (error) {
@@ -92,15 +96,14 @@ export async function GET(
     }
 
     // 5) Carregar chave privada + certificado a partir do PFX
-const { privateKeyPem, certificatePem } = await carregarCertificadoA1(empresa);
+    const { privateKeyPem, certificatePem } = await carregarCertificadoA1(empresa);
 
-// 6) Assinar XML
-const xmlAssinado = assinarNFeXml(
-  xmlOriginal,
-  privateKeyPem,
-  certificatePem
-);
-
+    // 6) Assinar XML
+    const xmlAssinado = assinarNFeXml(
+      xmlOriginal,
+      privateKeyPem,
+      certificatePem
+    );
 
     return NextResponse.json({
       ok: true,

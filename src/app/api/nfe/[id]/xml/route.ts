@@ -1,20 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
-function parseId(idParam: string | string[] | undefined): number | null {
-  const raw = Array.isArray(idParam) ? idParam[0] : idParam;
-  const n = Number(raw);
+function parseId(idParam: string | undefined): number | null {
+  const n = Number(idParam);
   return Number.isFinite(n) ? n : null;
 }
 
+type Contexto = { params: Promise<{ id: string }> };
+
 // GET: retorna xml_assinado (rascunho) para edição
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  const nfeId = parseId(params.id);
+export async function GET(_req: NextRequest, { params }: Contexto) {
+  const { id } = await params;
+
+  const nfeId = parseId(id);
   if (nfeId === null) {
     return NextResponse.json(
       { ok: false, message: "ID inválido" },
@@ -62,11 +62,10 @@ export async function GET(
 }
 
 // PUT: salva XML de rascunho na coluna xml_assinado (sem assinatura)
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const nfeId = parseId(params.id);
+export async function PUT(req: NextRequest, { params }: Contexto) {
+  const { id } = await params;
+
+  const nfeId = parseId(id);
   if (nfeId === null) {
     return NextResponse.json(
       { ok: false, message: "ID inválido" },
@@ -74,7 +73,7 @@ export async function PUT(
     );
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({} as any));
   const xml = typeof body.xml === "string" ? body.xml : "";
 
   if (!xml.trim()) {

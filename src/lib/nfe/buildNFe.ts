@@ -50,7 +50,7 @@ export function criarIdeParaEmpresa(
 
   const cUF = "25"; // PB
   const mod = "55"; // NF-e
-  const tpEmis: 1 = 1; // emissão normal
+  const tpEmis = 1; // emissão normal
 
   // 1) Gera chave de acesso (44 dígitos) e cDV
   const { chave, id, dv } = gerarChaveAcesso({

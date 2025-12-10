@@ -1,17 +1,18 @@
 // src/app/api/nfe/por-os/[id]/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
 type RouteParams = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
-export async function GET(_req: Request, { params }: RouteParams) {
-  const osId = Number(params.id);
+export async function GET(_req: NextRequest, { params }: RouteParams) {
+  const { id } = await params;
+  const osId = Number(id);
 
-  if (!osId || Number.isNaN(osId)) {
+  if (!Number.isFinite(osId) || osId <= 0) {
     return NextResponse.json(
       { ok: false, message: "ID da OS inválido." },
       { status: 400 }

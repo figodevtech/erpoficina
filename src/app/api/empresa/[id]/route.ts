@@ -1,7 +1,6 @@
 // app/api/empresa/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-// se der problema de import relativo, copie CAMPOS_EMPRESA e filtrarCampos aqui
 
 const CAMPOS_EMPRESA = [
   'cnpj',
@@ -27,6 +26,8 @@ const CAMPOS_EMPRESA = [
   'cnae',
   'inscricaoestadualst',
   'certificadosenha',
+  // se você realmente quer permitir update via whitelist:
+  // 'updatedat',
 ] as const;
 
 type CampoEmpresa = (typeof CAMPOS_EMPRESA)[number];
@@ -41,14 +42,15 @@ function filtrarCampos(body: any): Partial<Record<CampoEmpresa, any>> {
   return dados;
 }
 
+type Contexto = { params: Promise<{ id: string }> };
+
 // GET /api/empresa/[id]
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_req: Request, { params }: Contexto) {
   try {
-    const id = Number(params.id);
-    if (Number.isNaN(id)) {
+    const { id } = await params;
+    const idNumber = Number(id);
+
+    if (Number.isNaN(idNumber)) {
       return NextResponse.json(
         { ok: false, mensagem: 'ID inválido' },
         { status: 400 }
@@ -58,7 +60,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from('empresa')
       .select('*')
-      .eq('id', id)
+      .eq('id', idNumber)
       .single();
 
     if (error) {
@@ -87,13 +89,12 @@ export async function GET(
 }
 
 // PUT /api/empresa/[id]
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: Request, { params }: Contexto) {
   try {
-    const id = Number(params.id);
-    if (Number.isNaN(id)) {
+    const { id } = await params;
+    const idNumber = Number(id);
+
+    if (Number.isNaN(idNumber)) {
       return NextResponse.json(
         { ok: false, mensagem: 'ID inválido' },
         { status: 400 }
@@ -110,12 +111,13 @@ export async function PUT(
       );
     }
 
-    dados['updatedat' as CampoEmpresa] = new Date().toISOString() as any;
+    // Melhor do que forçar CampoEmpresa:
+    (dados as any).updatedat = new Date().toISOString();
 
     const { data, error } = await supabaseAdmin
       .from('empresa')
       .update(dados)
-      .eq('id', id)
+      .eq('id', idNumber)
       .select()
       .single();
 
@@ -138,13 +140,12 @@ export async function PUT(
 }
 
 // DELETE /api/empresa/[id]
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_req: Request, { params }: Contexto) {
   try {
-    const id = Number(params.id);
-    if (Number.isNaN(id)) {
+    const { id } = await params;
+    const idNumber = Number(id);
+
+    if (Number.isNaN(idNumber)) {
       return NextResponse.json(
         { ok: false, mensagem: 'ID inválido' },
         { status: 400 }
@@ -154,7 +155,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('empresa')
       .delete()
-      .eq('id', id);
+      .eq('id', idNumber);
 
     if (error) {
       console.error('Erro ao excluir empresa:', error);

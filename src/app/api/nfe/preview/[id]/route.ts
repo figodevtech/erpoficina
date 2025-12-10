@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { EmpresaRow } from '@/lib/nfe/types';
 import { validarEmitenteEmpresa } from '@/lib/nfe/validarEmitente';
@@ -6,13 +6,17 @@ import { buildNFePreviewXml } from '@/lib/nfe/buildNFe';
 
 export const runtime = 'nodejs';
 
+type Contexto = { params: Promise<{ id: string }> };
+
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: Contexto
 ) {
   try {
-    const id = Number(params.id);
-    if (Number.isNaN(id)) {
+    const { id } = await params;
+    const idNumber = Number(id);
+
+    if (Number.isNaN(idNumber)) {
       return NextResponse.json(
         { ok: false, mensagem: 'ID inválido' },
         { status: 400 }
@@ -36,7 +40,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from('empresa')
       .select('*')
-      .eq('id', id)
+      .eq('id', idNumber)
       .single<EmpresaRow>();
 
     if (error) {
