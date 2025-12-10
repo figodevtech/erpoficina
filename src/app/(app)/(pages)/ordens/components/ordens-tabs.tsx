@@ -24,6 +24,7 @@ export type StatusOS =
   | "ORCAMENTO_RECUSADO"
   | "APROVACAO_ORCAMENTO"
   | "ORCAMENTO_APROVADO"
+  | "AGUARDANDO_CHECKLIST"
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
   | "CONCLUIDO"
@@ -40,8 +41,8 @@ const ALL_STATUSES: StatusOS[] = [
   "ORCAMENTO_APROVADO",
   "EM_ANDAMENTO",
   "PAGAMENTO",
-  "CONCLUIDO",
-  "CANCELADO",
+  "AGUARDANDO_CHECKLIST"
+
 ];
 
 const statusTabs: {
@@ -68,7 +69,7 @@ const statusTabs: {
     dot: "bg-fuchsia-500",
     active:
       "data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-200 data-[state=active]:ring-fuchsia-500/30",
-    statuses: ["ORCAMENTO", "ORCAMENTO_RECUSADO"],
+    statuses: ["ORCAMENTO", "ORCAMENTO_RECUSADO", "AGUARDANDO_CHECKLIST"],
   },
   {
     key: "APROVACAO",
