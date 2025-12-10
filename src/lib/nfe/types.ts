@@ -33,6 +33,28 @@ export type EmpresaRow = {
 };
 
 // =====================
+// Tabela CLIENTE (Supabase)
+// =====================
+export type ClienteRow = {
+  id: number;
+  tipopessoa?: string | null;
+  cpfcnpj: string;
+  nomerazaosocial: string;
+  email?: string | null;
+  telefone?: string | null;
+  endereco?: string | null;
+  endereconumero?: string | null;
+  enderecocomplemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+  inscricaoestadual?: string | null;
+  inscricaomunicipal?: string | null;
+  codigomunicipio?: string | null;
+};
+
+// =====================
 // Tipos de NF-e
 // =====================
 

@@ -16,7 +16,32 @@ export async function GET() {
     const { data, error } = await supabase
       .from("empresa")
       .select(
-        "id, cnpj, razaosocial, nomefantasia, inscricaoestadual, inscricaomunicipal, endereco, codigomunicipio, regimetributario, ambiente"
+        `
+        id,
+        cnpj,
+        razaosocial,
+        nomefantasia,
+        inscricaoestadual,
+        inscricaoestadualst,
+        inscricaomunicipal,
+        endereco,
+        numero,
+        complemento,
+        bairro,
+        cep,
+        uf,
+        codigomunicipio,
+        codigopais,
+        nomepais,
+        telefone,
+        cnae,
+        regimetributario,
+        ambiente,
+        certificadocaminho,
+        certificadosenha,
+        cschomologacao,
+        cscproducao
+      `
       )
       .order("id", { ascending: true })
       .limit(1)
@@ -35,14 +60,25 @@ export async function GET() {
       razaosocial: data.razaosocial || "",
       nomefantasia: data.nomefantasia || "",
       inscricaoestadual: data.inscricaoestadual || "",
+      inscricaoestadualst: data.inscricaoestadualst || "",
       inscricaomunicipal: data.inscricaomunicipal || "",
       endereco: data.endereco || "",
+      numero: data.numero || "",
+      complemento: data.complemento || "",
+      bairro: data.bairro || "",
+      cep: data.cep || "",
+      uf: data.uf || "",
       codigomunicipio: data.codigomunicipio || "",
-      regimetributario: (data.regimetributario || "SIMPLES_NACIONAL") as
-        | "SIMPLES_NACIONAL"
-        | "LUCRO_PRESUMIDO"
-        | "LUCRO_REAL",
+      codigopais: data.codigopais || "1058",
+      nomepais: data.nomepais || "BRASIL",
+      telefone: data.telefone || "",
+      cnae: data.cnae || "",
+      regimetributario: (data.regimetributario || "1") as "1" | "2" | "3",
       ambiente: (data.ambiente || "HOMOLOGACAO") as "HOMOLOGACAO" | "PRODUCAO",
+      certificadocaminho: data.certificadocaminho || "",
+      certificadosenha: data.certificadosenha || "",
+      cschomologacao: data.cschomologacao || "",
+      cscproducao: data.cscproducao || "",
     };
 
     return NextResponse.json({ empresa }, { headers: { "Cache-Control": "no-store" } });
@@ -66,11 +102,25 @@ export async function PUT(request: Request) {
       razaosocial: String(v.razaosocial || ""),
       nomefantasia: v.nomefantasia ? String(v.nomefantasia) : null,
       inscricaoestadual: v.inscricaoestadual ? onlyDigits(v.inscricaoestadual) : null,
+      inscricaoestadualst: v.inscricaoestadualst ? onlyDigits(v.inscricaoestadualst) : null,
       inscricaomunicipal: v.inscricaomunicipal ? onlyDigits(v.inscricaomunicipal) : null,
       endereco: String(v.endereco || ""),
+      numero: v.numero ? String(v.numero) : null,
+      complemento: v.complemento ? String(v.complemento) : null,
+      bairro: v.bairro ? String(v.bairro) : null,
+      cep: v.cep ? onlyDigits(v.cep) : null,
+      uf: v.uf ? String(v.uf) : null,
       codigomunicipio: onlyDigits(v.codigomunicipio || ""),
-      regimetributario: String(v.regimetributario || "SIMPLES_NACIONAL"),
+      codigopais: v.codigopais ? onlyDigits(v.codigopais) : "1058",
+      nomepais: v.nomepais ? String(v.nomepais) : "BRASIL",
+      telefone: v.telefone ? onlyDigits(v.telefone) : null,
+      cnae: v.cnae ? String(v.cnae) : null,
+      regimetributario: String(v.regimetributario || "1"),
       ambiente: String(v.ambiente || "HOMOLOGACAO"),
+      certificadocaminho: v.certificadocaminho ? String(v.certificadocaminho) : null,
+      certificadosenha: v.certificadosenha ? String(v.certificadosenha) : null,
+      cschomologacao: v.cschomologacao ? String(v.cschomologacao) : null,
+      cscproducao: v.cscproducao ? String(v.cscproducao) : null,
       updatedat: new Date().toISOString(),
     };
 

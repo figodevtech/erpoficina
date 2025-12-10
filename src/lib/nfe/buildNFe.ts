@@ -101,30 +101,33 @@ export function buildNFePreviewXml(
   empresa: EmpresaRow,
   numeroNota: number,
   serie: number,
-  itensOverride?: NFeItem[]
+  itensOverride?: NFeItem[],
+  destinatario?: NFeDestinatario
 ): { xml: string; chave: string; id: string } {
   const { ide, chave, id } = criarIdeParaEmpresa(empresa, numeroNota, serie);
 
   const emitente = mapEmpresaToEmitente(empresa, "JOAO PESSOA");
 
-  const dest: NFeDestinatario = {
-    cpf: "12345678909", // pode deixar assim mesmo em homologação
-    razaoSocial: "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL",
-    indIEDest: "9",
-    endereco: {
-      logradouro: "RUA TESTE",
-      numero: "100",
-      complemento: "",
-      bairro: "BAIRRO TESTE",
-      codigoMunicipio: empresa.codigomunicipio,
-      nomeMunicipio: "JOAO PESSOA",
-      uf: "PB",
-      cep: "58000000",
-      codigoPais: "1058",
-      nomePais: "BRASIL",
-      telefone: "",
-    },
-  };
+  const dest: NFeDestinatario =
+    destinatario ??
+    {
+      cpf: "12345678909", // pode deixar assim mesmo em homologacao
+      razaoSocial: "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL",
+      indIEDest: "9",
+      endereco: {
+        logradouro: "RUA TESTE",
+        numero: "100",
+        complemento: "",
+        bairro: "BAIRRO TESTE",
+        codigoMunicipio: empresa.codigomunicipio,
+        nomeMunicipio: "JOAO PESSOA",
+        uf: "PB",
+        cep: "58000000",
+        codigoPais: "1058",
+        nomePais: "BRASIL",
+        telefone: "",
+      },
+    };
 
   // Se itensOverride não for passado, usa o item de teste (compatibilidade)
   const itens: NFeItem[] =

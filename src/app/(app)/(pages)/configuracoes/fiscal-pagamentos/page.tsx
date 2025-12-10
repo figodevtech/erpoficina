@@ -22,10 +22,24 @@ type Empresa = {
   nomefantasia?: string;
   inscricaoestadual?: string;
   inscricaomunicipal?: string;
+  inscricaoestadualst?: string;
   endereco: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
   codigomunicipio: string;
-  regimetributario: "SIMPLES_NACIONAL" | "LUCRO_PRESUMIDO" | "LUCRO_REAL";
+  cep?: string;
+  uf?: string;
+  codigopais?: string;
+  nomepais?: string;
+  telefone?: string;
+  cnae?: string;
+  regimetributario: "1" | "2" | "3";
   ambiente: "HOMOLOGACAO" | "PRODUCAO";
+  certificadocaminho?: string;
+  certificadosenha?: string;
+  cschomologacao?: string;
+  cscproducao?: string;
 };
 type NFeCfg = {
   serieNFe: string;
@@ -91,10 +105,24 @@ export default function ConfigFiscalPagamentosPage() {
         nomefantasia: "",
         inscricaoestadual: "",
         inscricaomunicipal: "",
+        inscricaoestadualst: "",
         endereco: "",
+        numero: "",
+        complemento: "",
+        bairro: "",
+        cep: "",
+        uf: "PB",
         codigomunicipio: "2507507",
-        regimetributario: "SIMPLES_NACIONAL",
+        codigopais: "1058",
+        nomepais: "BRASIL",
+        telefone: "",
+        cnae: "",
+        regimetributario: "1",
         ambiente: "HOMOLOGACAO",
+        certificadocaminho: "",
+        certificadosenha: "",
+        cschomologacao: "",
+        cscproducao: "",
       },
       nfe: {
         serieNFe: "1",
@@ -150,10 +178,24 @@ export default function ConfigFiscalPagamentosPage() {
       setValue("empresa.nomefantasia", e.nomefantasia ?? "");
       setValue("empresa.inscricaoestadual", e.inscricaoestadual ?? "");
       setValue("empresa.inscricaomunicipal", e.inscricaomunicipal ?? "");
+      setValue("empresa.inscricaoestadualst", e.inscricaoestadualst ?? "");
       setValue("empresa.endereco", e.endereco ?? "");
+      setValue("empresa.numero", e.numero ?? "");
+      setValue("empresa.complemento", e.complemento ?? "");
+      setValue("empresa.bairro", e.bairro ?? "");
+      setValue("empresa.cep", e.cep ?? "");
+      setValue("empresa.uf", e.uf ?? "PB");
       setValue("empresa.codigomunicipio", e.codigomunicipio ?? "");
-      setValue("empresa.regimetributario", (e.regimetributario as any) ?? "SIMPLES_NACIONAL");
+      setValue("empresa.codigopais", e.codigopais ?? "1058");
+      setValue("empresa.nomepais", e.nomepais ?? "BRASIL");
+      setValue("empresa.telefone", e.telefone ?? "");
+      setValue("empresa.cnae", e.cnae ?? "");
+      setValue("empresa.regimetributario", (e.regimetributario as any) ?? "1");
       setValue("empresa.ambiente", (e.ambiente as any) ?? "HOMOLOGACAO");
+      setValue("empresa.certificadocaminho", e.certificadocaminho ?? "");
+      setValue("empresa.certificadosenha", e.certificadosenha ?? "");
+      setValue("empresa.cschomologacao", e.cschomologacao ?? "");
+      setValue("empresa.cscproducao", e.cscproducao ?? "");
     },
     [setValue]
   );
@@ -237,32 +279,33 @@ export default function ConfigFiscalPagamentosPage() {
     carregarTudo();
   }, [carregarTudo]);
 
+  
   function validar(v: FormValues, tab: string) {
     const errs: string[] = [];
     if (tab === "empresa") {
       const cnpj = limparDigitos(v.empresa.cnpj);
-      if (cnpj.length < 14) errs.push("CNPJ inválido.");
-      if (!v.empresa.razaosocial?.trim()) errs.push("Razão social obrigatória.");
-      if (!v.empresa.endereco?.trim()) errs.push("Endereço obrigatório.");
+      if (cnpj.length < 14) errs.push("CNPJ invalido.");
+      if (!v.empresa.razaosocial?.trim()) errs.push("Razao social obrigatoria.");
+      if (!v.empresa.endereco?.trim()) errs.push("Endereco obrigatorio.");
+      if (!v.empresa.numero?.trim()) errs.push("Numero do endereco obrigatorio.");
       const ibge = limparDigitos(v.empresa.codigomunicipio);
-      if (ibge.length !== 7) errs.push("Código do Município (IBGE) deve ter 7 dígitos.");
-      if (!v.empresa.regimetributario?.trim()) errs.push("Regime tributário obrigatório.");
+      if (ibge.length !== 7) errs.push("Codigo do Municipio (IBGE) deve ter 7 digitos.");
+      if (!v.empresa.regimetributario?.trim()) errs.push("Regime tributario obrigatorio.");
     }
     if (tab === "nfe") {
-      if (!v.nfe.naturezaOperacao?.trim()) errs.push("Natureza de operação (NF-e) obrigatória.");
+      if (!v.nfe.naturezaOperacao?.trim()) errs.push("Natureza de operacao (NF-e) obrigatoria.");
     }
     if (tab === "pagamentos") {
       if (v.pagamentos.cartao.habilitado) {
-        if (!v.pagamentos.cartao.merchantId?.trim()) errs.push("Merchant ID (Cartão) é obrigatório quando habilitado.");
-        if (!v.pagamentos.cartao.apiKey?.trim()) errs.push("API Key (Cartão) é obrigatória quando habilitado.");
+        if (!v.pagamentos.cartao.merchantId?.trim()) errs.push("Merchant ID (Cartao) e obrigatorio quando habilitado.");
+        if (!v.pagamentos.cartao.apiKey?.trim()) errs.push("API Key (Cartao) e obrigatoria quando habilitado.");
       }
       if (v.pagamentos.pix.habilitado) {
-        if (!v.pagamentos.pix.chave?.trim()) errs.push("Chave Pix é obrigatória quando habilitado.");
+        if (!v.pagamentos.pix.chave?.trim()) errs.push("Chave Pix e obrigatoria quando habilitado.");
       }
     }
     return errs;
   }
-
   async function onSalvar(values: FormValues) {
     if (activeTab === "empresa") {
       values.empresa.cnpj = limparDigitos(values.empresa.cnpj);
@@ -271,6 +314,11 @@ export default function ConfigFiscalPagamentosPage() {
         values.empresa.inscricaoestadual = limparDigitos(values.empresa.inscricaoestadual);
       if (values.empresa.inscricaomunicipal)
         values.empresa.inscricaomunicipal = limparDigitos(values.empresa.inscricaomunicipal);
+      if (values.empresa.inscricaoestadualst)
+        values.empresa.inscricaoestadualst = limparDigitos(values.empresa.inscricaoestadualst);
+      if (values.empresa.cep) values.empresa.cep = limparDigitos(values.empresa.cep);
+      if (values.empresa.telefone) values.empresa.telefone = limparDigitos(values.empresa.telefone);
+      if (values.empresa.codigopais) values.empresa.codigopais = limparDigitos(values.empresa.codigopais);
     }
 
     const erros = validar(values, activeTab);

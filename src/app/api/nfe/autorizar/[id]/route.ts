@@ -11,7 +11,8 @@ import { buildNFePreviewXml } from "@/lib/nfe/buildNFe";
 import { carregarCertificadoA1 } from "@/lib/nfe/certificado";
 import { assinarNFeXml } from "@/lib/nfe/assinatura";
 import { buildEnviNFeXml } from "@/lib/nfe/enviNFe";
-import type { EmpresaRow, NFeItem } from "@/lib/nfe/types";
+import type { ClienteRow, EmpresaRow, NFeItem } from "@/lib/nfe/types";
+import { mapClienteToDestinatario } from "@/lib/nfe/mapClienteToDestinatario";
 
 export const runtime = "nodejs";
 
@@ -194,7 +195,65 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       empresa.ambiente === "PRODUCAO" ? "PRODUCAO" : "HOMOLOGACAO";
 
     // -------------------------------------------------------------------
-    // 4) Buscar itens da NF-e em nfe_item
+    // 4) Buscar cliente destinatario (cliente da OS vinculado a esta NF-e)
+    // -------------------------------------------------------------------
+    if (!nfe.clienteid) {
+      return NextResponse.json(
+        {
+          ok: false,
+          mensagem: "NF-e sem cliente associado (clienteid nulo).",
+        },
+        { status: 500 }
+      );
+    }
+
+    const { data: cliente, error: clienteError } = await supabaseAdmin
+      .from("cliente")
+      .select(
+        `
+        id,
+        cpfcnpj,
+        nomerazaosocial,
+        telefone,
+        email,
+        endereco,
+        endereconumero,
+        enderecocomplemento,
+        bairro,
+        cidade,
+        estado,
+        cep,
+        inscricaoestadual,
+        inscricaomunicipal,
+        codigomunicipio
+      `
+      )
+      .eq("id", nfe.clienteid)
+      .single<ClienteRow>();
+
+    if (clienteError) {
+      console.error("[cliente] erro ao buscar cliente da NF-e:", clienteError);
+      return NextResponse.json(
+        {
+          ok: false,
+          mensagem: "Erro ao buscar cliente da NF-e",
+          detalhe: clienteError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!cliente) {
+      return NextResponse.json(
+        { ok: false, mensagem: "Cliente da NF-e nao encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const destinatario = mapClienteToDestinatario(cliente, empresa);
+
+    // -------------------------------------------------------------------
+    // 5) Buscar itens da NF-e em nfe_item
     // -------------------------------------------------------------------
     const { data: itensNfe, error: itensNfeError } = await supabaseAdmin
       .from("nfe_item")
@@ -251,24 +310,25 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     }));
 
     // -------------------------------------------------------------------
-    // 5) Montar XML da NFe (sem assinatura) com itens reais
+    // 6) Montar XML da NFe (sem assinatura) com itens reais
     // -------------------------------------------------------------------
     const { xml: xmlOriginal, chave, id } = buildNFePreviewXml(
       empresa,
       numeroNota,
       serie,
-      itens
+      itens,
+      destinatario
     );
 
     // -------------------------------------------------------------------
-    // 6) Carregar certificado A1 (chave privada + certificado em PEM)
+    // 7) Carregar certificado A1 (chave privada + certificado em PEM)
     // -------------------------------------------------------------------
     const { privateKeyPem, certificatePem } = await carregarCertificadoA1(
       empresa
     );
 
     // -------------------------------------------------------------------
-    // 7) Assinar XML da NFe (tag <infNFe>)
+    // 8) Assinar XML da NFe (tag <infNFe>)
     // -------------------------------------------------------------------
     const xmlAssinado = assinarNFeXml(
       xmlOriginal,
@@ -277,12 +337,12 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     );
 
     // -------------------------------------------------------------------
-    // 8) Montar o XML do <enviNFe> (lote) com o XML assinado
+    // 9) Montar o XML do <enviNFe> (lote) com o XML assinado
     // -------------------------------------------------------------------
     const enviNFeXml = buildEnviNFeXml(xmlAssinado);
 
     // -------------------------------------------------------------------
-    // 9) Montar SOAP Envelope para o serviço NFeAutorizacao4
+    // 10) Montar SOAP Envelope para o serviço NFeAutorizacao4
     // -------------------------------------------------------------------
     const soapEnvelope =
       '<?xml version="1.0" encoding="utf-8"?>' +
@@ -298,7 +358,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       "</soap12:Envelope>";
 
     // -------------------------------------------------------------------
-    // 10) URL do webservice (SVRS - PB) para PRODUÇÃO / HOMOLOGAÇÃO
+    // 11) URL do webservice (SVRS - PB) para PRODUÇÃO / HOMOLOGAÇÃO
     // -------------------------------------------------------------------
     const url =
       ambiente === "PRODUCAO"
@@ -306,7 +366,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
         : "https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx";
 
     // -------------------------------------------------------------------
-    // 11) Montar agente HTTPS com o PFX para autenticação mútua TLS
+    // 12) Montar agente HTTPS com o PFX para autenticação mútua TLS
     // -------------------------------------------------------------------
     const pfxPathRaw =
       nfe.certificadocaminho ||
@@ -326,7 +386,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     });
 
     // -------------------------------------------------------------------
-    // 12) Enviar requisição SOAP para o webservice usando https.request
+    // 13) Enviar requisição SOAP para o webservice usando https.request
     // -------------------------------------------------------------------
     const { httpStatus, body: respostaText } = await postSoapComCert(
       url,
@@ -335,7 +395,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     );
 
     // -------------------------------------------------------------------
-    // 13) Se HTTP não for 200, já retorna erro bruto
+    // 14) Se HTTP não for 200, já retorna erro bruto
     // -------------------------------------------------------------------
     if (httpStatus !== 200) {
       return NextResponse.json(
@@ -356,7 +416,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     }
 
     // -------------------------------------------------------------------
-    // 14) Parse do XML de retorno (retEnviNFe + protNFe)
+    // 15) Parse do XML de retorno (retEnviNFe + protNFe)
     // -------------------------------------------------------------------
     const parser = new XMLParser({
       ignoreAttributes: false,
@@ -397,13 +457,13 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     }
 
     // -------------------------------------------------------------------
-    // 15) Montar nfeProc (xml_autorizado), se tivermos protNFe no retorno
+    // 16) Montar nfeProc (xml_autorizado), se tivermos protNFe no retorno
     // -------------------------------------------------------------------
     const protNFeXml = extrairProtNFeXml(respostaText);
     const xmlAutorizado = buildNfeProcXml(xmlAssinado, protNFeXml);
 
     // -------------------------------------------------------------------
-    // 16) Determinar novo status da NF-e
+    // 17) Determinar novo status da NF-e
     // -------------------------------------------------------------------
     let novoStatus: string | null = null;
 
@@ -422,7 +482,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     }
 
     // -------------------------------------------------------------------
-    // 17) Atualizar tabela nfe com status / protocolo / xml
+    // 18) Atualizar tabela nfe com status / protocolo / xml
     // -------------------------------------------------------------------
     let statusFinal = statusAtual;
     let protocoloFinal: string | null = nfe.protocolo ?? null;
@@ -470,7 +530,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     }
 
     // -------------------------------------------------------------------
-    // 18) Responder JSON para o frontend
+    // 19) Responder JSON para o frontend
     // -------------------------------------------------------------------
     return NextResponse.json({
       ok: true,

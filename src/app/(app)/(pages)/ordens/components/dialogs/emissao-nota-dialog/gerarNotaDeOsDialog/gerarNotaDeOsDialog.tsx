@@ -102,13 +102,13 @@ export function GerarNotaDeOsDialog({
           } catch {
             // ignora erro de parse
           }
-          throw new Error(msg);
+          toast.error(msg);
         }
 
         const json = (await res.json()) as ListarProdutosOsResponse;
 
         if (!json.ok) {
-          throw new Error(json.message || "Erro ao buscar produtos da OS.");
+          toast.error(json.message || "Erro ao buscar produtos da OS.");
         }
 
         if (!ac.signal.aborted) {
@@ -121,7 +121,7 @@ export function GerarNotaDeOsDialog({
         }
       } catch (e: any) {
         if (e?.name === "AbortError") return;
-        console.error(e);
+        console.log(e);
         toast.error(e?.message || "Erro ao carregar produtos da OS.");
         if (!ac.signal.aborted) {
           setItens([]);
@@ -233,7 +233,7 @@ export function GerarNotaDeOsDialog({
       const json = (await res.json()) as GerarNfeDeOsResponse;
 
       if (!res.ok || !json.ok) {
-        throw new Error(
+        toast.error(
           json.message ||
             `Falha ao gerar rascunho da NF-e (HTTP ${res.status}).`
         );
@@ -247,7 +247,7 @@ export function GerarNotaDeOsDialog({
 
       onOpenChange(false);
     } catch (e: any) {
-      console.error(e);
+      console.log(e);
       toast.error(e?.message || "Erro ao gerar rascunho da NF-e.");
     } finally {
       setSalvando(false);

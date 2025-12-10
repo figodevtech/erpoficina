@@ -347,6 +347,21 @@ export function EmissaoNotaDialog({
                                   >
                                     Ver DANFE
                                   </Button>
+
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs hover:cursor-pointer"
+                                    onClick={() =>
+                                      window.open(
+                                        `/nfe/${nfe.id}/editor`,
+                                        "_blank",
+                                        "noopener,noreferrer"
+                                      )
+                                    }
+                                  >
+                                    Editar XML
+                                  </Button>
                                   <ExcluirRascunhoNfeButton
                                     nfeId={nfe.id}
                                     status={nfe.status ?? ""}
@@ -491,6 +506,7 @@ export function EmissaoNotaDialog({
                                 NF-e {nfe.numero ?? "—"}
                                 {nfe.serie ? `/Série ${nfe.serie}` : ""}
                               </div>
+                              
                               <Badge className={statusClass}>
                                 {statusUpper || "—"}
                               </Badge>
@@ -503,9 +519,10 @@ export function EmissaoNotaDialog({
                                 </Badge>
                               )}
                             </div>
-
                             <div className="text-xs text-muted-foreground space-y-0.5">
+
                               <div>
+                              <span className="text-xs text-muted-foreground ">ID: {nfe.id}</span>{" "}
                                 Emissão: {fmtDate(nfe.dataemissao)}{" "}
                                 {nfe.dataautorizacao && (
                                   <>

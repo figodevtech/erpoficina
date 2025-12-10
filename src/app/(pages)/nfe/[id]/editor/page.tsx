@@ -1,0 +1,207 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Save, Wand2 } from "lucide-react";
+import { toast } from "sonner";
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+type DraftResponse =
+  | {
+      ok: true;
+      id: number;
+      status: string;
+      xml: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      detalhe?: string;
+    };
+
+export default function EditorNfePage({ params }: Props) {
+  const router = useRouter();
+  const [xml, setXml] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const resolvedParams = use(params);
+  const nfeId = Number(resolvedParams.id);
+
+  function formatXml(raw: string): string {
+    const parser = new DOMParser();
+    const dom = parser.parseFromString(raw, "application/xml");
+    if (dom.getElementsByTagName("parsererror").length) {
+      throw new Error("XML invalido para formatar.");
+    }
+    const serializer = new XMLSerializer();
+    const serialized = serializer.serializeToString(dom);
+    const PADDING = "  ";
+    const reg = /(>)(<)(\/*)/g;
+    const xmlString = serialized.replace(reg, "$1\n$2$3");
+    let pad = 0;
+    return xmlString
+      .split("\n")
+      .map((line) => {
+        const trimmed = line.trim();
+        if (trimmed.match(/^<\/.+>/)) pad = Math.max(pad - 1, 0);
+        const indent = PADDING.repeat(pad);
+        if (trimmed.match(/^<[^!?][^>]*[^\/]>$/) && !trimmed.startsWith("</")) {
+          pad += 1;
+        }
+        return indent + trimmed;
+      })
+      .join("\n");
+  }
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/nfe/${nfeId}/xml`, { cache: "no-store" });
+        const json: DraftResponse = await res.json();
+        if (!res.ok || !json.ok) {
+          const msg = !json.ok ? json.message : "Nao foi possivel carregar o XML";
+          toast.error(msg);
+          setStatus(null);
+          setXml("");
+          return;
+        }
+        if (!active) return;
+        let xmlValue = json.xml || "";
+        try {
+          xmlValue = formatXml(xmlValue);
+        } catch {
+          // mantém bruto se nao der para formatar
+        }
+        setXml(xmlValue);
+        setStatus(json.status || null);
+      } catch (err: any) {
+        toast.error("Erro ao carregar XML de rascunho");
+        console.error(err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    if (!Number.isFinite(nfeId)) {
+      toast.error("ID de NF-e invalido");
+      setLoading(false);
+      return;
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, [nfeId]);
+
+  async function salvar() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/nfe/${nfeId}/xml`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ xml }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        const msg = !json.ok ? json.message : "Falha ao salvar XML";
+        throw new Error(msg);
+      }
+      toast.success("XML de rascunho salvo");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao salvar XML");
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isRascunho = status === "RASCUNHO";
+
+  const formatarAtual = () => {
+    try {
+      const novo = formatXml(xml);
+      setXml(novo);
+      toast.success("XML formatado");
+    } catch (err: any) {
+      toast.error(err?.message || "Nao foi possivel formatar o XML");
+    }
+  };
+
+  return (
+    <div className="container mx-auto max-w-5xl py-8">
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">Editor de XML da NF-e</p>
+          <h1 className="text-2xl font-semibold tracking-tight">NF-e #{nfeId}</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {status && (
+            <Badge variant={isRascunho ? "outline" : "destructive"}>
+              Status: {status}
+            </Badge>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={formatarAtual}
+            disabled={loading || !xml}
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            Formatar
+          </Button>
+          <Button onClick={salvar} disabled={!isRascunho || saving || loading}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Salvar XML
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <Card className="shadow-sm border-border/80">
+        <CardHeader>
+          <CardTitle className="text-lg">XML de rascunho (sem assinatura)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Carregando XML...
+            </div>
+          ) : isRascunho ? (
+            <Textarea
+              value={xml}
+              onChange={(e) => setXml(e.target.value)}
+              wrap="off"
+              style={{ tabSize: 2 }}
+              className="font-mono text-sm min-h-[500px] resize-vertical"
+              spellCheck={false}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Apenas NF-e em status RASCUNHO podem ser editadas. Status atual: {status ?? "desconhecido"}.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

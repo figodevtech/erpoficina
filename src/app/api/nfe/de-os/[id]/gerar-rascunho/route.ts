@@ -1,6 +1,9 @@
 // src/app/api/nfe/de-os/[osId]/gerar-rascunho/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { buildNFePreviewXml } from "@/lib/nfe/buildNFe";
+import { mapClienteToDestinatario } from "@/lib/nfe/mapClienteToDestinatario";
+import type { ClienteRow, EmpresaRow, NFeItem } from "@/lib/nfe/types";
 
 export const runtime = "nodejs";
 
@@ -37,7 +40,6 @@ export async function POST(req: Request) {
     }
 
     const body = (await req.json().catch(() => null)) as BodyRequest | null;
-    console.log("body",body)
 
     if (!body || !Array.isArray(body.itens) || body.itens.length === 0) {
       return NextResponse.json(
@@ -121,8 +123,20 @@ export async function POST(req: Request) {
     // 3) Buscar itens da nfe_item para esse nfeId
     const { data: itensNfe, error: itensNfeError } = await supabaseAdmin
       .from("nfe_item")
-      .select("id, produtoid")
-      .eq("nfe_id", nfeId); // <<< AQUI é nfe_id, igual ao schema
+      .select(
+        `
+        n_item,
+        produtoid,
+        descricao,
+        ncm,
+        cfop,
+        unidade,
+        quantidade,
+        valor_unitario,
+        valor_total
+      `
+      )
+      .eq("nfe_id", nfeId);
 
     if (itensNfeError) {
       console.error("[select nfe_item] erro:", itensNfeError);
@@ -165,7 +179,7 @@ export async function POST(req: Request) {
       const { error: deleteError } = await supabaseAdmin
         .from("nfe_item")
         .delete()
-        .eq("nfe_id", nfeId) // <<< também nfe_id aqui
+        .eq("nfe_id", nfeId)
         .in("produtoid", produtosParaRemover);
 
       if (deleteError) {
@@ -201,7 +215,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 6) Buscar a NF-e pra devolver ao front
+    // 6) Buscar a NF-e completa pra montar XML de rascunho
     const { data: nfe, error: nfeError } = await supabaseAdmin
       .from("nfe")
       .select(
@@ -216,18 +230,113 @@ export async function POST(req: Request) {
         ordemservicoid,
         vendaid,
         clienteid,
-        dataemissao,
-        total_produtos,
-        total_servicos,
-        total_nfe
+        empresaid,
+        dataemissao
       `
       )
       .eq("id", nfeId)
       .maybeSingle();
 
-    if (nfeError) {
+    if (nfeError || !nfe) {
       console.error("[select nfe] erro:", nfeError);
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Erro ao buscar NF-e recém criada.",
+          detalhe: nfeError?.message ?? "NF-e não encontrada",
+        },
+        { status: 500 }
+      );
     }
+
+    // 7) Montar XML de rascunho (sem assinatura) com itens e destinatário
+    const { data: empresa, error: empError } = await supabaseAdmin
+      .from("empresa")
+      .select("*")
+      .eq("id", nfe.empresaid)
+      .single<EmpresaRow>();
+
+    if (empError || !empresa) {
+      console.error("[empresa] erro ao buscar empresa da NF-e:", empError);
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Erro ao buscar empresa da NF-e.",
+          detalhe: empError?.message ?? "Empresa não encontrada",
+        },
+        { status: 500 }
+      );
+    }
+
+    const { data: cliente, error: cliError } = await supabaseAdmin
+      .from("cliente")
+      .select(
+        `
+        id,
+        cpfcnpj,
+        nomerazaosocial,
+        telefone,
+        email,
+        endereco,
+        endereconumero,
+        enderecocomplemento,
+        bairro,
+        cidade,
+        estado,
+        cep,
+        inscricaoestadual,
+        inscricaomunicipal,
+        codigomunicipio
+      `
+      )
+      .eq("id", nfe.clienteid)
+      .single<ClienteRow>();
+
+    if (cliError || !cliente) {
+      console.error("[cliente] erro ao buscar cliente da NF-e:", cliError);
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Erro ao buscar cliente da NF-e.",
+          detalhe: cliError?.message ?? "Cliente não encontrado",
+        },
+        { status: 500 }
+      );
+    }
+
+    const itens: NFeItem[] = (itensNfe as any[]).map((row, idx) => ({
+      numeroItem: Number(row.n_item ?? idx + 1),
+      codigoProduto:
+        row.produtoid != null ? String(row.produtoid) : String(row.n_item ?? idx + 1),
+      descricao: row.descricao,
+      ncm: row.ncm || "00000000",
+      cfop: row.cfop,
+      unidade: row.unidade,
+      quantidade: Number(row.quantidade ?? 0),
+      valorUnitario: Number(row.valor_unitario ?? 0),
+      valorTotal: Number(row.valor_total ?? 0),
+      codigoBarras: null,
+    }));
+
+    const destinatario = mapClienteToDestinatario(cliente, empresa);
+
+    const { xml: xmlRascunho, chave } = buildNFePreviewXml(
+      empresa,
+      Number(nfe.numero),
+      Number(nfe.serie),
+      itens,
+      destinatario
+    );
+
+    // 8) Gravar XML de rascunho (não assinado) em xml_assinado e chave
+    await supabaseAdmin
+      .from("nfe")
+      .update({
+        xml_assinado: xmlRascunho,
+        chave_acesso: chave,
+        updatedat: new Date().toISOString(),
+      })
+      .eq("id", nfeId);
 
     return NextResponse.json(
       {
