@@ -60,6 +60,7 @@ import {
   prioRank,
 } from "./ordens-tabela-helpers";
 import { OrdensFilterSheet } from "./ordens-filtros";
+import { EmissaoNotaDialog } from "./dialogs/emissao-nota-dialog/emissao-nota-dialog";
 
 // ------------------ COMPONENTE PRINCIPAL ------------------
 export function OrdensTabela({
@@ -231,6 +232,9 @@ export function OrdensTabela({
 
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [approveRow, setApproveRow] = useState<OrdemComDatas | null>(null);
+
+  const [emissaoId, setEmissaoId] = useState<number | null>(null)
+  const [emissaoOpen, setEmissaoOpen] = useState(false)
 
   const [approvalToastId, setApprovalToastId] = useState<string | number | null>(null);
 
@@ -684,6 +688,8 @@ export function OrdensTabela({
                             setChecklistOpen={setChecklistOpen}
                             setStoneRow={setStoneDialogRow}
                             setStoneOpen={setStoneDialogOpen}
+                            setEmissaoId={setEmissaoId}
+                            setEmissaoOpen={setEmissaoOpen}
                           />
                         </TableCell>
                       </TableRow>
@@ -880,6 +886,14 @@ export function OrdensTabela({
           osId={payRow?.id || 0}
           handleGetOrdens={() => fetchNow(currentParamsRef.current)}
         />
+
+        <EmissaoNotaDialog
+      osId={emissaoId}
+      open={emissaoOpen}
+      onOpenChange={setEmissaoOpen}
+      >
+
+      </EmissaoNotaDialog>
 
         {/* Dialog: Pagamento Stone */}
         <OsStonePaymentDialog
