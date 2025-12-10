@@ -30,6 +30,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const { user } = data;
 
+          const agora = new Date();
+          console.log("[auth] login realizado no servidor", {
+            iso: agora.toISOString(),
+            local: agora.toString(),
+          });
+
           let perfilid: number | null = null;
           let setorid: number | null = null;
           let nome = user.user_metadata?.nome ?? user.email ?? "Usuário";

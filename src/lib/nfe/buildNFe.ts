@@ -20,19 +20,26 @@ import { mapEmpresaToEmitente } from "./mapEmpresaToEmitente";
 function formatDateTimeNFe(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
 
-  const ano = date.getFullYear();
-  const mes = pad(date.getMonth() + 1);
-  const dia = pad(date.getDate());
-  const hora = pad(date.getHours());
-  const minuto = pad(date.getMinutes());
-  const segundo = pad(date.getSeconds());
+  // Garante hora no fuso -03:00 independentemente do fuso do host (ex: Vercel em UTC)
+  const targetOffsetMinutes = -3 * 60; // UTC-3 (America/Fortaleza)
+  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
+  const targetMs = utcMs + targetOffsetMinutes * 60000;
+  const targetDate = new Date(targetMs);
 
-  // PB (America/Fortaleza) - fuso -03:00 (sem horário de verão)
-  const tz = "-03:00";
+  const ano = targetDate.getUTCFullYear();
+  const mes = pad(targetDate.getUTCMonth() + 1);
+  const dia = pad(targetDate.getUTCDate());
+  const hora = pad(targetDate.getUTCHours());
+  const minuto = pad(targetDate.getUTCMinutes());
+  const segundo = pad(targetDate.getUTCSeconds());
+
+  const offsetHours = Math.floor(Math.abs(targetOffsetMinutes) / 60);
+  const offsetMinutes = Math.abs(targetOffsetMinutes) % 60;
+  const sign = targetOffsetMinutes <= 0 ? "-" : "+";
+  const tz = `${sign}${pad(offsetHours)}:${pad(offsetMinutes)}`;
 
   return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${tz}`;
 }
-
 /**
  * Cria o bloco <ide> da NF-e, calculando cNF, chave de acesso e cDV.
  */
