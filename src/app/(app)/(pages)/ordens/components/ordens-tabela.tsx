@@ -855,7 +855,7 @@ export function OrdensTabela({
                   if (approvalToastId != null) {
                     toast.success("Orçamento enviado para aprovação!", {
                       id: approvalToastId,
-                      duration: 1000,
+                      duration: 3000,
                     });
                     setApprovalToastId(null);
                   }

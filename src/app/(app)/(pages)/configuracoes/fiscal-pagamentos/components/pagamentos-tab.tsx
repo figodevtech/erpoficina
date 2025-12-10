@@ -6,6 +6,7 @@ import type {
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
+import type { FormValues } from "../types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,38 +14,6 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-type CartaoCfg = {
-  habilitado: boolean;
-  provider: "stone";
-  merchantId: string;
-  apiKey: string;
-  webhookUrl?: string;
-  parcelasMax: number;
-  capturaAutomatica: boolean;
-  terminalIds?: string[];
-};
-type PixCfg = {
-  habilitado: boolean;
-  provider: "stone" | "banco";
-  chave: string;
-  clientId?: string;
-  clientSecret?: string;
-  webhookUrl?: string;
-  expiracaoSegundos: number;
-};
-type DinheiroCfg = { habilitado: boolean };
-
-type FormValues = {
-  empresa: any;
-  nfe: any;
-  nfse: any;
-  pagamentos: {
-    cartao: CartaoCfg;
-    pix: PixCfg;
-    dinheiro: DinheiroCfg;
-  };
-};
 
 function parseCSV(value: string): string[] {
   return (value || "")

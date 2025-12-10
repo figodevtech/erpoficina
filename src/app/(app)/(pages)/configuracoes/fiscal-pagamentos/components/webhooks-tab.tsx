@@ -1,25 +1,11 @@
 "use client";
 
 import type { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import type { FormValues } from "../types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Info } from "lucide-react";
-
-type FormValues = {
-  empresa: any;
-  nfe: any;
-  nfse: any;
-  pagamentos: {
-    cartao: {
-      webhookUrl?: string;
-    };
-    pix: {
-      webhookUrl?: string;
-    };
-    dinheiro: any;
-  };
-};
 
 export function WebhooksTab({
   register,

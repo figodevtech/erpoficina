@@ -80,6 +80,8 @@ export function RowActions<TRow extends RowBase>({
   setChecklistOpen,
   setStoneRow,
   setStoneOpen,
+  setEmissaoId,
+  setEmissaoOpen,
 }: {
   row: TRow;
   policy: Policy;
@@ -99,6 +101,8 @@ export function RowActions<TRow extends RowBase>({
   setChecklistOpen: (open: boolean) => void;
   setStoneRow: (row: TRow | null) => void;
   setStoneOpen: (open: boolean) => void;
+  setEmissaoId: (id: number) => void;
+  setEmissaoOpen: (open: boolean) => void;
 }) {
   const st = String(row.status ?? "").toUpperCase();
 
@@ -139,6 +143,8 @@ export function RowActions<TRow extends RowBase>({
 
   // Orçamento recusado: permitir cancelar OS (muda status p/ CANCELADO)
   const showCancelOSRecusado = st === "ORCAMENTO_RECUSADO";
+
+  const showEmissaoDeNota = st === "CONCLUIDO"
 
   // Produção / Pagamento
   const showStart = policy.showStart && st === "ORCAMENTO_APROVADO"; // -> EM_ANDAMENTO
@@ -282,6 +288,18 @@ export function RowActions<TRow extends RowBase>({
           >
             <CreditCard className="mr-2 h-4 w-4" />
             Cobrar na maquineta
+          </DropdownMenuItem>
+        )}
+
+        {showEmissaoDeNota && (
+          <DropdownMenuItem
+            onClick={() => {
+              setEmissaoId(row.id)
+              setEmissaoOpen(true)
+            }}
+          >
+            <CreditCard className="mr-2 h-4 w-4" />
+            Emissão de Nota
           </DropdownMenuItem>
         )}
 
