@@ -120,7 +120,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3) Buscar itens da nfe_item para esse nfeId
+    // 3) Buscar itens da nfe_item para esse nfeId (todos, para filtrar depois)
     const { data: itensNfe, error: itensNfeError } = await supabaseAdmin
       .from("nfe_item")
       .select(
@@ -304,7 +304,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const itens: NFeItem[] = (itensNfe as any[]).map((row, idx) => ({
+    const itensNfeSelecionados = (itensNfe as any[]).filter((row) =>
+      itensSelecionados.includes(Number(row.produtoid))
+    );
+
+    if (itensNfeSelecionados.length === 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Nenhum item selecionado foi encontrado para montar o XML da NF-e.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const itens: NFeItem[] = itensNfeSelecionados.map((row, idx) => ({
       numeroItem: Number(row.n_item ?? idx + 1),
       codigoProduto:
         row.produtoid != null ? String(row.produtoid) : String(row.n_item ?? idx + 1),
