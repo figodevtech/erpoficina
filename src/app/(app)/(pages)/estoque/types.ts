@@ -121,6 +121,7 @@ export interface Produto {
   estoqueminimo?: number; // default 0 no banco, mas pode ser null
   ncm?: string;
   cfop?: string;
+  cst?: string;
   unidade?: Unidade_medida;
   cest?: string;
   csosn?: string;

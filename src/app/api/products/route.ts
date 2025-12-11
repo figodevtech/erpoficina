@@ -19,6 +19,7 @@ const WRITABLE_FIELDS = new Set([
   'unidade',
   'cest',
   'csosn',
+  'cst',
   'aliquotaicms',
   'codigobarras',
   'referencia',
@@ -32,7 +33,7 @@ const WRITABLE_FIELDS = new Set([
 
 /** Campos a retornar ao criar/listar/atualizar se quiser o objeto completo */
 const PRODUTO_FIELDS =
-  'id, descricao, titulo, referencia, precovenda, estoque, estoqueminimo, unidade, ncm, cfop, csosn, cest, aliquotaicms, codigobarras, status_estoque, fabricante, grupo, exibirPdv, tituloMarketplace, descricaoMarketplace, createdat, updatedat';
+  'id, descricao, titulo, referencia, precovenda, estoque, estoqueminimo, unidade, ncm, cfop, csosn, cst, cest, aliquotaicms, codigobarras, status_estoque, fabricante, grupo, exibirPdv, tituloMarketplace, descricaoMarketplace, createdat, updatedat';
 
 function toNullIfEmpty(v: unknown) {
   return typeof v === 'string' && v.trim() === '' ? null : v;

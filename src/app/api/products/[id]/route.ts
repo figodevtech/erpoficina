@@ -8,7 +8,7 @@ type Params = { id: string };
 
 const PRODUTO_FIELDS = `
   id, descricao, precovenda, estoque, estoqueminimo, ncm, cfop, unidade,
-  cest, csosn, aliquotaicms, codigobarras, createdat, updatedat, referencia,
+  cest, csosn, cst, aliquotaicms, codigobarras, createdat, updatedat, referencia,
   titulo, status_estoque, fabricante, grupo, exibirPdv,
   tituloMarketplace, descricaoMarketplace
 `;
@@ -31,6 +31,7 @@ const WRITABLE_FIELDS = new Set([
   "unidade",
   "cest",
   "csosn",
+  "cst",
   "aliquotaicms",
   "codigobarras",
   "referencia",

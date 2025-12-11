@@ -48,18 +48,51 @@ import {
 
 // --- Helper data ---
 
+type CstCsosn = {
+  cod: string;
+  desc: string;
+}
+
+
 const CSOSN_OPTIONS = [
-  "101",
-  "102",
-  "103",
-  "201",
-  "202",
-  "203",
-  "300",
-  "400",
-  "500",
-  "900",
+  {cod: "101", desc: "Tributada pelo Simples Nacional com permissão de crédito" },
+  {cod: "102", desc: "Tributada pelo Simples Nacional sem permissão de crédito" },
+  {cod: "103", desc: "Isenção do ICMS no Simples Nacional para faixa de receita" },
+  {cod: "201", desc: "Tributada com permissão de crédito e com ST" },
+  {cod: "202", desc: "Tributada sem permissão de crédito e com ST" },
+  {cod: "300", desc: "Imune" },
+  {cod: "400", desc: "Não Tributada" },
+  {cod: "500", desc: "ICMS cobrado anteriormente por substituição tributária (ST)" },
+  {cod: "900", desc: "Outros" },
+  
 ];
+
+const CST_PIS_OPTIONS : CstCsosn[] = [
+{cod: "1", desc: "Operação Tributável com Alíquota Básica."},
+{cod: "2", desc: "Operação Tributável com Alíquota Diferenciada."},
+{cod: "3", desc: "Operação Tributável com Alíquota por Unidade de Medida de Produto."},
+{cod: "4", desc: "Operação Tributável Monofásica - Revenda a Alíquota Zero."},
+{cod: "5", desc: "Operação Tributável por Substituição Tributária."},
+{cod: "6", desc: "Operação Tributável a Alíquota Zero."},
+{cod: "7", desc: "Operação Isenta de Contribuição."},
+{cod: "8", desc: "Operação sem Incidência da Contribuição."},
+{cod: "9", desc: "Operação com Suspensão da Contribuição."},
+{cod: "49", desc: "Outras Operações de Saída"},
+];
+
+const CST_OPTIONS : CstCsosn[] = [
+  {cod: "000", desc: "Tributada Integralmente"},
+  {cod: "010", desc: "Tributada e com cobrança do ICMS por ST"},
+  {cod: "020", desc: "Com redução de base de cálculo"},
+  {cod: "030", desc: "Isenta/Não tributada e com cobrança do ICMS por ST"},
+  {cod: "040", desc: "Isenta"},
+  {cod: "041", desc: "Não Tributada"},
+  {cod: "050", desc: "Com Suspensão"},
+  {cod: "051", desc: "Com Diferimento"},
+  {cod: "060", desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária"},
+  {cod: "070", desc: "Com redução de base de cálculo no ICMS ST"},
+  {cod: "090", desc: "Outras Operações"},
+]
 
 // Ajuste aos possíveis valores do enum public.estoque_status
 // Se o seu enum tiver valores diferentes, ajuste abaixo para casar com o banco.
@@ -419,7 +452,7 @@ export default function EditContent({ productId }: EditContentProps) {
               className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="ncm">NCM</Label>
                     <Input
@@ -448,20 +481,39 @@ export default function EditContent({ productId }: EditContentProps) {
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="csosn">CSOSN</Label>
                     <Select
                       value={selectedProduct.csosn || "Selecione"}
                       onValueChange={(v) => handleChange("csosn", v)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Selecione">Selecione</SelectItem>
                         {CSOSN_OPTIONS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
+                          <SelectItem key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="csosn">CST</Label>
+                    <Select
+                      value={selectedProduct.cst || "Selecione"}
+                      onValueChange={(v) => handleChange("cst", v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Selecione">Selecione</SelectItem>
+                        {CST_OPTIONS.map((c) => (
+                          <SelectItem key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
                           </SelectItem>
                         ))}
                       </SelectContent>

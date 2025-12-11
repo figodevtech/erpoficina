@@ -15,7 +15,7 @@ const EXPORT_FIELDS = `
   precovenda, unidade,
   estoque, estoqueminimo, status_estoque,
   fornecedor, fabricante, grupo,
-  ncm, cfop, csosn, cest, aliquotaicms, codigobarras,
+  ncm, cfop, csosn, cst, cest, aliquotaicms, codigobarras,
   createdat, updatedat
 `;
 
@@ -55,6 +55,7 @@ export async function GET(req: Request) {
       "NCM",
       "CFOP",
       "CSOSN",
+      "CST",
       "CEST",
       "Alíquota ICMS",
       "Código Barras",
@@ -84,6 +85,7 @@ export async function GET(req: Request) {
       { wch: 12 }, // NCM
       { wch: 10 }, // CFOP
       { wch: 10 }, // CSOSN
+      { wch: 10 }, // CST
       { wch: 10 }, // CEST
       { wch: 14 }, // Alíquota ICMS
       { wch: 18 }, // Código Barras
@@ -136,6 +138,7 @@ export async function GET(req: Request) {
         p.ncm ?? "",
         p.cfop ?? "",
         p.csosn ?? "",
+        p.cst ?? "",
         p.cest ?? "",
         p.aliquotaicms ?? null, // número
         p.codigobarras ?? "",
