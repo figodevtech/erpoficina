@@ -16,6 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Receipt, Package, Info, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type OsProdutoParaNfe = {
   titulo: string;
@@ -43,6 +46,11 @@ type GerarNfeDeOsResponse = {
   nfeId?: number;
 };
 
+type Cfop = {
+  cod: string,
+  descricao: string,
+}
+
 function fmtMoney(v: number | null | undefined) {
   if (v == null || isNaN(Number(v))) return "—";
   return Number(v).toLocaleString("pt-BR", {
@@ -59,6 +67,13 @@ export interface GerarNotaDeOsDialogProps {
   onAfterGenerate?: (nfeId: number | null) => void;
 }
 
+const CFOP_OPTIONS : Cfop[] = [
+  {cod: "5102", descricao: "Emissão dentro do Estado"},
+  {cod: "6102", descricao: "Emissão fora do Estado"},
+  
+]
+
+
 /**
  * IMPORTANTE:
  * Este dialog agora seleciona e envia `produtoId` (não `osProdutoId`),
@@ -74,6 +89,8 @@ export function GerarNotaDeOsDialog({
   const [carregandoItens, setCarregandoItens] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [itens, setItens] = useState<OsProdutoParaNfe[] | null>(null);
+  const [selectedCfop, setSelectedCfop] = useState<string | null>(null)
+  const [selectedIcms, setSelectedIcms] = useState<string | null>(null)
 
   // Agora guardamos IDs de PRODUTO
   const [selecionados, setSelecionados] = useState<number[]>([]);
@@ -326,9 +343,42 @@ export function GerarNotaDeOsDialog({
               </div>
             </div>
           )}
-
           {osId && !carregandoItens && itens && itens.length > 0 && (
             <>
+            <div className="flex flex-row items-center gap-2">
+              <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground" htmlFor="cfop">CFOP:</Label>
+                  <Select
+                    value={selectedCfop || "Selecione"}
+                    onValueChange={(v) => {setSelectedCfop(v)}}
+                  >
+                    <SelectTrigger size="sm" className="text-xs w-60">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem className="hover:cursor-pointer" value="Selecione">Selecione</SelectItem>
+                      {CFOP_OPTIONS.map((c) => (
+                        <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
+                          {c.cod} - {c.descricao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                                  <Label className="text-xs text-muted-foreground" htmlFor="aliquotaicms">Alíquota ICMS (%)</Label>
+                                  <Input
+                                    id="aliquotaicms"
+                                    value={selectedIcms || ""}
+                                    onChange={(e) =>
+                                      setSelectedIcms(e.target.value)
+                                    }
+                                    className="text-xs h-8 w-30"
+                                    placeholder="18,00"
+                                    inputMode="decimal"
+                                  />
+                                </div>
+            </div>
               <section className="rounded-lg border p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
