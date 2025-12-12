@@ -20,6 +20,7 @@ const WRITABLE_FIELDS = new Set([
   'cest',
   'csosn',
   'cst',
+  'cst',
   'aliquotaicms',
   'codigobarras',
   'referencia',

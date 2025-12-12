@@ -81,17 +81,17 @@ const CST_PIS_OPTIONS : CstCsosn[] = [
 ];
 
 const CST_OPTIONS : CstCsosn[] = [
-  {cod: "000", desc: "Tributada Integralmente"},
-  {cod: "010", desc: "Tributada e com cobrança do ICMS por ST"},
-  {cod: "020", desc: "Com redução de base de cálculo"},
-  {cod: "030", desc: "Isenta/Não tributada e com cobrança do ICMS por ST"},
-  {cod: "040", desc: "Isenta"},
-  {cod: "041", desc: "Não Tributada"},
-  {cod: "050", desc: "Com Suspensão"},
-  {cod: "051", desc: "Com Diferimento"},
-  {cod: "060", desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária"},
-  {cod: "070", desc: "Com redução de base de cálculo no ICMS ST"},
-  {cod: "090", desc: "Outras Operações"},
+  {cod: "00", desc: "Tributada Integralmente"},
+  {cod: "10", desc: "Tributada e com cobrança do ICMS por ST"},
+  {cod: "20", desc: "Com redução de base de cálculo"},
+  {cod: "30", desc: "Isenta/Não tributada e com cobrança do ICMS por ST"},
+  {cod: "40", desc: "Isenta"},
+  {cod: "41", desc: "Não Tributada"},
+  {cod: "50", desc: "Com Suspensão"},
+  {cod: "51", desc: "Com Diferimento"},
+  {cod: "60", desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária"},
+  {cod: "70", desc: "Com redução de base de cálculo no ICMS ST"},
+  {cod: "90", desc: "Outras Operações"},
 ]
 
 // Ajuste aos possíveis valores do enum public.estoque_status
@@ -544,6 +544,7 @@ export default function EditContent({ productId }: EditContentProps) {
                       onChange={(e) =>
                         handleChange("aliquotaicms", e.target.value)
                       }
+                      type="number"
                       placeholder="18,00"
                       inputMode="decimal"
                     />

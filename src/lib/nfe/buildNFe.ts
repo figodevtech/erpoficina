@@ -20,26 +20,27 @@ import { mapEmpresaToEmitente } from './mapEmpresaToEmitente';
 function formatDateTimeNFe(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
 
-  // Garante hora no fuso -03:00 independentemente do fuso do host (ex: Vercel em UTC)
-  const targetOffsetMinutes = -3 * 60; // UTC-3 (America/Fortaleza)
-  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
-  const targetMs = utcMs + targetOffsetMinutes * 60000;
-  const targetDate = new Date(targetMs);
+  // Usa a HORA LOCAL do ambiente (Node) aqui:
+  const ano = date.getFullYear();
+  const mes = pad(date.getMonth() + 1);
+  const dia = pad(date.getDate());
+  const hora = pad(date.getHours());
+  const minuto = pad(date.getMinutes());
+  const segundo = pad(date.getSeconds());
 
-  const ano = targetDate.getUTCFullYear();
-  const mes = pad(targetDate.getUTCMonth() + 1);
-  const dia = pad(targetDate.getUTCDate());
-  const hora = pad(targetDate.getUTCHours());
-  const minuto = pad(targetDate.getUTCMinutes());
-  const segundo = pad(targetDate.getUTCSeconds());
+  // Timezone baseado no ambiente (getTimezoneOffset):
+  // ex.: Fortaleza (UTC-3) => getTimezoneOffset() = 180
+  const offsetMinutes = date.getTimezoneOffset(); // em minutos
+  const total = Math.abs(offsetMinutes);
 
-  const offsetHours = Math.floor(Math.abs(targetOffsetMinutes) / 60);
-  const offsetMinutes = Math.abs(targetOffsetMinutes) % 60;
-  const sign = targetOffsetMinutes <= 0 ? '-' : '+';
-  const tz = `${sign}${pad(offsetHours)}:${pad(offsetMinutes)}`;
+  const offsetHours = pad(Math.floor(total / 60));
+  const offsetMins = pad(total % 60);
+  const sign = offsetMinutes > 0 ? '-' : '+'; 
+  // em Fortaleza: offsetMinutes = 180 => sign = '-' => "-03:00"
 
-  return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${tz}`;
+  return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${sign}${offsetHours}:${offsetMins}`;
 }
+
 
 /**
  * Cria o bloco <ide> da NF-e, calculando cNF, chave de acesso e cDV.
@@ -104,11 +105,8 @@ export function criarIdeParaEmpresa(
  *
  * IMPORTANTE (Lucro Presumido):
  * - Se você passar "itensOverride", é ESSENCIAL preencher os campos
- *   de imposto do NFeItem (cstIcms, aliquotaIcms, cstPis, cstCofins, etc)
+ *   de imposto do NFeItem (cst, csosn, aliquotaIcms, cstPis, cstCofins, etc)
  *   já calculados a partir de produto/nfe_item.
- *
- * - O campo regimeTributario do NFeItem é preenchido automaticamente
- *   a partir de empresa.regimetributario, se você não informar.
  *
  * Se "itensOverride" for informado, ele será usado para gerar os <det>.
  * Caso contrário, é usado um item de teste fixo (comportamento antigo).
@@ -150,12 +148,6 @@ export function buildNFePreviewXml(
       },
     };
 
-  // Regime tributário padrão para os itens, baseado na empresa
-  const regimeItemPadrao: NFeItem['regimeTributario'] =
-    empresa.regimetributario === '3'
-      ? 'LUCRO_PRESUMIDO'
-      : 'SIMPLES_NACIONAL';
-
   // Se itensOverride não for passado, usa o item de teste (compatibilidade)
   const itensBase: NFeItem[] =
     itensOverride && itensOverride.length > 0
@@ -174,32 +166,61 @@ export function buildNFePreviewXml(
           },
         ];
 
-  // Garante nº do item e regimeTributario em cada item
+  // Garante nº do item em cada item
   const itens: NFeItem[] = itensBase.map((item, index) => ({
     ...item,
     numeroItem: item.numeroItem ?? index + 1,
-    regimeTributario: item.regimeTributario ?? regimeItemPadrao,
   }));
 
   const ideXml = buildIdeXml(ide);
   const emitXml = buildEmitXml(emitente);
   const destXml = buildDestXml(dest);
-  const detXml = itens.map((item) => buildDetXml(item)).join('');
+  const detXml = itens
+    .map((item) => buildDetXml(item, emitente.crt))
+    .join('');
 
-  // Calcula totais com base nos itens
-  const totalProdutosNumber = itens.reduce(
-    (acc, item) => acc + Number(item.valorTotal),
-    0
+  // =========================
+  // Totais (ICMSTot)
+  // =========================
+  const soma = itens.reduce(
+    (acc, item) => {
+      const vProd = Number(item.valorTotal ?? 0);
+
+      const aliqIcms = Number(item.aliquotaIcms ?? 0);
+      const vBCIcms = vProd; // por enquanto, base = valor do produto
+      const vICMS = (vBCIcms * aliqIcms) / 100;
+
+      const aliqPis = Number(item.aliquotaPis ?? 0);
+      const vBCPis = vProd;
+      const vPIS = (vBCPis * aliqPis) / 100;
+
+      const aliqCofins = Number(item.aliquotaCofins ?? 0);
+      const vBCCofins = vProd;
+      const vCOFINS = (vBCCofins * aliqCofins) / 100;
+
+      acc.vProd += vProd;
+      acc.vBC += vBCIcms;
+      acc.vICMS += vICMS;
+      acc.vPIS += vPIS;
+      acc.vCOFINS += vCOFINS;
+
+      return acc;
+    },
+    { vProd: 0, vBC: 0, vICMS: 0, vPIS: 0, vCOFINS: 0 }
   );
 
-  const vNF = totalProdutosNumber.toFixed(2);
-  const vProd = vNF;
+  const vProd = soma.vProd.toFixed(2);
+  const vBC = soma.vBC.toFixed(2);
+  const vICMS = soma.vICMS.toFixed(2);
+  const vPIS = soma.vPIS.toFixed(2);
+  const vCOFINS = soma.vCOFINS.toFixed(2);
+  const vNF = vProd; // sem desconto/frete/outros por enquanto
 
   const totalXml =
     '<total>' +
     '<ICMSTot>' +
-    `<vBC>0.00</vBC>` +
-    `<vICMS>0.00</vICMS>` +
+    `<vBC>${vBC}</vBC>` +
+    `<vICMS>${vICMS}</vICMS>` +
     `<vICMSDeson>0.00</vICMSDeson>` +
     `<vFCP>0.00</vFCP>` +
     `<vBCST>0.00</vBCST>` +
@@ -213,8 +234,8 @@ export function buildNFePreviewXml(
     `<vII>0.00</vII>` +
     `<vIPI>0.00</vIPI>` +
     `<vIPIDevol>0.00</vIPIDevol>` +
-    `<vPIS>0.00</vPIS>` +
-    `<vCOFINS>0.00</vCOFINS>` +
+    `<vPIS>${vPIS}</vPIS>` +
+    `<vCOFINS>${vCOFINS}</vCOFINS>` +
     `<vOutro>0.00</vOutro>` +
     `<vNF>${vNF}</vNF>` +
     '</ICMSTot>' +

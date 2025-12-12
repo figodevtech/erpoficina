@@ -429,6 +429,8 @@ export default function RegisterContent({
                     }
                     placeholder="18,00"
                     inputMode="decimal"
+                                          type="number"
+
                   />
                 </div>
               </div>

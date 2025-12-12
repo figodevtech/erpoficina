@@ -12,11 +12,11 @@ export type EmpresaRow = {
   inscricaomunicipal: string | null;
   endereco: string;
   codigomunicipio: string;
-  regimetributario: '1' | '2' | '3' | string;
+  regimetributario: "1" | "2" | "3" | string;
   certificadocaminho: string | null;
   cschomologacao: string | null;
   cscproducao: string | null;
-  ambiente: 'HOMOLOGACAO' | 'PRODUCAO' | null;
+  ambiente: "HOMOLOGACAO" | "PRODUCAO" | null;
   createdat: string | null;
   updatedat: string | null;
   bairro: string | null;
@@ -80,7 +80,7 @@ export type NFeEmitente = {
   inscricaoEstadualST?: string;
   inscricaoMunicipal?: string;
   cnae?: string;
-  crt: '1' | '2' | '3' | string;
+  crt: "1" | "2" | "3" | string;
   endereco: NFeEndereco;
 };
 
@@ -110,42 +110,12 @@ export type NFeDestinatario = {
   cpf?: string;
   cnpj?: string;
   razaoSocial: string;
-  indIEDest: '1' | '2' | '3' | '9' | string;
+  indIEDest: "1" | "2" | "3" | "9" | string;
   inscricaoEstadual?: string;
   endereco: NFeEndereco;
 };
 
-/**
- * Representa UM item da NF-e.
- *
- * Para funcionar bem em TODOS os regimes:
- *
- * - Simples Nacional:
- *   - Preencha `regimeTributario = 'SIMPLES_NACIONAL'`
- *   - Preencha `csosn` (ex: "102", "103", ...)
- *
- * - Lucro Presumido / Regime Normal:
- *   - Preencha `regimeTributario = 'LUCRO_PRESUMIDO'` (ou 'LUCRO_REAL')
- *   - ICMS:
- *     - `origemMercadoria` ("0" nacional, etc)
- *     - `cstIcms` (ex: "00")
- *     - `modalidadeBCIcms` (geralmente "3" = valor da operação)
- *     - `baseCalculoIcms` (vBC) — se não preencher, usa `valorTotal`
- *     - `aliquotaIcms` (pICMS)
- *     - `valorIcms` (vICMS) — se não preencher, é calculado vBC * pICMS / 100
- *   - PIS:
- *     - `cstPis` (ex: "01", "02", "06", "07"...)
- *     - `baseCalculoPis` (se faltar, usa `valorTotal`)
- *     - `aliquotaPis` (pPIS)
- *     - `valorPis` (vPIS) — calculado se não vier pronto
- *   - COFINS:
- *     - `cstCofins`
- *     - `baseCalculoCofins`
- *     - `aliquotaCofins`
- *     - `valorCofins`
- */
 export interface NFeItem {
-  // Dados básicos do produto
   numeroItem: number;
   codigoProduto: string;
   descricao: string;
@@ -157,89 +127,69 @@ export interface NFeItem {
   valorTotal: number;
   codigoBarras?: string | null;
 
+  // ---------- ICMS ----------
   /**
-   * Regime tributário do emitente, para ajudar nas decisões de
-   * montagem do bloco <imposto>.
-   *
-   * - 'SIMPLES_NACIONAL' → usa CSOSN / ICMSSN102, etc
-   * - 'LUCRO_PRESUMIDO'  → ICMS normal (ICMS00, ICMS20...) + PIS/COFINS Alíquota
-   * - 'LUCRO_REAL'       → também regime normal (tratado como normal aqui)
+   * CST genérico de ICMS (espelha coluna `cst` da tabela produto/nfe_item).
+   * Ex.: "00", "20", "10"...
    */
-  regimeTributario?:
-    | 'SIMPLES_NACIONAL'
-    | 'LUCRO_PRESUMIDO'
-    | 'LUCRO_REAL';
-
-  // -------- ICMS - Simples Nacional (CSOSN) --------
-  /**
-   * Se preenchido, o helper gera <ICMSSN102> (ou similar) automaticamente.
-   */
-  csosn?: string | null;
-
-  // -------- ICMS - Regime Normal (Lucro Presumido / Real) --------
-  /**
-   * 0 = Nacional, 1 = Estrangeira importação direta, etc.
-   * Se não informado, assume "0".
-   */
-  origemMercadoria?: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8';
+  cst?: string | null;
 
   /**
-   * CST do ICMS (00, 20, 40, 41, 60, 90...).
-   * Para Lucro Presumido simples: normalmente "00".
+   * CST de ICMS (nome mais explícito, se você quiser usar também).
+   * Pode espelhar o mesmo valor de `cst`.
    */
   cstIcms?: string | null;
 
   /**
-   * Modalidade da BC do ICMS:
-   * - 0 = Margem Valor Agregado (%)
-   * - 1 = Pauta (valor)
-   * - 2 = Preço Tabelado Máx.
-   * - 3 = Valor da operação (mais comum)
+   * CSOSN (para Simples Nacional)
+   * Ex.: "101", "102", "103"...
    */
-  modalidadeBCIcms?: '0' | '1' | '2' | '3';
+  csosn?: string | null;
 
-  /** Base de cálculo do ICMS (vBC). Se não informado, usa valorTotal. */
-  baseCalculoIcms?: number | null;
-
-  /** Alíquota do ICMS (pICMS, em %) */
-  aliquotaIcms?: number | null;
-
-  /** Valor do ICMS (vICMS). Se não informado, é calculado de vBC * pICMS / 100. */
-  valorIcms?: number | null;
-
-  // -------- PIS --------
   /**
-   * CST do PIS:
-   * - 01, 02 => PISAliq
-   * - 03 => PISQtde
-   * - 04~09 => PISNT / PISOutr
+   * Alíquota de ICMS em percentual (ex.: 18 => 18%)
+   */
+  aliquotaIcms?: number;
+
+  /**
+   * Base de cálculo de ICMS (vBC) – opcional, hoje calculamos em cima do valorTotal.
+   */
+  baseCalculoIcms?: number;
+
+  /**
+   * Valor de ICMS (vICMS) – opcional, hoje calculamos em cima do valorTotal.
+   */
+  valorIcms?: number;
+
+  // ---------- PIS ----------
+  /**
+   * CST de PIS (ex.: "01", "07", "99"...)
    */
   cstPis?: string | null;
 
-  /** vBC do PIS. Se não informado, usa valorTotal. */
-  baseCalculoPis?: number | null;
-
-  /** Alíquota do PIS (%). */
-  aliquotaPis?: number | null;
-
-  /** Valor do PIS (vPIS). Se não informado, é calculado. */
-  valorPis?: number | null;
-
-  // -------- COFINS --------
   /**
-   * CST do COFINS:
-   * - 01, 02 => COFINSAliq
-   * - 03 => COFINSQtde
-   * - 04~09 => COFINSNT / COFINSOutr
+   * Alíquota de PIS em percentual (ex.: 0.65 => 0,65%)
+   */
+  aliquotaPis?: number;
+
+  /**
+   * Valor de PIS (vPIS)
+   */
+  valorPis?: number;
+
+  // ---------- COFINS ----------
+  /**
+   * CST de COFINS (ex.: "01", "07", "99"...)
    */
   cstCofins?: string | null;
 
-  /** vBC do COFINS. Se não informado, usa valorTotal. */
-  baseCalculoCofins?: number | null;
+  /**
+   * Alíquota de COFINS em percentual (ex.: 3 => 3%)
+   */
+  aliquotaCofins?: number;
 
-  /** Alíquota do COFINS (%). */
-  aliquotaCofins?: number | null;
-
-  /** Valor do COFINS (vCOFINS). Se não informado, é calculado. */
-  valorCofins?: number | null;
+  /**
+   * Valor de COFINS (vCOFINS)
+   */
+  valorCofins?: number;
 }
