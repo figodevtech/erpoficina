@@ -21,6 +21,7 @@ export default function TabsOptions() {
               className={"hover:cursor-pointer" + tabTheme}
             >
               <LayoutDashboard className="h-4 w-4" />
+              Ordens de Serviço
             </TabsTrigger>
           </span>
         </TooltipTrigger>
@@ -35,6 +36,7 @@ export default function TabsOptions() {
               className={"hover:cursor-pointer" + tabTheme}
             >
               <UsersIcon className="h-4 w-4" />
+              Clientes
             </TabsTrigger>
           </span>
         </TooltipTrigger>
@@ -48,6 +50,7 @@ export default function TabsOptions() {
               className={"hover:cursor-pointer" + tabTheme}
             >
               <DollarSign className="h-4 w-4" />
+              Financeiro
             </TabsTrigger>
           </span>
         </TooltipTrigger>

@@ -28,7 +28,7 @@ export async function GET(req: Request) {
         descricao,
         status,
         dataentrada,
-        datasaidareal,
+        datasaida,
         datasaidaprevista,
         cliente:clienteid ( id, nomerazaosocial ),
         veiculo:veiculoid ( id, placa, modelo, marca ),
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
         { count: "exact" }
       )
       .eq("status", "CONCLUIDA")
-      .order("datasaidareal", { ascending: false, nullsFirst: false })
+      .order("datasaida", { ascending: false, nullsFirst: false })
       .range(from, to);
 
     // Busca básica (descricao e id numérico)
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
       status: r.status ?? "CONCLUIDA",
       tecnico: "—", // se quiser, adicione campo técnico na tabela/consulta
       criadaEm: r.dataentrada ?? null,
-      concluidaEm: r.datasaidareal ?? null,
+      concluidaEm: r.datasaida ?? null,
       temProdutos: false, // pode ser calculado depois (ex: existe registro em osproduto?)
       setor: r.setor?.nome ?? null,
     }));

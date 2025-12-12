@@ -335,8 +335,7 @@ export async function GET(
       statusaprovacao: osRow.statusaprovacao ?? null,
       prioridade: (osRow.prioridade ?? "NORMAL") as Prioridade,
       dataentrada: osRow.dataentrada ?? null,
-      datasaidaprevista: null as string | null,
-      datasaidareal: osRow.datasaida ?? null,
+      datasaida: osRow.datasaida ?? null,
       alvo_tipo: (osRow.alvo_tipo ?? "VEICULO") as AlvoTipo,
       setor: setor ? { id: setor.id, nome: setor.nome } : null,
       cliente: cliente

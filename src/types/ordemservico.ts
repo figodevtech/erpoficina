@@ -13,7 +13,7 @@ export interface OrdemServico {
   descricao?: string | null;
   dataentrada?: string | null;       // timestamp
   datasaidaprevista?: string | null;
-  datasaidareal?: string | null;
+  datasaida?: string | null;
   orcamentototal?: number | null;    // numeric
   observacoes?: string | null;
   createdat?: string | null;

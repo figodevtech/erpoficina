@@ -1,4 +1,3 @@
-// src/app/api/v1/transacoes/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -67,6 +66,13 @@ function brl(cents: number): string {
 const TARGET_STATUS_CONCLUIDA = "CONCLUIDO";
 const TARGET_VENDA_STATUS_CONCLUIDA = "FINALIZADA";
 
+const FORTALEZA_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+function fortalezaNowIsoForTimestamp(): string {
+  const now = new Date(); // agora (momento em UTC)
+  const pseudoLocal = new Date(now.getTime() - FORTALEZA_OFFSET_MS);
+  return pseudoLocal.toISOString(); // ex: 2025-12-12T15:27:00.000Z
+}
 /**
  * Saneia e valida payload de transacao:
  * - strings vazias -> null
@@ -109,15 +115,7 @@ function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
   }
 
   if (strict) {
-    const required = [
-      "descricao",
-      "valor",
-      "data",
-      "metodopagamento",
-      "categoria",
-      "tipo",
-      "banco_id",
-    ];
+    const required = ["descricao", "valor", "data", "metodopagamento", "categoria", "tipo", "banco_id"];
     const missing = required.filter((k) => out[k] == null);
     if (missing.length) {
       throw new Error(`Campos obrigatórios ausentes: ${missing.join(", ")}`);
@@ -138,24 +136,17 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
-    const limitRaw =
-      searchParams.get("limit") ?? searchParams.get("pageSize") ?? "20";
+    const limitRaw = searchParams.get("limit") ?? searchParams.get("pageSize") ?? "20";
     const limit = Math.min(Math.max(Number(limitRaw), 1), 100);
 
-    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "")
-      .trim()
-      .slice(0, 200);
+    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "").trim().slice(0, 200);
 
     // Filtros opcionais
     const tipo = (searchParams.get("tipo") ?? "").trim(); // public.tipos_transacao
     const categoria = (searchParams.get("categoria") ?? "").trim(); // public.categoria_transacao
     const ordemservicoid = searchParams.get("ordemservicoid");
     const vendaid = searchParams.get("vendaid");
-    const metodo = (
-      searchParams.get("metodo") ??
-      searchParams.get("metodopagamento") ??
-      ""
-    ).trim(); // public.metodo_pagamento
+    const metodo = (searchParams.get("metodo") ?? searchParams.get("metodopagamento") ?? "").trim(); // public.metodo_pagamento
     const bancoId = toNumberOrNull(searchParams.get("bancoId"));
     const clienteId = toNumberOrNull(searchParams.get("clienteId"));
 
@@ -233,10 +224,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "Erro ao listar transações" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message || "Erro ao listar transações" }, { status: 500 });
   }
 }
 
@@ -247,40 +235,30 @@ export async function POST(req: Request) {
     const body = (await req.json()) as any;
 
     // Aceita payload bruto ou { newTransaction: {...} }
-    const json =
-      body?.newTransaction && typeof body.newTransaction === "object"
-        ? body.newTransaction
-        : body;
+    const json = body?.newTransaction && typeof body.newTransaction === "object" ? body.newTransaction : body;
 
-    console.log(json)
+    console.log(json);
 
     if (!json || typeof json !== "object") {
-      return NextResponse.json(
-        { error: "Corpo da requisição inválido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
     }
 
     const payload = sanitizeTransacaoPayload(json, { strict: true });
 
-    // =================== Validações contra a OS (antes de inserir) ===================
+    // =================== Validações contra a OS / Venda (antes de inserir) ===================
     let preSumCents: number | null = null;
     let orcCents: number | null = null;
     let osId: number | null = null;
     let vendaId: number | null = null;
-    const isReceita =
-      typeof payload?.tipo === "string" &&
-      payload.tipo.toUpperCase() === "RECEITA";
+    const isReceita = typeof payload?.tipo === "string" && payload.tipo.toUpperCase() === "RECEITA";
 
     // valida valor > 0 (para qualquer transação; pedido do usuário)
     const valorCents = moneyToCents(payload?.valor as any);
     if (valorCents == null || valorCents <= 0) {
-      return NextResponse.json(
-        { error: "O valor da transação deve ser maior que zero." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "O valor da transação deve ser maior que zero." }, { status: 400 });
     }
 
+    // ------ Validação quando é OS ------
     if (payload?.ordemservicoid != null && isReceita) {
       osId = Number(payload.ordemservicoid);
 
@@ -292,33 +270,22 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (osErr) {
-        return NextResponse.json(
-          { error: "Erro ao buscar a ordem de serviço vinculada." },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Erro ao buscar a ordem de serviço vinculada." }, { status: 500 });
       }
       if (!os) {
-        return NextResponse.json(
-          { error: "Ordem de serviço não encontrada." },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Ordem de serviço não encontrada." }, { status: 404 });
       }
 
       orcCents = moneyToCents(os.orcamentototal as any);
       if (orcCents == null || orcCents <= 0) {
-        return NextResponse.json(
-          { error: "A OS não possui orçamento válido para validação." },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: "A OS não possui orçamento válido para validação." }, { status: 409 });
       }
 
       // 2) Pagamento único não pode ultrapassar orçamento
       if (valorCents > orcCents) {
         return NextResponse.json(
           {
-            error: `Pagamento único (${brl(
-              valorCents
-            )}) ultrapassa o valor da OS (${brl(orcCents)}).`,
+            error: `Pagamento único (${brl(valorCents)}) ultrapassa o valor da OS (${brl(orcCents)}).`,
           },
           { status: 409 }
         );
@@ -332,10 +299,7 @@ export async function POST(req: Request) {
         .eq("tipo", "RECEITA");
 
       if (txErr) {
-        return NextResponse.json(
-          { error: "Erro ao somar pagamentos existentes da OS." },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Erro ao somar pagamentos existentes da OS." }, { status: 500 });
       }
 
       preSumCents =
@@ -349,20 +313,17 @@ export async function POST(req: Request) {
         const restante = orcCents - preSumCents;
         return NextResponse.json(
           {
-            error: `A soma dos pagamentos ultrapassa o valor da OS. Restante permitido: ${brl(
-              Math.max(restante, 0)
-            )}.`,
+            error: `A soma dos pagamentos ultrapassa o valor da OS. Restante permitido: ${brl(Math.max(restante, 0))}.`,
           },
           { status: 409 }
         );
       }
     }
 
-
+    // ------ Validação quando é Venda ------
     if (payload?.vendaid != null && isReceita) {
       vendaId = Number(payload.vendaid);
 
-      // 1) Busca orcamentototal da OS
       const { data: venda, error: osErr } = await supabaseAdmin
         .from("venda")
         .select("id, valortotal, status")
@@ -370,39 +331,26 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (osErr) {
-        return NextResponse.json(
-          { error: "Erro ao buscar a venda vinculada." },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Erro ao buscar a venda vinculada." }, { status: 500 });
       }
       if (!venda) {
-        return NextResponse.json(
-          { error: "Venda não encontrada." },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Venda não encontrada." }, { status: 404 });
       }
 
       orcCents = moneyToCents(venda.valortotal as any);
       if (orcCents == null || orcCents <= 0) {
-        return NextResponse.json(
-          { error: "A Venda não possui orçamento válido para validação." },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: "A Venda não possui orçamento válido para validação." }, { status: 409 });
       }
 
-      // 2) Pagamento único não pode ultrapassar orçamento
       if (valorCents > orcCents) {
         return NextResponse.json(
           {
-            error: `Pagamento único (${brl(
-              valorCents
-            )}) ultrapassa o valor da Venda (${brl(orcCents)}).`,
+            error: `Pagamento único (${brl(valorCents)}) ultrapassa o valor da Venda (${brl(orcCents)}).`,
           },
           { status: 409 }
         );
       }
 
-      // 3) Soma pagamentos existentes + novo não pode ultrapassar
       const { data: transacoes, error: txErr } = await supabaseAdmin
         .from("transacao")
         .select("valor")
@@ -410,10 +358,7 @@ export async function POST(req: Request) {
         .eq("tipo", "RECEITA");
 
       if (txErr) {
-        return NextResponse.json(
-          { error: "Erro ao somar pagamentos existentes da Venda." },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Erro ao somar pagamentos existentes da Venda." }, { status: 500 });
       }
 
       preSumCents =
@@ -452,9 +397,7 @@ export async function POST(req: Request) {
     if (error) {
       // 23503 = foreign_key_violation (banco_id / cliente_id)
       if ((error as any).code === "23503") {
-        const msg =
-          (error as any).message ??
-          "Violação de chave estrangeira. Verifique banco_id e cliente_id.";
+        const msg = (error as any).message ?? "Violação de chave estrangeira. Verifique banco_id e cliente_id.";
         const detail = (error as any).details || (error as any).hint || "";
         const isBanco = /banco/i.test(msg + " " + detail);
         const isCliente = /cliente/i.test(msg + " " + detail);
@@ -469,30 +412,32 @@ export async function POST(req: Request) {
           { status: 409 }
         );
       }
-      return NextResponse.json(
-        { error: (error as any).message ?? "Erro ao criar transação." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: (error as any).message ?? "Erro ao criar transação." }, { status: 500 });
     }
 
-    // =================== Pós-inserção: fechar OS se bateu orçamento ===================
+    // =================== Pós-inserção: fechar OS/Venda se bateu orçamento ===================
+
+    // 👉 OS: se total pago == orçamento, marca CONCLUIDO + datasaida
     if (osId != null && preSumCents != null && orcCents != null) {
       const novoTotal = preSumCents + valorCents!;
       if (novoTotal === orcCents) {
+        const nowIsoFortaleza = fortalezaNowIsoForTimestamp();
         const { error: updErr } = await supabaseAdmin
           .from("ordemservico")
           .update({
             status: TARGET_STATUS_CONCLUIDA,
-            updatedat: new Date().toISOString(),
+            datasaida: nowIsoFortaleza, // 👈 agora ajustado pro fuso de Fortaleza
+            updatedat: nowIsoFortaleza,
           })
           .eq("id", osId);
 
         if (updErr) {
-          // não invalida a criação da transação; apenas loga
           console.error("Falha ao atualizar status da OS:", updErr);
         }
       }
     }
+
+    // Venda: mantém só status + updatedat
     if (vendaId != null && preSumCents != null && orcCents != null) {
       const novoTotal = preSumCents + valorCents!;
       if (novoTotal === orcCents) {
@@ -505,7 +450,6 @@ export async function POST(req: Request) {
           .eq("id", vendaId);
 
         if (updErr) {
-          // não invalida a criação da transação; apenas loga
           console.error("Falha ao atualizar status da Venda:", updErr);
         }
       }
@@ -514,12 +458,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ data, id: data.id }, { status: 201 });
   } catch (e: any) {
-    const msg =
-      e?.message ??
-      "Erro ao criar transação. Verifique os campos obrigatórios e os tipos.";
-    const isBadReq =
-      msg.includes("Campos obrigatórios ausentes") ||
-      msg.toLowerCase().includes("obrigatório");
+    const msg = e?.message ?? "Erro ao criar transação. Verifique os campos obrigatórios e os tipos.";
+    const isBadReq = msg.includes("Campos obrigatórios ausentes") || msg.toLowerCase().includes("obrigatório");
     return NextResponse.json({ error: msg }, { status: isBadReq ? 400 : 500 });
   }
 }

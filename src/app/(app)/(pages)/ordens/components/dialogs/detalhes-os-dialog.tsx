@@ -107,7 +107,7 @@ type OS = {
   prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
   dataentrada?: string | null;
   datasaidaprevista?: string | null;
-  datasaidareal?: string | null;
+  datasaida?: string | null;
   setor?: { id: number; nome: string } | null;
   cliente?: { id: number; nomerazaosocial: string } | null;
   veiculo?:
@@ -433,7 +433,7 @@ export function OSDetalhesDialog({
             {prioBadge}
             <div className="ml-auto text-xs text-muted-foreground">
               Entrada: <b>{fmtDate(data?.os?.dataentrada)}</b>
-              {" · "}Saída real: <b>{fmtDate(data?.os?.datasaidareal)}</b>
+              {" · "}Saída real: <b>{fmtDate(data?.os?.datasaida)}</b>
             </div>
           </div>
         </div>
