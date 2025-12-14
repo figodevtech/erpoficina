@@ -51,48 +51,67 @@ import {
 type CstCsosn = {
   cod: string;
   desc: string;
-}
-
+};
 
 const CSOSN_OPTIONS = [
-  {cod: "101", desc: "Tributada pelo Simples Nacional com permissão de crédito" },
-  {cod: "102", desc: "Tributada pelo Simples Nacional sem permissão de crédito" },
-  {cod: "103", desc: "Isenção do ICMS no Simples Nacional para faixa de receita" },
-  {cod: "201", desc: "Tributada com permissão de crédito e com ST" },
-  {cod: "202", desc: "Tributada sem permissão de crédito e com ST" },
-  {cod: "300", desc: "Imune" },
-  {cod: "400", desc: "Não Tributada" },
-  {cod: "500", desc: "ICMS cobrado anteriormente por substituição tributária (ST)" },
-  {cod: "900", desc: "Outros" },
-  
+  {
+    cod: "101",
+    desc: "Tributada pelo Simples Nacional com permissão de crédito",
+  },
+  {
+    cod: "102",
+    desc: "Tributada pelo Simples Nacional sem permissão de crédito",
+  },
+  {
+    cod: "103",
+    desc: "Isenção do ICMS no Simples Nacional para faixa de receita",
+  },
+  { cod: "201", desc: "Tributada com permissão de crédito e com ST" },
+  { cod: "202", desc: "Tributada sem permissão de crédito e com ST" },
+  { cod: "300", desc: "Imune" },
+  { cod: "400", desc: "Não Tributada" },
+  {
+    cod: "500",
+    desc: "ICMS cobrado anteriormente por substituição tributária (ST)",
+  },
+  { cod: "900", desc: "Outros" },
 ];
 
-const CST_PIS_OPTIONS : CstCsosn[] = [
-{cod: "1", desc: "Operação Tributável com Alíquota Básica."},
-{cod: "2", desc: "Operação Tributável com Alíquota Diferenciada."},
-{cod: "3", desc: "Operação Tributável com Alíquota por Unidade de Medida de Produto."},
-{cod: "4", desc: "Operação Tributável Monofásica - Revenda a Alíquota Zero."},
-{cod: "5", desc: "Operação Tributável por Substituição Tributária."},
-{cod: "6", desc: "Operação Tributável a Alíquota Zero."},
-{cod: "7", desc: "Operação Isenta de Contribuição."},
-{cod: "8", desc: "Operação sem Incidência da Contribuição."},
-{cod: "9", desc: "Operação com Suspensão da Contribuição."},
-{cod: "49", desc: "Outras Operações de Saída"},
+const CST_PIS_OPTIONS: CstCsosn[] = [
+  { cod: "01", desc: "Operação Tributável com Alíquota Básica." },
+  { cod: "02", desc: "Operação Tributável com Alíquota Diferenciada." },
+  {
+    cod: "03",
+    desc: "Operação Tributável com Alíquota por Unidade de Medida de Produto.",
+  },
+  {
+    cod: "04",
+    desc: "Operação Tributável Monofásica - Revenda a Alíquota Zero.",
+  },
+  { cod: "05", desc: "Operação Tributável por Substituição Tributária." },
+  { cod: "06", desc: "Operação Tributável a Alíquota Zero." },
+  { cod: "07", desc: "Operação Isenta de Contribuição." },
+  { cod: "08", desc: "Operação sem Incidência da Contribuição." },
+  { cod: "09", desc: "Operação com Suspensão da Contribuição." },
+  { cod: "49", desc: "Outras Operações de Saída" },
 ];
 
-const CST_OPTIONS : CstCsosn[] = [
-  {cod: "00", desc: "Tributada Integralmente"},
-  {cod: "10", desc: "Tributada e com cobrança do ICMS por ST"},
-  {cod: "20", desc: "Com redução de base de cálculo"},
-  {cod: "30", desc: "Isenta/Não tributada e com cobrança do ICMS por ST"},
-  {cod: "40", desc: "Isenta"},
-  {cod: "41", desc: "Não Tributada"},
-  {cod: "50", desc: "Com Suspensão"},
-  {cod: "51", desc: "Com Diferimento"},
-  {cod: "60", desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária"},
-  {cod: "70", desc: "Com redução de base de cálculo no ICMS ST"},
-  {cod: "90", desc: "Outras Operações"},
-]
+const CST_OPTIONS: CstCsosn[] = [
+  { cod: "00", desc: "Tributada Integralmente" },
+  { cod: "10", desc: "Tributada e com cobrança do ICMS por ST" },
+  { cod: "20", desc: "Com redução de base de cálculo" },
+  { cod: "30", desc: "Isenta/Não tributada e com cobrança do ICMS por ST" },
+  { cod: "40", desc: "Isenta" },
+  { cod: "41", desc: "Não Tributada" },
+  { cod: "50", desc: "Com Suspensão" },
+  { cod: "51", desc: "Com Diferimento" },
+  {
+    cod: "60",
+    desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária",
+  },
+  { cod: "70", desc: "Com redução de base de cálculo no ICMS ST" },
+  { cod: "90", desc: "Outras Operações" },
+];
 
 // Ajuste aos possíveis valores do enum public.estoque_status
 // Se o seu enum tiver valores diferentes, ajuste abaixo para casar com o banco.
@@ -377,7 +396,7 @@ export default function EditContent({ productId }: EditContentProps) {
                       </SelectTrigger>
                       <SelectContent>
                         {Object.values(Unidade_medida).map((u) => (
-                          <SelectItem key={u} value={u}>
+                          <SelectItem key={u} value={u} className="hover:cursor-pointer">
                             {u}
                           </SelectItem>
                         ))}
@@ -491,9 +510,9 @@ export default function EditContent({ productId }: EditContentProps) {
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Selecione">Selecione</SelectItem>
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">Selecione</SelectItem>
                         {CSOSN_OPTIONS.map((c) => (
-                          <SelectItem key={c.cod} value={c.cod}>
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
                             {c.cod} - {c.desc}
                           </SelectItem>
                         ))}
@@ -510,9 +529,9 @@ export default function EditContent({ productId }: EditContentProps) {
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Selecione">Selecione</SelectItem>
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">Selecione</SelectItem>
                         {CST_OPTIONS.map((c) => (
-                          <SelectItem key={c.cod} value={c.cod}>
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
                             {c.cod} - {c.desc}
                           </SelectItem>
                         ))}
@@ -547,6 +566,88 @@ export default function EditContent({ productId }: EditContentProps) {
                       type="number"
                       placeholder="18,00"
                       inputMode="decimal"
+                    />
+                  </div>
+                </div>
+                {/* PIS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cst_pis">CST PIS</Label>
+                    <Select
+                      value={selectedProduct.cst_pis || "Selecione"}
+                      onValueChange={(v) => handleChange("cst_pis", v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          value="Selecione"
+                        >
+                          Selecione
+                        </SelectItem>
+                        {CST_PIS_OPTIONS.map((c) => (
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aliquota_pis">Alíquota PIS (%)</Label>
+                    <Input
+                      id="aliquota_pis"
+                      value={selectedProduct.aliquota_pis || ""}
+                      onChange={(e) =>
+                        handleChange("aliquota_pis", e.target.value)
+                      }
+                      placeholder="18,00"
+                      inputMode="decimal"
+                      type="number"
+                    />
+                  </div>
+                </div>
+                {/* CONFINS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cst_cofins">CST COFINS</Label>
+                    <Select
+                      value={selectedProduct.cst_cofins || "Selecione"}
+                      onValueChange={(v) => handleChange("cst_cofins", v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          value="Selecione"
+                        >
+                          Selecione
+                        </SelectItem>
+                        {CST_PIS_OPTIONS.map((c) => (
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aliquota_cofins">Alíquota COFINS (%)</Label>
+                    <Input
+                      id="aliquota_cofins"
+                      value={selectedProduct.aliquota_cofins || ""}
+                      onChange={(e) =>
+                        handleChange("aliquota_cofins", e.target.value)
+                      }
+                      placeholder="18,00"
+                      inputMode="decimal"
+                      type="number"
                     />
                   </div>
                 </div>

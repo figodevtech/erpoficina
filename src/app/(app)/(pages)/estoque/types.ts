@@ -126,6 +126,10 @@ export interface Produto {
   cest?: string;
   csosn?: string;
   aliquotaicms?: number;
+  cst_pis?: string;
+  aliquota_pis?: number;
+  cst_cofins?: string;
+  aliquota_cofins?: number;
   codigobarras?: string;
   createdat?: Date; // timestamp no banco, pode ser null
   updatedat?: Date; // timestamp no banco, pode ser null

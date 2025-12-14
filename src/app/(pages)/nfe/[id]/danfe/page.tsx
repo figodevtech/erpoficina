@@ -1,8 +1,8 @@
-// src/app/(app)/(pages)/nfe/[id]/danfe/page.tsx
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notFound } from "next/navigation";
 import { PrintButton } from "./components/PrintButton";
 import type { Metadata } from "next";
+import { XMLParser } from "fast-xml-parser";
 
 export const runtime = "nodejs";
 
@@ -37,22 +37,29 @@ function fmtPercent(v: number | string | null | undefined) {
   })}%`;
 }
 
-function fmtDoc(cpfCnpj?: string | null) {
-  if (!cpfCnpj) return "—";
-  const s = cpfCnpj.replace(/\D/g, "");
+function fmtDoc(cpfCnpj?: string | number | null) {
+  if (cpfCnpj == null) return "—";
+
+  // Garante que é string, mesmo se vier como number do XML
+  const raw = typeof cpfCnpj === "number" ? cpfCnpj.toString() : cpfCnpj;
+  const s = raw.replace(/\D/g, "");
+
   if (s.length === 11) {
+    // CPF
     return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
   if (s.length === 14) {
+    // CNPJ
     return s.replace(
       /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
       "$1.$2.$3/$4-$5"
     );
   }
-  return cpfCnpj;
+  return raw;
 }
 
-// chave em 11 blocos de 4 dígitos (3.1.1 do manual)
+
+// chave em blocos de 4 dígitos (3.1.1 do manual)
 function fmtChaveAcesso(chave?: string | null) {
   if (!chave) return "—";
   const s = chave.replace(/\D/g, "");
@@ -106,18 +113,21 @@ type NfeRow = {
   total_produtos: number;
   total_servicos: number;
   total_nfe: number;
+  xml_assinado: string | null;
+  xml_autorizado: string | null;
   empresa?: EmpresaRow;
   cliente?: ClienteRow;
 };
 
 type NfeItemRow = {
-  id: number;
+  id: number | string;
   n_item: number;
-  produtoid: number | null;
+  produtoid: number | string | null;
   descricao: string;
   ncm: string | null;
   cfop: string;
   csosn: string | null;
+  cst?: string | null;
   unidade: string;
   quantidade: number | string;
   valor_unitario: number | string;
@@ -133,6 +143,228 @@ type NfeItemRow = {
   aliquota_cofins: number | string | null;
   valor_cofins: number | string | null;
 };
+
+type ParsedNFe = {
+  ide: {
+    nNF: string;
+    serie: string;
+    dhEmi?: string;
+    tpNF?: string | number;
+  };
+  emitente?: {
+    razaosocial: string;
+    nomefantasia?: string | null;
+    cnpj: string;
+    endereco: string;
+    numero?: string | null;
+    bairro?: string | null;
+    complemento?: string | null;
+    cep?: string | null;
+    uf?: string | null;
+    codigomunicipio?: string | null;
+    telefone?: string | null;
+    inscricaoestadual?: string | null;
+  };
+  destinatario?: {
+    nomerazaosocial: string;
+    cpfcnpj: string;
+    endereco?: string | null;
+    endereconumero?: string | null;
+    enderecocomplemento?: string | null;
+    bairro?: string | null;
+    cidade?: string;
+    estado?: string;
+    cep?: string | null;
+  };
+  itens: NfeItemRow[];
+  totais: {
+    vBC: number;
+    vICMS: number;
+    vPIS: number;
+    vCOFINS: number;
+    vProd: number;
+    vNF: number;
+  };
+  protocolo?: {
+    numero?: string;
+    data?: string;
+  };
+};
+
+/**
+ * Faz o parse do XML (assinado ou autorizado) em uma estrutura amigável
+ * para o DANFE. Aceita tanto <nfeProc> quanto <NFe> direto.
+ */
+function parseNFeXml(xml: string): ParsedNFe {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "",
+    removeNSPrefix: true,
+    trimValues: true,
+    parseTagValue: true,
+  });
+
+  const doc = parser.parse(xml);
+
+  const nfeNode =
+    doc.nfeProc?.NFe ?? doc.NFe ?? doc.nfeProc?.nfe ?? doc.nfe;
+
+  if (!nfeNode || !nfeNode.infNFe) {
+    throw new Error("Tag <infNFe> não encontrada no XML da NF-e.");
+  }
+
+  const inf = nfeNode.infNFe;
+  const ide = inf.ide || {};
+  const emit = inf.emit || {};
+  const dest = inf.dest || {};
+  const total = inf.total?.ICMSTot || {};
+
+  const detRaw = inf.det;
+  const detArray: any[] = Array.isArray(detRaw) ? detRaw : detRaw ? [detRaw] : [];
+
+  const itens: NfeItemRow[] = detArray.map((d: any, idx: number) => {
+    const prod = d.prod || {};
+    const imposto = d.imposto || {};
+
+    // --- ICMS ---
+    const icmsRoot = imposto.ICMS || {};
+    const icmsTagName = Object.keys(icmsRoot)[0];
+    const icms = icmsRoot[icmsTagName] || {};
+    const vBCICMS =
+      icms.vBC !== undefined && icms.vBC !== null ? Number(icms.vBC) : null;
+    const pICMS =
+      icms.pICMS !== undefined && icms.pICMS !== null
+        ? Number(icms.pICMS)
+        : null;
+    const vICMS =
+      icms.vICMS !== undefined && icms.vICMS !== null
+        ? Number(icms.vICMS)
+        : null;
+
+    // CST/CSOSN
+    const cstIcms = icms.CST ?? icms.CSOSN ?? null;
+
+    // --- PIS ---
+    const pisRoot = imposto.PIS || {};
+    const pisTagName = Object.keys(pisRoot)[0];
+    const pis = pisRoot[pisTagName] || {};
+    const cstPis = pis.CST ?? null;
+    const vPIS =
+      pis.vPIS !== undefined && pis.vPIS !== null ? Number(pis.vPIS) : null;
+
+    // --- COFINS ---
+    const cofRoot = imposto.COFINS || {};
+    const cofTagName = Object.keys(cofRoot)[0];
+    const cof = cofRoot[cofTagName] || {};
+    const cstCofins = cof.CST ?? null;
+    const vCOFINS =
+      cof.vCOFINS !== undefined && cof.vCOFINS !== null
+        ? Number(cof.vCOFINS)
+        : null;
+
+    const nItem =
+      (typeof d.nItem === "number" && d.nItem) ||
+      (typeof d.nItem === "string" && Number(d.nItem)) ||
+      idx + 1;
+
+    return {
+      id: `xml-${nItem}`,
+      n_item: nItem,
+      produtoid: prod.cProd ?? null,
+      descricao: prod.xProd ?? "",
+      ncm: prod.NCM ?? null,
+      cfop: prod.CFOP ?? "",
+      csosn: icms.CSOSN ?? null,
+      cst: icms.CST ?? null,
+      unidade: prod.uCom ?? "",
+      quantidade: prod.qCom ?? 0,
+      valor_unitario: prod.vUnCom ?? 0,
+      valor_total: prod.vProd ?? 0,
+      valor_desconto: null,
+      aliquotaicms: pICMS,
+      valor_bc_icms: vBCICMS,
+      valor_icms: vICMS,
+      cst_pis: cstPis,
+      aliquota_pis: pis.pPIS ?? null,
+      valor_pis: vPIS,
+      cst_cofins: cstCofins,
+      aliquota_cofins: cof.pCOFINS ?? null,
+      valor_cofins: vCOFINS,
+    };
+  });
+
+  const toNum = (v: any): number =>
+    v !== undefined && v !== null && v !== ""
+      ? Number(v)
+      : 0;
+
+  const totais = {
+    vBC: toNum(total.vBC),
+    vICMS: toNum(total.vICMS),
+    vPIS: toNum(total.vPIS),
+    vCOFINS: toNum(total.vCOFINS),
+    vProd: toNum(total.vProd),
+    vNF: toNum(total.vNF),
+  };
+
+  // Protocolo (se o XML for nfeProc)
+  let protocolo: ParsedNFe["protocolo"];
+  const prot = doc.nfeProc?.protNFe?.infProt;
+  if (prot) {
+    protocolo = {
+      numero: prot.nProt,
+      data: prot.dhRecbto,
+    };
+  }
+
+  // Emitente (direto do XML)
+  const emitente: ParsedNFe["emitente"] | undefined = emit.CNPJ
+    ? {
+        razaosocial: emit.xNome,
+        nomefantasia: emit.xFant ?? null,
+        cnpj: emit.CNPJ,
+        endereco: emit.enderEmit?.xLgr ?? "",
+        numero: emit.enderEmit?.nro ?? null,
+        bairro: emit.enderEmit?.xBairro ?? null,
+        complemento: emit.enderEmit?.xCpl ?? null,
+        cep: emit.enderEmit?.CEP ?? null,
+        uf: emit.enderEmit?.UF ?? null,
+        codigomunicipio: emit.enderEmit?.cMun ?? null,
+        telefone: emit.enderEmit?.fone ?? null,
+        inscricaoestadual: emit.IE ?? null,
+      }
+    : undefined;
+
+  // Destinatário (direto do XML)
+  const docDest = dest.CNPJ ?? dest.CPF ?? "";
+  const destinatario: ParsedNFe["destinatario"] | undefined = docDest
+    ? {
+        nomerazaosocial: dest.xNome ?? "",
+        cpfcnpj: docDest,
+        endereco: dest.enderDest?.xLgr ?? null,
+        endereconumero: dest.enderDest?.nro ?? null,
+        enderecocomplemento: dest.enderDest?.xCpl ?? null,
+        bairro: dest.enderDest?.xBairro ?? null,
+        cidade: dest.enderDest?.xMun ?? null,
+        estado: dest.enderDest?.UF ?? null,
+        cep: dest.enderDest?.CEP ?? null,
+      }
+    : undefined;
+
+  return {
+    ide: {
+      nNF: String(ide.nNF ?? ""),
+      serie: String(ide.serie ?? ""),
+      dhEmi: ide.dhEmi,
+      tpNF: ide.tpNF,
+    },
+    emitente,
+    destinatario,
+    itens,
+    totais,
+    protocolo,
+  };
+}
 
 // Título da aba
 export async function generateMetadata({
@@ -160,7 +392,7 @@ export default async function DanfePage({ params }: PageProps) {
     notFound();
   }
 
-  // NF-e + empresa + cliente
+  // NF-e + empresa + cliente + XMLs
   const { data: nfeRaw, error } = await supabaseAdmin
     .from("nfe")
     .select(
@@ -182,6 +414,8 @@ export default async function DanfePage({ params }: PageProps) {
       total_produtos,
       total_servicos,
       total_nfe,
+      xml_assinado,
+      xml_autorizado,
       empresa:empresa (
         id,
         razaosocial,
@@ -220,47 +454,242 @@ export default async function DanfePage({ params }: PageProps) {
   }
 
   const nfe = nfeRaw as NfeRow;
+  const status = (nfe.status || "").toUpperCase();
+  const isAutorizada = status === "AUTORIZADA";
 
-  // Itens da NF-e com detalhes fiscais
-  const { data: itensRaw, error: itensError } = await supabaseAdmin
-    .from("nfe_item")
-    .select(
-      `
-      id,
-      n_item,
-      produtoid,
-      descricao,
-      ncm,
-      cfop,
-      csosn,
-      unidade,
-      quantidade,
-      valor_unitario,
-      valor_total,
-      valor_desconto,
-      aliquotaicms,
-      valor_bc_icms,
-      valor_icms,
-      cst_pis,
-      aliquota_pis,
-      valor_pis,
-      cst_cofins,
-      aliquota_cofins,
-      valor_cofins
-    `
-    )
-    .eq("nfe_id", id)
-    .order("n_item", { ascending: true });
+  // -------------------------------------------------------------------
+  // 1) Escolhe a fonte do XML:
+  //    - se AUTORIZADA e tiver xml_autorizado → usar xml_autorizado
+  //    - senão, se tiver xml_assinado → usar xml_assinado
+  //    - se não tiver nenhum ou der erro → cai pro modo "banco"
+  // -------------------------------------------------------------------
+  let xmlFonte: string | null = null;
 
-  if (itensError) {
-    console.error("[select nfe_item] erro:", itensError);
+  if (isAutorizada && nfe.xml_autorizado) {
+    xmlFonte = nfe.xml_autorizado;
+  } else if (nfe.xml_assinado) {
+    xmlFonte = nfe.xml_assinado;
   }
 
-  const itens = (itensRaw ?? []) as NfeItemRow[];
+  let emitenteFromView: {
+    razaosocial: string;
+    nomefantasia: string | null;
+    cnpj: string;
+    endereco: string;
+    numero: string | null;
+    bairro: string | null;
+    complemento: string | null;
+    cep: string | null;
+    uf: string | null;
+    codigomunicipio: string | null;
+    telefone: string | null;
+    inscricaoestadual: string | null;
+  } | null = null;
 
-  const status = (nfe.status || "").toUpperCase();
-  const emitente = nfe.empresa;
-  const destinatario = nfe.cliente;
+  let destinatarioFromView: {
+    nomerazaosocial: string;
+    cpfcnpj: string;
+    endereco: string | null;
+    endereconumero: string | null;
+    enderecocomplemento: string | null;
+    bairro: string | null;
+    cidade: string;
+    estado: string;
+    cep: string | null;
+  } | null = null;
+
+  let itens: NfeItemRow[] = [];
+  let totalBcIcms = 0;
+  let totalIcms = 0;
+  let totalPis = 0;
+  let totalCofins = 0;
+  let totalProdutos = 0;
+  let totalNota = 0;
+  let dataEmissaoDisplay: string | null = nfe.dataemissao;
+  let tipoOperacao: "ENTRADA" | "SAÍDA" = "SAÍDA";
+  let protocoloNumero: string | null = nfe.protocolo;
+  let protocoloData: string | null = nfe.dataautorizacao;
+
+  // =====================
+  // MODO XML (assinado/autorizado)
+  // =====================
+  if (xmlFonte) {
+    try {
+      const parsed = parseNFeXml(xmlFonte);
+
+      // Emitente do XML
+      if (parsed.emitente) {
+        emitenteFromView = {
+          razaosocial: parsed.emitente.razaosocial,
+          nomefantasia: parsed.emitente.nomefantasia ?? null,
+          cnpj: parsed.emitente.cnpj,
+          endereco: parsed.emitente.endereco,
+          numero: parsed.emitente.numero ?? null,
+          bairro: parsed.emitente.bairro ?? null,
+          complemento: parsed.emitente.complemento ?? null,
+          cep: parsed.emitente.cep ?? null,
+          uf: parsed.emitente.uf ?? null,
+          codigomunicipio: parsed.emitente.codigomunicipio ?? null,
+          telefone: parsed.emitente.telefone ?? null,
+          inscricaoestadual: parsed.emitente.inscricaoestadual ?? null,
+        };
+      }
+
+      // Destinatário do XML
+      if (parsed.destinatario) {
+        destinatarioFromView = {
+          nomerazaosocial: parsed.destinatario.nomerazaosocial,
+          cpfcnpj: parsed.destinatario.cpfcnpj,
+          endereco: parsed.destinatario.endereco ?? null,
+          endereconumero: parsed.destinatario.endereconumero ?? null,
+          enderecocomplemento:
+            parsed.destinatario.enderecocomplemento ?? null,
+          bairro: parsed.destinatario.bairro ?? null,
+          cidade: parsed.destinatario.cidade ?? "—",
+          estado: parsed.destinatario.estado ?? "—",
+          cep: parsed.destinatario.cep ?? null,
+        };
+      }
+
+      // Itens do XML
+      itens = parsed.itens;
+
+      // Totais do XML (ICMSTot)
+      totalBcIcms = parsed.totais.vBC;
+      totalIcms = parsed.totais.vICMS;
+      totalPis = parsed.totais.vPIS;
+      totalCofins = parsed.totais.vCOFINS;
+      totalProdutos = parsed.totais.vProd;
+      totalNota = parsed.totais.vNF;
+
+      // Data de emissão / tipo de operação do XML
+      if (parsed.ide.dhEmi) {
+        dataEmissaoDisplay = parsed.ide.dhEmi;
+      }
+      const tpNFnum = Number(parsed.ide.tpNF ?? 1);
+      tipoOperacao = tpNFnum === 0 ? "ENTRADA" : "SAÍDA";
+
+      // Protocolo do XML (se for nfeProc)
+      if (parsed.protocolo) {
+        if (!protocoloNumero) {
+          protocoloNumero = parsed.protocolo.numero ?? null;
+        }
+        if (!protocoloData) {
+          protocoloData = parsed.protocolo.data ?? null;
+        }
+      }
+    } catch (e) {
+      console.error(
+        "[danfe] Erro ao parsear XML (assinado/autorizado), caindo para modo banco:",
+        e
+      );
+      // se der erro, cai pro modo banco abaixo
+    }
+  }
+
+  // =====================
+  // MODO BANCO (fallback ou rascunho sem XML)
+  // =====================
+  if (!emitenteFromView || !destinatarioFromView || itens.length === 0) {
+    const emitenteDb = nfe.empresa;
+    const destinatarioDb = nfe.cliente;
+
+    if (emitenteDb) {
+      emitenteFromView = {
+        razaosocial: emitenteDb.razaosocial,
+        nomefantasia: emitenteDb.nomefantasia,
+        cnpj: emitenteDb.cnpj,
+        endereco: emitenteDb.endereco,
+        numero: emitenteDb.numero,
+        bairro: emitenteDb.bairro,
+        complemento: emitenteDb.complemento,
+        cep: emitenteDb.cep,
+        uf: emitenteDb.uf,
+        codigomunicipio: emitenteDb.codigomunicipio,
+        telefone: emitenteDb.telefone,
+        inscricaoestadual: emitenteDb.inscricaoestadual,
+      };
+    }
+
+    if (destinatarioDb) {
+      destinatarioFromView = {
+        nomerazaosocial: destinatarioDb.nomerazaosocial,
+        cpfcnpj: destinatarioDb.cpfcnpj,
+        endereco: destinatarioDb.endereco,
+        endereconumero: destinatarioDb.endereconumero,
+        enderecocomplemento: destinatarioDb.enderecocomplemento,
+        bairro: destinatarioDb.bairro,
+        cidade: destinatarioDb.cidade,
+        estado: destinatarioDb.estado,
+        cep: destinatarioDb.cep,
+      };
+    }
+
+    const { data: itensRaw, error: itensError } = await supabaseAdmin
+      .from("nfe_item")
+      .select(
+        `
+        id,
+        n_item,
+        produtoid,
+        descricao,
+        ncm,
+        cfop,
+        csosn,
+        unidade,
+        quantidade,
+        valor_unitario,
+        valor_total,
+        valor_desconto,
+        aliquotaicms,
+        valor_bc_icms,
+        valor_icms,
+        cst_pis,
+        aliquota_pis,
+        valor_pis,
+        cst_cofins,
+        aliquota_cofins,
+        valor_cofins,
+        cst
+      `
+      )
+      .eq("nfe_id", id)
+      .order("n_item", { ascending: true });
+
+    if (itensError) {
+      console.error("[select nfe_item] erro:", itensError);
+    }
+
+    itens = (itensRaw ?? []) as NfeItemRow[];
+
+    totalBcIcms = itens.reduce(
+      (acc, i) => acc + Number(i.valor_bc_icms ?? 0),
+      0
+    );
+    totalIcms = itens.reduce(
+      (acc, i) => acc + Number(i.valor_icms ?? 0),
+      0
+    );
+    totalPis = itens.reduce(
+      (acc, i) => acc + Number(i.valor_pis ?? 0),
+      0
+    );
+    totalCofins = itens.reduce(
+      (acc, i) => acc + Number(i.valor_cofins ?? 0),
+      0
+    );
+    totalProdutos = itens.reduce(
+      (acc, i) => acc + Number(i.valor_total ?? 0),
+      0
+    );
+    totalNota = totalProdutos;
+
+    // Sem tpNF no banco por enquanto → SAÍDA
+    tipoOperacao = "SAÍDA";
+  }
+
+  const emitente = emitenteFromView;
+  const destinatario = destinatarioFromView;
 
   const enderecoEmitente = emitente
     ? [
@@ -286,30 +715,7 @@ export default async function DanfePage({ params }: PageProps) {
         .join("")
     : "—";
 
-  // Totais por tributo (para quadro "Cálculo do Imposto")
-  const totalBcIcms = itens.reduce(
-    (acc, i) => acc + Number(i.valor_bc_icms ?? 0),
-    0
-  );
-  const totalIcms = itens.reduce(
-    (acc, i) => acc + Number(i.valor_icms ?? 0),
-    0
-  );
-  const totalPis = itens.reduce(
-    (acc, i) => acc + Number(i.valor_pis ?? 0),
-    0
-  );
-  const totalCofins = itens.reduce(
-    (acc, i) => acc + Number(i.valor_cofins ?? 0),
-    0
-  );
-
-  // Aqui você pode ligar ao tpNF da NF-e real (0=ENTRADA,1=SAÍDA)
-const tipoOperacao: string = "SAÍDA";
-
   const chaveFormatada = fmtChaveAcesso(nfe.chave_acesso);
-
-  const isAutorizada = status === "AUTORIZADA";
 
   return (
     <>
@@ -366,16 +772,6 @@ const tipoOperacao: string = "SAÍDA";
         .border-box {
           border: 1px solid #000;
           box-sizing: border-box;
-        }
-
-        .flex-row {
-          display: flex;
-          flex-direction: row;
-        }
-
-        .flex-col {
-          display: flex;
-          flex-direction: column;
         }
 
         .center {
@@ -584,12 +980,11 @@ const tipoOperacao: string = "SAÍDA";
               </div>
             </div>
 
-            {/* Chave + código de barras + campos 1 e 2 */}
+            {/* Chave + código de barras + orientação / protocolo */}
             <div style={{ padding: "2px 3px" }}>
               <div className="field-label center">CHAVE DE ACESSO</div>
               <div className="chave center">{chaveFormatada}</div>
               <div className="barcode-placeholder">
-                {/* Aqui entra o CODE-128C da chave de acesso */}
                 CÓDIGO DE BARRAS (CODE-128C)
               </div>
               <div className="small-text" style={{ marginTop: 2 }}>
@@ -606,17 +1001,18 @@ const tipoOperacao: string = "SAÍDA";
                   </>
                 )}
               </div>
-              {isAutorizada && nfe.protocolo && (
+              {isAutorizada && (protocoloNumero || protocoloData) && (
                 <div className="small-text" style={{ marginTop: 2 }}>
-                  PROTOCOLO DE AUTORIZAÇÃO DE USO: {nfe.protocolo}{" "}
-                  {nfe.dataautorizacao && " – "}
-                  {nfe.dataautorizacao && fmtDate(nfe.dataautorizacao)}
+                  PROTOCOLO DE AUTORIZAÇÃO DE USO:{" "}
+                  {protocoloNumero ?? "—"}{" "}
+                  {protocoloData && " – "}
+                  {protocoloData && fmtDate(protocoloData)}
                 </div>
               )}
             </div>
           </div>
 
-          {/* BLOCO DADOS DA NF-E / DESTINATÁRIO */}
+          {/* BLOCO DESTINATÁRIO / DADOS DA NF-E */}
           <div
             className="border-box"
             style={{ padding: "2px 3px", marginBottom: "2mm" }}
@@ -645,7 +1041,9 @@ const tipoOperacao: string = "SAÍDA";
               </div>
               <div>
                 <div className="field-label">Data de Emissão</div>
-                <div className="field-value">{fmtDate(nfe.dataemissao)}</div>
+                <div className="field-value">
+                  {fmtDate(dataEmissaoDisplay)}
+                </div>
               </div>
               <div>
                 <div className="field-label">Endereço</div>
@@ -680,8 +1078,7 @@ const tipoOperacao: string = "SAÍDA";
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "repeat(6, minmax(0, 1fr))",
+                gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
                 columnGap: "2mm",
                 marginTop: 2,
               }}
@@ -705,19 +1102,19 @@ const tipoOperacao: string = "SAÍDA";
               <div>
                 <div className="field-label">Valor Total dos Produtos</div>
                 <div className="field-value">
-                  {fmtMoney(nfe.total_produtos)}
+                  {fmtMoney(totalProdutos)}
                 </div>
               </div>
               <div>
                 <div className="field-label">Valor Total da Nota</div>
                 <div className="field-value">
-                  {fmtMoney(nfe.total_nfe)}
+                  {fmtMoney(totalNota)}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* BLOCO TRANSPORTADOR / VOLUMES (valores genéricos por enquanto) */}
+          {/* BLOCO TRANSPORTADOR / VOLUMES */}
           <div
             className="border-box"
             style={{ padding: "2px 3px", marginBottom: "2mm" }}
@@ -801,7 +1198,7 @@ const tipoOperacao: string = "SAÍDA";
                         <td className="desc">{item.descricao}</td>
                         <td className="center">{item.ncm ?? "—"}</td>
                         <td className="center">
-                          {item.csosn ?? "—"}
+                          {item.csosn ?? item.cst ?? "—"}
                         </td>
                         <td className="center">{item.cfop}</td>
                         <td className="center">{item.unidade}</td>
@@ -877,7 +1274,8 @@ const tipoOperacao: string = "SAÍDA";
               <div className="block-title">INFORMAÇÕES COMPLEMENTARES</div>
               <div className="small-text" style={{ marginTop: 2 }}>
                 Versão de visualização do DANFE gerada pelo sistema. Para fins
-                fiscais, prevalece o XML da NF-e autorizado pela SEFAZ.
+                fiscais, prevalece o XML da NF-e autorizado pela SEFAZ (quando
+                houver autorização).
               </div>
             </div>
 
