@@ -47,6 +47,7 @@ export function ExcluirRascunhoNfeButton({
 
       if (!res.ok || !data?.ok) {
         const msg =
+          data?.message ||
           data?.mensagem ||
           "Falha ao excluir o rascunho da NF-e.";
         toast.error(msg);
@@ -54,7 +55,7 @@ export function ExcluirRascunhoNfeButton({
       }
 
       toast.success(
-        data.mensagem || "Rascunho de NF-e excluído com sucesso."
+        data.mensagem || data.message || "Rascunho de NF-e excluído com sucesso."
       );
 
       if (onAfterDelete) {

@@ -21,25 +21,25 @@ function escapeXml(value: string | null | undefined): string {
 function formatDateTimeNFe(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
 
-  // Garante hora no fuso -03:00 independentemente do fuso do host (ex: Vercel em UTC)
-  const targetOffsetMinutes = -3 * 60; // UTC-3 (America/Fortaleza)
-  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
-  const targetMs = utcMs + targetOffsetMinutes * 60000;
-  const targetDate = new Date(targetMs);
+  // Usa a HORA LOCAL do ambiente (Node) aqui:
+  const ano = date.getFullYear();
+  const mes = pad(date.getMonth() + 1);
+  const dia = pad(date.getDate());
+  const hora = pad(date.getHours());
+  const minuto = pad(date.getMinutes());
+  const segundo = pad(date.getSeconds());
 
-  const ano = targetDate.getUTCFullYear();
-  const mes = pad(targetDate.getUTCMonth() + 1);
-  const dia = pad(targetDate.getUTCDate());
-  const hora = pad(targetDate.getUTCHours());
-  const minuto = pad(targetDate.getUTCMinutes());
-  const segundo = pad(targetDate.getUTCSeconds());
+  // Timezone baseado no ambiente (getTimezoneOffset):
+  // ex.: Fortaleza (UTC-3) => getTimezoneOffset() = 180
+  const offsetMinutes = date.getTimezoneOffset(); // em minutos
+  const total = Math.abs(offsetMinutes);
 
-  const offsetHours = Math.floor(Math.abs(targetOffsetMinutes) / 60);
-  const offsetMinutes = Math.abs(targetOffsetMinutes) % 60;
-  const sign = targetOffsetMinutes <= 0 ? '-' : '+';
-  const tz = `${sign}${pad(offsetHours)}:${pad(offsetMinutes)}`;
+  const offsetHours = pad(Math.floor(total / 60));
+  const offsetMins = pad(total % 60);
+  const sign = offsetMinutes > 0 ? '-' : '+'; 
+  // em Fortaleza: offsetMinutes = 180 => sign = '-' => "-03:00"
 
-  return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${tz}`;
+  return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${sign}${offsetHours}:${offsetMins}`;
 }
 export type BuildEventoCancelamentoParams = {
   cOrgao: string;   // código da UF (ex: "25" PB)

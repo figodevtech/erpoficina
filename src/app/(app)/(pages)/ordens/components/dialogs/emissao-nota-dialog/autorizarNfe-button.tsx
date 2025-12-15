@@ -1,4 +1,3 @@
-// src/components/nfe/AutorizarNfeButton.tsx
 "use client";
 
 import { useState } from "react";
@@ -13,6 +12,7 @@ type AutorizarNfeResponse = {
   idNFe?: string;
   httpStatus?: number;
   mensagem?: string;
+  message?: string;
   detalhe?: string;
   sefaz?: {
     lote?: {
@@ -78,6 +78,7 @@ export function AutorizarNfeButton({
         toast.error("Falha ao autorizar NF-e", {
           description:
             data.mensagem ||
+            data.message ||
             data.detalhe ||
             "A SEFAZ retornou uma falha na autorização.",
         });
@@ -90,7 +91,6 @@ export function AutorizarNfeButton({
       const loteCStat = data.sefaz?.lote?.cStat?.toString() ?? null;
       const loteMotivo = data.sefaz?.lote?.xMotivo ?? null;
 
-      // Decisão de mensagens com base em status / cStat
       if (statusDb === "AUTORIZADA" || protCStat === "100") {
         toast.success("NF-e autorizada com sucesso!", {
           description: [
@@ -125,7 +125,6 @@ export function AutorizarNfeButton({
           icon: <AlertTriangle className="h-5 w-5 text-red-400" />,
         });
       } else {
-        // Situações intermediárias: ENVIADA, PENDENTE, etc.
         toast.info("Retorno da SEFAZ recebido.", {
           description:
             protMotivo ||

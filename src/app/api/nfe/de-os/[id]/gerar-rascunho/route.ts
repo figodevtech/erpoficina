@@ -25,6 +25,12 @@ function getOsIdFromUrl(req: Request): number | null {
   return n;
 }
 
+function toNumberOrNull(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function POST(req: Request) {
   try {
     const idOs = getOsIdFromUrl(req);
@@ -120,7 +126,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3) Buscar itens da nfe_item para esse nfeId (todos, para filtrar depois)
+    // 3) Buscar itens da nfe_item para esse nfeId (TODOS os campos fiscais)
     const { data: itensNfe, error: itensNfeError } = await supabaseAdmin
       .from("nfe_item")
       .select(
@@ -133,7 +139,19 @@ export async function POST(req: Request) {
         unidade,
         quantidade,
         valor_unitario,
-        valor_total
+        valor_total,
+        csosn,
+        cest,
+        aliquotaicms,
+        valor_bc_icms,
+        valor_icms,
+        cst_pis,
+        aliquota_pis,
+        valor_pis,
+        cst_cofins,
+        aliquota_cofins,
+        valor_cofins,
+        cst
       `
       )
       .eq("nfe_id", nfeId);
@@ -195,7 +213,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5) Atualizar totais da NF-e com base nos itens que sobraram
+    // 5) Atualizar totais da NF-e com base nos itens que sobraram (lado banco)
     const { error: totalError } = await supabaseAdmin.rpc(
       "atualizar_totais_nfe",
       {
@@ -319,19 +337,79 @@ export async function POST(req: Request) {
       );
     }
 
-    const itens: NFeItem[] = itensNfeSelecionados.map((row, idx) => ({
-      numeroItem: Number(row.n_item ?? idx + 1),
-      codigoProduto:
-        row.produtoid != null ? String(row.produtoid) : String(row.n_item ?? idx + 1),
-      descricao: row.descricao,
-      ncm: row.ncm || "00000000",
-      cfop: row.cfop,
-      unidade: row.unidade,
-      quantidade: Number(row.quantidade ?? 0),
-      valorUnitario: Number(row.valor_unitario ?? 0),
-      valorTotal: Number(row.valor_total ?? 0),
-      codigoBarras: null,
-    }));
+    // 8) Mapear nfe_item -> NFeItem (com impostos)
+    const itens: NFeItem[] = itensNfeSelecionados.map((row, idx) => {
+      const numeroItem = Number(row.n_item ?? idx + 1);
+      const quantidade = toNumberOrNull(row.quantidade) ?? 0;
+      const valorUnitario = toNumberOrNull(row.valor_unitario) ?? 0;
+      const valorTotal = toNumberOrNull(row.valor_total) ?? 0;
+
+      // ICMS
+      const aliquotaIcms = toNumberOrNull(row.aliquotaicms);
+      let baseCalculoIcms = toNumberOrNull(row.valor_bc_icms);
+      let valorIcms = toNumberOrNull(row.valor_icms);
+
+      if (aliquotaIcms !== null) {
+        if (baseCalculoIcms === null) {
+          baseCalculoIcms = valorTotal;
+        }
+        if (valorIcms === null) {
+          valorIcms = Number(
+            (baseCalculoIcms * (aliquotaIcms / 100)).toFixed(2)
+          );
+        }
+      }
+
+      // PIS
+      const aliquotaPis = toNumberOrNull(row.aliquota_pis);
+      let valorPis = toNumberOrNull(row.valor_pis);
+
+      if (aliquotaPis !== null && valorPis === null) {
+        valorPis = Number((valorTotal * (aliquotaPis / 100)).toFixed(2));
+      }
+
+      // COFINS
+      const aliquotaCofins = toNumberOrNull(row.aliquota_cofins);
+      let valorCofins = toNumberOrNull(row.valor_cofins);
+
+      if (aliquotaCofins !== null && valorCofins === null) {
+        valorCofins = Number(
+          (valorTotal * (aliquotaCofins / 100)).toFixed(2)
+        );
+      }
+
+      const item: NFeItem = {
+        numeroItem,
+        codigoProduto:
+          row.produtoid != null
+            ? String(row.produtoid)
+            : String(row.n_item ?? idx + 1),
+        descricao: row.descricao,
+        ncm: row.ncm || "00000000",
+        cfop: row.cfop,
+        unidade: row.unidade,
+        quantidade,
+        valorUnitario,
+        valorTotal,
+        codigoBarras: null, // se quiser puxar GTIN depois, terá que vir da tabela produto
+        // ICMS
+        cstIcms: row.cst ?? null,
+        csosn: row.csosn ?? null,
+        aliquotaIcms: aliquotaIcms ?? undefined,
+        baseCalculoIcms: baseCalculoIcms ?? undefined,
+        valorIcms: valorIcms ?? undefined,
+        // PIS
+        cstPis: row.cst_pis ?? null,
+        aliquotaPis: aliquotaPis ?? undefined,
+        valorPis: valorPis ?? undefined,
+        // COFINS
+        cstCofins: row.cst_cofins ?? null,
+        aliquotaCofins: aliquotaCofins ?? undefined,
+        valorCofins: valorCofins ?? undefined,
+      };
+
+      return item;
+    });
 
     const destinatario = mapClienteToDestinatario(cliente, empresa);
 
@@ -350,7 +428,7 @@ export async function POST(req: Request) {
       (chave || "").length
     );
 
-    // 8) Gravar XML de rascunho (não assinado) em xml_assinado e chave
+    // 9) Gravar XML de rascunho (não assinado) em xml_assinado e chave
     await supabaseAdmin
       .from("nfe")
       .update({
@@ -363,7 +441,8 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: true,
-        message: "NF-e criada a partir da OS com sucesso (apenas itens selecionados).",
+        message:
+          "NF-e criada a partir da OS com sucesso (apenas itens selecionados).",
         nfeId,
         nfe,
       },

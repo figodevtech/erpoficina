@@ -15,7 +15,17 @@ interface ProductDialogProps {
   setSelectedProductId?: (value: number | undefined) => void;
   newProductData?: Produto | undefined;
   handleSearchFornecedor?: () => void;
+  /** Chamado depois que o produto for salvo (create ou update) */
+  onAfterSaveProduct?: () => void;
 }
+
+const initialNewProduct: Produto = {
+  id: 0,
+  precovenda: 0,
+  status_estoque: Estoque_status.OK,
+  unidade: Unidade_medida.UN,
+  fornecedor: "DESCONHECIDO",
+};
 
 export function ProductDialog({
   productId,
@@ -24,20 +34,15 @@ export function ProductDialog({
   setIsOpen,
   setSelectedProductId,
   newProductData,
-  handleSearchFornecedor
+  handleSearchFornecedor,
+  onAfterSaveProduct,
 }: ProductDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
 
   const [, setSelectedProduct] = useState<Produto | undefined>(undefined);
-  const [newProduct, setNewProduct] = useState<Produto>({
-    id: 0,
-    precovenda: 0,
-    status_estoque: Estoque_status.OK,
-    unidade: Unidade_medida.UN,
-    fornecedor: "DESCONHECIDO",
-  });
+  const [newProduct, setNewProduct] = useState<Produto>(initialNewProduct);
 
   return (
     <Dialog
@@ -46,31 +51,35 @@ export function ProductDialog({
         // sempre sincroniza o estado (controlado ou interno)
         setOpen(nextOpen);
 
-        if( newProductData && nextOpen ) {
+        if (newProductData && nextOpen) {
           setNewProduct({
-            ...newProductData
+            ...newProductData,
           });
         }
 
         if (!nextOpen) {
           setSelectedProductId?.(undefined);
           setSelectedProduct(undefined);
-          setNewProduct({});
+          setNewProduct(initialNewProduct);
         }
-        
       }}
     >
       <DialogTrigger autoFocus={false} asChild>
         {children}
       </DialogTrigger>
       {productId ? (
-        <EditContent productId={productId} />
+        <EditContent
+          productId={productId}
+          onAfterSaveProduct={onAfterSaveProduct}
+        />
       ) : (
         <RegisterContent
           handleSearchFornecedor={handleSearchFornecedor}
           setSelectedProductId={setSelectedProductId}
           newProduct={newProduct}
           setNewProduct={setNewProduct}
+          // se quiser que o "novo produto" também dispare recarregar,
+          // pode usar o mesmo callback:
         />
       )}
     </Dialog>

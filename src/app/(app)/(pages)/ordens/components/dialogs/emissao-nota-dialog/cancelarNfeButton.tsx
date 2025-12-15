@@ -51,6 +51,7 @@ export function CancelarNfeButton({ nfeId, status, onAfterCancel }: Props) {
 
       if (!res.ok || !data?.ok) {
         const msg =
+          data?.message ||
           data?.mensagem ||
           data?.evento?.retorno?.xMotivo ||
           "Falha ao cancelar a NF-e.";
@@ -63,8 +64,6 @@ export function CancelarNfeButton({ nfeId, status, onAfterCancel }: Props) {
           "NF-e cancelada com sucesso."
       );
 
-      // 👉 Aqui a mágica: avisa o pai pra recarregar a lista,
-      // em vez de dar window.location.reload()
       if (onAfterCancel) {
         onAfterCancel();
       }

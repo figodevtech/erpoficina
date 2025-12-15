@@ -26,8 +26,70 @@ import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 
 // --- Helper data ---
+type CstCsosn = {
+  cod: string;
+  desc: string;
+};
 
-const CSOSN_OPTIONS = ["101", "102", "103", "201", "202", "203", "300", "400", "500", "900"];
+const CSOSN_OPTIONS = [
+  {
+    cod: "101",
+    desc: "Tributada pelo Simples Nacional com permissão de crédito",
+  },
+  {
+    cod: "102",
+    desc: "Tributada pelo Simples Nacional sem permissão de crédito",
+  },
+  {
+    cod: "103",
+    desc: "Isenção do ICMS no Simples Nacional para faixa de receita",
+  },
+  { cod: "201", desc: "Tributada com permissão de crédito e com ST" },
+  { cod: "202", desc: "Tributada sem permissão de crédito e com ST" },
+  { cod: "300", desc: "Imune" },
+  { cod: "400", desc: "Não Tributada" },
+  {
+    cod: "500",
+    desc: "ICMS cobrado anteriormente por substituição tributária (ST)",
+  },
+  { cod: "900", desc: "Outros" },
+];
+
+const CST_PIS_OPTIONS: CstCsosn[] = [
+  { cod: "01", desc: "Operação Tributável com Alíquota Básica." },
+  { cod: "02", desc: "Operação Tributável com Alíquota Diferenciada." },
+  {
+    cod: "03",
+    desc: "Operação Tributável com Alíquota por Unidade de Medida de Produto.",
+  },
+  {
+    cod: "04",
+    desc: "Operação Tributável Monofásica - Revenda a Alíquota Zero.",
+  },
+  { cod: "05", desc: "Operação Tributável por Substituição Tributária." },
+  { cod: "06", desc: "Operação Tributável a Alíquota Zero." },
+  { cod: "07", desc: "Operação Isenta de Contribuição." },
+  { cod: "08", desc: "Operação sem Incidência da Contribuição." },
+  { cod: "09", desc: "Operação com Suspensão da Contribuição." },
+  { cod: "49", desc: "Outras Operações de Saída" },
+];
+
+const CST_OPTIONS: CstCsosn[] = [
+  { cod: "000", desc: "Tributada Integralmente" },
+  { cod: "010", desc: "Tributada e com cobrança do ICMS por ST" },
+  { cod: "020", desc: "Com redução de base de cálculo" },
+  { cod: "030", desc: "Isenta/Não tributada e com cobrança do ICMS por ST" },
+  { cod: "040", desc: "Isenta" },
+  { cod: "041", desc: "Não Tributada" },
+  { cod: "050", desc: "Com Suspensão" },
+  { cod: "051", desc: "Com Diferimento" },
+  {
+    cod: "060",
+    desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária",
+  },
+  { cod: "070", desc: "Com redução de base de cálculo no ICMS ST" },
+  { cod: "090", desc: "Outras Operações" },
+];
 
 // Ajuste aos possíveis valores do enum public.estoque_status
 const ESTOQUE_STATUS: {
@@ -87,6 +149,8 @@ export default function RegisterContent({
       const response = await axios.post("/api/products", {
         newProduct,
       });
+      console.log("trese");
+      console.log(response.status);
 
       if (response.status === 201) {
         toast.success("Sucesso!", {
@@ -96,6 +160,7 @@ export default function RegisterContent({
 
         setSelectedProductId?.(response.data.data.id);
         handleSearchFornecedor?.();
+        console.log("criado:", response.data);
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -289,11 +354,12 @@ export default function RegisterContent({
             className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
           >
             <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ncm">NCM</Label>
                   <Input
                     id="ncm"
+                    className="w-30"
                     value={newProduct.ncm || ""}
                     onChange={(e) => handleChange("ncm", onlyDigits(e.target.value))}
                     placeholder="00000000"
@@ -309,22 +375,40 @@ export default function RegisterContent({
                     value={newProduct.cfop || ""}
                     onChange={(e) => handleChange("cfop", onlyDigits(e.target.value))}
                     placeholder="5102"
+                    className="w-30"
                     inputMode="numeric"
                     maxLength={4}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="csosn">CSOSN</Label>
                   <Select value={newProduct.csosn || "Selecione"} onValueChange={(v) => handleChange("csosn", v)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Selecione">Selecione</SelectItem>
                       {CSOSN_OPTIONS.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
+                        <SelectItem key={c.cod} value={c.cod}>
+                          {c.cod} - {c.desc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="csosn">CST</Label>
+                  <Select value={newProduct.cst || "Selecione"} onValueChange={(v) => handleChange("cst", v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Selecione">Selecione</SelectItem>
+                      {CST_OPTIONS.map((c) => (
+                        <SelectItem key={c.cod} value={c.cod}>
+                          {c.cod} - {c.desc}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -353,6 +437,76 @@ export default function RegisterContent({
                     onChange={(e) => handleChange("aliquotaicms", e.target.value)}
                     placeholder="18,00"
                     inputMode="decimal"
+                    type="number"
+                  />
+                </div>
+              </div>
+              {/* PIS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cst_pis">CST PIS</Label>
+                  <Select value={newProduct.cst_pis || "Selecione"} onValueChange={(v) => handleChange("cst_pis", v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem className="hover:cursor-pointer" value="Selecione">
+                        Selecione
+                      </SelectItem>
+                      {CST_PIS_OPTIONS.map((c) => (
+                        <SelectItem key={c.cod} value={c.cod}>
+                          {c.cod} - {c.desc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="aliquota_pis">Alíquota PIS (%)</Label>
+                  <Input
+                    id="aliquota_pis"
+                    value={newProduct.aliquota_pis || ""}
+                    onChange={(e) => handleChange("aliquota_pis", e.target.value)}
+                    placeholder="18,00"
+                    inputMode="decimal"
+                    type="number"
+                  />
+                </div>
+              </div>
+              {/* CONFINS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cst_cofins">CST COFINS</Label>
+                  <Select
+                    value={newProduct.cst_cofins || "Selecione"}
+                    onValueChange={(v) => handleChange("cst_cofins", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem className="hover:cursor-pointer" value="Selecione">
+                        Selecione
+                      </SelectItem>
+                      {CST_PIS_OPTIONS.map((c) => (
+                        <SelectItem key={c.cod} value={c.cod}>
+                          {c.cod} - {c.desc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="aliquota_cofins">Alíquota COFINS (%)</Label>
+                  <Input
+                    id="aliquota_cofins"
+                    value={newProduct.aliquota_cofins || ""}
+                    onChange={(e) => handleChange("aliquota_cofins", e.target.value)}
+                    placeholder="18,00"
+                    inputMode="decimal"
+                    type="number"
                   />
                 </div>
               </div>

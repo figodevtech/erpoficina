@@ -15,7 +15,7 @@ const EXPORT_FIELDS = `
   precovenda, unidade,
   estoque, estoqueminimo, status_estoque,
   fornecedor, fabricante, grupo,
-  ncm, cfop, csosn, cest, aliquotaicms, codigobarras,
+  ncm, cfop, csosn, cst, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, cest, aliquotaicms, codigobarras,
   createdat, updatedat
 `;
 
@@ -55,6 +55,11 @@ export async function GET(req: Request) {
       "NCM",
       "CFOP",
       "CSOSN",
+      "CST",
+      "CST PIS",
+      "Alíquota PIS",
+      "CST COFINS",
+      "Alíquota COFINS",
       "CEST",
       "Alíquota ICMS",
       "Código Barras",
@@ -84,6 +89,11 @@ export async function GET(req: Request) {
       { wch: 12 }, // NCM
       { wch: 10 }, // CFOP
       { wch: 10 }, // CSOSN
+      { wch: 10 }, // CST
+      { wch: 10 }, // CST PIS
+      { wch: 14 }, // Alpiquota PIS
+      { wch: 10 }, // CST COFINS
+      { wch: 14 }, // Alíquota COFINS
       { wch: 10 }, // CEST
       { wch: 14 }, // Alíquota ICMS
       { wch: 18 }, // Código Barras
@@ -136,6 +146,11 @@ export async function GET(req: Request) {
         p.ncm ?? "",
         p.cfop ?? "",
         p.csosn ?? "",
+        p.cst ?? "",
+        p.cst_pis ?? "",
+        p.aliquota_pis ?? "",
+        p.cst_cofins ?? "",
+        p.aliquota_cofins ?? "",
         p.cest ?? "",
         p.aliquotaicms ?? null, // número
         p.codigobarras ?? "",

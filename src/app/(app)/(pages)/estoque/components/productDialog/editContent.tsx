@@ -31,8 +31,46 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 
 // --- Helper data ---
 
-const CSOSN_OPTIONS = ["101", "102", "103", "201", "202", "203", "300", "400", "500", "900"];
+type CstCsosn = {
+  cod: string;
+  desc: string;
+};
 
+const CST_OPTIONS: CstCsosn[] = [
+  { cod: "000", desc: "Tributada Integralmente" },
+  { cod: "010", desc: "Tributada e com cobrança do ICMS por ST" },
+  { cod: "020", desc: "Com redução de base de cálculo" },
+  { cod: "030", desc: "Isenta/Não tributada e com cobrança do ICMS por ST" },
+  { cod: "040", desc: "Isenta" },
+  { cod: "041", desc: "Não Tributada" },
+  { cod: "050", desc: "Com Suspensão" },
+  { cod: "051", desc: "Com Diferimento" },
+  {
+    cod: "060",
+    desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária",
+  },
+  { cod: "070", desc: "Com redução de base de cálculo no ICMS ST" },
+  { cod: "090", desc: "Outras Operações" },
+];
+
+const CST_PIS_OPTIONS: CstCsosn[] = [
+  { cod: "01", desc: "Operação Tributável com Alíquota Básica." },
+  { cod: "02", desc: "Operação Tributável com Alíquota Diferenciada." },
+  {
+    cod: "03",
+    desc: "Operação Tributável com Alíquota por Unidade de Medida de Produto.",
+  },
+  {
+    cod: "04",
+    desc: "Operação Tributável Monofásica - Revenda a Alíquota Zero.",
+  },
+  { cod: "05", desc: "Operação Tributável por Substituição Tributária." },
+  { cod: "06", desc: "Operação Tributável a Alíquota Zero." },
+  { cod: "07", desc: "Operação Isenta de Contribuição." },
+  { cod: "08", desc: "Operação sem Incidência da Contribuição." },
+  { cod: "09", desc: "Operação com Suspensão da Contribuição." },
+  { cod: "49", desc: "Outras Operações de Saída" },
+];
 // Ajuste aos possíveis valores do enum public.estoque_status
 // Se o seu enum tiver valores diferentes, ajuste abaixo para casar com o banco.
 const ESTOQUE_STATUS: {
@@ -59,9 +97,10 @@ type UnidadeFromApi = {
 
 interface EditContentProps {
   productId: number;
+  onAfterSaveProduct?: () => void;
 }
 
-export default function EditContent({ productId }: EditContentProps) {
+export default function EditContent({ productId, onAfterSaveProduct }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,6 +143,7 @@ export default function EditContent({ productId }: EditContentProps) {
         const { data } = response;
         setSelectedProduct(data.data);
         handleGetProduct(data.data.id);
+        onAfterSaveProduct?.();
       }
     } catch (error) {
       console.log("Erro ao atualizar produto:", error);
@@ -305,9 +345,9 @@ export default function EditContent({ productId }: EditContentProps) {
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {unidades.map((u) => (
-                          <SelectItem key={u.id} value={u.sigla as Unidade_medida} className="hover:cursor-pointer">
-                            {u.sigla}
+                        {Object.values(Unidade_medida).map((u) => (
+                          <SelectItem key={u} value={u}>
+                            {u}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -368,7 +408,7 @@ export default function EditContent({ productId }: EditContentProps) {
               className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="ncm">NCM</Label>
                     <Input
@@ -393,20 +433,40 @@ export default function EditContent({ productId }: EditContentProps) {
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="csosn">CSOSN</Label>
                     <Select
                       value={selectedProduct.csosn || "Selecione"}
                       onValueChange={(v) => handleChange("csosn", v)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Selecione">Selecione</SelectItem>
-                        {CSOSN_OPTIONS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
+                          Selecione
+                        </SelectItem>
+                        {CST_OPTIONS.map((c) => (
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="csosn">CST</Label>
+                    <Select value={selectedProduct.cst || "Selecione"} onValueChange={(v) => handleChange("cst", v)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
+                          Selecione
+                        </SelectItem>
+                        {CST_OPTIONS.map((c) => (
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -435,6 +495,78 @@ export default function EditContent({ productId }: EditContentProps) {
                       onChange={(e) => handleChange("aliquotaicms", e.target.value)}
                       placeholder="18,00"
                       inputMode="decimal"
+                    />
+                  </div>
+                </div>
+                {/* PIS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cst_pis">CST PIS</Label>
+                    <Select
+                      value={selectedProduct.cst_pis || "Selecione"}
+                      onValueChange={(v) => handleChange("cst_pis", v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
+                          Selecione
+                        </SelectItem>
+                        {CST_PIS_OPTIONS.map((c) => (
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aliquota_pis">Alíquota PIS (%)</Label>
+                    <Input
+                      id="aliquota_pis"
+                      value={selectedProduct.aliquota_pis || ""}
+                      onChange={(e) => handleChange("aliquota_pis", e.target.value)}
+                      placeholder="18,00"
+                      inputMode="decimal"
+                      type="number"
+                    />
+                  </div>
+                </div>
+                {/* CONFINS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cst_cofins">CST COFINS</Label>
+                    <Select
+                      value={selectedProduct.cst_cofins || "Selecione"}
+                      onValueChange={(v) => handleChange("cst_cofins", v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
+                          Selecione
+                        </SelectItem>
+                        {CST_PIS_OPTIONS.map((c) => (
+                          <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
+                            {c.cod} - {c.desc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aliquota_cofins">Alíquota COFINS (%)</Label>
+                    <Input
+                      id="aliquota_cofins"
+                      value={selectedProduct.aliquota_cofins || ""}
+                      onChange={(e) => handleChange("aliquota_cofins", e.target.value)}
+                      placeholder="18,00"
+                      inputMode="decimal"
+                      type="number"
                     />
                   </div>
                 </div>
