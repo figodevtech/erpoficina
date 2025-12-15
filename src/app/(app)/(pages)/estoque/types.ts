@@ -119,10 +119,10 @@ export interface Produto {
   descricao?: string;
   estoque?: number; // default 0 no banco, mas pode ser null
   estoqueminimo?: number; // default 0 no banco, mas pode ser null
+  unidade?: Unidade_medida;
   ncm?: string;
   cfop?: string;
   cst?: string;
-  unidade?: Unidade_medida;
   cest?: string;
   csosn?: string;
   aliquotaicms?: number;

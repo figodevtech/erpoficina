@@ -555,6 +555,10 @@ create table public.produto (
   cst text null,
   aliquotaicms numeric null,
   cfop text null,
+  cst_pis text null,
+  aliquota_pis numeric(5, 2) null,
+  cst_cofins text null,
+  aliquota_cofins numeric(5, 2) null,
   constraint produto_pkey primary key (id)
 ) TABLESPACE pg_default;
 

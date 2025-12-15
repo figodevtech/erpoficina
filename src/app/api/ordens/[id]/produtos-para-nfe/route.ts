@@ -12,6 +12,16 @@ type ProdutoDb = {
   ncm: string | null;
   cfop: string | null;
   codigobarras: string | null;
+
+  // campos fiscais adicionais
+  csosn: string | null;
+  cst: string | null;
+  cest: string | null;
+  aliquotaicms: number | string | null;
+  cst_pis: string | null;
+  aliquota_pis: number | string | null;
+  cst_cofins: string | null;
+  aliquota_cofins: number | string | null;
 };
 
 // Linha do osproduto + embed do produto
@@ -31,19 +41,36 @@ type ProdutoParaNfeDTO = {
   osProdutoId: string;
   ordemservicoId: number;
   produtoId: number;
+
+  // agora mandamos título separado
+  titulo: string;
   descricao: string;
+
   quantidade: number;
   precoUnitario: number;
   subtotal: number;
+
+  // fiscais obrigatórios p/ emissão (validados no frontend)
   ncm: string | null;
   cfop: string | null;
+  csosn: string | null;
+  cst: string | null;
+  cest: string | null;
+  aliquotaicms: number | null;
+
+  // fiscais opcionais (PIS/COFINS)
+  cst_pis: string | null;
+  aliquota_pis: number | null;
+  cst_cofins: string | null;
+  aliquota_cofins: number | null;
+
   codigobarras: string | null;
 };
 
 // Extrai o osId direto da URL: /api/ordens/95/produtos-para-nfe
 function getOsIdFromUrl(req: Request): number | null {
   const url = new URL(req.url);
-  const parts = url.pathname.split("/"); 
+  const parts = url.pathname.split("/");
   // Ex.: ["", "api", "ordens", "95", "produtos-para-nfe"]
 
   const idx = parts.indexOf("ordens");
@@ -124,7 +151,15 @@ export async function GET(req: Request) {
             descricao,
             ncm,
             cfop,
-            codigobarras
+            codigobarras,
+            csosn,
+            cst,
+            cest,
+            aliquotaicms,
+            cst_pis,
+            aliquota_pis,
+            cst_cofins,
+            aliquota_cofins
           )
         `
       )
@@ -145,20 +180,37 @@ export async function GET(req: Request) {
     const resposta: ProdutoParaNfeDTO[] = (itens ?? []).map((i) => {
       const p = normalizarProduto(i.produto);
 
-      const descricao =
-        p?.titulo || p?.descricao || `Produto #${i.produtoid}`;
+      const titulo = p?.titulo || `Produto #${i.produtoid}`;
+      const descricao = p?.descricao || titulo;
 
       return {
         // PK composta real
         osProdutoId: `${i.ordemservicoid}-${i.produtoid}`,
         ordemservicoId: i.ordemservicoid,
         produtoId: i.produtoid,
+
+        titulo,
         descricao,
+
         quantidade: Number(i.quantidade ?? 0),
         precoUnitario: Number(i.precounitario ?? 0),
         subtotal: Number(i.subtotal ?? 0),
+
         ncm: p?.ncm ?? null,
         cfop: p?.cfop ?? null,
+        csosn: p?.csosn ?? null,
+        cst: p?.cst ?? null,
+        cest: p?.cest ?? null,
+        aliquotaicms:
+          p?.aliquotaicms != null ? Number(p.aliquotaicms) : null,
+
+        cst_pis: p?.cst_pis ?? null,
+        aliquota_pis:
+          p?.aliquota_pis != null ? Number(p.aliquota_pis) : null,
+        cst_cofins: p?.cst_cofins ?? null,
+        aliquota_cofins:
+          p?.aliquota_cofins != null ? Number(p.aliquota_cofins) : null,
+
         codigobarras: p?.codigobarras ?? null,
       };
     });

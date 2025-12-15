@@ -256,7 +256,7 @@ export function buildNFePreviewXml(
 
   const infAdicXml =
     '<infAdic>' +
-    '<infCpl>NF-e de teste em homologação.</infCpl>' +
+    '<infCpl>NF-e de venda de mercadoria.</infCpl>' +
     '</infAdic>';
 
   const infNFeXml =

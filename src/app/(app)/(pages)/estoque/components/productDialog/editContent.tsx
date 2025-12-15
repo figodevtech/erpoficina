@@ -131,9 +131,11 @@ function onlyDigits(v: string) {
 
 interface EditContentProps {
   productId: number;
+  onAfterSaveProduct?: () => void;
+
 }
 
-export default function EditContent({ productId }: EditContentProps) {
+export default function EditContent({ productId, onAfterSaveProduct }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(
     undefined
@@ -180,6 +182,8 @@ export default function EditContent({ productId }: EditContentProps) {
         console.log("Cliente atualizado:", data.data);
         // toast.success("Atualizado")
         handleGetProduct(data.data.id);
+        onAfterSaveProduct?.();
+
       }
     } catch (error) {
       console.log("Erro ao atualizar produto:", error);
