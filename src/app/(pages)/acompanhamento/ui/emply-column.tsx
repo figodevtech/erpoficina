@@ -4,8 +4,8 @@ import { Card } from "@/components/ui/card";
 
 export default function EmptyColumn({ label }: { label: string }) {
   return (
-    <Card className="p-6 text-center text-muted-foreground bg-muted/30 border-dashed">
-      {label}
+    <Card className="border-dashed bg-muted/20 p-4">
+      <p className="text-center text-xs text-muted-foreground">{label}</p>
     </Card>
   );
 }

@@ -3,7 +3,7 @@
 import { QuadItem } from "../lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Wrench, CarFront } from "lucide-react";
+import { CarFront, Wrench, Clock, Building2, User2 } from "lucide-react";
 
 function cx(...a: (string | false | null | undefined)[]) {
   return a.filter(Boolean).join(" ");
@@ -11,110 +11,155 @@ function cx(...a: (string | false | null | undefined)[]) {
 
 function statusColors(s?: string | null) {
   const k = (s || "").toUpperCase();
-  // paleta forte p/ leitura à distância
-  if (k === "ORCAMENTO" || k === "ORCAMENTO_RECUSADO") return "bg-amber-600 text-amber-50 border-amber-700";
-  if (k === "APROVACAO_ORCAMENTO" || k === "ORCAMENTO_APROVADO") return "bg-yellow-700 text-yellow-50 border-yellow-800";
-  if (k === "EM_ANDAMENTO") return "bg-sky-700 text-sky-50 border-sky-800";
-  if (k === "PAGAMENTO") return "bg-fuchsia-700 text-fuchsia-50 border-fuchsia-800";
-  if (k === "CONCLUIDO") return "bg-emerald-700 text-emerald-50 border-emerald-800";
-  if (k === "CANCELADO") return "bg-rose-700 text-rose-50 border-rose-800";
-  return "bg-zinc-700 text-zinc-50 border-zinc-800";
+  if (k === "ORCAMENTO" || k === "ORCAMENTO_RECUSADO") return "bg-amber-600/15 text-amber-400 border-amber-600/30";
+  if (k === "APROVACAO_ORCAMENTO" || k === "ORCAMENTO_APROVADO") return "bg-yellow-600/15 text-yellow-400 border-yellow-600/30";
+  if (k === "EM_ANDAMENTO") return "bg-sky-600/15 text-sky-400 border-sky-600/30";
+  if (k === "PAGAMENTO") return "bg-fuchsia-600/15 text-fuchsia-400 border-fuchsia-600/30";
+  if (k === "CONCLUIDO") return "bg-emerald-600/15 text-emerald-400 border-emerald-600/30";
+  if (k === "CANCELADO") return "bg-rose-600/15 text-rose-400 border-rose-600/30";
+  return "bg-zinc-600/15 text-zinc-200 border-zinc-600/30";
 }
 
-function prioridadeBorder(p?: "BAIXA" | "NORMAL" | "ALTA" | null) {
-  if (p === "ALTA") return "ring-4 ring-rose-700/60";
-  if (p === "BAIXA") return "ring-2 ring-zinc-600/40";
-  return "ring-3 ring-zinc-700/50";
+function prioridadePill(p?: "BAIXA" | "NORMAL" | "ALTA" | null) {
+  if (p === "ALTA") return "bg-rose-600/15 text-rose-400 border-rose-600/30";
+  if (p === "BAIXA") return "bg-zinc-600/10 text-zinc-300 border-zinc-600/20";
+  return "bg-indigo-600/10 text-indigo-300 border-indigo-600/20";
 }
 
-export default function OsTile({ os }: { os: QuadItem }) {
+function contador(iso?: string | null, nowMs?: number) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const now = nowMs ?? Date.now();
+  const diff = Math.max(0, now - d.getTime());
+  const totalSec = Math.floor(diff / 1000);
+
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function moneyBRL(n?: number | null) {
+  if (typeof n !== "number") return null;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+}
+
+export default function OsTile({
+  os,
+  now,
+  compact = false,
+}: {
+  os: QuadItem;
+  now?: number;
+  compact?: boolean;
+}) {
   const isPeca = os.alvoTipo === "PECA";
+  const tituloPrincipal = isPeca ? os.peca?.titulo || "Peça" : [os.veiculo?.marca, os.veiculo?.modelo].filter(Boolean).join(" ");
+  const secundaria = isPeca ? os.peca?.descricao || "" : os.veiculo?.placa || "";
+  const statusLabel = (os.status || "—").replace(/_/g, " ");
+  const emAndamento = (os.status || "").toUpperCase() === "EM_ANDAMENTO";
 
-  const tituloPrincipal = isPeca
-    ? os.peca?.titulo || "Peça"
-    : [os.veiculo?.modelo, os.veiculo?.cor ? `(${os.veiculo?.cor})` : null]
-        .filter(Boolean)
-        .join(" ");
-
-  const secundaria = isPeca
-    ? os.descricao || os.peca?.descricao || ""
-    : os.veiculo?.placa || "";
+  const produtos = (os.produtos ?? []).slice(0, 3);
+  const servicos = (os.servicos ?? []).slice(0, 3);
+  const temItens = (os.produtos?.length ?? 0) > 0 || (os.servicos?.length ?? 0) > 0;
 
   return (
-    <Card
-      className={cx(
-        "p-4 md:p-5 border-2 bg-background/70",
-        "shadow-[0_0_0_1px_rgba(255,255,255,0.04)]",
-        "hover:shadow-[0_0_0_2px_rgba(255,255,255,0.08)] transition-shadow",
-        prioridadeBorder(os.prioridade),
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        {/* cabeçalho ID + status grande */}
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs md:text-sm bg-zinc-800 border-zinc-700">
-            #{os.id}
-          </Badge>
-          <Badge
-            className={cx(
-              "text-[11px] md:text-sm font-extrabold tracking-wide border px-2.5 py-1 uppercase",
-              statusColors(os.status),
-            )}
-          >
-            {os.status?.replace(/_/g, " ") || "—"}
-          </Badge>
+    <Card className={cx("border border-border/70 bg-card/95", compact ? "p-2.5" : "p-3")}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cx("font-semibold text-muted-foreground", compact ? "text-[11px]" : "text-xs")}>
+              OS #{os.id}
+            </span>
+
+            <Badge variant="outline" className={cx("border text-[10px]", statusColors(os.status))}>
+              {statusLabel}
+            </Badge>
+
+            {os.prioridade ? (
+              <Badge variant="outline" className={cx("border text-[10px]", prioridadePill(os.prioridade))}>
+                {os.prioridade}
+              </Badge>
+            ) : null}
+          </div>
+
+          <p className={cx("mt-1 truncate font-semibold tracking-tight", compact ? "text-sm" : "text-sm")}>
+            {tituloPrincipal || "—"}
+          </p>
+
+          {secundaria ? (
+            <p className={cx("truncate text-muted-foreground", compact ? "text-[11px]" : "text-xs")}>
+              {secundaria}
+            </p>
+          ) : null}
         </div>
 
-        {/* setor */}
-        {os.setor?.nome ? (
-          <Badge variant="outline" className="text-[11px] md:text-sm border-zinc-600 bg-zinc-900/40">
-            {os.setor.nome}
-          </Badge>
-        ) : null}
-      </div>
-
-      <div className="mt-3 md:mt-4">
-        {/* título grande pra ler de longe */}
-        <div className="flex items-center gap-2 mb-1">
-          {isPeca ? (
-            <Wrench className="h-5 w-5 md:h-6 md:w-6 opacity-80" />
-          ) : (
-            <CarFront className="h-5 w-5 md:h-6 md:w-6 opacity-80" />
-          )}
-          <h3 className="text-xl md:text-2xl font-black tracking-tight line-clamp-1">{tituloPrincipal || "—"}</h3>
-        </div>
-
-        {/* linha secundária: peça desc OU placa; cliente opcional */}
-        <div className="text-sm md:text-base text-muted-foreground line-clamp-1">
-          {secundaria || "—"}
-          {os.cliente?.nome ? (
-            <>
-              <span className="mx-2 opacity-40">•</span>
-              <span className="font-medium">{os.cliente.nome}</span>
-            </>
+        <div className="shrink-0 text-right">
+          <div className={cx("inline-flex items-center gap-1 text-muted-foreground", compact ? "text-[10px]" : "text-[11px]")}>
+            <Clock className="h-3.5 w-3.5" />
+            <span className={emAndamento ? "font-mono font-semibold text-foreground" : ""}>
+              {emAndamento ? contador(os.dataEntrada, now) : "—"}
+            </span>
+          </div>
+          {emAndamento ? (
+            <div className="mt-0.5 text-[10px] text-muted-foreground">Tempo em andamento</div>
           ) : null}
         </div>
       </div>
 
-      {/* descrição curta (se tiver) */}
-      {os.descricao ? (
-        <div className="mt-3 text-xs md:text-sm text-zinc-300 line-clamp-2">
-          <ClipboardList className="h-3.5 w-3.5 inline-block mr-1 -mt-0.5 opacity-70" />
-          {os.descricao}
+      <div className={cx("mt-2 grid grid-cols-1 gap-1.5 text-muted-foreground", compact ? "text-[11px]" : "text-[11px]")}>
+        <div className="flex items-center gap-1.5">
+          <User2 className="h-3.5 w-3.5" />
+          <span className="truncate">{os.cliente?.nome ?? "—"}</span>
         </div>
-      ) : null}
 
-      {/* rodapé enxuto: datas */}
-      <div className="mt-3 md:mt-4 flex items-center justify-between text-[11px] md:text-xs text-zinc-400">
-        <div>
-          <span className="opacity-80">Entrada:</span>{" "}
-          {os.dataEntrada ? new Date(os.dataEntrada).toLocaleString() : "—"}
-        </div>
-        <div>
-          <span className="opacity-80">Saída:</span>{" "}
-          {os.dataSaida ? new Date(os.dataSaida).toLocaleDateString() : "—"}
+        {os.setor?.nome ? (
+          <div className="flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5" />
+            <span className="truncate">{os.setor.nome}</span>
+          </div>
+        ) : null}
+
+        <div className="flex items-center gap-1.5">
+          {isPeca ? <Wrench className="h-3.5 w-3.5" /> : <CarFront className="h-3.5 w-3.5" />}
+          <span className="truncate">{isPeca ? "Ordem de peça" : "Ordem de veículo"}</span>
         </div>
       </div>
+
+      {temItens ? (
+        <div className="mt-2 rounded-md border border-amber-600/20 bg-amber-600/10 p-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-300/90">
+            Itens do orçamento
+          </div>
+
+          {produtos.length ? (
+            <div className="mt-1">
+              <div className="text-[10px] font-semibold text-amber-200/80">Produtos</div>
+              <ul className="mt-0.5 space-y-0.5 text-[11px] text-amber-50/90">
+                {produtos.map((p, i) => (
+                  <li key={`p-${i}`} className="truncate">
+                    • {p.quantidade ?? 1}x {p.produto?.titulo ?? "Produto"} {moneyBRL(p.subtotal) ? `(${moneyBRL(p.subtotal)})` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {servicos.length ? (
+            <div className={cx("mt-2", !produtos.length && "mt-1")}>
+              <div className="text-[10px] font-semibold text-amber-200/80">Serviços</div>
+              <ul className="mt-0.5 space-y-0.5 text-[11px] text-amber-50/90">
+                {servicos.map((s, i) => (
+                  <li key={`s-${i}`} className="truncate">
+                    • {s.quantidade ?? 1}x {s.servico?.descricao ?? "Serviço"} {moneyBRL(s.subtotal) ? `(${moneyBRL(s.subtotal)})` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </Card>
   );
 }

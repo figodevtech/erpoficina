@@ -1,8 +1,7 @@
-import PainelAcompanhamento from "./ui/painel";
+import BoardAcompanhamento from "./components/board";
 
-export const dynamic = "force-dynamic"; // sempre pegar dados frescos
+export const dynamic = "force-dynamic";
 
-// Página pública (sem auth)
 export default function AcompanhamentoPage() {
-  return <PainelAcompanhamento />;
+  return <BoardAcompanhamento />;
 }

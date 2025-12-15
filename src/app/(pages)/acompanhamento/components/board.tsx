@@ -2,7 +2,12 @@
 
 import PainelAcompanhamento from "../ui/painel";
 
-/** Container simples; se quiser, adicione aqui toggles (ex.: hoje|recentes) */
 export default function BoardAcompanhamento() {
-  return <PainelAcompanhamento finalizadas="recentes" horasRecentes={12} />;
+  return (
+    <div className="min-h-screen w-full px-3 py-4 sm:px-4">
+      <div className="mx-auto w-full max-w-[1800px]">
+        <PainelAcompanhamento finalizadas="recentes" horasRecentes={12} />
+      </div>
+    </div>
+  );
 }
