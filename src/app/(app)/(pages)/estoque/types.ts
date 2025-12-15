@@ -119,12 +119,17 @@ export interface Produto {
   descricao?: string;
   estoque?: number; // default 0 no banco, mas pode ser null
   estoqueminimo?: number; // default 0 no banco, mas pode ser null
+  unidade?: Unidade_medida;
   ncm?: string;
   cfop?: string;
-  unidade?: Unidade_medida;
+  cst?: string;
   cest?: string;
   csosn?: string;
   aliquotaicms?: number;
+  cst_pis?: string;
+  aliquota_pis?: number;
+  cst_cofins?: string;
+  aliquota_cofins?: number;
   codigobarras?: string;
   createdat?: Date; // timestamp no banco, pode ser null
   updatedat?: Date; // timestamp no banco, pode ser null

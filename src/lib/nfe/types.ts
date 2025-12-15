@@ -12,11 +12,11 @@ export type EmpresaRow = {
   inscricaomunicipal: string | null;
   endereco: string;
   codigomunicipio: string;
-  regimetributario: '1' | '2' | '3' | string;
+  regimetributario: "1" | "2" | "3" | string;
   certificadocaminho: string | null;
   cschomologacao: string | null;
   cscproducao: string | null;
-  ambiente: 'HOMOLOGACAO' | 'PRODUCAO' | null;
+  ambiente: "HOMOLOGACAO" | "PRODUCAO" | null;
   createdat: string | null;
   updatedat: string | null;
   bairro: string | null;
@@ -79,8 +79,8 @@ export type NFeEmitente = {
   inscricaoEstadual: string;
   inscricaoEstadualST?: string;
   inscricaoMunicipal?: string;
-  cnae?: string; // <- ADICIONADO AQUI
-  crt: '1' | '2' | '3' | string;
+  cnae?: string;
+  crt: "1" | "2" | "3" | string;
   endereco: NFeEndereco;
 };
 
@@ -110,7 +110,7 @@ export type NFeDestinatario = {
   cpf?: string;
   cnpj?: string;
   razaoSocial: string;
-  indIEDest: '1' | '2' | '3' | '9' | string;
+  indIEDest: "1" | "2" | "3" | "9" | string;
   inscricaoEstadual?: string;
   endereco: NFeEndereco;
 };
@@ -126,5 +126,70 @@ export interface NFeItem {
   valorUnitario: number;
   valorTotal: number;
   codigoBarras?: string | null;
-}
 
+  // ---------- ICMS ----------
+  /**
+   * CST genérico de ICMS (espelha coluna `cst` da tabela produto/nfe_item).
+   * Ex.: "00", "20", "10"...
+   */
+  cst?: string | null;
+
+  /**
+   * CST de ICMS (nome mais explícito, se você quiser usar também).
+   * Pode espelhar o mesmo valor de `cst`.
+   */
+  cstIcms?: string | null;
+
+  /**
+   * CSOSN (para Simples Nacional)
+   * Ex.: "101", "102", "103"...
+   */
+  csosn?: string | null;
+
+  /**
+   * Alíquota de ICMS em percentual (ex.: 18 => 18%)
+   */
+  aliquotaIcms?: number;
+
+  /**
+   * Base de cálculo de ICMS (vBC) – opcional, hoje calculamos em cima do valorTotal.
+   */
+  baseCalculoIcms?: number;
+
+  /**
+   * Valor de ICMS (vICMS) – opcional, hoje calculamos em cima do valorTotal.
+   */
+  valorIcms?: number;
+
+  // ---------- PIS ----------
+  /**
+   * CST de PIS (ex.: "01", "07", "99"...)
+   */
+  cstPis?: string | null;
+
+  /**
+   * Alíquota de PIS em percentual (ex.: 0.65 => 0,65%)
+   */
+  aliquotaPis?: number;
+
+  /**
+   * Valor de PIS (vPIS)
+   */
+  valorPis?: number;
+
+  // ---------- COFINS ----------
+  /**
+   * CST de COFINS (ex.: "01", "07", "99"...)
+   */
+  cstCofins?: string | null;
+
+  /**
+   * Alíquota de COFINS em percentual (ex.: 3 => 3%)
+   */
+  aliquotaCofins?: number;
+
+  /**
+   * Valor de COFINS (vCOFINS)
+   */
+  valorCofins?: number;
+}

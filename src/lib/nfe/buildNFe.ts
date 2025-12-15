@@ -5,41 +5,43 @@ import type {
   NFeIde,
   NFeDestinatario,
   NFeItem,
-} from "./types";
-import { buildIdeXml } from "./xmlIde";
-import { buildEmitXml } from "./xmlEmitente";
-import { buildDestXml } from "./xmlDest";
-import { buildDetXml } from "./xmlItem";
-import { gerarCNF, gerarChaveAcesso } from "./chaveAcesso";
-import { mapEmpresaToEmitente } from "./mapEmpresaToEmitente";
+} from './types';
+import { buildIdeXml } from './xmlIde';
+import { buildEmitXml } from './xmlEmitente';
+import { buildDestXml } from './xmlDest';
+import { buildDetXml } from './xmlItem';
+import { gerarCNF, gerarChaveAcesso } from './chaveAcesso';
+import { mapEmpresaToEmitente } from './mapEmpresaToEmitente';
 
 /**
  * Formata data/hora para o padrão da NF-e 4.00:
  * AAAA-MM-DDThh:mm:ss-03:00
  */
 function formatDateTimeNFe(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const pad = (n: number) => String(n).padStart(2, '0');
 
-  // Garante hora no fuso -03:00 independentemente do fuso do host (ex: Vercel em UTC)
-  const targetOffsetMinutes = -3 * 60; // UTC-3 (America/Fortaleza)
-  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
-  const targetMs = utcMs + targetOffsetMinutes * 60000;
-  const targetDate = new Date(targetMs);
+  // Usa a HORA LOCAL do ambiente (Node) aqui:
+  const ano = date.getFullYear();
+  const mes = pad(date.getMonth() + 1);
+  const dia = pad(date.getDate());
+  const hora = pad(date.getHours());
+  const minuto = pad(date.getMinutes());
+  const segundo = pad(date.getSeconds());
 
-  const ano = targetDate.getUTCFullYear();
-  const mes = pad(targetDate.getUTCMonth() + 1);
-  const dia = pad(targetDate.getUTCDate());
-  const hora = pad(targetDate.getUTCHours());
-  const minuto = pad(targetDate.getUTCMinutes());
-  const segundo = pad(targetDate.getUTCSeconds());
+  // Timezone baseado no ambiente (getTimezoneOffset):
+  // ex.: Fortaleza (UTC-3) => getTimezoneOffset() = 180
+  const offsetMinutes = date.getTimezoneOffset(); // em minutos
+  const total = Math.abs(offsetMinutes);
 
-  const offsetHours = Math.floor(Math.abs(targetOffsetMinutes) / 60);
-  const offsetMinutes = Math.abs(targetOffsetMinutes) % 60;
-  const sign = targetOffsetMinutes <= 0 ? "-" : "+";
-  const tz = `${sign}${pad(offsetHours)}:${pad(offsetMinutes)}`;
+  const offsetHours = pad(Math.floor(total / 60));
+  const offsetMins = pad(total % 60);
+  const sign = offsetMinutes > 0 ? '-' : '+'; 
+  // em Fortaleza: offsetMinutes = 180 => sign = '-' => "-03:00"
 
-  return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${tz}`;
+  return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${sign}${offsetHours}:${offsetMins}`;
 }
+
+
 /**
  * Cria o bloco <ide> da NF-e, calculando cNF, chave de acesso e cDV.
  */
@@ -52,11 +54,11 @@ export function criarIdeParaEmpresa(
   const ano = agora.getFullYear();
   const mes = agora.getMonth() + 1;
 
-  const tpAmb: 1 | 2 = empresa.ambiente === "PRODUCAO" ? 1 : 2;
+  const tpAmb: 1 | 2 = empresa.ambiente === 'PRODUCAO' ? 1 : 2;
   const cNF = gerarCNF(numeroNota);
 
-  const cUF = "25"; // PB
-  const mod = "55"; // NF-e
+  const cUF = '25'; // PB
+  const mod = '55'; // NF-e
   const tpEmis = 1; // emissão normal
 
   // 1) Gera chave de acesso (44 dígitos) e cDV
@@ -76,7 +78,7 @@ export function criarIdeParaEmpresa(
   const ide: NFeIde = {
     cUF,
     cNF,
-    natOp: "VENDA DE MERCADORIA",
+    natOp: 'VENDA DE MERCADORIA',
     mod,
     serie,
     nNF: numeroNota,
@@ -92,7 +94,7 @@ export function criarIdeParaEmpresa(
     indFinal: 1,
     indPres: 1,
     procEmi: 0,
-    verProc: "ERPOficina 1.0.0",
+    verProc: 'ERPOficina 1.0.0',
   };
 
   return { ide, cNF, chave, id };
@@ -100,6 +102,11 @@ export function criarIdeParaEmpresa(
 
 /**
  * Monta o XML completo da NFe (sem assinatura).
+ *
+ * IMPORTANTE (Lucro Presumido):
+ * - Se você passar "itensOverride", é ESSENCIAL preencher os campos
+ *   de imposto do NFeItem (cst, csosn, aliquotaIcms, cstPis, cstCofins, etc)
+ *   já calculados a partir de produto/nfe_item.
  *
  * Se "itensOverride" for informado, ele será usado para gerar os <det>.
  * Caso contrário, é usado um item de teste fixo (comportamento antigo).
@@ -111,68 +118,109 @@ export function buildNFePreviewXml(
   itensOverride?: NFeItem[],
   destinatario?: NFeDestinatario
 ): { xml: string; chave: string; id: string } {
-  const { ide, chave, id } = criarIdeParaEmpresa(empresa, numeroNota, serie);
+  const { ide, chave, id } = criarIdeParaEmpresa(
+    empresa,
+    numeroNota,
+    serie
+  );
 
-  const emitente = mapEmpresaToEmitente(empresa, "JOAO PESSOA");
+  const emitente = mapEmpresaToEmitente(empresa, 'JOAO PESSOA');
 
   const dest: NFeDestinatario =
     destinatario ??
     {
-      cpf: "12345678909", // pode deixar assim mesmo em homologacao
-      razaoSocial: "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL",
-      indIEDest: "9",
+      cpf: '12345678909', // pode deixar assim mesmo em homologacao
+      razaoSocial:
+        'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
+      indIEDest: '9',
       endereco: {
-        logradouro: "RUA TESTE",
-        numero: "100",
-        complemento: "",
-        bairro: "BAIRRO TESTE",
+        logradouro: 'RUA TESTE',
+        numero: '100',
+        complemento: '',
+        bairro: 'BAIRRO TESTE',
         codigoMunicipio: empresa.codigomunicipio,
-        nomeMunicipio: "JOAO PESSOA",
-        uf: "PB",
-        cep: "58000000",
-        codigoPais: "1058",
-        nomePais: "BRASIL",
-        telefone: "",
+        nomeMunicipio: 'JOAO PESSOA',
+        uf: 'PB',
+        cep: '58000000',
+        codigoPais: '1058',
+        nomePais: 'BRASIL',
+        telefone: '',
       },
     };
 
   // Se itensOverride não for passado, usa o item de teste (compatibilidade)
-  const itens: NFeItem[] =
+  const itensBase: NFeItem[] =
     itensOverride && itensOverride.length > 0
       ? itensOverride
       : [
           {
             numeroItem: 1,
-            codigoProduto: "001",
-            descricao: "PECA TESTE",
-            ncm: "61091000", // NCM exemplo - AJUSTAR DEPOIS
-            cfop: "5102", // venda dentro do estado
-            unidade: "UN",
+            codigoProduto: '001',
+            descricao: 'PECA TESTE',
+            ncm: '61091000', // NCM exemplo - AJUSTAR DEPOIS
+            cfop: '5102', // venda dentro do estado
+            unidade: 'UN',
             quantidade: 1,
             valorUnitario: 100.0,
             valorTotal: 100.0,
           },
         ];
 
+  // Garante nº do item em cada item
+  const itens: NFeItem[] = itensBase.map((item, index) => ({
+    ...item,
+    numeroItem: item.numeroItem ?? index + 1,
+  }));
+
   const ideXml = buildIdeXml(ide);
   const emitXml = buildEmitXml(emitente);
   const destXml = buildDestXml(dest);
-  const detXml = itens.map((item) => buildDetXml(item)).join("");
+  const detXml = itens
+    .map((item) => buildDetXml(item, emitente.crt))
+    .join('');
 
-  // Calcula totais com base nos itens
-  const totalProdutosNumber = itens.reduce(
-    (acc, item) => acc + Number(item.valorTotal),
-    0
+  // =========================
+  // Totais (ICMSTot)
+  // =========================
+  const soma = itens.reduce(
+    (acc, item) => {
+      const vProd = Number(item.valorTotal ?? 0);
+
+      const aliqIcms = Number(item.aliquotaIcms ?? 0);
+      const vBCIcms = vProd; // por enquanto, base = valor do produto
+      const vICMS = (vBCIcms * aliqIcms) / 100;
+
+      const aliqPis = Number(item.aliquotaPis ?? 0);
+      const vBCPis = vProd;
+      const vPIS = (vBCPis * aliqPis) / 100;
+
+      const aliqCofins = Number(item.aliquotaCofins ?? 0);
+      const vBCCofins = vProd;
+      const vCOFINS = (vBCCofins * aliqCofins) / 100;
+
+      acc.vProd += vProd;
+      acc.vBC += vBCIcms;
+      acc.vICMS += vICMS;
+      acc.vPIS += vPIS;
+      acc.vCOFINS += vCOFINS;
+
+      return acc;
+    },
+    { vProd: 0, vBC: 0, vICMS: 0, vPIS: 0, vCOFINS: 0 }
   );
 
-  const vNF = totalProdutosNumber.toFixed(2);
-  const vProd = vNF;
+  const vProd = soma.vProd.toFixed(2);
+  const vBC = soma.vBC.toFixed(2);
+  const vICMS = soma.vICMS.toFixed(2);
+  const vPIS = soma.vPIS.toFixed(2);
+  const vCOFINS = soma.vCOFINS.toFixed(2);
+  const vNF = vProd; // sem desconto/frete/outros por enquanto
 
   const totalXml =
-    "<total>" +
-    "<ICMSTot>" +
-    `<vBC>0.00</vBC>` +
-    `<vICMS>0.00</vICMS>` +
+    '<total>' +
+    '<ICMSTot>' +
+    `<vBC>${vBC}</vBC>` +
+    `<vICMS>${vICMS}</vICMS>` +
     `<vICMSDeson>0.00</vICMSDeson>` +
     `<vFCP>0.00</vFCP>` +
     `<vBCST>0.00</vBCST>` +
@@ -186,30 +234,30 @@ export function buildNFePreviewXml(
     `<vII>0.00</vII>` +
     `<vIPI>0.00</vIPI>` +
     `<vIPIDevol>0.00</vIPIDevol>` +
-    `<vPIS>0.00</vPIS>` +
-    `<vCOFINS>0.00</vCOFINS>` +
+    `<vPIS>${vPIS}</vPIS>` +
+    `<vCOFINS>${vCOFINS}</vCOFINS>` +
     `<vOutro>0.00</vOutro>` +
     `<vNF>${vNF}</vNF>` +
-    "</ICMSTot>" +
-    "</total>";
+    '</ICMSTot>' +
+    '</total>';
 
   const transpXml =
-    "<transp>" +
-    "<modFrete>9</modFrete>" + // 9 = sem frete
-    "</transp>";
+    '<transp>' +
+    '<modFrete>9</modFrete>' + // 9 = sem frete
+    '</transp>';
 
   const pagXml =
-    "<pag>" +
-    "<detPag>" +
-    "<tPag>01</tPag>" + // 01 = dinheiro
+    '<pag>' +
+    '<detPag>' +
+    '<tPag>01</tPag>' + // 01 = dinheiro
     `<vPag>${vNF}</vPag>` +
-    "</detPag>" +
-    "</pag>";
+    '</detPag>' +
+    '</pag>';
 
   const infAdicXml =
-    "<infAdic>" +
-    "<infCpl>NF-e de teste em homologação.</infCpl>" +
-    "</infAdic>";
+    '<infAdic>' +
+    '<infCpl>NF-e de venda de mercadoria.</infCpl>' +
+    '</infAdic>';
 
   const infNFeXml =
     `<infNFe Id="${id}" versao="4.00">` +
@@ -221,13 +269,13 @@ export function buildNFePreviewXml(
     transpXml +
     pagXml +
     infAdicXml +
-    "</infNFe>";
+    '</infNFe>';
 
   const nfeXml =
     '<?xml version="1.0" encoding="UTF-8"?>' +
     '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">' +
     infNFeXml +
-    "</NFe>";
+    '</NFe>';
 
   return { xml: nfeXml, chave, id };
 }

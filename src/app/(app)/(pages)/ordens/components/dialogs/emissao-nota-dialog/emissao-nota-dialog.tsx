@@ -1,4 +1,3 @@
-// ./src/app/(app)/(pages)/ordens/components/dialogs/emissao-nfe-dialog.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,7 +15,6 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   Loader2,
-  FileText,
   Receipt,
   AlertCircle,
   CheckCircle2,
@@ -134,56 +132,57 @@ export function EmissaoNotaDialog({
 
   const canFetch = open && !!osId;
 
-  const handleFetchNfe = async () => {
-    const ac = new AbortController();
+  /**
+   * Busca NF-e da OS no backend.
+   * Usa AbortSignal opcional para o useEffect poder cancelar.
+   */
+  const fetchNfes = async (signal?: AbortSignal) => {
+    if (!osId) return;
 
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/nfe/por-os/${osId}`, {
-          method: "GET",
-          signal: ac.signal,
-        });
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/nfe/por-os/${osId}`, {
+        method: "GET",
+        signal,
+      });
 
-        if (!res.ok) {
-          let msg = `Erro ao buscar NF-e da OS (HTTP ${res.status}).`;
-          try {
-            const j = (await res.json()) as ListarNfePorOsResponse;
-            if (j?.message) msg = j.message;
-          } catch {
-            // ignora erro de parse
-          }
-          throw new Error(msg);
-        }
+      const json = (await res
+        .json()
+        .catch(() => null)) as ListarNfePorOsResponse | null;
 
-        const json = (await res.json()) as ListarNfePorOsResponse;
-
-        if (!json.ok) {
-          throw new Error(json.message || "Erro ao buscar NF-e da OS.");
-        }
-
-        if (!ac.signal.aborted) {
-          setNfes(json.nfes ?? []);
-        }
-      } catch (e: any) {
-        if (e?.name === "AbortError") return;
-        console.error(e);
-        toast.error(e?.message || "Erro ao carregar NF-e da OS.");
-        if (!ac.signal.aborted) {
-          setNfes([]);
-        }
-      } finally {
-        if (!ac.signal.aborted) {
-          setLoading(false);
-        }
+      if (!res.ok || !json?.ok) {
+        const msg =
+          json?.message ||
+          `Erro ao buscar NF-e da OS (HTTP ${res.status}).`;
+        throw new Error(msg);
       }
-      return () => ac.abort();
-    })();
+
+      if (!signal?.aborted) {
+        setNfes(json.nfes ?? []);
+      }
+    } catch (e: any) {
+      if (e?.name === "AbortError") return;
+      console.error(e);
+      if (!signal?.aborted) {
+        toast.error(e?.message || "Erro ao carregar NF-e da OS.");
+        setNfes([]);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
   };
 
   useEffect(() => {
     if (!canFetch || !osId) return;
-    handleFetchNfe();
+
+    const ac = new AbortController();
+    fetchNfes(ac.signal);
+
+    return () => {
+      ac.abort();
+    };
   }, [canFetch, osId]);
 
   const titulo = useMemo(
@@ -238,10 +237,10 @@ export function EmissaoNotaDialog({
                 <Button
                   disabled={loading}
                   variant="secondary"
-                  onClick={() => handleFetchNfe()}
+                  onClick={() => fetchNfes()}
                   className="text-xs hover:cursor-pointer"
                 >
-                  <RotateCw className={`${loading && "animate-spin"}`} />
+                  <RotateCw className={loading ? "animate-spin" : ""} />
                 </Button>
 
                 <Button
@@ -259,7 +258,7 @@ export function EmissaoNotaDialog({
           <div className="pt-5 pb-5 space-y-4 relative">
             <div
               className={`${
-                osId && loading && " opacity-100"
+                osId && loading && "opacity-100"
               } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
             >
               <div
@@ -268,7 +267,6 @@ export function EmissaoNotaDialog({
                 } `}
               ></div>
             </div>
-            {/* Botão Nova Nota */}
 
             {!osId && (
               <div className="h-24 grid place-items-center text-sm text-muted-foreground">
@@ -327,7 +325,7 @@ export function EmissaoNotaDialog({
                                     variant="outline"
                                     className="text-xs hover:cursor-pointer"
                                     onAfterAuthorize={() => {
-                                      handleFetchNfe();
+                                      fetchNfes();
                                     }}
                                   >
                                     Autorizar NF-e
@@ -366,7 +364,7 @@ export function EmissaoNotaDialog({
                                     nfeId={nfe.id}
                                     status={nfe.status ?? ""}
                                     onAfterDelete={() => {
-                                      handleFetchNfe();
+                                      fetchNfes();
                                     }}
                                   />
                                 </div>
@@ -416,7 +414,6 @@ export function EmissaoNotaDialog({
                                           json.sefaz?.xMotivo || ""
                                         }`
                                       );
-                                      // se quiser, refetch da listagem de NF-e aqui
                                     }}
                                   >
                                     Consultar NF-e
@@ -425,7 +422,7 @@ export function EmissaoNotaDialog({
                                   <CancelarNfeButton
                                     nfeId={nfe.id}
                                     status={nfe.status}
-                                    onAfterCancel={() => handleFetchNfe()}
+                                    onAfterCancel={() => fetchNfes()}
                                   />
                                 </div>
                               )}
@@ -474,16 +471,11 @@ export function EmissaoNotaDialog({
                                           json.sefaz?.xMotivo || ""
                                         }`
                                       );
-                                      // se quiser, refetch da listagem de NF-e aqui
                                     }}
                                   >
                                     Consultar NF-e
                                   </Button>
-
-                                  <CancelarNfeButton
-                                    nfeId={nfe.id}
-                                    status={nfe.status}
-                                  />
+                                  {/* Sem botão de cancelar aqui, pois NF-e já está cancelada */}
                                 </div>
                               )}
                             </DropdownMenuContent>
@@ -506,7 +498,7 @@ export function EmissaoNotaDialog({
                                 NF-e {nfe.numero ?? "—"}
                                 {nfe.serie ? `/Série ${nfe.serie}` : ""}
                               </div>
-                              
+
                               <Badge className={statusClass}>
                                 {statusUpper || "—"}
                               </Badge>
@@ -520,9 +512,10 @@ export function EmissaoNotaDialog({
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground space-y-0.5">
-
                               <div>
-                              <span className="text-xs text-muted-foreground ">ID: {nfe.id}</span>{" "}
+                                <span className="text-xs text-muted-foreground ">
+                                  ID: {nfe.id}
+                                </span>{" "}
                                 Emissão: {fmtDate(nfe.dataemissao)}{" "}
                                 {nfe.dataautorizacao && (
                                   <>
@@ -569,21 +562,18 @@ export function EmissaoNotaDialog({
           </div>
         </div>
 
-        {/* Dialog de GERAR NF-e sempre montado enquanto a EmissaoNotaDialog estiver aberta */}
         {osId && (
           <GerarNotaDeOsDialog
             open={openGerarNfe}
             onOpenChange={(open) => {
               setOpenGerarNfe(open);
-              // se fechar, recarrega a lista
               if (!open) {
-                handleFetchNfe();
+                fetchNfes();
               }
             }}
             osId={osId}
             onAfterGenerate={() => {
-              // depois de gerar, recarrega NF-e
-              handleFetchNfe();
+              fetchNfes();
             }}
           />
         )}
