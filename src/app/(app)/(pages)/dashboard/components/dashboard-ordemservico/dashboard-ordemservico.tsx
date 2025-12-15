@@ -295,7 +295,7 @@ export default function ServiceOrdersDashboard({
           </CardTitle>
           <CardDescription className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
             <span>Visão executiva de produtividade, prazos e receita.</span>
-            <Badge variant="outline" className="text-[10px] sm:text-xs">
+            <Badge variant="default" className="text-[10px] sm:text-xs">
               Período: {textoPeriodo}
             </Badge>
           </CardDescription>
