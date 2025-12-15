@@ -5,13 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -98,7 +92,6 @@ const CST_OPTIONS: CstCsosn[] = [
 ];
 
 // Ajuste aos possíveis valores do enum public.estoque_status
-// Se o seu enum tiver valores diferentes, ajuste abaixo para casar com o banco.
 const ESTOQUE_STATUS: {
   value: Estoque_status;
   badge?: "default" | "secondary" | "destructive";
@@ -111,6 +104,14 @@ const ESTOQUE_STATUS: {
 function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
+
+// *** NOVO: tipo para unidade vinda da API ***
+type UnidadeFromApi = {
+  id: number;
+  sigla: string;
+  descricao: string | null;
+  ativo: boolean;
+};
 
 interface RegisterContentProps {
   setSelectedProductId?: (value: number | undefined) => void;
@@ -126,6 +127,11 @@ export default function RegisterContent({
   setNewProduct,
 }: RegisterContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // *** NOVO: estados para unidades de medida vindas do banco ***
+  const [unidades, setUnidades] = useState<UnidadeFromApi[]>([]);
+  const [loadingUnidades, setLoadingUnidades] = useState(false);
+  const [errorUnidades, setErrorUnidades] = useState<string | null>(null);
 
   const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
@@ -147,7 +153,6 @@ export default function RegisterContent({
       console.log(response.status);
 
       if (response.status === 201) {
-        console.log(response.data.data.id);
         toast.success("Sucesso!", {
           description: "Produto cadastrado.",
           duration: 2000,
@@ -163,13 +168,41 @@ export default function RegisterContent({
           description: error.response?.data.error,
           duration: 2000,
         });
-
-        console.log(error);
       }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // *** NOVO: buscar unidades de medida ativas do backend ***
+  useEffect(() => {
+    const fetchUnidades = async () => {
+      try {
+        setLoadingUnidades(true);
+        setErrorUnidades(null);
+
+        const res = await axios.get("/api/tipos/unidades-medida");
+        const items: UnidadeFromApi[] = res.data?.items ?? [];
+
+        // Só unidades ativas
+        const ativas = items.filter((u) => u.ativo);
+        setUnidades(ativas);
+
+        // Se o produto ainda não tem unidade, seta uma padrão
+        if (!newProduct.unidade && ativas.length > 0) {
+          handleChange("unidade", ativas[0].sigla as Unidade_medida);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar unidades de medida:", err);
+        setErrorUnidades("Erro ao carregar unidades de medida");
+      } finally {
+        setLoadingUnidades(false);
+      }
+    };
+
+    fetchUnidades();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     console.log("New Product:", newProduct);
@@ -180,29 +213,18 @@ export default function RegisterContent({
       <div className="flex h-full min-h-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
           <DialogTitle>Cadastro de Produtos</DialogTitle>
-          <DialogDescription>
-            Preencha dados para registrar um novo produto
-          </DialogDescription>
+          <DialogDescription>Preencha dados para registrar um novo produto</DialogDescription>
         </DialogHeader>
 
         <Tabs className="flex-1 min-h-0 overflow-hidden pb-0 mt-4">
           <TabsList className="shrink-0 sticky top-0 z-10 bg-background ml-4">
-            <TabsTrigger
-              value="Geral"
-              className={"hover:cursor-pointer" + tabTheme}
-            >
+            <TabsTrigger value="Geral" className={"hover:cursor-pointer" + tabTheme}>
               Geral
             </TabsTrigger>
-            <TabsTrigger
-              value="Fiscal"
-              className={"hover:cursor-pointer" + tabTheme}
-            >
+            <TabsTrigger value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
               Fiscal
             </TabsTrigger>
-            <TabsTrigger
-              value="Estoque"
-              className={"hover:cursor-pointer" + tabTheme}
-            >
+            <TabsTrigger value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
               Estoque
             </TabsTrigger>
           </TabsList>
@@ -217,9 +239,7 @@ export default function RegisterContent({
                 <div className="flex flex-nowrap space-x-2">
                   <Label htmlFor="status_estoque">Status do Estoque:</Label>
 
-                  {ESTOQUE_STATUS.filter(
-                    (s) => s.value === newProduct.status_estoque
-                  ).map((s) => (
+                  {ESTOQUE_STATUS.filter((s) => s.value === newProduct.status_estoque).map((s) => (
                     <Badge className="" key={s.value} variant={s.badge}>
                       {s.value}
                     </Badge>
@@ -227,20 +247,13 @@ export default function RegisterContent({
                 </div>
                 <div className="flex flex-nowrap space-x-2">
                   <Label>Grupo:</Label>
-                  <Select
-                    value={newProduct.grupo || "OUTROS"}
-                    onValueChange={(v) => handleChange("grupo", v)}
-                  >
+                  <Select value={newProduct.grupo || "OUTROS"} onValueChange={(v) => handleChange("grupo", v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.values(Grupo_produto).map((g) => (
-                        <SelectItem
-                          className="hover:cursor-pointer"
-                          key={g}
-                          value={g}
-                        >
+                        <SelectItem className="hover:cursor-pointer" key={g} value={g}>
                           {g}
                         </SelectItem>
                       ))}
@@ -292,9 +305,7 @@ export default function RegisterContent({
                   <Input
                     id="codigobarras"
                     value={newProduct.codigobarras || ""}
-                    onChange={(e) =>
-                      handleChange("codigobarras", onlyDigits(e.target.value))
-                    }
+                    onChange={(e) => handleChange("codigobarras", onlyDigits(e.target.value))}
                     placeholder="7891234567890"
                     inputMode="numeric"
                     maxLength={14}
@@ -305,41 +316,33 @@ export default function RegisterContent({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="precounitario">Preço Unitário</Label>
-                  <ValueInput
-                    price={newProduct.precovenda}
-                    setPrice={(v) => handleChange("precovenda", v)}
-                  />
-                  {/* <Input
-                    id="precovenda"
-                    value={newProduct.precovenda}
-                    onChange={(e) =>
-                      handleChange(
-                        "precovenda",
-                        formatCurrencyInput(e.target.value)
-                      )
-                    }
-                    placeholder="R$ 0,00"
-                    inputMode="decimal"
-                  /> */}
+                  <ValueInput price={newProduct.precovenda} setPrice={(v) => handleChange("precovenda", v)} />
                 </div>
 
+                {/* --- Unidade vindo do banco --- */}
                 <div className="space-y-2">
                   <Label htmlFor="unidade">Unidade</Label>
                   <Select
-                    value={newProduct.unidade}
-                    onValueChange={(v) => handleChange("unidade", v)}
+                    value={newProduct.unidade || undefined}
+                    onValueChange={(v) => handleChange("unidade", v as Unidade_medida)}
+                    disabled={loadingUnidades || !!errorUnidades}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue
+                        placeholder={
+                          loadingUnidades ? "Carregando..." : errorUnidades ? "Erro ao carregar" : "Selecione"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.values(Unidade_medida).map((u) => (
-                        <SelectItem key={u} value={u}>
-                          {u}
+                      {unidades.map((u) => (
+                        <SelectItem key={u.id} value={u.sigla as Unidade_medida} className="hover:cursor-pointer">
+                          {u.sigla}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {errorUnidades && <p className="mt-1 text-xs text-destructive">{errorUnidades}</p>}
                 </div>
               </div>
             </div>
@@ -358,9 +361,7 @@ export default function RegisterContent({
                     id="ncm"
                     className="w-30"
                     value={newProduct.ncm || ""}
-                    onChange={(e) =>
-                      handleChange("ncm", onlyDigits(e.target.value))
-                    }
+                    onChange={(e) => handleChange("ncm", onlyDigits(e.target.value))}
                     placeholder="00000000"
                     inputMode="numeric"
                     maxLength={8}
@@ -372,9 +373,7 @@ export default function RegisterContent({
                   <Input
                     id="cfop"
                     value={newProduct.cfop || ""}
-                    onChange={(e) =>
-                      handleChange("cfop", onlyDigits(e.target.value))
-                    }
+                    onChange={(e) => handleChange("cfop", onlyDigits(e.target.value))}
                     placeholder="5102"
                     className="w-30"
                     inputMode="numeric"
@@ -384,10 +383,7 @@ export default function RegisterContent({
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="csosn">CSOSN</Label>
-                  <Select
-                    value={newProduct.csosn || "Selecione"}
-                    onValueChange={(v) => handleChange("csosn", v)}
-                  >
+                  <Select value={newProduct.csosn || "Selecione"} onValueChange={(v) => handleChange("csosn", v)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -404,10 +400,7 @@ export default function RegisterContent({
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="csosn">CST</Label>
-                  <Select
-                    value={newProduct.cst || "Selecione"}
-                    onValueChange={(v) => handleChange("cst", v)}
-                  >
+                  <Select value={newProduct.cst || "Selecione"} onValueChange={(v) => handleChange("cst", v)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -429,9 +422,7 @@ export default function RegisterContent({
                   <Input
                     id="cest"
                     value={newProduct.cest || ""}
-                    onChange={(e) =>
-                      handleChange("cest", onlyDigits(e.target.value))
-                    }
+                    onChange={(e) => handleChange("cest", onlyDigits(e.target.value))}
                     placeholder="0000000"
                     inputMode="numeric"
                     maxLength={7}
@@ -443,9 +434,7 @@ export default function RegisterContent({
                   <Input
                     id="aliquotaicms"
                     value={newProduct.aliquotaicms || ""}
-                    onChange={(e) =>
-                      handleChange("aliquotaicms", e.target.value)
-                    }
+                    onChange={(e) => handleChange("aliquotaicms", e.target.value)}
                     placeholder="18,00"
                     inputMode="decimal"
                     type="number"
@@ -456,18 +445,12 @@ export default function RegisterContent({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cst_pis">CST PIS</Label>
-                  <Select
-                    value={newProduct.cst_pis || "Selecione"}
-                    onValueChange={(v) => handleChange("cst_pis", v)}
-                  >
+                  <Select value={newProduct.cst_pis || "Selecione"} onValueChange={(v) => handleChange("cst_pis", v)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem
-                        className="hover:cursor-pointer"
-                        value="Selecione"
-                      >
+                      <SelectItem className="hover:cursor-pointer" value="Selecione">
                         Selecione
                       </SelectItem>
                       {CST_PIS_OPTIONS.map((c) => (
@@ -484,9 +467,7 @@ export default function RegisterContent({
                   <Input
                     id="aliquota_pis"
                     value={newProduct.aliquota_pis || ""}
-                    onChange={(e) =>
-                      handleChange("aliquota_pis", e.target.value)
-                    }
+                    onChange={(e) => handleChange("aliquota_pis", e.target.value)}
                     placeholder="18,00"
                     inputMode="decimal"
                     type="number"
@@ -505,10 +486,7 @@ export default function RegisterContent({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem
-                        className="hover:cursor-pointer"
-                        value="Selecione"
-                      >
+                      <SelectItem className="hover:cursor-pointer" value="Selecione">
                         Selecione
                       </SelectItem>
                       {CST_PIS_OPTIONS.map((c) => (
@@ -525,9 +503,7 @@ export default function RegisterContent({
                   <Input
                     id="aliquota_cofins"
                     value={newProduct.aliquota_cofins || ""}
-                    onChange={(e) =>
-                      handleChange("aliquota_cofins", e.target.value)
-                    }
+                    onChange={(e) => handleChange("aliquota_cofins", e.target.value)}
                     placeholder="18,00"
                     inputMode="decimal"
                     type="number"
@@ -549,9 +525,7 @@ export default function RegisterContent({
                   <Input
                     id="estoque"
                     value={newProduct.estoque || ""}
-                    onChange={(e) =>
-                      handleChange("estoque", onlyDigits(e.target.value))
-                    }
+                    onChange={(e) => handleChange("estoque", onlyDigits(e.target.value))}
                     placeholder="0"
                     inputMode="numeric"
                     maxLength={9}
@@ -562,9 +536,7 @@ export default function RegisterContent({
                   <Input
                     id="estoqueminimo"
                     value={newProduct.estoqueminimo || ""}
-                    onChange={(e) =>
-                      handleChange("estoqueminimo", onlyDigits(e.target.value))
-                    }
+                    onChange={(e) => handleChange("estoqueminimo", onlyDigits(e.target.value))}
                     placeholder="0"
                     inputMode="numeric"
                     maxLength={9}
@@ -580,12 +552,10 @@ export default function RegisterContent({
                     <strong>OK:</strong> Estoque acima do estoque mínimo.
                   </li>
                   <li>
-                    <strong>BAIXO:</strong> Estoque igual ou abaixo do estoque
-                    mínimo.
+                    <strong>BAIXO:</strong> Estoque igual ou abaixo do estoque mínimo.
                   </li>
                   <li>
-                    <strong>CRÍTICO:</strong> Estoque atingiu a metade do
-                    estoque mínimo.
+                    <strong>CRÍTICO:</strong> Estoque atingiu a metade do estoque mínimo.
                   </li>
                   <li>
                     <strong>SEM ESTOQUE:</strong> Estoque indisponível.

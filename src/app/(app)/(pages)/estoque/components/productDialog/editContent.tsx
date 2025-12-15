@@ -5,13 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,20 +25,9 @@ import ValueInput from "./valueInput";
 import axios from "axios";
 import { formatDate } from "@/utils/formatDate";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import formatarEmReal from "@/utils/formatarEmReal";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // --- Helper data ---
 
@@ -53,28 +36,21 @@ type CstCsosn = {
   desc: string;
 };
 
-const CSOSN_OPTIONS = [
+const CST_OPTIONS: CstCsosn[] = [
+  { cod: "000", desc: "Tributada Integralmente" },
+  { cod: "010", desc: "Tributada e com cobrança do ICMS por ST" },
+  { cod: "020", desc: "Com redução de base de cálculo" },
+  { cod: "030", desc: "Isenta/Não tributada e com cobrança do ICMS por ST" },
+  { cod: "040", desc: "Isenta" },
+  { cod: "041", desc: "Não Tributada" },
+  { cod: "050", desc: "Com Suspensão" },
+  { cod: "051", desc: "Com Diferimento" },
   {
-    cod: "101",
-    desc: "Tributada pelo Simples Nacional com permissão de crédito",
+    cod: "060",
+    desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária",
   },
-  {
-    cod: "102",
-    desc: "Tributada pelo Simples Nacional sem permissão de crédito",
-  },
-  {
-    cod: "103",
-    desc: "Isenção do ICMS no Simples Nacional para faixa de receita",
-  },
-  { cod: "201", desc: "Tributada com permissão de crédito e com ST" },
-  { cod: "202", desc: "Tributada sem permissão de crédito e com ST" },
-  { cod: "300", desc: "Imune" },
-  { cod: "400", desc: "Não Tributada" },
-  {
-    cod: "500",
-    desc: "ICMS cobrado anteriormente por substituição tributária (ST)",
-  },
-  { cod: "900", desc: "Outros" },
+  { cod: "070", desc: "Com redução de base de cálculo no ICMS ST" },
+  { cod: "090", desc: "Outras Operações" },
 ];
 
 const CST_PIS_OPTIONS: CstCsosn[] = [
@@ -95,24 +71,6 @@ const CST_PIS_OPTIONS: CstCsosn[] = [
   { cod: "09", desc: "Operação com Suspensão da Contribuição." },
   { cod: "49", desc: "Outras Operações de Saída" },
 ];
-
-const CST_OPTIONS: CstCsosn[] = [
-  { cod: "00", desc: "Tributada Integralmente" },
-  { cod: "10", desc: "Tributada e com cobrança do ICMS por ST" },
-  { cod: "20", desc: "Com redução de base de cálculo" },
-  { cod: "30", desc: "Isenta/Não tributada e com cobrança do ICMS por ST" },
-  { cod: "40", desc: "Isenta" },
-  { cod: "41", desc: "Não Tributada" },
-  { cod: "50", desc: "Com Suspensão" },
-  { cod: "51", desc: "Com Diferimento" },
-  {
-    cod: "60",
-    desc: "ICMS Cobrado na Operação Anterior por Substituição Tributária",
-  },
-  { cod: "70", desc: "Com redução de base de cálculo no ICMS ST" },
-  { cod: "90", desc: "Outras Operações" },
-];
-
 // Ajuste aos possíveis valores do enum public.estoque_status
 // Se o seu enum tiver valores diferentes, ajuste abaixo para casar com o banco.
 const ESTOQUE_STATUS: {
@@ -129,18 +87,28 @@ function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
 
+// --- NOVO: tipo para unidade vinda da API ---
+type UnidadeFromApi = {
+  id: number;
+  sigla: string;
+  descricao: string | null;
+  ativo: boolean;
+};
+
 interface EditContentProps {
   productId: number;
   onAfterSaveProduct?: () => void;
-
 }
 
 export default function EditContent({ productId, onAfterSaveProduct }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(
-    undefined
-  );
+  const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+
+  // --- NOVO: estados para unidades do banco ---
+  const [unidades, setUnidades] = useState<UnidadeFromApi[]>([]);
+  const [loadingUnidades, setLoadingUnidades] = useState(false);
+  const [errorUnidades, setErrorUnidades] = useState<string | null>(null);
 
   const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
@@ -158,7 +126,6 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
       if (response.status === 200) {
         const { data } = response;
         setSelectedProduct(data.data);
-        // console.log("Cliente carregado:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar produto:", error);
@@ -170,20 +137,13 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
   const handleUpdateProduct = async () => {
     setIsSubmitting(true);
     try {
-      const response = await axios.put(
-        "/api/products/" + productId,
-        selectedProduct
-      );
+      const response = await axios.put("/api/products/" + productId, selectedProduct);
 
       if (response.status === 200) {
-        // console.log(response)
         const { data } = response;
         setSelectedProduct(data.data);
-        console.log("Cliente atualizado:", data.data);
-        // toast.success("Atualizado")
         handleGetProduct(data.data.id);
         onAfterSaveProduct?.();
-
       }
     } catch (error) {
       console.log("Erro ao atualizar produto:", error);
@@ -191,6 +151,30 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
       setIsSubmitting(false);
     }
   };
+
+  // --- NOVO: buscar unidades de medida ativas ---
+  useEffect(() => {
+    const fetchUnidades = async () => {
+      try {
+        setLoadingUnidades(true);
+        setErrorUnidades(null);
+
+        const res = await axios.get("/api/tipos/unidades-medida");
+        const items: UnidadeFromApi[] = res.data?.items ?? [];
+
+        // apenas ativas
+        const ativas = items.filter((u) => u.ativo);
+        setUnidades(ativas);
+      } catch (err) {
+        console.error("Erro ao carregar unidades de medida:", err);
+        setErrorUnidades("Erro ao carregar unidades de medida");
+      } finally {
+        setLoadingUnidades(false);
+      }
+    };
+
+    fetchUnidades();
+  }, []);
 
   useEffect(() => {
     console.log("Product:", selectedProduct);
@@ -227,56 +211,30 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
             <DialogTitle>
               Produto #{selectedProduct.id} - {selectedProduct.titulo}
             </DialogTitle>
-            <DialogDescription>
-              Preencha dados para editar um novo produto
-            </DialogDescription>
+            <DialogDescription>Preencha dados para editar um novo produto</DialogDescription>
           </DialogHeader>
 
-          <Tabs
-            defaultValue="Geral"
-            className="flex-1 min-h-0 overflow-hidden pb-0 mt-4"
-          >
+          <Tabs defaultValue="Geral" className="flex-1 min-h-0 overflow-hidden pb-0 mt-4">
             <TabsList className="shrink-0 sticky top-0 z-10 bg-background ml-4">
-              <TabsTrigger
-                value="Geral"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
+              <TabsTrigger value="Geral" className={"hover:cursor-pointer" + tabTheme}>
                 Geral
               </TabsTrigger>
-              <TabsTrigger
-                value="MarketPlace"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
+              <TabsTrigger value="MarketPlace" className={"hover:cursor-pointer" + tabTheme}>
                 MarketPlace
               </TabsTrigger>
-              <TabsTrigger
-                value="Fiscal"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
+              <TabsTrigger value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
                 Fiscal
               </TabsTrigger>
-              <TabsTrigger
-                value="Estoque"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
+              <TabsTrigger value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
                 Estoque
               </TabsTrigger>
-              <TabsTrigger
-                value="Vendas"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
+              <TabsTrigger value="Vendas" className={"hover:cursor-pointer" + tabTheme}>
                 Vendas
               </TabsTrigger>
-              <TabsTrigger
-                value="Ordens"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
+              <TabsTrigger value="Ordens" className={"hover:cursor-pointer" + tabTheme}>
                 Ordens
               </TabsTrigger>
-              <TabsTrigger
-                value="Fluxo"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
+              <TabsTrigger value="Fluxo" className={"hover:cursor-pointer" + tabTheme}>
                 Fluxo
               </TabsTrigger>
             </TabsList>
@@ -291,9 +249,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                   <div className="flex flex-nowrap space-x-2">
                     <Label htmlFor="status_estoque">Status do Estoque:</Label>
 
-                    {ESTOQUE_STATUS.filter(
-                      (s) => s.value === selectedProduct.status_estoque
-                    ).map((s) => (
+                    {ESTOQUE_STATUS.filter((s) => s.value === selectedProduct.status_estoque).map((s) => (
                       <Badge className="" key={s.value} variant={s.badge}>
                         {s.value}
                       </Badge>
@@ -301,20 +257,13 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                   </div>
                   <div className="flex flex-nowrap space-x-2">
                     <Label>Grupo:</Label>
-                    <Select
-                      value={selectedProduct.grupo || "OUTROS"}
-                      onValueChange={(v) => handleChange("grupo", v)}
-                    >
+                    <Select value={selectedProduct.grupo || "OUTROS"} onValueChange={(v) => handleChange("grupo", v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.values(Grupo_produto).map((g) => (
-                          <SelectItem
-                            className="hover:cursor-pointer"
-                            key={g}
-                            value={g}
-                          >
+                          <SelectItem className="hover:cursor-pointer" key={g} value={g}>
                             {g}
                           </SelectItem>
                         ))}
@@ -347,9 +296,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="fabricante"
                       value={selectedProduct.fabricante || ""}
-                      onChange={(e) =>
-                        handleChange("fabricante", e.target.value)
-                      }
+                      onChange={(e) => handleChange("fabricante", e.target.value)}
                       placeholder="SKU / Referência interna"
                     />
                   </div>
@@ -358,9 +305,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="referencia"
                       value={selectedProduct.referencia || ""}
-                      onChange={(e) =>
-                        handleChange("referencia", e.target.value)
-                      }
+                      onChange={(e) => handleChange("referencia", e.target.value)}
                       placeholder="SKU / Referência interna"
                     />
                   </div>
@@ -370,9 +315,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="codigobarras"
                       value={selectedProduct.codigobarras || ""}
-                      onChange={(e) =>
-                        handleChange("codigobarras", onlyDigits(e.target.value))
-                      }
+                      onChange={(e) => handleChange("codigobarras", onlyDigits(e.target.value))}
                       placeholder="7891234567890"
                       inputMode="numeric"
                       maxLength={14}
@@ -383,44 +326,44 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="precounitario">Preço Unitário</Label>
-                    <ValueInput
-                      price={selectedProduct.precovenda}
-                      setPrice={(v) => handleChange("precovenda", v)}
-                    />
+                    <ValueInput price={selectedProduct.precovenda} setPrice={(v) => handleChange("precovenda", v)} />
                   </div>
 
+                  {/* --- Unidade vinda da API --- */}
                   <div className="space-y-2">
                     <Label htmlFor="unidade">Unidade</Label>
                     <Select
-                      value={selectedProduct.unidade}
-                      onValueChange={(v) => handleChange("unidade", v)}
+                      value={selectedProduct.unidade || undefined}
+                      onValueChange={(v) => handleChange("unidade", v as Unidade_medida)}
+                      disabled={loadingUnidades || !!errorUnidades}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
+                        <SelectValue
+                          placeholder={
+                            loadingUnidades ? "Carregando..." : errorUnidades ? "Erro ao carregar" : "Selecione"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.values(Unidade_medida).map((u) => (
-                          <SelectItem key={u} value={u} className="hover:cursor-pointer">
+                          <SelectItem key={u} value={u}>
                             {u}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {errorUnidades && <p className="mt-1 text-xs text-destructive">{errorUnidades}</p>}
                   </div>
                 </div>
                 <Separator />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-nowrap">
                   <div className="space-x-1 flex items-center text-muted-foreground text-xs">
                     <Label>Criado em:</Label>
-                    <span className=" text-muted-foreground">
-                      {formatDate(selectedProduct.createdat)}
-                    </span>
+                    <span className=" text-muted-foreground">{formatDate(selectedProduct.createdat)}</span>
                   </div>
                   <div className="space-x-1 flex items-center text-muted-foreground text-xs">
                     <Label>Última modificação:</Label>
-                    <span className=" text-muted-foreground">
-                      {formatDate(selectedProduct.updatedat)}
-                    </span>
+                    <span className=" text-muted-foreground">{formatDate(selectedProduct.updatedat)}</span>
                   </div>
                 </div>
               </div>
@@ -436,34 +379,24 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                   <Label htmlFor="exibirPdv">Exibir no Marketplace:</Label>
                   <Switch
                     checked={selectedProduct.exibirPdv}
-                    onCheckedChange={(v) =>
-                      setSelectedProduct({ ...selectedProduct, exibirPdv: v })
-                    }
+                    onCheckedChange={(v) => setSelectedProduct({ ...selectedProduct, exibirPdv: v })}
                   ></Switch>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tituloMarketplace">
-                    Título no Marketplace *
-                  </Label>
+                  <Label htmlFor="tituloMarketplace">Título no Marketplace *</Label>
                   <Input
                     id="tituloMarketplace"
                     value={selectedProduct.tituloMarketplace || ""}
-                    onChange={(e) =>
-                      handleChange("tituloMarketplace", e.target.value)
-                    }
+                    onChange={(e) => handleChange("tituloMarketplace", e.target.value)}
                     placeholder="Nome comercial / Site"
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="descricaoMarketplace">
-                    Descrição no Marketplace
-                  </Label>
+                  <Label htmlFor="descricaoMarketplace">Descrição no Marketplace</Label>
                   <Textarea
                     id="descricaoMarketplace"
                     value={selectedProduct.descricaoMarketplace || ""}
-                    onChange={(e) =>
-                      handleChange("descricaoMarketplace", e.target.value)
-                    }
+                    onChange={(e) => handleChange("descricaoMarketplace", e.target.value)}
                     placeholder="Descrição do produto"
                   />
                 </div>
@@ -481,9 +414,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="ncm"
                       value={selectedProduct.ncm || ""}
-                      onChange={(e) =>
-                        handleChange("ncm", onlyDigits(e.target.value))
-                      }
+                      onChange={(e) => handleChange("ncm", onlyDigits(e.target.value))}
                       placeholder="00000000"
                       inputMode="numeric"
                       maxLength={8}
@@ -495,9 +426,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="cfop"
                       value={selectedProduct.cfop || ""}
-                      onChange={(e) =>
-                        handleChange("cfop", onlyDigits(e.target.value))
-                      }
+                      onChange={(e) => handleChange("cfop", onlyDigits(e.target.value))}
                       placeholder="5102"
                       inputMode="numeric"
                       maxLength={4}
@@ -514,8 +443,10 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem className="hover:cursor-pointer" value="Selecione">Selecione</SelectItem>
-                        {CSOSN_OPTIONS.map((c) => (
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
+                          Selecione
+                        </SelectItem>
+                        {CST_OPTIONS.map((c) => (
                           <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
                             {c.cod} - {c.desc}
                           </SelectItem>
@@ -525,15 +456,14 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="csosn">CST</Label>
-                    <Select
-                      value={selectedProduct.cst || "Selecione"}
-                      onValueChange={(v) => handleChange("cst", v)}
-                    >
+                    <Select value={selectedProduct.cst || "Selecione"} onValueChange={(v) => handleChange("cst", v)}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem className="hover:cursor-pointer" value="Selecione">Selecione</SelectItem>
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
+                          Selecione
+                        </SelectItem>
                         {CST_OPTIONS.map((c) => (
                           <SelectItem className="hover:cursor-pointer" key={c.cod} value={c.cod}>
                             {c.cod} - {c.desc}
@@ -550,9 +480,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="cest"
                       value={selectedProduct.cest || ""}
-                      onChange={(e) =>
-                        handleChange("cest", onlyDigits(e.target.value))
-                      }
+                      onChange={(e) => handleChange("cest", onlyDigits(e.target.value))}
                       placeholder="0000000"
                       inputMode="numeric"
                       maxLength={7}
@@ -564,10 +492,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="aliquotaicms"
                       value={selectedProduct.aliquotaicms || ""}
-                      onChange={(e) =>
-                        handleChange("aliquotaicms", e.target.value)
-                      }
-                      type="number"
+                      onChange={(e) => handleChange("aliquotaicms", e.target.value)}
                       placeholder="18,00"
                       inputMode="decimal"
                     />
@@ -585,10 +510,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem
-                          className="hover:cursor-pointer"
-                          value="Selecione"
-                        >
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
                           Selecione
                         </SelectItem>
                         {CST_PIS_OPTIONS.map((c) => (
@@ -605,9 +527,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="aliquota_pis"
                       value={selectedProduct.aliquota_pis || ""}
-                      onChange={(e) =>
-                        handleChange("aliquota_pis", e.target.value)
-                      }
+                      onChange={(e) => handleChange("aliquota_pis", e.target.value)}
                       placeholder="18,00"
                       inputMode="decimal"
                       type="number"
@@ -626,10 +546,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem
-                          className="hover:cursor-pointer"
-                          value="Selecione"
-                        >
+                        <SelectItem className="hover:cursor-pointer" value="Selecione">
                           Selecione
                         </SelectItem>
                         {CST_PIS_OPTIONS.map((c) => (
@@ -646,9 +563,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="aliquota_cofins"
                       value={selectedProduct.aliquota_cofins || ""}
-                      onChange={(e) =>
-                        handleChange("aliquota_cofins", e.target.value)
-                      }
+                      onChange={(e) => handleChange("aliquota_cofins", e.target.value)}
                       placeholder="18,00"
                       inputMode="decimal"
                       type="number"
@@ -671,9 +586,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                       disabled
                       id="estoque"
                       value={selectedProduct.estoque || ""}
-                      onChange={(e) =>
-                        handleChange("estoque", onlyDigits(e.target.value))
-                      }
+                      onChange={(e) => handleChange("estoque", onlyDigits(e.target.value))}
                       placeholder="0"
                       inputMode="numeric"
                       maxLength={9}
@@ -684,12 +597,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     <Input
                       id="estoqueminimo"
                       value={selectedProduct.estoqueminimo || ""}
-                      onChange={(e) =>
-                        handleChange(
-                          "estoqueminimo",
-                          onlyDigits(e.target.value)
-                        )
-                      }
+                      onChange={(e) => handleChange("estoqueminimo", onlyDigits(e.target.value))}
                       placeholder="0"
                       inputMode="numeric"
                       maxLength={9}
@@ -705,12 +613,10 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                       <strong>OK:</strong> Estoque acima do estoque mínimo.
                     </li>
                     <li>
-                      <strong>BAIXO:</strong> Estoque igual ou abaixo do estoque
-                      mínimo.
+                      <strong>BAIXO:</strong> Estoque igual ou abaixo do estoque mínimo.
                     </li>
                     <li>
-                      <strong>CRÍTICO:</strong> Estoque atingiu a metade do
-                      estoque mínimo.
+                      <strong>CRÍTICO:</strong> Estoque atingiu a metade do estoque mínimo.
                     </li>
                     <li>
                       <strong>SEM ESTOQUE:</strong> Estoque indisponível.
@@ -728,9 +634,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
                 <div className="flex flex-row items-center justify-between">
                   <span className="text-xs">Participações em vendas</span>
-                  <span className="text-xs">
-                    Quantidade: {selectedProduct.vendasdoproduto?.length}
-                  </span>
+                  <span className="text-xs">Quantidade: {selectedProduct.vendasdoproduto?.length}</span>
                 </div>
                 <Table className="text-xs border-1">
                   <TableHeader>
@@ -743,13 +647,9 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedProduct.vendasdoproduto?.length &&
-                    selectedProduct.vendasdoproduto?.length > 0 ? (
+                    {selectedProduct.vendasdoproduto?.length && selectedProduct.vendasdoproduto?.length > 0 ? (
                       selectedProduct.vendasdoproduto.map((v) => (
-                        <TableRow
-                          key={v.id}
-                          className="hover:cursor-pointer text-center"
-                        >
+                        <TableRow key={v.id} className="hover:cursor-pointer text-center">
                           <TableCell>{v.venda_id}</TableCell>
                           <TableCell>{formatDate(v.venda.datavenda)}</TableCell>
                           <TableCell>{v.quantidade}</TableCell>
@@ -757,10 +657,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  className="h-3 w-3 p-0 cursor-pointer"
-                                >
+                                <Button variant="ghost" className="h-3 w-3 p-0 cursor-pointer">
                                   <ChevronDown className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -796,12 +693,8 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
                 <div className="flex flex-row items-center justify-between">
-                  <span className="text-xs">
-                    Participações em Ordens de Serviço
-                  </span>
-                  <span className="text-xs">
-                    Quantidade: {selectedProduct.ordensdoproduto?.length}
-                  </span>
+                  <span className="text-xs">Participações em Ordens de Serviço</span>
+                  <span className="text-xs">Quantidade: {selectedProduct.ordensdoproduto?.length}</span>
                 </div>
                 <Table className="text-xs border-1">
                   <TableHeader>
@@ -813,23 +706,16 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedProduct.ordensdoproduto?.length &&
-                    selectedProduct.ordensdoproduto?.length > 0 ? (
+                    {selectedProduct.ordensdoproduto?.length && selectedProduct.ordensdoproduto?.length > 0 ? (
                       selectedProduct.ordensdoproduto.map((o) => (
-                        <TableRow
-                          key={o.ordem.id}
-                          className="hover:cursor-pointer text-center"
-                        >
+                        <TableRow key={o.ordem.id} className="hover:cursor-pointer text-center">
                           <TableCell>{o.ordem.id}</TableCell>
                           <TableCell>{o.ordem.descricao || "-"}</TableCell>
                           <TableCell>{o.ordem.status}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  className="h-3 w-3 p-0 cursor-pointer"
-                                >
+                                <Button variant="ghost" className="h-3 w-3 p-0 cursor-pointer">
                                   <ChevronDown className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -865,9 +751,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
                 <div className="flex flex-row items-center justify-between">
                   <span className="text-xs">Movimentações em estoque</span>
-                  <span className="text-xs">
-                    Quantidade: {selectedProduct.entradas?.length}
-                  </span>
+                  <span className="text-xs">Quantidade: {selectedProduct.entradas?.length}</span>
                 </div>
                 <Table className="text-xs border-1">
                   <TableHeader>
@@ -880,26 +764,17 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedProduct.entradas?.length &&
-                    selectedProduct.entradas?.length > 0 ? (
+                    {selectedProduct.entradas?.length && selectedProduct.entradas?.length > 0 ? (
                       selectedProduct.entradas.map((e) => (
-                        <TableRow
-                          key={e.id}
-                          className="hover:cursor-pointer text-center"
-                        >
+                        <TableRow key={e.id} className="hover:cursor-pointer text-center">
                           <TableCell>{e.id}</TableCell>
                           <TableCell>{formatDate(e.created_at)}</TableCell>
                           <TableCell>{e.fornecedor.nomerazaosocial}</TableCell>
-                          <TableCell className="text-green-600 font-bold">
-                            + {e.quantidade}
-                          </TableCell>
+                          <TableCell className="text-green-600 font-bold">+ {e.quantidade}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  className="h-3 w-3 p-0 cursor-pointer"
-                                >
+                                <Button variant="ghost" className="h-3 w-3 p-0 cursor-pointer">
                                   <ChevronDown className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -923,8 +798,7 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                     ) : (
                       <TableRow>
                         <TableCell className="text-center h-20" colSpan={5}>
-                          Produto não possui histórico de movimentação no
-                          estoque
+                          Produto não possui histórico de movimentação no estoque
                         </TableCell>
                       </TableRow>
                     )}
@@ -965,4 +839,6 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
       </DialogContent>
     );
   }
+
+  return null;
 }
