@@ -1,22 +1,26 @@
 // src/app/api/acompanhamento/ordens/route.ts
+
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/** início do dia em America/Fortaleza (ISO UTC truncado em segundos) */
+/** início do dia em America/Fortaleza (retorna ISO UTC truncado em segundos) */
 function inicioHojeFortalezaISO() {
   const now = new Date();
+
   const ymd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Fortaleza",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(now); // "YYYY-MM-DD"
+
   const [y, m, d] = ymd.split("-").map(Number);
   const utcMidnight = new Date(Date.UTC(y!, m! - 1, d!, 0, 0, 0));
   return utcMidnight.toISOString().slice(0, 19);
 }
+
 const isoRecentes = (horas: number) =>
   new Date(Date.now() - Math.max(1, horas) * 3600 * 1000).toISOString().slice(0, 19);
 
@@ -48,16 +52,22 @@ const BASE_SELECT = `
   dataentrada,
   datasaida,
   updatedat,
+
+  execucao_inicio_em,
+  execucao_fim_em,
+
   cliente:clienteid ( id, nomerazaosocial ),
   veiculo:veiculoid ( id, placa, modelo, marca, cor ),
   peca:pecaid ( id, titulo, descricao ),
   setor:setorid ( id, nome ),
+
   produtos:osproduto (
     quantidade,
     precounitario,
     subtotal,
     produto:produtoid ( id, titulo )
   ),
+
   servicos:osservico (
     quantidade,
     precounitario,
@@ -93,11 +103,15 @@ export async function GET(req: NextRequest) {
 
     let qExec = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_EXECUCAO);
     if (hasSetor) qExec = qExec.eq("setorid", setorId as number);
-    qExec = qExec.order("updatedat", { ascending: false }).limit(limit);
+    // a UI ordena de novo, mas aqui já deixa estável:
+    qExec = qExec
+      .order("execucao_inicio_em", { ascending: true })
+      .order("dataentrada", { ascending: true })
+      .limit(limit);
 
     let qFat = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_FATURAMENTO);
     if (hasSetor) qFat = qFat.eq("setorid", setorId as number);
-    qFat = qFat.order("updatedat", { ascending: false }).limit(limit);
+    qFat = qFat.order("execucao_fim_em", { ascending: true }).order("updatedat", { ascending: true }).limit(limit);
 
     let qFin = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_FINALIZADAS);
     if (hasSetor) qFin = qFin.eq("setorid", setorId as number);
@@ -107,7 +121,7 @@ export async function GET(req: NextRequest) {
     } else {
       qFin = qFin.or(`updatedat.gte.${cutoffRecentes},datasaida.gte.${cutoffRecentes}`);
     }
-    qFin = qFin.order("datasaida", { ascending: false }).limit(limit);
+    qFin = qFin.order("datasaida", { ascending: true }).limit(limit);
 
     const [rAguard, rExec, rFat, rFin] = await Promise.all([qAguard, qExec, qFat, qFin]);
 

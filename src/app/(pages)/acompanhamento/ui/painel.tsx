@@ -31,20 +31,13 @@ const IS_ORCAMENTO = (s?: string | null) => {
   return ns === "ORCAMENTO" || ns === "ORCAMENTO_RECUSADO" || ns === "APROVACAO_ORCAMENTO" || ns === "ORCAMENTO_APROVADO";
 };
 
-// NOVO: ordenação consistente (mais antiga primeiro)
+// ordenação consistente (mais antiga primeiro), priorizando execução salva
 function sortMaisAntigaPrimeiro(items: QuadItem[]) {
   const time = (iso?: string | null) => (iso ? new Date(iso).getTime() : 0);
 
-  const pickIso = (os: any) =>
-    // se você já tiver um campo tipo emAndamentoEm, ele entra aqui como prioridade:
-    (os?.emAndamentoEm ?? os?.em_andamento_em ?? null) ||
-    os?.dataEntrada ||
-    os?.dataentrada ||
-    os?.dataSaida ||
-    os?.datasaida ||
-    null;
+  const pickIso = (os: QuadItem) => os.execucaoInicioEm || os.dataEntrada || os.dataSaida || null;
 
-  return [...items].sort((a: any, b: any) => {
+  return [...items].sort((a, b) => {
     const ta = time(pickIso(a));
     const tb = time(pickIso(b));
     if (ta !== tb) return ta - tb;
@@ -157,14 +150,16 @@ export default function PainelAcompanhamento({
   const [setores, setSetores] = useState<SetorItem[]>([]);
   const [setorSelecionado, setSetorSelecionado] = useState<string | null>(null); // "all" | "<id>"
 
-  // contador (tick 1s)
+  // contador (tick 1s) — agora também em "all"
   const [nowTick, setNowTick] = useState<number>(() => Date.now());
 
   const prevSigRef = useRef("__init__");
   const firstLoadRef = useRef(true);
+  const inFlightRef = useRef(false);
+
   const doorbell = useDoorbellChime();
 
-  const makeSignature = (data: {
+  const makeSignature = useCallback((data: {
     aguardando: QuadItem[];
     emAndamento: QuadItem[];
     aguardandoPagamento: QuadItem[];
@@ -172,9 +167,14 @@ export default function PainelAcompanhamento({
     concluidasHoje: QuadItem[];
   }) => {
     const tiny = (arr: QuadItem[]) => JSON.stringify({ n: arr.length, ids: arr.map((x) => x.id).slice(0, 30) });
-
-    return [tiny(data.aguardando), tiny(data.emAndamento), tiny(data.aguardandoPagamento), tiny(data.concluidasRecentes), tiny(data.concluidasHoje)].join("|");
-  };
+    return [
+      tiny(data.aguardando),
+      tiny(data.emAndamento),
+      tiny(data.aguardandoPagamento),
+      tiny(data.concluidasRecentes),
+      tiny(data.concluidasHoje),
+    ].join("|");
+  }, []);
 
   useEffect(() => {
     try {
@@ -196,16 +196,11 @@ export default function PainelAcompanhamento({
     void carregarSetores();
   }, [carregarSetores]);
 
-  // tick para contador: só faz sentido no modo setor (não "all")
-  useEffect(() => {
-    if (!setorSelecionado || setorSelecionado === "all") return;
-    const id = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [setorSelecionado]);
-
-  async function load() {
+  const load = useCallback(async () => {
     if (!setorSelecionado) return;
+    if (inFlightRef.current) return;
 
+    inFlightRef.current = true;
     setRefreshing(true);
     setErr(null);
 
@@ -228,7 +223,6 @@ export default function PainelAcompanhamento({
       const prev = prevSigRef.current;
       prevSigRef.current = sig;
 
-      // NOVO: ordena tudo para “mais antiga primeiro”
       setRawAguardando(sortMaisAntigaPrimeiro(quadro.aguardando));
       setExecucao(sortMaisAntigaPrimeiro(quadro.emAndamento));
       setFaturamento(sortMaisAntigaPrimeiro(quadro.aguardandoPagamento));
@@ -245,16 +239,30 @@ export default function PainelAcompanhamento({
     } catch (e: any) {
       setErr(e?.message || "Falha ao carregar painel");
     } finally {
+      inFlightRef.current = false;
       setRefreshing(false);
       setInitialLoading(false);
     }
-  }
+  }, [setorSelecionado, finalizadas, horasRecentes, makeSignature, doorbell]);
 
   useEffect(() => {
     if (!setorSelecionado) return;
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finalizadas, horasRecentes, setorSelecionado]);
+  }, [setorSelecionado, finalizadas, horasRecentes, load]);
+
+  // tick 1s para contador (agora: setor selecionado, inclusive "all")
+  useEffect(() => {
+    if (!setorSelecionado) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [setorSelecionado]);
+
+  // fallback: polling (garante atualização mesmo se realtime falhar)
+  useEffect(() => {
+    if (!setorSelecionado) return;
+    const id = setInterval(() => void load(), 15000);
+    return () => clearInterval(id);
+  }, [setorSelecionado, load]);
 
   // realtime
   useEffect(() => {
@@ -276,8 +284,7 @@ export default function PainelAcompanhamento({
         void sb.removeChannel(ch);
       } catch {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setorSelecionado]);
+  }, [setorSelecionado, load]);
 
   const textoSetor = useMemo(() => {
     if (!setorSelecionado) return "Selecione um setor";
@@ -290,6 +297,7 @@ export default function PainelAcompanhamento({
 
   function confirmarSetor(v: string) {
     setSetorSelecionado(v);
+    setInitialLoading(true);
     try {
       window.localStorage.setItem(LS_SETOR_KEY, v);
     } catch {}
@@ -302,11 +310,13 @@ export default function PainelAcompanhamento({
     items,
     emptyLabel,
     hint,
+    now,
   }: {
     title: string;
     items: QuadItem[];
     emptyLabel: string;
     hint?: string;
+    now?: number;
   }) => (
     <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 backdrop-blur`}>
       <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
@@ -323,7 +333,7 @@ export default function PainelAcompanhamento({
         {initialLoading ? (
           Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[108px] w-full rounded-lg" />)
         ) : items.length ? (
-          items.map((os) => <OsTile key={os.id} os={os} />)
+          items.map((os) => <OsTile key={os.id} os={os} now={now} />)
         ) : (
           <EmptyColumn label={emptyLabel} />
         )}
@@ -446,7 +456,7 @@ export default function PainelAcompanhamento({
               items={rawAguardando}
               emptyLabel="Nenhuma OS aguardando."
             />
-            <Column title="Em execução" items={execucao} emptyLabel="Nenhuma OS em execução." />
+            <Column title="Em execução" items={execucao} now={nowTick} emptyLabel="Nenhuma OS em execução." />
             <Column title="Aguardando pagamento" items={faturamento} emptyLabel="Nenhuma OS aguardando pagamento." />
             <Column title="Finalizadas hoje" items={finalizadasHojeList} emptyLabel="Nenhuma OS finalizada hoje." />
             <Column
@@ -484,7 +494,7 @@ export default function PainelAcompanhamento({
             </Card>
 
             {/* Finalizadas hoje (menor) */}
-            <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95`}>
+            <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 gap-2`}>
               <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">

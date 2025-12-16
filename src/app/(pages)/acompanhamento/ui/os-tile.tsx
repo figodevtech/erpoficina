@@ -1,8 +1,10 @@
 "use client";
 
 import { QuadItem } from "../lib/api";
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
 import { CarFront, Wrench, Clock, Building2, User2 } from "lucide-react";
 
 function cx(...a: (string | false | null | undefined)[]) {
@@ -11,9 +13,9 @@ function cx(...a: (string | false | null | undefined)[]) {
 
 function statusColors(s?: string | null) {
   const k = (s || "").toUpperCase();
+
   if (k === "ORCAMENTO" || k === "ORCAMENTO_RECUSADO") return "bg-amber-600/15 text-amber-400 border-amber-600/30";
-  if (k === "APROVACAO_ORCAMENTO" || k === "ORCAMENTO_APROVADO")
-    return "bg-yellow-600/15 text-yellow-400 border-yellow-600/30";
+  if (k === "APROVACAO_ORCAMENTO" || k === "ORCAMENTO_APROVADO") return "bg-yellow-600/15 text-yellow-400 border-yellow-600/30";
   if (k === "EM_ANDAMENTO") return "bg-sky-600/15 text-sky-400 border-sky-600/30";
   if (k === "PAGAMENTO") return "bg-fuchsia-600/15 text-fuchsia-400 border-fuchsia-600/30";
   if (k === "CONCLUIDO") return "bg-emerald-600/15 text-emerald-400 border-emerald-600/30";
@@ -27,23 +29,32 @@ function prioridadePill(p?: "BAIXA" | "NORMAL" | "ALTA" | null) {
   return "bg-indigo-600/10 text-indigo-300 border-indigo-600/20";
 }
 
-function contador(iso?: string | null, nowMs?: number) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  const now = nowMs ?? Date.now();
-  const diff = Math.max(0, now - d.getTime());
-  const totalSec = Math.floor(diff / 1000);
-
+function hhmmssFromMs(ms: number) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
-
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function moneyBRL(n?: number | null) {
-  if (typeof n !== "number") return null;
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+function diffHHMMSS(inicioIso?: string | null, fimIso?: string | null, nowMs?: number) {
+  if (!inicioIso) return "—";
+  const ini = new Date(inicioIso).getTime();
+  const fim = fimIso ? new Date(fimIso).getTime() : (nowMs ?? Date.now());
+  return hhmmssFromMs(Math.max(0, fim - ini));
+}
+
+function tempoExecucaoTecnica(os: QuadItem, nowMs?: number) {
+  const st = (os.status || "").toUpperCase();
+
+  if (os.execucaoInicioEm) {
+    if (st === "EM_ANDAMENTO") return diffHHMMSS(os.execucaoInicioEm, null, nowMs);
+    if (os.execucaoFimEm) return diffHHMMSS(os.execucaoInicioEm, os.execucaoFimEm, nowMs);
+  }
+
+  if (st === "EM_ANDAMENTO") return diffHHMMSS(os.dataEntrada, null, nowMs);
+
+  return "—";
 }
 
 export default function OsTile({ os, now, compact = false }: { os: QuadItem; now?: number; compact?: boolean }) {
@@ -53,13 +64,15 @@ export default function OsTile({ os, now, compact = false }: { os: QuadItem; now
     ? os.peca?.titulo || "Peça"
     : [os.veiculo?.marca, os.veiculo?.modelo].filter(Boolean).join(" ");
 
-  // “secundária” mais informativa: placa + cor (se tiver)
-  const secundaria = isPeca
-    ? os.peca?.descricao || ""
-    : [os.veiculo?.placa, os.veiculo?.cor].filter(Boolean).join(" • ");
+  const secundaria = isPeca ? os.peca?.descricao || "" : [os.veiculo?.placa, os.veiculo?.cor].filter(Boolean).join(" • ");
 
   const statusLabel = (os.status || "—").replace(/_/g, " ");
-  const emAndamento = (os.status || "").toUpperCase() === "EM_ANDAMENTO";
+  const statusKey = (os.status || "").toUpperCase();
+
+  const emAndamento = statusKey === "EM_ANDAMENTO";
+  const temExecucaoSalva = Boolean(os.execucaoInicioEm && os.execucaoFimEm);
+
+  const tempo = tempoExecucaoTecnica(os, now);
 
   const produtos = (os.produtos ?? []).slice(0, 3);
   const servicos = (os.servicos ?? []).slice(0, 3);
@@ -70,46 +83,36 @@ export default function OsTile({ os, now, compact = false }: { os: QuadItem; now
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cx("font-semibold text-muted-foreground", compact ? "text-xs" : "text-sm")}>
-              OS #{os.id}
-            </span>
+            <span className={cx("font-semibold text-muted-foreground", compact ? "text-xs" : "text-sm")}>OS {os.id}</span>
 
             <Badge variant="outline" className={cx("border", compact ? "text-xs" : "text-xs", statusColors(os.status))}>
               {statusLabel}
             </Badge>
 
             {os.prioridade ? (
-              <Badge
-                variant="outline"
-                className={cx("border", compact ? "text-xs" : "text-xs", prioridadePill(os.prioridade))}
-              >
+              <Badge variant="outline" className={cx("border", compact ? "text-xs" : "text-xs", prioridadePill(os.prioridade))}>
                 {os.prioridade}
               </Badge>
             ) : null}
           </div>
 
-          <p
-            className={cx(
-              "mt-1 truncate font-semibold tracking-tight leading-tight",
-              compact ? "text-base" : "text-base"
-            )}
-          >
+          <p className={cx("mt-1 truncate font-semibold tracking-tight leading-tight", compact ? "text-base" : "text-base")}>
             {tituloPrincipal || "—"}
           </p>
 
-          {secundaria ? (
-            <p className={cx("truncate text-muted-foreground", compact ? "text-sm" : "text-sm")}>{secundaria}</p>
-          ) : null}
+          {secundaria ? <p className={cx("truncate text-muted-foreground", compact ? "text-sm" : "text-sm")}>{secundaria}</p> : null}
         </div>
 
         <div className="shrink-0 text-right">
           <div className={cx("inline-flex items-center gap-1 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
             <Clock className={cx(compact ? "h-4 w-4" : "h-4 w-4")} />
-            <span className={emAndamento ? "font-mono font-semibold text-foreground" : ""}>
-              {emAndamento ? contador(os.dataEntrada, now) : "—"}
+            <span className={cx((emAndamento || temExecucaoSalva) && tempo !== "—" ? "font-mono font-semibold text-foreground" : "")}>
+              {tempo}
             </span>
           </div>
-          {emAndamento ? <div className="mt-0.5 text-xs text-muted-foreground">Tempo em andamento</div> : null}
+
+          {emAndamento ? <div className="mt-0.5 text-xs text-muted-foreground">Tempo em execução</div> : null}
+          {!emAndamento && temExecucaoSalva ? <div className="mt-0.5 text-xs text-muted-foreground">Tempo de execução</div> : null}
         </div>
       </div>
 
@@ -142,7 +145,7 @@ export default function OsTile({ os, now, compact = false }: { os: QuadItem; now
               <ul className="mt-1 space-y-1 text-sm text-amber-50/90">
                 {produtos.map((p, i) => (
                   <li key={`p-${i}`} className="truncate">
-                    • {p.quantidade ?? 1}x {p.produto?.titulo ?? "Produto"}{" "}
+                    • {p.quantidade ?? 1}x {p.produto?.titulo ?? "Produto"}
                   </li>
                 ))}
               </ul>
@@ -152,17 +155,19 @@ export default function OsTile({ os, now, compact = false }: { os: QuadItem; now
           {servicos.length ? (
             <div className={cx("mt-3", !produtos.length && "mt-2")}>
               <div className="text-xs font-semibold text-amber-200/80">Serviços</div>
+
               <ul className="mt-1 space-y-1 text-sm text-amber-50/90">
                 {servicos.map((s: any, i) => (
-                  <li key={`s-${i}`} className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate">
-                      • {s.quantidade ?? 1}x {s.servico?.descricao ?? "Serviço"}{" "}
-                      {s.realizador?.nome ? (
-                        <Badge variant="destructive" className="shrink-0 text-xs">
-                          {s.realizador.nome}
-                        </Badge>
-                      ) : null}
+                  <li key={`s-${i}`} className="min-w-0 flex items-center gap-2">
+                    <span className="min-w-0 truncate">
+                      • {s.quantidade ?? 1}x {s.servico?.descricao ?? "Serviço"}
                     </span>
+
+                    {s.realizador?.nome ? (
+                      <Badge variant="destructive" className="shrink-0 text-xs">
+                        {s.realizador.nome}
+                      </Badge>
+                    ) : null}
                   </li>
                 ))}
               </ul>

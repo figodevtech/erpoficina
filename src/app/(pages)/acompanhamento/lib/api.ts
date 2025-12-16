@@ -13,7 +13,7 @@ export type OsServicoItem = {
   subtotal: number | null;
   servico: { id: number; descricao: string } | null;
 
-  // NOVO
+  // realizador (como você já usa no tile)
   realizador: { id: string; nome: string } | null;
 };
 
@@ -21,12 +21,16 @@ export type QuadItem = {
   id: number;
   descricao: string | null;
   status: string | null;
-
   prioridade?: "BAIXA" | "NORMAL" | "ALTA" | null;
+
   alvoTipo?: "VEICULO" | "PECA" | null;
 
   dataEntrada: string | null;
   dataSaida: string | null;
+
+  // NOVO: colunas de execução
+  execucaoInicioEm?: string | null;
+  execucaoFimEm?: string | null;
 
   cliente?: { id: number; nome: string } | null;
   setor?: { id: number; nome: string } | null;
@@ -59,12 +63,15 @@ function mapItem(r: any): QuadItem {
     id: r?.id,
     descricao: r?.descricao ?? null,
     status: r?.status ?? null,
-
     prioridade: r?.prioridade ?? null,
-    alvoTipo: r?.alvo_tipo ?? null,
 
-    dataEntrada: r?.dataentrada ?? null,
-    dataSaida: r?.datasaida ?? null,
+    alvoTipo: r?.alvo_tipo ?? r?.alvotipo ?? null,
+
+    dataEntrada: r?.dataentrada ?? r?.dataEntrada ?? null,
+    dataSaida: r?.datasaida ?? r?.dataSaida ?? null,
+
+    execucaoInicioEm: r?.execucao_inicio_em ?? r?.execucaoInicioEm ?? null,
+    execucaoFimEm: r?.execucao_fim_em ?? r?.execucaoFimEm ?? null,
 
     cliente: r?.cliente ? { id: r.cliente.id, nome: r.cliente.nomerazaosocial } : null,
     setor: r?.setor ? { id: r.setor.id, nome: r.setor.nome } : null,
@@ -96,8 +103,6 @@ function mapItem(r: any): QuadItem {
           precounitario: typeof s?.precounitario === "number" ? s.precounitario : null,
           subtotal: typeof s?.subtotal === "number" ? s.subtotal : null,
           servico: s?.servico ? { id: s.servico.id, descricao: s.servico.descricao } : null,
-
-          // NOVO
           realizador: s?.realizador ? { id: s.realizador.id, nome: s.realizador.nome } : null,
         }))
       : [],
@@ -106,11 +111,9 @@ function mapItem(r: any): QuadItem {
 
 export async function listarSetoresAtivos(): Promise<SetorItem[]> {
   const u = new URL("/api/tipos/setores", window.location.origin);
-
   const r = await fetch(u.toString(), { cache: "no-store" });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error || "Falha ao listar setores");
-
   const items = Array.isArray(j?.items) ? (j.items as SetorItem[]) : [];
   return items.filter((x) => x?.ativo === true);
 }
