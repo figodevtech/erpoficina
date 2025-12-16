@@ -50,6 +50,7 @@ import formatarEmReal from "@/utils/formatarEmReal";
 import DeleteAlert from "./deleteAlert";
 import { GerarNotaDeOsDialog } from "../../ordens/components/dialogs/emissao-nota-dialog/gerarNotaDeOsDialog/gerarNotaDeOsDialog";
 import { EmissaoNotaDialog } from "../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
+import { VendaDetailsDialog } from "./venda-detail-dialog";
 
 interface VendasDataTableProps {
   vendas: VendaComItens[];
@@ -122,11 +123,12 @@ export default function VendasDataTable({
   handleGetVendas,
   fetchStatusCounts,
   status,
-  setSelectedVendaId,
 }: VendasDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [openEmissao, setOpenEmissao] = useState(false)
   const [emissaoId, setEmissaoId] = useState <number | null>(null)
+  const [selectedVendaId, setSelectedVendaId] = useState <number | null>(null)
+  const [openDetails, setOpenDetails] = useState(false)
   return (
     <Card>
       <CardHeader className="border-b-2 pb-4">
@@ -234,12 +236,17 @@ export default function VendasDataTable({
                           <span>Emissão de NF-e</span>
                         </Button>
                         <Button
+                        onClick={()=> {
+                          setSelectedVendaId(p.id)
+                          setOpenDetails(true)
+                        }}
                           variant={"ghost"}
                           className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
                         >
                           <EyeIcon className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Visualizar</span>
                         </Button>
+                        
 
                         <DeleteAlert
                           handleDeleteVenda={handleDeleteVenda}
@@ -369,6 +376,11 @@ export default function VendasDataTable({
       vendaId={emissaoId}
       />
       </CardContent>
+      <VendaDetailsDialog
+                        vendaId={selectedVendaId}
+                        onOpenChange={setOpenDetails}
+                        open={openDetails}
+                        />
     </Card>
   );
 }
