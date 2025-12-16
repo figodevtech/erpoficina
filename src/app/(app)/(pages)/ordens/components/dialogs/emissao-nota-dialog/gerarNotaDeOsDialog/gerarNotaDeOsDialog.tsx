@@ -1,4 +1,3 @@
-// ./src/app/(app)/(pages)/ordens/components/dialogs/gerar-nfe-de-os-dialog.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -27,7 +26,7 @@ import { ProductDialog } from "@/app/(app)/(pages)/estoque/components/productDia
 
 type OsProdutoParaNfeBase = {
   titulo: string;
-  osProdutoId: number;
+  osProdutoId: string; // <-- era number, agora string (no backend já vinha string)
   produtoId: number;
   descricao: string;
   quantidade: number;
@@ -62,6 +61,13 @@ type ListarProdutosOsResponse = {
   itens: OsProdutoParaNfeBase[];
 };
 
+type ListarProdutosVendaResponse = {
+  ok: boolean;
+  message?: string;
+  vendaId?: number;
+  itens: OsProdutoParaNfeBase[];
+};
+
 type GerarNfeDeOsResponse = {
   ok: boolean;
   message?: string;
@@ -86,7 +92,7 @@ function onlyDigits(v: string | null | undefined) {
  *  - CFOP (4 dígitos numéricos)
  *  - CSOSN preenchido
  *  - CST preenchido
- *  - CEST preenchido (pode validar tamanho se quiser)
+ *  - CEST preenchido
  *  - aliquotaicms preenchida
  *
  * PIS/COFINS ficam opcionais.
@@ -130,10 +136,6 @@ function validarProdutoParaNfe(item: OsProdutoParaNfeBase): {
   if (!cest) {
     erros.push("CEST não informado");
   }
-  // se quiser validar tamanho:
-  // else if (cest.length !== 7) {
-  //   erros.push("CEST deve ter 7 dígitos numéricos");
-  // }
 
   // Alíquota ICMS
   const aliqIcmsStr = String(item.aliquotaicms ?? "").trim();
@@ -150,7 +152,15 @@ function validarProdutoParaNfe(item: OsProdutoParaNfeBase): {
 export interface GerarNotaDeOsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  osId: number | null;
+
+  /**
+   * Agora você pode passar OS ou VENDA.
+   * - Se osId existir, ele tem prioridade.
+   * - Se não tiver osId, usa vendaId.
+   */
+  osId?: number | null;
+  vendaId?: number | null;
+
   onAfterGenerate?: (nfeId: number | null) => void;
 }
 
@@ -158,6 +168,7 @@ export function GerarNotaDeOsDialog({
   open,
   onOpenChange,
   osId,
+  vendaId,
   onAfterGenerate,
 }: GerarNotaDeOsDialogProps) {
   const [carregandoItens, setCarregandoItens] = useState(false);
@@ -165,34 +176,51 @@ export function GerarNotaDeOsDialog({
   const [itens, setItens] = useState<OsProdutoParaNfe[] | null>(null);
   const [selecionados, setSelecionados] = useState<number[]>([]);
 
-  const podeBuscar = open && !!osId;
+  const origem = osId ? "OS" : vendaId ? "VENDA" : null;
+  const origemId = osId ?? vendaId ?? null;
 
-  async function fetchItensOs(signal?: AbortSignal) {
-    if (!osId) return;
+  const podeBuscar = open && !!origem && !!origemId;
+
+  const endpointProdutos = useMemo(() => {
+    if (!origem || !origemId) return null;
+    if (origem === "OS") return `/api/ordens/${origemId}/produtos-para-nfe`;
+    return `/api/venda/${origemId}/produtos-para-nfe`;
+  }, [origem, origemId]);
+
+  const endpointGerarRascunho = useMemo(() => {
+    if (!origem || !origemId) return null;
+    if (origem === "OS") return `/api/nfe/de-os/${origemId}/gerar-rascunho`;
+    return `/api/nfe/de-venda/${origemId}/gerar-rascunho`;
+  }, [origem, origemId]);
+
+  async function fetchItensOrigem(signal?: AbortSignal) {
+    if (!endpointProdutos) return;
 
     setCarregandoItens(true);
     try {
-      const res = await fetch(`/api/ordens/${osId}/produtos-para-nfe`, {
+      const res = await fetch(endpointProdutos, {
         method: "GET",
         signal,
       });
 
       const json = (await res.json().catch(() => null)) as
         | ListarProdutosOsResponse
+        | ListarProdutosVendaResponse
         | null;
 
       if (!res.ok || !json?.ok) {
         const msg =
-          json?.message || `Erro ao buscar produtos da OS (HTTP ${res.status}).`;
+          (json as any)?.message ||
+          `Erro ao buscar produtos (HTTP ${res.status}).`;
         toast.error(msg);
         setItens([]);
         setSelecionados([]);
         return;
       }
 
-      const listaBase = json.itens ?? [];
+      const listaBase = (json as any).itens ?? [];
 
-      const listaComValidacao: OsProdutoParaNfe[] = listaBase.map((item) => {
+      const listaComValidacao: OsProdutoParaNfe[] = listaBase.map((item: any) => {
         const { ok, erros } = validarProdutoParaNfe(item);
         return {
           ...item,
@@ -206,11 +234,12 @@ export function GerarNotaDeOsDialog({
       const idsValidos = listaComValidacao
         .filter((i) => i.podeEmitirNfe)
         .map((i) => i.produtoId);
+
       setSelecionados(idsValidos);
     } catch (e: any) {
       if (e?.name === "AbortError") return;
       console.log(e);
-      toast.error(e?.message || "Erro ao carregar produtos da OS.");
+      toast.error(e?.message || "Erro ao carregar produtos.");
       setItens([]);
       setSelecionados([]);
     } finally {
@@ -219,16 +248,16 @@ export function GerarNotaDeOsDialog({
   }
 
   useEffect(() => {
-    if (!podeBuscar || !osId) return;
+    if (!podeBuscar) return;
 
     const ac = new AbortController();
-    fetchItensOs(ac.signal);
+    fetchItensOrigem(ac.signal);
 
     return () => {
       ac.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [podeBuscar, osId]);
+  }, [podeBuscar, endpointProdutos]);
 
   const toggleItem = (produtoId: number, checked: boolean) => {
     setSelecionados((prev) => {
@@ -303,14 +332,17 @@ export function GerarNotaDeOsDialog({
     };
   }, [itens, selecionados]);
 
-  const titulo = useMemo(
-    () =>
-      osId ? `Gerar NF-e a partir da OS #${osId}` : "Gerar NF-e a partir da OS",
-    [osId]
-  );
+  const titulo = useMemo(() => {
+    if (!origem || !origemId) return "Gerar NF-e";
+    return origem === "OS"
+      ? `Gerar NF-e a partir da OS #${origemId}`
+      : `Gerar NF-e a partir da Venda #${origemId}`;
+  }, [origem, origemId]);
 
   async function handleGerarRascunho() {
-    if (!osId) return;
+    if (!origem || !origemId) return;
+    if (!endpointGerarRascunho) return;
+
     if (!itens || itens.length === 0) {
       toast.error("Nenhum item disponível para gerar NF-e.");
       return;
@@ -323,7 +355,7 @@ export function GerarNotaDeOsDialog({
     try {
       setSalvando(true);
 
-      const res = await fetch(`/api/nfe/de-os/${osId}/gerar-rascunho`, {
+      const res = await fetch(endpointGerarRascunho, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -358,7 +390,8 @@ export function GerarNotaDeOsDialog({
   }
 
   const botaoDesabilitado =
-    !osId ||
+    !origem ||
+    !origemId ||
     !itens ||
     itens.length === 0 ||
     selecionados.length === 0 ||
@@ -393,48 +426,44 @@ export function GerarNotaDeOsDialog({
               {titulo}
             </DialogTitle>
             <DialogDescription>
-              Selecione os produtos desta OS que serão incluídos na NF-e. Neste
-              passo a nota será montada e salva como rascunho, sem envio para a
-              SEFAZ.
+              Selecione os produtos que serão incluídos na NF-e. Neste passo a
+              nota será montada e salva como rascunho, sem envio para a SEFAZ.
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="px-5 pb-5 pt-3 space-y-4">
-          {!osId && (
+          {!origemId && (
             <div className="h-24 grid place-items-center text-sm text-muted-foreground">
-              Nenhuma OS selecionada.
+              Nenhuma {origem === "VENDA" ? "venda" : "OS"} selecionada.
             </div>
           )}
 
-          {osId && carregandoItens && (
+          {!!origemId && carregandoItens && (
             <div className="h-32 grid place-items-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           )}
 
-          {osId && !carregandoItens && itens && itens.length === 0 && (
+          {!!origemId && !carregandoItens && itens && itens.length === 0 && (
             <div className="rounded-lg border border-dashed p-4 text-sm flex gap-3">
               <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">
-                  Nenhum produto vinculado a esta OS
-                </div>
+                <div className="font-medium">Nenhum produto encontrado</div>
                 <div className="text-muted-foreground text-xs">
-                  Adicione produtos à OS para poder gerar uma NF-e a partir
-                  deles.
+                  Vincule produtos para poder gerar uma NF-e.
                 </div>
               </div>
             </div>
           )}
 
-          {osId && !carregandoItens && itens && itens.length > 0 && (
+          {!!origemId && !carregandoItens && itens && itens.length > 0 && (
             <>
               <section className="rounded-lg border p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Produtos da OS</span>
+                    <span className="text-sm font-medium">Produtos</span>
                     <Badge variant="outline" className="text-[10px]">
                       {totalItens} itens
                     </Badge>
@@ -475,18 +504,14 @@ export function GerarNotaDeOsDialog({
                           checked={checked}
                           disabled={!item.podeEmitirNfe}
                           onCheckedChange={(c) =>
-                            item.podeEmitirNfe &&
-                            toggleItem(item.produtoId, !!c)
+                            item.podeEmitirNfe && toggleItem(item.produtoId, !!c)
                           }
                           className="mt-1"
                         />
 
                         <div className="flex-1 min-w-0 space-y-0.5">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">
-                              {item.titulo}
-                              {/* {item.descricao ? ` — ${item.descricao}` : ""} */}
-                            </span>
+                            <span className="font-medium">{item.titulo}</span>
 
                             {!item.descricao && (
                               <span className="text-xs text-muted-foreground">
@@ -494,12 +519,10 @@ export function GerarNotaDeOsDialog({
                               </span>
                             )}
 
-                            {/* 👉 Aqui passamos o callback para recarregar a lista após salvar o produto */}
                             <ProductDialog
                               productId={item.produtoId}
                               onAfterSaveProduct={() => {
-                                // Recarrega itens da OS e revalida campos fiscais
-                                fetchItensOs();
+                                fetchItensOrigem();
                               }}
                             >
                               <div className="p-1 rounded-full bg-primary/50 hover:bg-primary/90 transition-all hover:cursor-pointer">
@@ -537,6 +560,7 @@ export function GerarNotaDeOsDialog({
                                 ALÍQUOTA ICMS {item.aliquotaicms}%
                               </Badge>
                             )}
+
                             {item.cst_pis && (
                               <Badge variant="outline" className="text-[10px]">
                                 CST PIS {item.cst_pis}
@@ -558,13 +582,8 @@ export function GerarNotaDeOsDialog({
                               </Badge>
                             )}
 
-                            
-
                             {!item.podeEmitirNfe && (
-                              <Badge
-                                variant="destructive"
-                                className="text-[10px]"
-                              >
+                              <Badge variant="destructive" className="text-[10px]">
                                 Cadastro fiscal incompleto p/ NF-e
                               </Badge>
                             )}
@@ -575,8 +594,7 @@ export function GerarNotaDeOsDialog({
                               Qtde: <b>{item.quantidade}</b>
                             </span>
                             <span>
-                              Vlr. unitário:{" "}
-                              <b>{fmtMoney(item.precoUnitario)}</b>
+                              Vlr. unitário: <b>{fmtMoney(item.precoUnitario)}</b>
                             </span>
                             <span>
                               Subtotal: <b>{fmtMoney(item.subtotal)}</b>
@@ -614,8 +632,7 @@ export function GerarNotaDeOsDialog({
                     </b>
                   </div>
                   <div>
-                    Total selecionado para NF-e:{" "}
-                    <b>{fmtMoney(resumo.valorSelecionado)}</b>
+                    Total selecionado para NF-e: <b>{fmtMoney(resumo.valorSelecionado)}</b>
                   </div>
                   <div className="text-[11px]">
                     A NF-e será criada em status <b>RASCUNHO</b>, permitindo
@@ -628,9 +645,7 @@ export function GerarNotaDeOsDialog({
                   disabled={botaoDesabilitado}
                   onClick={handleGerarRascunho}
                 >
-                  {salvando && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
+                  {salvando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Gerar rascunho de NF-e
                 </Button>
               </section>

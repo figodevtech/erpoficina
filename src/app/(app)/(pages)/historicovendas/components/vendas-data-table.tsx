@@ -29,6 +29,7 @@ import {
   DollarSign,
   Check,
   EyeIcon,
+  CreditCard,
 } from "lucide-react";
 import {
   Select,
@@ -47,6 +48,8 @@ import { Pagination, VendaComItens, vendaStatus } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
 import DeleteAlert from "./deleteAlert";
+import { GerarNotaDeOsDialog } from "../../ordens/components/dialogs/emissao-nota-dialog/gerarNotaDeOsDialog/gerarNotaDeOsDialog";
+import { EmissaoNotaDialog } from "../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 
 interface VendasDataTableProps {
   vendas: VendaComItens[];
@@ -122,6 +125,8 @@ export default function VendasDataTable({
   setSelectedVendaId,
 }: VendasDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false)
+  const [openEmissao, setOpenEmissao] = useState(false)
+  const [emissaoId, setEmissaoId] = useState <number | null>(null)
   return (
     <Card>
       <CardHeader className="border-b-2 pb-4">
@@ -217,6 +222,17 @@ export default function VendasDataTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
+                        <Button
+                        onClick={()=>{
+                          setEmissaoId(p.id)
+                          setOpenEmissao(true)
+                        }}
+                          variant={"ghost"}
+                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
+                        >
+                          <CreditCard className="-ml-1 -mr-1 h-4 w-4" />
+                          <span>Emissão de NF-e</span>
+                        </Button>
                         <Button
                           variant={"ghost"}
                           className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
@@ -347,6 +363,11 @@ export default function VendasDataTable({
             </Select>
           </div>
         </div>
+      <EmissaoNotaDialog
+      onOpenChange={setOpenEmissao}
+      open={openEmissao}
+      vendaId={emissaoId}
+      />
       </CardContent>
     </Card>
   );
