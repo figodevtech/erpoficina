@@ -12,6 +12,9 @@ export type OsServicoItem = {
   precounitario: number | null;
   subtotal: number | null;
   servico: { id: number; descricao: string } | null;
+
+  // NOVO
+  realizador: { id: string; nome: string } | null;
 };
 
 export type QuadItem = {
@@ -38,7 +41,7 @@ export type QuadItem = {
 
   peca?: { id: number; titulo: string; descricao?: string | null } | null;
 
-  // itens do orçamento
+  // Itens do orçamento
   produtos?: OsProdutoItem[];
   servicos?: OsServicoItem[];
 };
@@ -93,6 +96,9 @@ function mapItem(r: any): QuadItem {
           precounitario: typeof s?.precounitario === "number" ? s.precounitario : null,
           subtotal: typeof s?.subtotal === "number" ? s.subtotal : null,
           servico: s?.servico ? { id: s.servico.id, descricao: s.servico.descricao } : null,
+
+          // NOVO
+          realizador: s?.realizador ? { id: s.realizador.id, nome: s.realizador.nome } : null,
         }))
       : [],
   };
@@ -100,6 +106,7 @@ function mapItem(r: any): QuadItem {
 
 export async function listarSetoresAtivos(): Promise<SetorItem[]> {
   const u = new URL("/api/tipos/setores", window.location.origin);
+
   const r = await fetch(u.toString(), { cache: "no-store" });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error || "Falha ao listar setores");
@@ -111,7 +118,7 @@ export async function listarSetoresAtivos(): Promise<SetorItem[]> {
 export type ListarQuadroParams = {
   finalizadas?: "hoje" | "recentes";
   horasRecentes?: number;
-  setorId?: number; // undefined => visão geral (todos)
+  setorId?: number;
 };
 
 export async function listarQuadro(params?: ListarQuadroParams) {

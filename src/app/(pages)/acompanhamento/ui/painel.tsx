@@ -31,6 +31,27 @@ const IS_ORCAMENTO = (s?: string | null) => {
   return ns === "ORCAMENTO" || ns === "ORCAMENTO_RECUSADO" || ns === "APROVACAO_ORCAMENTO" || ns === "ORCAMENTO_APROVADO";
 };
 
+// NOVO: ordenação consistente (mais antiga primeiro)
+function sortMaisAntigaPrimeiro(items: QuadItem[]) {
+  const time = (iso?: string | null) => (iso ? new Date(iso).getTime() : 0);
+
+  const pickIso = (os: any) =>
+    // se você já tiver um campo tipo emAndamentoEm, ele entra aqui como prioridade:
+    (os?.emAndamentoEm ?? os?.em_andamento_em ?? null) ||
+    os?.dataEntrada ||
+    os?.dataentrada ||
+    os?.dataSaida ||
+    os?.datasaida ||
+    null;
+
+  return [...items].sort((a: any, b: any) => {
+    const ta = time(pickIso(a));
+    const tb = time(pickIso(b));
+    if (ta !== tb) return ta - tb;
+    return (a?.id ?? 0) - (b?.id ?? 0);
+  });
+}
+
 /* --------------- campainha --------------- */
 const useDoorbellChime = () => {
   return useCallback(async () => {
@@ -150,16 +171,9 @@ export default function PainelAcompanhamento({
     concluidasRecentes: QuadItem[];
     concluidasHoje: QuadItem[];
   }) => {
-    const tiny = (arr: QuadItem[]) =>
-      JSON.stringify({ n: arr.length, ids: arr.map((x) => x.id).slice(0, 30) });
+    const tiny = (arr: QuadItem[]) => JSON.stringify({ n: arr.length, ids: arr.map((x) => x.id).slice(0, 30) });
 
-    return [
-      tiny(data.aguardando),
-      tiny(data.emAndamento),
-      tiny(data.aguardandoPagamento),
-      tiny(data.concluidasRecentes),
-      tiny(data.concluidasHoje),
-    ].join("|");
+    return [tiny(data.aguardando), tiny(data.emAndamento), tiny(data.aguardandoPagamento), tiny(data.concluidasRecentes), tiny(data.concluidasHoje)].join("|");
   };
 
   useEffect(() => {
@@ -214,12 +228,13 @@ export default function PainelAcompanhamento({
       const prev = prevSigRef.current;
       prevSigRef.current = sig;
 
-      setRawAguardando(quadro.aguardando);
-      setExecucao(quadro.emAndamento);
-      setFaturamento(quadro.aguardandoPagamento);
+      // NOVO: ordena tudo para “mais antiga primeiro”
+      setRawAguardando(sortMaisAntigaPrimeiro(quadro.aguardando));
+      setExecucao(sortMaisAntigaPrimeiro(quadro.emAndamento));
+      setFaturamento(sortMaisAntigaPrimeiro(quadro.aguardandoPagamento));
 
-      setFinalizadasRecentesList(quadro.concluidasRecentes);
-      setFinalizadasHojeList(hoje.concluidasRecentes);
+      setFinalizadasRecentesList(sortMaisAntigaPrimeiro(quadro.concluidasRecentes));
+      setFinalizadasHojeList(sortMaisAntigaPrimeiro(hoje.concluidasRecentes));
 
       setLastUpdated(Date.now());
 
@@ -443,15 +458,13 @@ export default function PainelAcompanhamento({
         ) : (
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[2fr_1fr]">
             {/* Em andamento (maior) */}
-            <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95`}>
+            <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 gap-2`}>
               <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Em andamento • {textoSetor}
                   </p>
-                  <p className="truncate text-[11px] text-muted-foreground/80">
-                    Contador (desde a entrada) + itens do orçamento
-                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground/80">Contador (desde a entrada) + itens do orçamento</p>
                 </div>
 
                 <Badge variant="outline" className="text-[10px]">
@@ -463,9 +476,7 @@ export default function PainelAcompanhamento({
                 {initialLoading ? (
                   Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-[98px] w-full rounded-lg" />)
                 ) : execucao.length ? (
-                  execucao.map((os) => (
-                    <OsTile key={os.id} os={os} now={nowTick} compact />
-                  ))
+                  execucao.map((os) => <OsTile key={os.id} os={os} now={nowTick} compact />)
                 ) : (
                   <EmptyColumn label="Nenhuma OS em andamento neste setor." />
                 )}
@@ -479,9 +490,7 @@ export default function PainelAcompanhamento({
                   <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Finalizadas hoje • {textoSetor}
                   </p>
-                  <p className="truncate text-[11px] text-muted-foreground/80">
-                    Concluídas/canceladas no dia
-                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground/80">Concluídas/canceladas no dia</p>
                 </div>
 
                 <Badge variant="outline" className="text-[10px]">
@@ -493,9 +502,7 @@ export default function PainelAcompanhamento({
                 {initialLoading ? (
                   Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[98px] w-full rounded-lg" />)
                 ) : finalizadasHojeList.length ? (
-                  finalizadasHojeList.map((os) => (
-                    <OsTile key={os.id} os={os} compact />
-                  ))
+                  finalizadasHojeList.map((os) => <OsTile key={os.id} os={os} compact />)
                 ) : (
                   <EmptyColumn label="Nenhuma OS finalizada hoje neste setor." />
                 )}

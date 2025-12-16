@@ -14,7 +14,7 @@ function inicioHojeFortalezaISO() {
     day: "2-digit",
   }).format(now); // "YYYY-MM-DD"
   const [y, m, d] = ymd.split("-").map(Number);
-  const utcMidnight = new Date(Date.UTC(y!, (m! - 1), d!, 0, 0, 0));
+  const utcMidnight = new Date(Date.UTC(y!, m! - 1, d!, 0, 0, 0));
   return utcMidnight.toISOString().slice(0, 19);
 }
 const isoRecentes = (horas: number) =>
@@ -30,12 +30,7 @@ type StatusOS =
   | "ORCAMENTO_APROVADO"
   | "ORCAMENTO_RECUSADO";
 
-const SET_AGUARDANDO: StatusOS[] = [
-  "ORCAMENTO",
-  "ORCAMENTO_RECUSADO",
-  "APROVACAO_ORCAMENTO",
-  "ORCAMENTO_APROVADO",
-];
+const SET_AGUARDANDO: StatusOS[] = ["ORCAMENTO", "ORCAMENTO_RECUSADO", "APROVACAO_ORCAMENTO", "ORCAMENTO_APROVADO"];
 const SET_EXECUCAO: StatusOS[] = ["EM_ANDAMENTO"];
 const SET_FATURAMENTO: StatusOS[] = ["PAGAMENTO"];
 const SET_FINALIZADAS: StatusOS[] = ["CONCLUIDO", "CANCELADO"];
@@ -67,6 +62,7 @@ const BASE_SELECT = `
     quantidade,
     precounitario,
     subtotal,
+    realizador:idusuariorealizador ( id, nome ),
     servico:servicoid ( id, descricao )
   )
 `;
@@ -91,31 +87,19 @@ export async function GET(req: NextRequest) {
     const cutoffRecentes = isoRecentes(horasRecentes);
     const inicioHoje = inicioHojeFortalezaISO();
 
-    let qAguard = supabaseAdmin
-      .from("ordemservico")
-      .select(BASE_SELECT)
-      .in("status", SET_AGUARDANDO);
+    let qAguard = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_AGUARDANDO);
     if (hasSetor) qAguard = qAguard.eq("setorid", setorId as number);
     qAguard = qAguard.order("dataentrada", { ascending: true }).limit(limit);
 
-    let qExec = supabaseAdmin
-      .from("ordemservico")
-      .select(BASE_SELECT)
-      .in("status", SET_EXECUCAO);
+    let qExec = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_EXECUCAO);
     if (hasSetor) qExec = qExec.eq("setorid", setorId as number);
     qExec = qExec.order("updatedat", { ascending: false }).limit(limit);
 
-    let qFat = supabaseAdmin
-      .from("ordemservico")
-      .select(BASE_SELECT)
-      .in("status", SET_FATURAMENTO);
+    let qFat = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_FATURAMENTO);
     if (hasSetor) qFat = qFat.eq("setorid", setorId as number);
     qFat = qFat.order("updatedat", { ascending: false }).limit(limit);
 
-    let qFin = supabaseAdmin
-      .from("ordemservico")
-      .select(BASE_SELECT)
-      .in("status", SET_FINALIZADAS);
+    let qFin = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_FINALIZADAS);
     if (hasSetor) qFin = qFin.eq("setorid", setorId as number);
 
     if (finalizadasScope === "hoje") {
