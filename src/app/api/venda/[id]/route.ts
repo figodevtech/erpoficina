@@ -14,7 +14,12 @@ const STATUS_SET = new Set<Status>([
   "CANCELADA",
 ]);
 
-// Mantenha em sincronia com /api/venda/route.ts
+/**
+ * SELECT padrão da venda com cliente e itens (vendaproduto) + produto.
+ * Atenção:
+ * - vendaproduto usa venda_id
+ * - produto embed via FK produtoid
+ */
 const VENDA_SELECT = `
   id,
   clienteid,
@@ -33,17 +38,33 @@ const VENDA_SELECT = `
   sub_total,
   itens:vendaproduto (
     id,
+    venda_id,
     produtoid,
     quantidade,
     sub_total,
     valor_total,
     valor_desconto,
     tipo_desconto,
+    created_at,
+    updated_at,
     produto:produtoid (
       id,
       titulo,
+      descricao,
       precovenda,
-      imgUrl
+      imgUrl,
+      ncm,
+      unidade,
+      codigobarras,
+      csosn,
+      cst,
+      cest,
+      aliquotaicms,
+      cfop,
+      cst_pis,
+      aliquota_pis,
+      cst_cofins,
+      aliquota_cofins
     )
   )
 `;
@@ -83,11 +104,6 @@ function parseId(idStr: string) {
 
   return { id, error: null as string | null, status: 200 };
 }
-
-// Tipo de contexto esperado pelo Next 15 (params é um Promise)
-type RouteContext = {
-  params: Promise<{ id: string }>;
-};
 
 /* ========================= GET /api/venda/[id] ========================= */
 /**
@@ -144,19 +160,7 @@ export async function GET(req: NextRequest, ctx: ParamsCtx) {
 /* ========================= PATCH /api/venda/[id] ========================= */
 /**
  * Atualiza campos básicos da venda.
- * Exemplo de body:
- * {
- *   "status": "FINALIZADA",
- *   "clienteId": 123,
- *   "descontoTipo": "VALOR",
- *   "descontoValor": 10,
- *   "subTotal": 100,
- *   "valorTotal": 90,
- *   "dataVenda": "2025-11-25T12:00:00.000Z"
- * }
- *
- * Obs: aqui NÃO estou atualizando itens da venda (vendaproduto),
- * apenas campos diretos da tabela venda.
+ * Obs: NÃO atualiza itens (vendaproduto), apenas campos diretos de venda.
  */
 export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
   try {
@@ -171,7 +175,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     }
 
     const vendaId = parsed.id as number;
-    const body = (await req.json()) as VendaPatchBody;
+    const body = (await req.json().catch(() => null)) as VendaPatchBody | null;
 
     if (!body || typeof body !== "object") {
       return NextResponse.json(
@@ -213,22 +217,19 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
 
     if (clienteId !== undefined) {
       if (clienteId === null || Number.isNaN(Number(clienteId))) {
-        return NextResponse.json(
-          { error: "clienteId inválido." },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "clienteId inválido." }, { status: 400 });
       }
       updatePayload.clienteid = clienteId;
     }
 
     if (status !== undefined) {
-      const upperStatus = status.toUpperCase();
+      const upperStatus = String(status).toUpperCase();
       if (!STATUS_SET.has(upperStatus as Status)) {
         return NextResponse.json(
           {
-            error: `Status inválido. Use um dos: ${Array.from(
-              STATUS_SET
-            ).join(", ")}.`,
+            error: `Status inválido. Use um dos: ${Array.from(STATUS_SET).join(
+              ", "
+            )}.`,
           },
           { status: 400 }
         );
@@ -255,6 +256,9 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     if (dataVenda !== undefined) {
       updatePayload.datavenda = dataVenda;
     }
+
+    // Se sua tabela venda tiver updatedat e você quiser forçar:
+    updatePayload.updatedat = new Date().toISOString();
 
     const { data, error } = await supabaseAdmin
       .from("venda")
@@ -295,16 +299,14 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
 /**
  * Remove uma venda.
  *
- * IMPORTANTE: Sua tabela transacao tem FK para venda (vendaid).
- * Como a FK NÃO tem ON DELETE CASCADE, o delete da venda
- * vai falhar se houver transações ligadas a ela.
+ * IMPORTANTE: Agora vendaproduto tem ON DELETE CASCADE, então
+ * os itens não vão bloquear o delete.
  *
- * Aqui eu checo antes se existe transação apontando para essa venda.
- * Se existir, retorno 409 com mensagem explicando.
+ * Porém, sua tabela transacao tem FK para venda (vendaid) sem cascade,
+ * então ainda pode bloquear.
  */
 export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
   try {
-    // só pra não dar warning de não usado
     req;
 
     const { id: idStr } = await ctx.params;
@@ -319,7 +321,44 @@ export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
 
     const vendaId = parsed.id as number;
 
-    // Verifica se existe transação ligada a essa venda
+    // 1) Bloqueia exclusão se já existe NF-e vinculada à venda
+    //    que NÃO esteja em RASCUNHO (ex: AUTORIZADA, CANCELADA, DENEGADA, REJEITADA etc.)
+    const { data: nfesBloqueantes, error: nfeError } = await supabaseAdmin
+      .from("nfe")
+      .select("id, status, chave_acesso, protocolo")
+      .eq("vendaid", vendaId)
+      .neq("status", "RASCUNHO")
+      .limit(1);
+
+    if (nfeError) {
+      console.error("Erro ao verificar NF-e vinculadas à venda:", nfeError);
+      return NextResponse.json(
+        {
+          error:
+            "Erro ao verificar NF-e vinculadas à venda. Exclusão não realizada.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (nfesBloqueantes && nfesBloqueantes.length > 0) {
+      const nfe = nfesBloqueantes[0];
+      return NextResponse.json(
+        {
+          error:
+            "Não é possível excluir a venda pois existe NF-e vinculada (já enviada/registrada na SEFAZ).",
+          nfeVinculada: {
+            id: nfe.id,
+            status: nfe.status,
+            chave_acesso: nfe.chave_acesso,
+            protocolo: nfe.protocolo,
+          },
+        },
+        { status: 409 } // conflito de regra de negócio
+      );
+    }
+
+    // 2) Verifica se existe transação ligada a essa venda
     const { count: transCount, error: transError } = await supabaseAdmin
       .from("transacao")
       .select("id", { count: "exact", head: true })
@@ -350,12 +389,12 @@ export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
       );
     }
 
-    // Agora pode tentar excluir
+    // 3) Agora pode excluir (vendaproduto cai em cascade)
     const { data, error } = await supabaseAdmin
       .from("venda")
       .delete()
       .eq("id", vendaId)
-      .select()
+      .select("id")
       .single();
 
     if (error) {
@@ -385,3 +424,4 @@ export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
     );
   }
 }
+
