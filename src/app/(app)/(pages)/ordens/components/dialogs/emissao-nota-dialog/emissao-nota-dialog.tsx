@@ -60,10 +60,17 @@ type NfeResumo = {
   empresaid: number | null;
 };
 
-type ListarNfePorOsResponse = {
+type ListarNfeResponsePorOs = {
   ok: boolean;
   message?: string;
   osId?: number;
+  nfes: NfeResumo[];
+};
+
+type ListarNfeResponsePorVenda = {
+  ok: boolean;
+  message?: string;
+  vendaId?: number;
   nfes: NfeResumo[];
 };
 
@@ -121,50 +128,66 @@ export function EmissaoNotaDialog({
   open,
   onOpenChange,
   osId,
+  vendaId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  osId: number | null;
+
+  /** opcional: uso na tela de OS */
+  osId?: number | null;
+
+  /** opcional: uso na tela de venda */
+  vendaId?: number | null;
 }) {
   const [loading, setLoading] = useState(false);
   const [nfes, setNfes] = useState<NfeResumo[] | null>(null);
   const [openGerarNfe, setOpenGerarNfe] = useState(false);
 
-  const canFetch = open && !!osId;
+  const origem = osId ? "OS" : vendaId ? "VENDA" : null;
+  const origemId = osId ?? vendaId ?? null;
+
+  const canFetch = open && !!origem && !!origemId;
+
+  const endpointListar = useMemo(() => {
+    if (!origem || !origemId) return null;
+    return origem === "OS"
+      ? `/api/nfe/por-os/${origemId}`
+      : `/api/nfe/por-venda/${origemId}`;
+  }, [origem, origemId]);
 
   /**
-   * Busca NF-e da OS no backend.
-   * Usa AbortSignal opcional para o useEffect poder cancelar.
+   * Busca NF-e da origem (OS/Venda) no backend.
    */
   const fetchNfes = async (signal?: AbortSignal) => {
-    if (!osId) return;
+    if (!endpointListar) return;
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/nfe/por-os/${osId}`, {
+      const res = await fetch(endpointListar, {
         method: "GET",
         signal,
       });
 
-      const json = (await res
-        .json()
-        .catch(() => null)) as ListarNfePorOsResponse | null;
+      const json = (await res.json().catch(() => null)) as
+        | ListarNfeResponsePorOs
+        | ListarNfeResponsePorVenda
+        | null;
 
       if (!res.ok || !json?.ok) {
         const msg =
-          json?.message ||
-          `Erro ao buscar NF-e da OS (HTTP ${res.status}).`;
+          (json as any)?.message ||
+          `Erro ao buscar NF-e (HTTP ${res.status}).`;
         throw new Error(msg);
       }
 
       if (!signal?.aborted) {
-        setNfes(json.nfes ?? []);
+        setNfes((json as any).nfes ?? []);
       }
     } catch (e: any) {
       if (e?.name === "AbortError") return;
       console.error(e);
       if (!signal?.aborted) {
-        toast.error(e?.message || "Erro ao carregar NF-e da OS.");
+        toast.error(e?.message || "Erro ao carregar NF-e.");
         setNfes([]);
       }
     } finally {
@@ -175,7 +198,7 @@ export function EmissaoNotaDialog({
   };
 
   useEffect(() => {
-    if (!canFetch || !osId) return;
+    if (!canFetch) return;
 
     const ac = new AbortController();
     fetchNfes(ac.signal);
@@ -183,20 +206,21 @@ export function EmissaoNotaDialog({
     return () => {
       ac.abort();
     };
-  }, [canFetch, osId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canFetch, endpointListar]);
 
-  const titulo = useMemo(
-    () =>
-      osId ? `Emissão de Nota Fiscal - OS #${osId}` : "Emissão de Nota Fiscal",
-    [osId]
-  );
+  const titulo = useMemo(() => {
+    if (!origem || !origemId) return "Emissão de Nota Fiscal";
+    return origem === "OS"
+      ? `Emissão de Nota Fiscal - OS #${origemId}`
+      : `Emissão de Nota Fiscal - Venda #${origemId}`;
+  }, [origem, origemId]);
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         onOpenChange(nextOpen);
-
         if (!nextOpen) {
           setNfes([]);
         }
@@ -229,10 +253,10 @@ export function EmissaoNotaDialog({
               {titulo}
             </DialogTitle>
             <DialogDescription>
-              Visualize as notas fiscais eletrônicas vinculadas a esta OS e gere
-              novas NF-e a partir dos produtos.
+              Visualize as NF-e vinculadas e gere novas NF-e a partir dos produtos.
             </DialogDescription>
-            {osId && (
+
+            {!!origemId && (
               <div className="flex justify-between">
                 <Button
                   disabled={loading}
@@ -258,37 +282,35 @@ export function EmissaoNotaDialog({
           <div className="pt-5 pb-5 space-y-4 relative">
             <div
               className={`${
-                osId && loading && "opacity-100"
+                origemId && loading && "opacity-100"
               } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
             >
               <div
-                className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
-                  osId && loading && "animate-slideIn "
-                } `}
+                className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
+                  origemId && loading && "animate-slideIn "
+                }`}
               ></div>
             </div>
 
-            {!osId && (
+            {!origemId && (
               <div className="h-24 grid place-items-center text-sm text-muted-foreground">
-                Nenhuma OS selecionada.
+                Nenhuma origem selecionada.
               </div>
             )}
 
-            {osId && !loading && nfes && nfes.length === 0 && (
-              <div className="rounded-lg border border-dashed p-4 text-sm flex gap-3">
+            {!!origemId && !loading && nfes && nfes.length === 0 && (
+              <div className="rounded-lg border border-dashed p-4 text-sm flex gap-3 mx-5">
                 <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
                 <div>
                   <div className="font-medium">Nenhuma NF-e encontrada</div>
                   <div className="text-muted-foreground text-xs">
-                    Esta OS ainda não possui notas fiscais eletrônicas
-                    registradas. Clique em <b>Nova Nota</b> para gerar um
-                    rascunho a partir dos produtos.
+                    Clique em <b>Nova Nota</b> para gerar um rascunho a partir dos produtos.
                   </div>
                 </div>
               </div>
             )}
 
-            {osId && nfes && nfes.length > 0 && (
+            {!!origemId && nfes && nfes.length > 0 && (
               <div className="px-5">
                 <ul className="text-sm">
                   {nfes.map((nfe, idx) => {
@@ -301,11 +323,12 @@ export function EmissaoNotaDialog({
                     const isCancelada = statusUpper === "CANCELADA";
 
                     const observacao = buildObservacao(nfe);
+
                     return (
                       <li key={nfe.id}>
                         {idx > 0 && <Separator className="my-3" />}
 
-                        <div className="flex items-start gap- p-3 hover:bg-muted/15 rounded-xl relative">
+                        <div className="flex items-start p-3 hover:bg-muted/15 rounded-xl relative">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -316,6 +339,7 @@ export function EmissaoNotaDialog({
                                 <Ellipsis className="h-3 w-3" />
                               </Button>
                             </DropdownMenuTrigger>
+
                             <DropdownMenuContent>
                               {nfe.status === "RASCUNHO" && (
                                 <div className="flex flex-col gap-1">
@@ -324,9 +348,7 @@ export function EmissaoNotaDialog({
                                     size="sm"
                                     variant="outline"
                                     className="text-xs hover:cursor-pointer"
-                                    onAfterAuthorize={() => {
-                                      fetchNfes();
-                                    }}
+                                    onAfterAuthorize={() => fetchNfes()}
                                   >
                                     Autorizar NF-e
                                   </AutorizarNfeButton>
@@ -360,15 +382,15 @@ export function EmissaoNotaDialog({
                                   >
                                     Editar XML
                                   </Button>
+
                                   <ExcluirRascunhoNfeButton
                                     nfeId={nfe.id}
                                     status={nfe.status ?? ""}
-                                    onAfterDelete={() => {
-                                      fetchNfes();
-                                    }}
+                                    onAfterDelete={() => fetchNfes()}
                                   />
                                 </div>
                               )}
+
                               {nfe.status === "AUTORIZADA" && (
                                 <div className="flex flex-col gap-1">
                                   <Button
@@ -385,6 +407,7 @@ export function EmissaoNotaDialog({
                                   >
                                     Ver DANFE
                                   </Button>
+
                                   <Button
                                     className="text-xs hover:cursor-pointer"
                                     variant="outline"
@@ -396,14 +419,16 @@ export function EmissaoNotaDialog({
                                           <span>Consultando Nota Fiscal</span>
                                         </div>
                                       );
+
                                       const res = await fetch(
                                         `/api/nfe/consultar/${nfe.id}`,
                                         { method: "POST" }
                                       );
-                                      const json = await res.json();
-                                      if (!res.ok || !json.ok) {
+                                      const json = await res.json().catch(() => null);
+
+                                      if (!res.ok || !json?.ok) {
                                         toast.error(
-                                          json.message ||
+                                          json?.message ||
                                             "Erro ao consultar NF-e na SEFAZ."
                                         );
                                         return;
@@ -426,6 +451,7 @@ export function EmissaoNotaDialog({
                                   />
                                 </div>
                               )}
+
                               {nfe.status === "CANCELADA" && (
                                 <div className="flex flex-col gap-1">
                                   <Button
@@ -442,6 +468,7 @@ export function EmissaoNotaDialog({
                                   >
                                     Ver DANFE
                                   </Button>
+
                                   <Button
                                     className="text-xs hover:cursor-pointer"
                                     variant="outline"
@@ -453,14 +480,16 @@ export function EmissaoNotaDialog({
                                           <span>Consultando Nota Fiscal</span>
                                         </div>
                                       );
+
                                       const res = await fetch(
                                         `/api/nfe/consultar/${nfe.id}`,
                                         { method: "POST" }
                                       );
-                                      const json = await res.json();
-                                      if (!res.ok || !json.ok) {
+                                      const json = await res.json().catch(() => null);
+
+                                      if (!res.ok || !json?.ok) {
                                         toast.error(
-                                          json.message ||
+                                          json?.message ||
                                             "Erro ao consultar NF-e na SEFAZ."
                                         );
                                         return;
@@ -475,12 +504,12 @@ export function EmissaoNotaDialog({
                                   >
                                     Consultar NF-e
                                   </Button>
-                                  {/* Sem botão de cancelar aqui, pois NF-e já está cancelada */}
                                 </div>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <div className=" mr-1.5">
+
+                          <div className="mr-1.5">
                             {isAutorizada ? (
                               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                             ) : isRejeitada ? (
@@ -502,30 +531,28 @@ export function EmissaoNotaDialog({
                               <Badge className={statusClass}>
                                 {statusUpper || "—"}
                               </Badge>
+
                               {nfe.ambiente && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px]"
-                                >
+                                <Badge variant="outline" className="text-[10px]">
                                   {nfe.ambiente}
                                 </Badge>
                               )}
                             </div>
+
                             <div className="text-xs text-muted-foreground space-y-0.5">
                               <div>
-                                <span className="text-xs text-muted-foreground ">
+                                <span className="text-xs text-muted-foreground">
                                   ID: {nfe.id}
                                 </span>{" "}
                                 Emissão: {fmtDate(nfe.dataemissao)}{" "}
                                 {nfe.dataautorizacao && (
                                   <>
-                                    {" · "}Autorização:{" "}
-                                    {fmtDate(nfe.dataautorizacao)}
+                                    {" · "}Autorização: {fmtDate(nfe.dataautorizacao)}
                                   </>
                                 )}{" "}
-                                {" · "}Total NF-e:{" "}
-                                <b>{fmtMoney(nfe.total_nfe)}</b>
+                                {" · "}Total NF-e: <b>{fmtMoney(nfe.total_nfe)}</b>
                               </div>
+
                               {nfe.chave_acesso && (
                                 <div className="break-all">
                                   Chave de acesso:{" "}
@@ -534,16 +561,13 @@ export function EmissaoNotaDialog({
                                   </span>
                                 </div>
                               )}
-                              {nfe.protocolo && (
-                                <div>Protocolo: {nfe.protocolo}</div>
-                              )}
+
+                              {nfe.protocolo && <div>Protocolo: {nfe.protocolo}</div>}
                             </div>
 
                             <div className="mt-2 text-xs">
                               <span className="font-medium">Observações: </span>
-                              <span className="text-muted-foreground">
-                                {observacao}
-                              </span>
+                              <span className="text-muted-foreground">{observacao}</span>
                             </div>
 
                             {nfe.createdat && (
@@ -562,19 +586,16 @@ export function EmissaoNotaDialog({
           </div>
         </div>
 
-        {osId && (
+        {!!origemId && (
           <GerarNotaDeOsDialog
             open={openGerarNfe}
-            onOpenChange={(open) => {
-              setOpenGerarNfe(open);
-              if (!open) {
-                fetchNfes();
-              }
+            onOpenChange={(v) => {
+              setOpenGerarNfe(v);
+              if (!v) fetchNfes();
             }}
-            osId={osId}
-            onAfterGenerate={() => {
-              fetchNfes();
-            }}
+            osId={osId ?? null}
+            vendaId={vendaId ?? null}
+            onAfterGenerate={() => fetchNfes()}
           />
         )}
       </DialogContent>
