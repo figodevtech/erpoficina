@@ -215,24 +215,29 @@ function montarResumoDeLista(lista: any[], inicio: Date, fim: Date): ResumoFinan
     const tipo = String(item?.tipo ?? "").toUpperCase() as "RECEITA" | "DESPESA" | "DEPOSITO" | "SAQUE" | string;
 
     const dataStr: string | undefined = item?.data ?? item?.created_at ?? item?.createdAt ?? item?.data_transacao;
-
     if (!dataStr) continue;
+
     const d = new Date(dataStr);
     if (Number.isNaN(d.getTime())) continue;
 
     // respeita intervalo selecionado no filtro
     if (d < inicio || d > fim) continue;
 
-    const chaveDia = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().slice(0, 10);
-
     const ehEntrada = tipo === "RECEITA" || tipo === "DEPOSITO";
     const ehSaida = tipo === "DESPESA" || tipo === "SAQUE";
 
+    const pendenteFlag = item?.pendente === true || String(item?.pendente).toLowerCase() === "true";
+
+    // ✅ pendente NÃO entra em gráficos/resumo; só conta em "Receitas pendentes"
+    if (pendenteFlag) {
+      if (ehEntrada) receitaPendente += valor;
+      continue;
+    }
+
+    const chaveDia = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().slice(0, 10);
+
     if (ehEntrada) receita += valor;
     if (ehSaida) despesa += valor;
-
-    const pendenteFlag = item?.pendente === true || String(item?.pendente).toLowerCase() === "true";
-    if (ehEntrada && pendenteFlag) receitaPendente += valor;
 
     // por dia
     let dia = porDia.get(chaveDia);
@@ -334,10 +339,14 @@ function useResumoFinanceiro(
   const [carregando, setCarregando] = React.useState(false);
   const [erro, setErro] = React.useState<string | null>(null);
 
+  // ✅ força remount dos gráficos (animação) quando muda
+  const [animKey, setAnimKey] = React.useState(0);
+
   const buscar = React.useCallback(async () => {
     if (!inicio || !fim) {
       setDados(RESUMO_INICIAL);
       setTransacoes([]);
+      setAnimKey((k) => k + 1);
       return;
     }
 
@@ -345,10 +354,17 @@ function useResumoFinanceiro(
       setCarregando(true);
       setErro(null);
 
+      // ✅ “começa zerado” antes de puxar (se quiser animação/feedback visual)
+      setDados(RESUMO_INICIAL);
+      setTransacoes([]);
+
       const params = new URLSearchParams({
         dateFrom: formatarDataYYYYMMDD(inicio),
         dateTo: formatarDataYYYYMMDD(fim),
         limit: "1000",
+
+        // ✅ não pegar pendente=true
+        pendente: "false",
       });
 
       const resposta = await fetch(`${endpoint}?${params.toString()}`, {
@@ -377,10 +393,12 @@ function useResumoFinanceiro(
 
       setDados(resumo);
       setTransacoes(listaTransacoes);
+      setAnimKey((k) => k + 1);
     } catch (e: any) {
       setErro(e?.message ?? "Erro ao carregar dados financeiros");
       setDados(RESUMO_INICIAL);
       setTransacoes([]);
+      setAnimKey((k) => k + 1);
     } finally {
       setCarregando(false);
     }
@@ -396,7 +414,7 @@ function useResumoFinanceiro(
     return () => clearInterval(id);
   }, [autoAtualizarMs, buscar]);
 
-  return { dados, transacoes, carregando, erro, recarregar: buscar };
+  return { dados, transacoes, carregando, erro, recarregar: buscar, animKey };
 }
 
 /* ==================== COMPONENTE PRINCIPAL ==================== */
@@ -415,7 +433,7 @@ export default function DashboardFinanceiro({
   // filtro cruzado por método de pagamento (clicando no gráfico de pizza)
   const [metodoSelecionado, setMetodoSelecionado] = React.useState<string | null>(null);
 
-  const { dados, transacoes, carregando, erro, recarregar } = useResumoFinanceiro(endpoint, {
+  const { dados, transacoes, carregando, erro, recarregar, animKey } = useResumoFinanceiro(endpoint, {
     inicio: dataInicio,
     fim: dataFim,
     autoAtualizarMs,
@@ -528,9 +546,10 @@ export default function DashboardFinanceiro({
           </CardTitle>
           <CardDescription className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
             <span>Visão geral de receitas, despesas e fluxo de caixa a partir das transações.</span>
-            <Badge variant="default" className="text-[10px] sm:text-xs">Período: {textoPeriodo} </Badge>
+            <Badge variant="default" className="text-[10px] sm:text-xs">
+              Período: {textoPeriodo}{" "}
+            </Badge>
           </CardDescription>
-          
 
           {metodoSelecionado && (
             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -657,7 +676,7 @@ export default function DashboardFinanceiro({
               }}
               className="h-56 w-full sm:h-64 md:h-72 lg:h-80"
             >
-              <AreaChart data={fluxo} margin={{ top: 12, right: 16, left: 48, bottom: 8 }}>
+              <AreaChart key={`fluxo-${animKey}`} data={fluxo} margin={{ top: 12, right: 16, left: 48, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="dataRotulo"
@@ -762,6 +781,7 @@ export default function DashboardFinanceiro({
                   className="h-full w-full"
                 >
                   <BarChart
+                    key={`cat-${animKey}`}
                     data={categorias}
                     margin={{ top: 20, right: 10, left: 10, bottom: 0 }}
                     barSize={40}
@@ -837,7 +857,7 @@ export default function DashboardFinanceiro({
               }}
               className={clsx("w-full", muitasCategorias ? "h-56 sm:h-60 md:h-64" : "h-52 sm:h-60 md:h-64")}
             >
-              <PieChart>
+              <PieChart key={`metodos-${animKey}`}>
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
