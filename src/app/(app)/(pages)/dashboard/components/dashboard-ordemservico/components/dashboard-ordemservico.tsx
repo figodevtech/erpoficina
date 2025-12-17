@@ -224,7 +224,6 @@ export default function ServiceOrdersDashboard({
             >
               {/* key garante que a animação do Recharts roda uma vez por carga de dados */}
               <AreaChart
-                key={`os-por-mes-${animKey}`}
                 data={seriesNewDone}
                 margin={{ top: 12, right: 12, left: 12, bottom: 0 }}
               >
