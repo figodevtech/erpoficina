@@ -26,6 +26,7 @@ import {
   ChevronRightIcon,
   ChevronsLeft,
   ChevronsRight,
+  Divide,
   Loader,
   Loader2,
   Plus,
@@ -83,11 +84,40 @@ export default function FinancialTable({
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isAlertOpen2, setIsAlertOpen2] = useState(false);
+  const [loadingPago, setLoadingPago] = useState(false);
   const [, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (selectedTransactionId) setIsOpen(true);
   }, [selectedTransactionId]);
+
+  const handleSetPago = async(id: number)=> {
+    toast(<div className="flex flex-row flex-nowrap items-center gap-1 "> <span>Marcando como concluído</span> <Loader2 className="w-3 h-3 animate-spin"/></div>)
+    setLoadingPago(true)
+    try {
+      const response = await axios.patch(`/api/transaction/${id}`, {
+        pendente: false
+      })
+
+      if(response.status === 200){
+        toast.success("Transação Atualizada")
+      }
+    } catch (error) {
+      if(isAxiosError(error)){
+        toast(error.code, {description: error.message})
+      }
+    } finally{
+      setLoadingPago(false)
+      handleGetTransactions(
+          pagination.page,
+          pagination.limit,
+          search,
+          dateFrom,
+          dateTo,
+          tipo
+        );
+    }
+  }
 
   const handleDeleteTransaction = async (id: number) => {
     setIsDeleting(true);
@@ -250,7 +280,7 @@ export default function FinancialTable({
                       t.pendente && "text-primary font-semibold"
                     }`}
                   >
-                    {t.pendente ? "PAGAMENTO FUTURO" : t.tipo}
+                    {t.pendente ? <span className=" flex flex-nowrap gap-1 items-center">PAGAMENTO FUTURO</span> : t.tipo}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {t.categoria}
@@ -311,12 +341,13 @@ export default function FinancialTable({
                           <ConculidoAlert
                             isAlertOpen={isAlertOpen2}
                             setIsAlertOpen={setIsAlertOpen2}
-                            handleSetConcluido={(value) => console.log(value)}
+                            handleSetConcluido={(value) => handleSetPago(value)}
                             idConcluido={t.id}
                           >
                             <Button
                               variant="default"
                               className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
+                            
                             >
                               <Check className="-ml-1 -mr-1 h-4 w-4" />
                               <span>Pago</span>

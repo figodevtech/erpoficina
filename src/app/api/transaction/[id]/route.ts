@@ -8,13 +8,13 @@ type Params = { params: Promise<{ id: string }> };
 
 const TRANSACAO_FIELDS = `
   id, descricao, valor, data, metodopagamento, categoria, tipo, cliente_id,
-  banco_id, nomepagador, cpfcnpjpagador, pendente, created_at, updated_at
+  banco_id, nomepagador, cpfcnpjpagador, pendente, ordemservicoid, valorLiquido, vendaid,
+  created_at, updated_at
 `;
 
 /** Campos do banco (bancoconta) alinhados ao que você precisa no front */
 const BANCO_FIELDS =
   "id, titulo, tipo, agencia, contanumero, proprietario, valorinicial, empresa_id, created_at, updated_at";
-
 
 const WRITABLE_FIELDS = new Set([
   "descricao",
@@ -28,54 +28,149 @@ const WRITABLE_FIELDS = new Set([
   "nomepagador",
   "pendente",
   "cpfcnpjpagador",
+  "ordemservicoid",
+  "valorLiquido",
+  "vendaid",
 ]);
 
-function toNullIfEmpty(v: unknown) {
-  return typeof v === "string" && v.trim() === "" ? null : v;
+/** Campos NOT NULL no banco (para validação local, principalmente no PATCH) */
+const NOT_NULL_FIELDS = new Set([
+  "descricao",
+  "valor",
+  "data",
+  "metodopagamento",
+  "categoria",
+  "tipo",
+  "banco_id",
+  "nomepagador",
+  "cpfcnpjpagador",
+  "pendente",
+]);
+
+function isEmptyString(v: unknown) {
+  return typeof v === "string" && v.trim() === "";
 }
 
-function toNumberOrNull(v: any) {
-  if (v == null || (typeof v === "string" && v.trim() === "")) return null;
+function toNullIfEmpty(v: unknown) {
+  return isEmptyString(v) ? null : v;
+}
+
+/**
+ * Para numeric: preferimos string para não forçar conversões/precisão no JS.
+ * Aceita "1234.56", "1234,56", 1234.56
+ */
+function toNumericStringOrNull(v: any) {
+  if (v == null || isEmptyString(v)) return null;
+
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return null;
+    return String(v);
+  }
+
+  if (typeof v === "string") {
+    const s = v.trim().replace(",", ".");
+    // aceita: 0, 10, 10.5, 10.50, 0001.20
+    if (!/^\d+(\.\d+)?$/.test(s)) return null;
+    return s;
+  }
+
+  return null;
+}
+
+function toIntOrNull(v: any) {
+  if (v == null || isEmptyString(v)) return null;
   const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) return null;
+  return Math.trunc(n);
+}
+
+/**
+ * bigint como string numérica (evita overflow de 2^53-1 no JS)
+ */
+function toBigIntStringOrNull(v: any) {
+  if (v == null || isEmptyString(v)) return null;
+
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return null;
+    const t = Math.trunc(v);
+    return t > 0 ? String(t) : null;
+  }
+
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!/^\d+$/.test(s)) return null;
+    if (s === "0") return null;
+    return s;
+  }
+
+  return null;
 }
 
 function toTimestampOrNull(v: any) {
-  if (v == null || (typeof v === "string" && v.trim() === "")) return null;
+  if (v == null || isEmptyString(v)) return null;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+function toBooleanOrNull(v: any) {
+  if (v == null || isEmptyString(v)) return null;
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v === 1 ? true : v === 0 ? false : null;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "true" || s === "1") return true;
+    if (s === "false" || s === "0") return false;
+    return null;
+  }
+  return null;
+}
+
 /**
  * - Converte strings vazias para null
- * - Coerce campos numéricos para number (ou null)
+ * - Coerce numeric para string (ou null)
  * - Converte datas para ISO (ou null)
  * - No PUT (strict=true) exige campos obrigatórios
+ * - No PATCH (strict=false) impede null/"" em campos NOT NULL (retorna 400)
  */
 function sanitizePayload(body: any, { strict }: { strict: boolean }) {
   const out: Record<string, any> = {};
+  const providedKeys = Object.keys(body ?? {});
 
-  for (const key of Object.keys(body ?? {})) {
+  for (const key of providedKeys) {
     if (!WRITABLE_FIELDS.has(key)) continue;
 
     switch (key) {
       case "valor":
-        out[key] = toNumberOrNull(body[key]);
+      case "valorLiquido":
+        out[key] = toNumericStringOrNull(body[key]);
         break;
 
       case "cliente_id":
+      case "ordemservicoid":
+      case "vendaid":
+        out[key] = toIntOrNull(body[key]);
+        break;
+
       case "banco_id":
-        out[key] = toNumberOrNull(body[key]);
-        if (out[key] != null) out[key] = Math.trunc(out[key]);
+        out[key] = toBigIntStringOrNull(body[key]);
         break;
 
       case "data":
         out[key] = toTimestampOrNull(body[key]);
         break;
 
+      case "pendente":
+        out[key] = toBooleanOrNull(body[key]);
+        break;
+
       default:
         // descricao, metodopagamento, categoria, tipo, nomepagador, cpfcnpjpagador
         out[key] = toNullIfEmpty(body[key]);
+    }
+
+    // PATCH: se o cliente tentou mandar ""/null em campo NOT NULL, rejeita aqui
+    if (!strict && NOT_NULL_FIELDS.has(key) && out[key] == null) {
+      throw new Error(`Campo "${key}" não pode ser vazio ou nulo.`);
     }
   }
 
@@ -97,18 +192,29 @@ function sanitizePayload(body: any, { strict }: { strict: boolean }) {
         `Campos obrigatórios ausentes no PUT: ${missing.join(", ")}`
       );
     }
+
+    // No PUT, pendente pode não vir (pois tem default no banco),
+    // mas como é NOT NULL, se vier precisa ser boolean válido.
+    if ("pendente" in out && out.pendente == null) {
+      throw new Error(`Campo "pendente" inválido.`);
+    }
   }
 
-  // Deixe enums serem validados pelo Postgres
   out.updated_at = new Date().toISOString();
   return out;
 }
 
+/**
+ * id da transacao é bigint: mantemos como string numérica para evitar overflow.
+ */
 async function parseId(ctx: Params) {
   const { id: idParam } = await ctx.params;
-  const id = Number((idParam ?? "").trim());
-  if (!id) throw new Error("ID inválido.");
-  return id;
+  const raw = String(idParam ?? "").trim();
+
+  if (!/^\d+$/.test(raw) || raw === "0") {
+    throw new Error("ID inválido.");
+  }
+  return raw;
 }
 
 /* ========================= GET ========================= */
@@ -123,8 +229,7 @@ export async function GET(_: Request, ctx: Params) {
         `
         ${TRANSACAO_FIELDS},
         banco:bancoconta!transacao_banco_id_fkey ( ${BANCO_FIELDS} )
-        `,
-        { count: "exact" }
+        `
       )
       .eq("id", id)
       .single();
@@ -178,21 +283,24 @@ export async function PATCH(req: NextRequest, ctx: Params) {
         );
       }
       if (code === "23503") {
-        // FK (cliente_id/banco_id) inválida
         return NextResponse.json(
-          { error: "Chave estrangeira inválida (cliente_id/banco_id)." },
+          { error: "Chave estrangeira inválida (cliente_id/banco_id/etc.)." },
           { status: 422 }
         );
       }
+      if (code === "23502") {
+        return NextResponse.json(
+          { error: "Um ou mais campos obrigatórios foram enviados como nulos." },
+          { status: 400 }
+        );
+      }
       if (code === "22P02") {
-        // enum inválido / formato inválido
         return NextResponse.json(
           { error: "Formato inválido em um ou mais campos." },
           { status: 400 }
         );
       }
       if (code === "23505") {
-        // Não esperado aqui, mas se existir alguma UNIQUE no futuro
         return NextResponse.json(
           { error: "Violação de unicidade (já cadastrado)." },
           { status: 409 }
@@ -204,7 +312,10 @@ export async function PATCH(req: NextRequest, ctx: Params) {
     return NextResponse.json({ data, id: data.id });
   } catch (e: any) {
     const msg = e?.message ?? "Erro ao atualizar transação.";
-    const status = msg.includes("ID inválido") ? 400 : 500;
+    const status =
+      msg.includes("ID inválido") || msg.includes("não pode ser vazio")
+        ? 400
+        : 500;
     return NextResponse.json({ error: msg }, { status });
   }
 }
@@ -234,8 +345,14 @@ export async function PUT(req: NextRequest, ctx: Params) {
       }
       if (code === "23503") {
         return NextResponse.json(
-          { error: "Chave estrangeira inválida (cliente_id/banco_id)." },
+          { error: "Chave estrangeira inválida (cliente_id/banco_id/etc.)." },
           { status: 422 }
+        );
+      }
+      if (code === "23502") {
+        return NextResponse.json(
+          { error: "Um ou mais campos obrigatórios estão nulos." },
+          { status: 400 }
         );
       }
       if (code === "22P02") {
@@ -257,7 +374,9 @@ export async function PUT(req: NextRequest, ctx: Params) {
   } catch (e: any) {
     const msg = e?.message ?? "Erro ao atualizar transação.";
     const status =
-      msg.includes("ID inválido") || msg.includes("Campos obrigatórios")
+      msg.includes("ID inválido") ||
+      msg.includes("Campos obrigatórios") ||
+      msg.includes("pendente inválido")
         ? 400
         : 500;
     return NextResponse.json({ error: msg }, { status });
@@ -268,11 +387,7 @@ export async function PUT(req: NextRequest, ctx: Params) {
 
 export async function DELETE(_: Request, ctx: Params) {
   try {
-    const { id: idParam } = await ctx.params;
-    const id = Number((idParam ?? "").trim());
-    if (!id) {
-      return NextResponse.json({ error: "ID inválido." }, { status: 400 });
-    }
+    const id = await parseId(ctx);
 
     const { data, error } = await supabaseAdmin
       .from("transacao")
@@ -291,9 +406,8 @@ export async function DELETE(_: Request, ctx: Params) {
 
     return new NextResponse(null, { status: 204 });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao deletar transação." },
-      { status: 500 }
-    );
+    const msg = e?.message ?? "Erro ao deletar transação.";
+    const status = msg.includes("ID inválido") ? 400 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }
