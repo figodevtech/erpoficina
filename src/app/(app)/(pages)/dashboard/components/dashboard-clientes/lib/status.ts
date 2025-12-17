@@ -1,0 +1,21 @@
+import type { StatusCliente } from "./types";
+
+export const ORDEM_STATUS: StatusCliente[] = ["ATIVO", "PENDENTE", "INATIVO"];
+
+export const ROTULO_STATUS: Record<StatusCliente, string> = {
+  ATIVO: "Ativos",
+  PENDENTE: "Pendentes",
+  INATIVO: "Inativos",
+  NULL: "Sem status",
+};
+
+export const COR_STATUS: Record<StatusCliente, string> = {
+  ATIVO: "hsl(var(--chart-1))",
+  PENDENTE: "hsl(var(--chart-2))",
+  INATIVO: "hsl(var(--chart-3))",
+  NULL: "hsl(var(--muted-foreground))",
+};
+
+export function statusConhecido(chave: StatusCliente) {
+  return chave === "ATIVO" || chave === "INATIVO" || chave === "PENDENTE";
+}

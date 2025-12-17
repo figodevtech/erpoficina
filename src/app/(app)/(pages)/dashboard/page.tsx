@@ -1,11 +1,10 @@
-// ./src/app/(app)/(pages)/dashboard/page.tsx
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs";
 
 import OpcoesAbas from "./components/tabs";
-import ConteudoGeral from "./components/dashboard-ordemservico/dashboard-ordemservico";
-import ConteudoUsuarios from "./components/dashboard-clientes/dashboard-clientes";
-import ConteudoFinanceiro from "./components/dashboard-financeiro/dashboard-financeiro";
+import ConteudoGeral from "./components/dashboard-ordemservico/page";
+import ConteudoUsuarios from "./components/dashboard-clientes/components/dashboard-clientes";
+import ConteudoFinanceiro from "./components/dashboard-financeiro/page";
 
 export default function PaginaDashboard() {
   return (
