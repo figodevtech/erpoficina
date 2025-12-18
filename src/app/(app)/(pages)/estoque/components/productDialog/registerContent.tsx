@@ -128,6 +128,10 @@ export default function RegisterContent({
 }: RegisterContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // --- NOVO: imagens (múltiplas) ---
+  const [imagensArquivos, setImagensArquivos] = useState<File[]>([]);
+  const [imagensPreview, setImagensPreview] = useState<string[]>([]);
+
   // *** NOVO: estados para unidades de medida vindas do banco ***
   const [unidades, setUnidades] = useState<UnidadeFromApi[]>([]);
   const [loadingUnidades, setLoadingUnidades] = useState(false);
@@ -158,9 +162,32 @@ export default function RegisterContent({
           duration: 2000,
         });
 
-        setSelectedProductId?.(response.data.data.id);
+        const produtoId = response.data.data.id;
+
+        // --- NOVO: envia imagens (se selecionadas) ---
+        if (imagensArquivos.length > 0) {
+          try {
+            const fd = new FormData();
+            imagensArquivos.forEach((f) => fd.append("files", f));
+
+            await axios.post(`/api/products/${produtoId}/images`, fd, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+          } catch (err) {
+            console.error("Erro ao enviar imagens:", err);
+            toast.error("Erro", {
+              description: "Produto criado, mas não foi possível enviar as imagens.",
+              duration: 2500,
+            });
+          }
+        }
+
+        setSelectedProductId?.(produtoId);
         handleSearchFornecedor?.();
         console.log("criado:", response.data);
+
+        setImagensArquivos([]);
+        setImagensPreview([]);
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -216,7 +243,7 @@ export default function RegisterContent({
           <DialogDescription>Preencha dados para registrar um novo produto</DialogDescription>
         </DialogHeader>
 
-        <Tabs className="flex-1 min-h-0 overflow-hidden pb-0 mt-4">
+        <Tabs defaultValue="Geral" className="flex-1 min-h-0 overflow-hidden pb-0 mt-4">
           <TabsList className="shrink-0 sticky top-0 z-10 bg-background ml-4">
             <TabsTrigger value="Geral" className={"hover:cursor-pointer" + tabTheme}>
               Geral
@@ -226,6 +253,10 @@ export default function RegisterContent({
             </TabsTrigger>
             <TabsTrigger value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
               Estoque
+            </TabsTrigger>
+
+            <TabsTrigger value="Imagens" className={"hover:cursor-pointer" + tabTheme}>
+              Imagens
             </TabsTrigger>
           </TabsList>
 
@@ -562,6 +593,39 @@ export default function RegisterContent({
                   </li>
                 </ul>
               </div>
+            </div>
+          </TabsContent>
+
+          {/* --- Aba: Imagens --- */}
+          <TabsContent
+            value="Imagens"
+            className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+          >
+            <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+              <div className="space-y-2">
+                <Label>Imagens do produto</Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    setImagensArquivos(files);
+                    setImagensPreview(files.map((f) => URL.createObjectURL(f)));
+                  }}
+                />
+              </div>
+
+              {imagensPreview.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {imagensPreview.map((src, idx) => (
+                    <div key={idx} className="aspect-square rounded-md border overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt={`preview-${idx}`} className="h-full w-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

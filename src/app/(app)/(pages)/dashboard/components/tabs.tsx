@@ -24,7 +24,7 @@ export default function TabsOptions() {
             </TabsTrigger>
           </span>
         </TooltipTrigger>
-        <TooltipContent>Visão Geral</TooltipContent>
+        <TooltipContent>Ordens de Serviço</TooltipContent>
       </Tooltip>
 
       <Tooltip>

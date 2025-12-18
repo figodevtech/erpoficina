@@ -7,7 +7,6 @@ export function useInsights(endpoint: string, autoRefreshMs?: number) {
   const [data, setData] = React.useState<Insights | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [animKey, setAnimKey] = React.useState(0);
 
   // Guarda o último endpoint usado para evitar double fetch no StrictMode
   const lastEndpointRef = React.useRef<string | null>(null);
@@ -22,9 +21,6 @@ export function useInsights(endpoint: string, autoRefreshMs?: number) {
 
       const json = (await res.json()) as Insights;
       setData(json);
-
-      // incrementa animKey sempre que dados novos chegam com sucesso
-      setAnimKey((prev) => prev + 1);
     } catch (e: any) {
       setError(e?.message ?? "Erro ao carregar insights");
     } finally {
@@ -46,5 +42,5 @@ export function useInsights(endpoint: string, autoRefreshMs?: number) {
     return () => clearInterval(id);
   }, [autoRefreshMs, fetcher]);
 
-  return { data, loading, error, refetch: fetcher, animKey };
+  return { data, loading, error, refetch: fetcher };
 }

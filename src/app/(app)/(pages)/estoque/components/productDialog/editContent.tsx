@@ -23,6 +23,7 @@ import { Estoque_status } from "../../types";
 import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "./valueInput";
 import axios from "axios";
+import { toast } from "sonner";
 import { formatDate } from "@/utils/formatDate";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -95,6 +96,14 @@ type UnidadeFromApi = {
   ativo: boolean;
 };
 
+type ProdutoImagem = {
+  id: number;
+  produto_id: number;
+  url: string;
+  ordem: number;
+  createdat?: string;
+};
+
 interface EditContentProps {
   productId: number;
   onAfterSaveProduct?: () => void;
@@ -109,6 +118,13 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
   const [unidades, setUnidades] = useState<UnidadeFromApi[]>([]);
   const [loadingUnidades, setLoadingUnidades] = useState(false);
   const [errorUnidades, setErrorUnidades] = useState<string | null>(null);
+
+  // --- NOVO: imagens (múltiplas) ---
+  const [imagens, setImagens] = useState<ProdutoImagem[]>([]);
+  const [novasImagens, setNovasImagens] = useState<File[]>([]);
+  const [novasPreview, setNovasPreview] = useState<string[]>([]);
+  const [carregandoImagens, setCarregandoImagens] = useState(false);
+  const [subindoImagens, setSubindoImagens] = useState(false);
 
   const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
@@ -152,6 +168,69 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
     }
   };
 
+  // --- NOVO: imagens (múltiplas) ---
+  const carregarImagens = async () => {
+    setCarregandoImagens(true);
+    try {
+      const res = await axios.get(`/api/products/${productId}/images`);
+      setImagens(res.data?.imagens ?? []);
+    } catch (err) {
+      console.error("Erro ao carregar imagens:", err);
+      toast.error("Erro", { description: "Não foi possível carregar as imagens do produto.", duration: 2500 });
+    } finally {
+      setCarregandoImagens(false);
+    }
+  };
+
+  const enviarImagens = async () => {
+    if (novasImagens.length === 0) return;
+    setSubindoImagens(true);
+    try {
+      const fd = new FormData();
+      novasImagens.forEach((f) => fd.append("files", f));
+
+      await axios.post(`/api/products/${productId}/images`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      toast.success("Sucesso!", { description: "Imagens enviadas.", duration: 2000 });
+
+      setNovasImagens([]);
+      setNovasPreview([]);
+      await carregarImagens();
+      await handleGetProduct(productId);
+    } catch (err) {
+      console.error("Erro ao enviar imagens:", err);
+      toast.error("Erro", { description: "Não foi possível enviar as imagens.", duration: 2500 });
+    } finally {
+      setSubindoImagens(false);
+    }
+  };
+
+  const definirImagemPrincipal = async (imageId: number) => {
+    try {
+      await axios.patch(`/api/products/${productId}/images/${imageId}`, { principal: true });
+      toast.success("Sucesso!", { description: "Imagem principal atualizada.", duration: 2000 });
+      await handleGetProduct(productId);
+      await carregarImagens();
+    } catch (err) {
+      console.error("Erro ao definir imagem principal:", err);
+      toast.error("Erro", { description: "Não foi possível definir a imagem principal.", duration: 2500 });
+    }
+  };
+
+  const removerImagem = async (imageId: number) => {
+    try {
+      await axios.delete(`/api/products/${productId}/images/${imageId}`);
+      toast.success("Sucesso!", { description: "Imagem removida.", duration: 2000 });
+      await handleGetProduct(productId);
+      await carregarImagens();
+    } catch (err) {
+      console.error("Erro ao remover imagem:", err);
+      toast.error("Erro", { description: "Não foi possível remover a imagem.", duration: 2500 });
+    }
+  };
+
   // --- NOVO: buscar unidades de medida ativas ---
   useEffect(() => {
     const fetchUnidades = async () => {
@@ -184,6 +263,13 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
     if (productId) {
       handleGetProduct(productId);
     }
+  }, [productId]);
+
+  useEffect(() => {
+    if (productId) {
+      carregarImagens();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
   if (isLoading) {
@@ -221,6 +307,10 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
               </TabsTrigger>
               <TabsTrigger value="MarketPlace" className={"hover:cursor-pointer" + tabTheme}>
                 MarketPlace
+              </TabsTrigger>
+
+              <TabsTrigger value="Imagens" className={"hover:cursor-pointer" + tabTheme}>
+                Imagens
               </TabsTrigger>
               <TabsTrigger value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
                 Fiscal
@@ -402,6 +492,114 @@ export default function EditContent({ productId, onAfterSaveProduct }: EditConte
                 </div>
               </div>
             </TabsContent>
+
+            {/* --- Aba: Imagens --- */}
+            <TabsContent
+              value="Imagens"
+              className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+            >
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-6">
+                <div className="space-y-2">
+                  <Label>Adicionar imagens</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      setNovasImagens(files);
+                      setNovasPreview(files.map((f) => URL.createObjectURL(f)));
+                    }}
+                  />
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={novasImagens.length === 0 || subindoImagens}
+                      onClick={enviarImagens}
+                      className="hover:cursor-pointer"
+                    >
+                      {subindoImagens ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Enviar imagens
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {novasPreview.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {novasPreview.map((src, idx) => (
+                      <div key={idx} className="aspect-square rounded-md border overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt={`preview-${idx}`} className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Imagens cadastradas</Label>
+                    {carregandoImagens && <span className="text-xs text-muted-foreground">Carregando...</span>}
+                  </div>
+
+                  {!carregandoImagens && imagens.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma imagem cadastrada.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {imagens.map((img) => {
+                        const imgUrlPrincipal = (selectedProduct as any)?.imgUrl as string | null | undefined;
+                        const ehPrincipal = !!imgUrlPrincipal && imgUrlPrincipal === img.url;
+
+                        return (
+                          <div key={img.id} className="rounded-md border overflow-hidden">
+                            <div className="aspect-square">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={img.url} alt={`img-${img.id}`} className="h-full w-full object-cover" />
+                            </div>
+
+                            <div className="p-2 flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={ehPrincipal ? "default" : "outline"}
+                                onClick={() => definirImagemPrincipal(img.id)}
+                                disabled={ehPrincipal}
+                                className="hover:cursor-pointer"
+                              >
+                                {ehPrincipal ? "Principal" : "Definir"}
+                              </Button>
+
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => removerImagem(img.id)}
+                                className="hover:cursor-pointer"
+                              >
+                                Remover
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
             {/* --- Aba: Fiscal --- */}
             <TabsContent
               value="Fiscal"

@@ -71,7 +71,7 @@ export default function ServiceOrdersDashboard({
     return `${insightsEndpoint}?${params.toString()}`;
   }, [insightsEndpoint, dataInicio, dataFim]);
 
-  const { data, loading, error, refetch, animKey } = useInsights(endpointComFiltro, autoRefreshMs);
+  const { data, loading, error, refetch } = useInsights(endpointComFiltro, autoRefreshMs);
 
   const textoPeriodo =
     dataInicio && dataFim

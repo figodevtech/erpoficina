@@ -10,9 +10,9 @@ type ProductStatus = "OK" | "CRITICO" | "BAIXO" | "TODOS";
 type Props = {
   search?: string | null;
   status?: ProductStatus;
-  chunk?: number;        // opcional: para ajustar o bloco no servidor
+  chunk?: number; // opcional: para ajustar o bloco no servidor
   className?: string;
-  filename?: string;     // opcional: força o nome do arquivo
+  filename?: string; // opcional: força o nome do arquivo
 };
 
 export function ExportProductsButton({

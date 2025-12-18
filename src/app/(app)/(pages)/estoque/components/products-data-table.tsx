@@ -1,21 +1,8 @@
 "use client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertTriangle,
   Clock,
@@ -33,18 +20,8 @@ import {
   Plus,
   FileText,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Estoque_status, Pagination, Produto } from "../types";
 import { ProductDialog } from "./productDialog/productDialog";
 import DeleteAlert from "./deleteAlert";
@@ -52,11 +29,7 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ExportProductsButton } from "./exportProductsButton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import EntradaDialog from "./entradaDialog/entradaDialog";
 
 import EntradaFiscalDialog from "./entradaDialog/entradaFiscalDialog";
@@ -66,12 +39,7 @@ interface ProductsDataTableProps {
   products: Produto[];
   pagination: Pagination;
   search: string;
-  handleGetProducts: (
-    pageNumber?: number,
-    limit?: number,
-    search?: string,
-    status?: Estoque_status
-  ) => void;
+  handleGetProducts: (pageNumber?: number, limit?: number, search?: string, status?: Estoque_status) => void;
   fetchStatusCounts: () => void;
   status: Estoque_status;
 
@@ -96,10 +64,7 @@ const getStatusBadge = (status: Estoque_status | undefined) => {
   }
   if (status === "BAIXO") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-yellow-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-yellow-600 not-dark:text-white">
         <Clock className="h-3 w-3 mr-1" />
         Baixo
       </Badge>
@@ -107,10 +72,7 @@ const getStatusBadge = (status: Estoque_status | undefined) => {
   }
   if (status === "SEM_ESTOQUE") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-purple-800 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-purple-800 not-dark:text-white">
         <CircleOff className="h-3 w-3 mr-1" />
         Sem Estoque
       </Badge>
@@ -180,21 +142,13 @@ export default function ProductsDataTable({
             <CardDescription>
               <button
                 onClick={() => {
-                  handleGetProducts(
-                    pagination.page,
-                    pagination.limit,
-                    search,
-                    status
-                  );
+                  handleGetProducts(pagination.page, pagination.limit, search, status);
                   fetchStatusCounts();
                 }}
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
               >
                 <span>Recarregar</span>
-                <Loader2
-                  width={12}
-                  className={isLoading ? "animate-spin" : ""}
-                />
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
               </button>
             </CardDescription>
           </div>
@@ -209,10 +163,7 @@ export default function ProductsDataTable({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="space-y-1">
-                <Button
-                  className="hover:cursor-pointer w-full text-xs"
-                  onClick={() => setIsOpen(true)}
-                >
+                <Button className="hover:cursor-pointer w-full text-xs" onClick={() => setIsOpen(true)}>
                   <Plus /> Novo Produto
                 </Button>
 
@@ -273,7 +224,6 @@ export default function ProductsDataTable({
 
           <TableBody>
             {products.map((p) => {
-
               return (
                 <TableRow
                   onDoubleClick={() => setSelectedProductId?.(p.id)}
@@ -291,9 +241,7 @@ export default function ProductsDataTable({
                               <TooltipTrigger asChild>
                                 <Store className="w-4 h-4 text-primary/80 not-dark:text-primary" />
                               </TooltipTrigger>
-                              <TooltipContent>
-                                Exibindo no Marketplace
-                              </TooltipContent>
+                              <TooltipContent>Exibindo no Marketplace</TooltipContent>
                             </Tooltip>
                           )}
                         </div>
@@ -302,25 +250,17 @@ export default function ProductsDataTable({
                           {p.fabricante ? ` • ${p.fabricante}` : "-"}
                         </p>
                         {p.codigobarras && (
-                          <p className="text-xs text-muted-foreground">
-                            CODIGOBARRAS: {p.codigobarras || "-"}
-                          </p>
+                          <p className="text-xs text-muted-foreground">CODIGOBARRAS: {p.codigobarras || "-"}</p>
                         )}
                       </div>
                     </div>
                   </TableCell>
 
-                  <TableCell className="font-mono text-xs">
-                    {p.referencia || "-"}
-                  </TableCell>
+                  <TableCell className="font-mono text-xs">{p.referencia || "-"}</TableCell>
                   <TableCell>{p.fabricante || "-"}</TableCell>
 
-                  <TableCell className="font-medium">
-                    {p.estoque ?? 0}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {p.estoqueminimo ?? 0}
-                  </TableCell>
+                  <TableCell className="font-medium">{p.estoque ?? 0}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.estoqueminimo ?? 0}</TableCell>
 
                   <TableCell>{getStatusBadge(p.status_estoque)}</TableCell>
 
@@ -334,10 +274,7 @@ export default function ProductsDataTable({
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -396,16 +333,9 @@ export default function ProductsDataTable({
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
-            <span>
-              {pagination.limit * (pagination.page - 1) +
-                (pagination.pageCount || 0)}
-            </span>
+            <span>{pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0)}</span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
-            <Loader
-              className={`w-4 h-full animate-spin transition-all opacity-0 ${
-                isLoading && "opacity-100"
-              }`}
-            />
+            <Loader className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`} />
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
@@ -413,9 +343,7 @@ export default function ProductsDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetProducts(1, pagination.limit, search, status)
-              }
+              onClick={() => handleGetProducts(1, pagination.limit, search, status)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -424,14 +352,7 @@ export default function ProductsDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetProducts(
-                  pagination.page - 1,
-                  pagination.limit,
-                  search,
-                  status
-                )
-              }
+              onClick={() => handleGetProducts(pagination.page - 1, pagination.limit, search, status)}
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -443,18 +364,8 @@ export default function ProductsDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleGetProducts(
-                  pagination.page + 1,
-                  pagination.limit,
-                  search,
-                  status
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetProducts(pagination.page + 1, pagination.limit, search, status)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
@@ -462,18 +373,8 @@ export default function ProductsDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleGetProducts(
-                  pagination.totalPages,
-                  pagination.limit,
-                  search,
-                  status
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetProducts(pagination.totalPages, pagination.limit, search, status)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
