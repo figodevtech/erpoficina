@@ -3,14 +3,10 @@
 import { useEffect, useState } from "react";
 import { Produto, Pagination, Estoque_status } from "./types";
 import axios from "axios";
-import useStatusCounter from "./hooks/status-counter";
-
-// ❌ Removido: header local
-// import Header from "./components/header";
-
+import useContadorStatus from "./hooks/contador-status";
 import Cards from "./components/cards";
-import SearchFilter from "./components/searchFilter";
-import ProductsDataTable from "./components/products-data-table";
+import FiltroPesquisa from "./components/filtro-pesquisa";
+import TabelaProdutos from "./components/tabela-produtos";
 
 export default function EstoquePage() {
   const [status, setStatus] = useState<Estoque_status>(Estoque_status.TODOS);
@@ -23,7 +19,7 @@ export default function EstoquePage() {
     loadingStatusCounter,
     totalProducts,
     fetchStatusCounts,
-  } = useStatusCounter();
+  } = useContadorStatus();
 
   const [isOpen, setIsOpen] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
@@ -90,14 +86,14 @@ export default function EstoquePage() {
         totalProducts={totalProducts}
       />
 
-      <SearchFilter
+      <FiltroPesquisa
         search={search}
         setSearch={setSearch}
         setStatus={setStatus}
         status={status}
       />
 
-      <ProductsDataTable
+      <TabelaProdutos
         // paginação/busca
         pagination={pagination}
         search={search}

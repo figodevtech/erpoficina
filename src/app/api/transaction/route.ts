@@ -1,5 +1,3 @@
-// src/app/api/v1/transacoes/route.ts
-
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -20,8 +18,8 @@ const WRITABLE_FIELDS = new Set([
   "nomepagador",
   "cpfcnpjpagador",
   "pendente",
-  
 ]);
+
 const FORTALEZA_OFFSET = "-03:00";
 
 // Converte "YYYY-MM-DD" 00:00 (Fortaleza) -> ISO UTC
@@ -33,7 +31,7 @@ function localDayStartToUtcIso(dateStr: string) {
 function localNextDayStartToUtcIso(dateStr: string) {
   const d = new Date(`${dateStr}T00:00:00${FORTALEZA_OFFSET}`);
   return new Date(d.getTime() + 24 * 60 * 60 * 1000).toISOString();
-} 
+}
 
 /** Campos retornados no select padrão (transacao) */
 const TRANSACAO_FIELDS =
@@ -59,6 +57,14 @@ function toDateISOStringOrNull(v: any) {
   if (v == null || (typeof v === "string" && v.trim() === "")) return null;
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function parseBooleanParam(v: string | null): boolean | null {
+  if (v == null) return null;
+  const s = v.trim().toLowerCase();
+  if (s === "true" || s === "1" || s === "yes") return true;
+  if (s === "false" || s === "0" || s === "no") return false;
+  return null;
 }
 
 /**
@@ -96,6 +102,11 @@ function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
         out[key] = toDateISOStringOrNull(body[key]);
         break;
       }
+      case "pendente": {
+        const pb = parseBooleanParam(String(body[key]));
+        out[key] = pb ?? body[key]; // mantém compatibilidade se vier boolean já tipado
+        break;
+      }
       default: {
         out[key] = toNullIfEmpty(body[key]);
       }
@@ -103,15 +114,7 @@ function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
   }
 
   if (strict) {
-    const required = [
-      "descricao",
-      "valor",
-      "data",
-      "metodopagamento",
-      "categoria",
-      "tipo",
-      "banco_id",
-    ];
+    const required = ["descricao", "valor", "data", "metodopagamento", "categoria", "tipo", "banco_id"];
     const missing = required.filter((k) => out[k] == null);
     if (missing.length) {
       throw new Error(`Campos obrigatórios ausentes: ${missing.join(", ")}`);
@@ -132,26 +135,25 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
-    const limitRaw =
-      searchParams.get("limit") ?? searchParams.get("pageSize") ?? "20";
-    const limit = Math.min(Math.max(Number(limitRaw), 1), 100);
 
-    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "")
-      .trim()
-      .slice(0, 200);
+    const limitRaw = searchParams.get("limit") ?? searchParams.get("pageSize") ?? "20";
+    // ✅ permite o dashboard pedir 1000
+    const limit = Math.min(Math.max(Number(limitRaw), 1), 1000);
+
+    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "").trim().slice(0, 200);
 
     // Filtros opcionais
-    const tipo = (searchParams.get("tipo") ?? "").trim(); // public.tipos_transacao
-    const categoria = (searchParams.get("categoria") ?? "").trim(); // public.categoria_transacao
-    const ordemservicoid = (searchParams.get("ordemservicoid"))
-    const vendaid = (searchParams.get("vendaid"))
-    const metodo = (searchParams.get("metodo") ??
-      searchParams.get("metodopagamento") ??
-      ""
-    ).trim(); // public.metodo_pagamento
+    const tipo = (searchParams.get("tipo") ?? "").trim();
+    const categoria = (searchParams.get("categoria") ?? "").trim();
+    const ordemservicoid = searchParams.get("ordemservicoid");
+    const vendaid = searchParams.get("vendaid");
+
+    const metodo = (searchParams.get("metodo") ?? searchParams.get("metodopagamento") ?? "").trim();
     const bancoId = toNumberOrNull(searchParams.get("bancoId"));
     const clienteId = toNumberOrNull(searchParams.get("clienteId"));
-    const pendente = (searchParams.get("pendente"))
+
+    // ✅ pendente boolean real
+    const pendenteBool = parseBooleanParam(searchParams.get("pendente"));
 
     // Intervalo de datas (inclusive)
     const dateFrom = searchParams.get("dateFrom");
@@ -160,7 +162,6 @@ export async function GET(req: Request) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    // 🔹 Inclui o join do banco via FK explícita
     let query = supabaseAdmin
       .from("transacao")
       .select(
@@ -174,24 +175,20 @@ export async function GET(req: Request) {
       .order("id", { ascending: false })
       .range(from, to);
 
-    if (q) {
-      query = query.ilike("descricao", `%${q}%`);
-    }
-    if(ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
-    if(vendaid) query = query.eq("vendaid", vendaid);
+    if (q) query = query.ilike("descricao", `%${q}%`);
+    if (ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
+    if (vendaid) query = query.eq("vendaid", vendaid);
     if (tipo) query = query.eq("tipo", tipo);
     if (categoria) query = query.eq("categoria", categoria);
     if (metodo) query = query.eq("metodopagamento", metodo);
     if (bancoId != null) query = query.eq("banco_id", bancoId);
     if (clienteId != null) query = query.eq("cliente_id", clienteId);
-    if (pendente) query = query.eq("pendente", pendente)
-    if (dateFrom) {
-  query = query.gte("data", localDayStartToUtcIso(dateFrom));
-}
-if (dateTo) {
-  // intervalo semiaberto: < início do dia seguinte
-  query = query.lt("data", localNextDayStartToUtcIso(dateTo));
-}
+
+    // ✅ agora funciona com pendente=false
+    if (pendenteBool !== null) query = query.eq("pendente", pendenteBool);
+
+    if (dateFrom) query = query.gte("data", localDayStartToUtcIso(dateFrom));
+    if (dateTo) query = query.lt("data", localNextDayStartToUtcIso(dateTo));
 
     const { data, error, count } = await query;
     if (error) throw error;
@@ -200,8 +197,6 @@ if (dateTo) {
     const total = count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const pageCount = items.length;
-    const hasPrevPage = page > 1;
-    const hasNextPage = page * limit < total;
 
     return NextResponse.json({
       data: items,
@@ -211,8 +206,8 @@ if (dateTo) {
         limit,
         totalPages,
         pageCount,
-        hasPrevPage,
-        hasNextPage,
+        hasPrevPage: page > 1,
+        hasNextPage: page * limit < total,
       },
       filters: {
         search: q,
@@ -221,16 +216,13 @@ if (dateTo) {
         metodopagamento: metodo || null,
         bancoId: bancoId ?? null,
         clienteId: clienteId ?? null,
-        pendente: pendente ?? null,
+        pendente: pendenteBool,
         dateFrom: dateFrom ?? null,
         dateTo: dateTo ?? null,
       },
     });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "Erro ao listar transações" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message || "Erro ao listar transações" }, { status: 500 });
   }
 }
 
@@ -239,24 +231,16 @@ if (dateTo) {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as any;
-    console.log(body)
+
     // Aceita payload bruto ou { newTransaction: {...} }
-    const json =
-      body?.newTransaction && typeof body.newTransaction === "object"
-        ? body.newTransaction
-        : body;
+    const json = body?.newTransaction && typeof body.newTransaction === "object" ? body.newTransaction : body;
 
     if (!json || typeof json !== "object") {
-      return NextResponse.json(
-        { error: "Corpo da requisição inválido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
     }
-
 
     const payload = sanitizeTransacaoPayload(json, { strict: true });
 
-    // 🔹 Após inserir, já retorna com o banco relacionado
     const { data, error } = await supabaseAdmin
       .from("transacao")
       .insert(payload)
@@ -269,14 +253,12 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      // 23503 = foreign_key_violation (banco_id / cliente_id)
       if ((error as any).code === "23503") {
-        const msg =
-          (error as any).message ??
-          "Violação de chave estrangeira. Verifique banco_id e cliente_id.";
+        const msg = (error as any).message ?? "Violação de chave estrangeira. Verifique banco_id e cliente_id.";
         const detail = (error as any).details || (error as any).hint || "";
         const isBanco = /banco/i.test(msg + " " + detail);
         const isCliente = /cliente/i.test(msg + " " + detail);
+
         return NextResponse.json(
           {
             error: isBanco
@@ -288,20 +270,14 @@ export async function POST(req: Request) {
           { status: 409 }
         );
       }
-      return NextResponse.json(
-        { error: (error as any).message ?? "Erro ao criar transação." },
-        { status: 500 }
-      );
+
+      return NextResponse.json({ error: (error as any).message ?? "Erro ao criar transação." }, { status: 500 });
     }
 
     return NextResponse.json({ data, id: data.id }, { status: 201 });
   } catch (e: any) {
-    const msg =
-      e?.message ??
-      "Erro ao criar transação. Verifique os campos obrigatórios e os tipos.";
-    const isBadReq =
-      msg.includes("Campos obrigatórios ausentes") ||
-      msg.toLowerCase().includes("obrigatório");
+    const msg = e?.message ?? "Erro ao criar transação. Verifique os campos obrigatórios e os tipos.";
+    const isBadReq = msg.includes("Campos obrigatórios ausentes") || msg.toLowerCase().includes("obrigatório");
     return NextResponse.json({ error: msg }, { status: isBadReq ? 400 : 500 });
   }
 }
