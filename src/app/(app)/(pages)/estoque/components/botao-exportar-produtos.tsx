@@ -15,7 +15,7 @@ type Props = {
   filename?: string; // opcional: força o nome do arquivo
 };
 
-export function ExportProductsButton({
+export function BotaoExportarProdutos({
   search,
   status = "TODOS",
   chunk,

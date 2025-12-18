@@ -6,14 +6,14 @@ import { toast } from "sonner";
 import { NF } from "./types";
 
 
-interface BotaoNfProps {
+interface BotaoNotaFiscalProps {
   setParsed: (parsed: NF | null) => void;
     file: File | undefined;
     setFile: (file: File | undefined) => void;
 
 }
 
-export default function BotaoNf({ setParsed, file, setFile }: BotaoNfProps) {
+export default function BotaoNotaFiscal({ setParsed, file, setFile }: BotaoNotaFiscalProps) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 

@@ -3,13 +3,12 @@
 import { useState, useEffect, type ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 
-interface ValueInputProps {
+interface ValorEntradaProps {
   setPrice: (value: number) => void;
   price?: number ;
 }
 
-export default function ValueInput({ setPrice, price }: ValueInputProps) {
-  // Apenas dígitos (centavos)
+export default function ValorEntrada({ setPrice, price }: ValorEntradaProps) {
   const [digits, setDigits] = useState<string>("");
 
   // Formata BRL a partir dos dígitos

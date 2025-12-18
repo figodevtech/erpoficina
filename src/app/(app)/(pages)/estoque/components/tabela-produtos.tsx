@@ -1,4 +1,5 @@
 "use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,20 +22,26 @@ import {
   FileText,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+
 import { Estoque_status, Pagination, Produto } from "../types";
-import { ProductDialog } from "./productDialog/productDialog";
-import DeleteAlert from "./deleteAlert";
+import { DialogProduto } from "./dialog-produto/dialog-produto";
+import AlertaExcluir from "./alerta-excluir";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { useState } from "react";
-import { ExportProductsButton } from "./exportProductsButton";
+import { useMemo, useState } from "react";
+import { BotaoExportarProdutos } from "./botao-exportar-produtos";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import EntradaDialog from "./entradaDialog/entradaDialog";
 
-import EntradaFiscalDialog from "./entradaDialog/entradaFiscalDialog";
+import EntradaDialog from "./dialog-entrada/dialog-entrada";
+import EntradaFiscalDialog from "./dialog-entrada/dialog-entrada-fiscal";
 
-interface ProductsDataTableProps {
+interface TabelaProdutosProps {
   isLoading: boolean;
   products: Produto[];
   pagination: Pagination;
@@ -43,7 +50,6 @@ interface ProductsDataTableProps {
   fetchStatusCounts: () => void;
   status: Estoque_status;
 
-  // ✅ para edição via duplo clique (controlado no pai)
   selectedProductId?: number | undefined;
   setSelectedProductId?: (value: number | undefined) => void;
   isOpen: boolean;
@@ -51,9 +57,8 @@ interface ProductsDataTableProps {
 }
 
 const getStatusBadge = (status: Estoque_status | undefined) => {
-  if (!status) {
-    return;
-  }
+  if (!status) return null;
+
   if (status === "CRITICO") {
     return (
       <Badge variant="destructive" className="text-xs">
@@ -85,7 +90,7 @@ const getStatusBadge = (status: Estoque_status | undefined) => {
   );
 };
 
-export default function ProductsDataTable({
+export default function TabelaProdutos({
   isLoading,
   products,
   pagination,
@@ -97,11 +102,60 @@ export default function ProductsDataTable({
   setSelectedProductId,
   isOpen,
   setIsOpen,
-}: ProductsDataTableProps) {
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isEntradaOpen, setIsEntradaOpen] = useState(false);
-  const [isEntradaOpenFiscal, setIsEntradaOpenFiscal] = useState(false);
-  const [, setIsDeleting] = useState(false);
+}: TabelaProdutosProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // ✅ Dialogs controlados por estado
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const [entradaOpen, setEntradaOpen] = useState(false);
+  const [entradaProduto, setEntradaProduto] = useState<{
+    id: number;
+    titulo: string;
+    estoque: number;
+  } | null>(null);
+
+  const [entradaFiscalOpen, setEntradaFiscalOpen] = useState(false);
+
+  const abrirNovoProduto = () => {
+    setSelectedProductId?.(undefined);
+    setIsOpen(true);
+  };
+
+  // ✅ aceita id opcional e faz guard (remove erro TS)
+  const abrirEdicaoProduto = (id?: number) => {
+    if (!id) {
+      toast.error("Produto sem ID válido para editar.");
+      return;
+    }
+    setSelectedProductId?.(id);
+    setIsOpen(true);
+  };
+
+  // ✅ guard do id
+  const abrirEntrada = (p: Produto) => {
+    if (!p.id) {
+      toast.error("Produto sem ID válido para entrada.");
+      return;
+    }
+    setEntradaProduto({
+      id: p.id,
+      titulo: p.titulo || "",
+      estoque: p.estoque ?? 0,
+    });
+    setEntradaOpen(true);
+  };
+
+  // ✅ aceita id opcional e faz guard
+  const abrirExcluir = (id?: number) => {
+    if (!id) {
+      toast.error("Produto sem ID válido para excluir.");
+      return;
+    }
+    setDeleteId(id);
+    setDeleteOpen(true);
+  };
 
   const handleDeleteProduct = async (id: number) => {
     setIsDeleting(true);
@@ -111,6 +165,7 @@ export default function ProductsDataTable({
         <span className="text-nowrap">Deletando produto...</span>
       </div>
     );
+
     try {
       const response = await axios.delete(`/api/products/${id}`, {});
       if (response.status === 204) {
@@ -122,19 +177,23 @@ export default function ProductsDataTable({
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast.error("Error", {
-          description: error.response?.data.error,
-        });
+        toast.error("Error", { description: error.response?.data.error });
       }
     } finally {
       setIsDeleting(false);
-      setIsAlertOpen(false);
+      setDeleteOpen(false);
+      setDeleteId(null);
     }
   };
 
+  const rangeText = useMemo(() => {
+    const start = pagination.limit * (pagination.page - 1) + 1;
+    const end = pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0);
+    return { start, end };
+  }, [pagination]);
+
   return (
     <Card>
-      {/* Cabeçalho da tabela com botão Novo Produto no canto superior direito */}
       <CardHeader className="border-b-2 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -153,44 +212,45 @@ export default function ProductsDataTable({
             </CardDescription>
           </div>
 
-          {/* 👉 Botão “Novo Produto” movido para cá */}
           <div className="flex items-center gap-2">
-            <ExportProductsButton />
+            <BotaoExportarProdutos />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant={"outline"} className="hover:cursor-pointer">
-                  Ações <ChevronDown />
+                  Ações <ChevronDown className="ml-1 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="space-y-1">
-                <Button className="hover:cursor-pointer w-full text-xs" onClick={() => setIsOpen(true)}>
-                  <Plus /> Novo Produto
-                </Button>
 
-                <EntradaFiscalDialog
-                  handleGetProducts={handleGetProducts}
-                  isOpen={isEntradaOpenFiscal}
-                  setIsOpen={setIsEntradaOpenFiscal}
-                >
-                  <Button
-                    variant={"outline"}
-                    className="flex justify-start text-xs px-0 rounded-sm py-2 hover:cursor-pointer"
-                  >
-                    <FileText className="-ml-1 -mr-1 h-4 w-4" />
-                    <span>Entrada Fiscal (NF-e)</span>
-                  </Button>
-                </EntradaFiscalDialog>
+              {/* ✅ DropdownMenuItem no lugar de Button */}
+              <DropdownMenuContent align="center">
+                <DropdownMenuItem onClick={abrirNovoProduto} className="cursor-pointer">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Produto
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => setEntradaFiscalOpen(true)} className="cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Entrada Fiscal (NF-e)
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        {/* ✅ Dialog controlado para edição (abre no duplo clique) */}
-        <ProductDialog
+        {/* ✅ 1 ÚNICO dialog de produto */}
+        <DialogProduto
           setSelectedProductId={setSelectedProductId}
           productId={selectedProductId}
           isOpen={isOpen}
           setIsOpen={setIsOpen}
+        />
+
+        {/* ✅ Entrada Fiscal (1 instância) */}
+        <EntradaFiscalDialog
+          handleGetProducts={handleGetProducts}
+          isOpen={entradaFiscalOpen}
+          setIsOpen={setEntradaFiscalOpen}
         />
       </CardHeader>
 
@@ -201,10 +261,10 @@ export default function ProductsDataTable({
           } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
               isLoading && "animate-slideIn "
-            } `}
-          ></div>
+            }`}
+          />
         </div>
 
         <Table className="mt-6">
@@ -223,14 +283,18 @@ export default function ProductsDataTable({
           </TableHeader>
 
           <TableBody>
-            {products.map((p) => {
+            {products.map((p, idx) => {
+              const id = typeof p.id === "number" ? p.id : undefined;
+              const canAct = !!id;
+
               return (
                 <TableRow
-                  onDoubleClick={() => setSelectedProductId?.(p.id)}
-                  key={p.id}
+                  key={id ?? `row-${idx}`}
+                  onDoubleClick={() => abrirEdicaoProduto(id)}
                   className="hover:cursor-pointer"
                 >
-                  <TableCell>{p.id}</TableCell>
+                  <TableCell>{id ?? "-"}</TableCell>
+
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div>
@@ -266,9 +330,7 @@ export default function ProductsDataTable({
 
                   <TableCell>
                     R{"$ "}
-                    {p.precovenda?.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
+                    {p.precovenda?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </TableCell>
 
                   <TableCell>
@@ -278,49 +340,23 @@ export default function ProductsDataTable({
                           <ChevronDown className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="space-y-1">
-                        <ProductDialog productId={p.id}>
-                          <Button
-                            variant={"ghost"}
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
-                          >
-                            <Edit className="-ml-1 -mr-1 h-4 w-4" />
-                            <span>Editar</span>
-                          </Button>
-                        </ProductDialog>
 
-                        <EntradaDialog
-                          handleGetProducts={handleGetProducts}
-                          status={status}
-                          search={search}
-                          isOpen={isEntradaOpen}
-                          setIsOpen={setIsEntradaOpen}
-                          currentQuantity={p.estoque || 0}
-                          productDescription={p.titulo || ""}
-                          productId={p.id}
-                        >
-                          <Button
-                            variant={"default"}
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer not-dark:text-gray-800  bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
-                          >
-                            <Plus className="-ml-1 -mr-1 h-4 w-4" />
-                            <span>Entrada</span>
-                          </Button>
-                        </EntradaDialog>
-                        <DeleteAlert
-                          handleDeleteProduct={handleDeleteProduct}
-                          isAlertOpen={isAlertOpen}
-                          setIsAlertOpen={setIsAlertOpen}
-                          idToDelete={p.id}
-                        >
-                          <Button
-                            variant={"default"}
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer not-dark:text-gray-800 bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
-                          >
-                            <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
-                            <span>Excluir</span>
-                          </Button>
-                        </DeleteAlert>
+                      {/* ✅ DropdownMenuItem no lugar de Button */}
+                      <DropdownMenuContent align="center">
+                        <DropdownMenuItem disabled={!canAct} onClick={() => abrirEdicaoProduto(id)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem disabled={!canAct} onClick={() => abrirEntrada(p)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Entrada
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem disabled={!canAct || isDeleting} onClick={() => abrirExcluir(id)}>
+                          <Trash2Icon className="mr-2 h-4 w-4" />
+                          Excluir
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -330,10 +366,10 @@ export default function ProductsDataTable({
           </TableBody>
         </Table>
 
+        {/* Rodapé */}
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
-            <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
-            <span>{pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0)}</span>
+            <span>{rangeText.start}</span> - <span>{rangeText.end}</span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
             <Loader className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`} />
           </div>
@@ -393,6 +429,36 @@ export default function ProductsDataTable({
             </Select>
           </div>
         </div>
+
+        {/* ✅ 1 ÚNICO dialog de Entrada */}
+        {entradaProduto && (
+          <EntradaDialog
+            handleGetProducts={handleGetProducts}
+            status={status}
+            search={search}
+            isOpen={entradaOpen}
+            setIsOpen={(v) => {
+              setEntradaOpen(v);
+              if (!v) setEntradaProduto(null);
+            }}
+            currentQuantity={entradaProduto.estoque}
+            productDescription={entradaProduto.titulo}
+            productId={entradaProduto.id}
+          />
+        )}
+
+        {/* ✅ 1 ÚNICO dialog de Delete */}
+        {deleteId != null && (
+          <AlertaExcluir
+            handleDeleteProduct={handleDeleteProduct}
+            isAlertOpen={deleteOpen}
+            setIsAlertOpen={(v) => {
+              setDeleteOpen(v);
+              if (!v) setDeleteId(null);
+            }}
+            idToDelete={deleteId}
+          />
+        )}
       </CardContent>
     </Card>
   );

@@ -23,22 +23,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import ValueInput from "../productDialog/valueInput";
+import ValueInput from "../dialog-produto/entrada-valor";
 import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
 import { Estoque_status, Fornecedor, Pagination } from "../../types";
 
-
-interface EntradaDialogProps {
+interface DialogEntradaProps {
   children?: React.ReactNode;
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
@@ -46,17 +39,12 @@ interface EntradaDialogProps {
   productDescription: string;
   currentQuantity: number;
   search?: string;
-  handleGetProducts?: (
-    pageNumber?: number,
-    limit?: number,
-    search?: string,
-    status?: Estoque_status
-  ) => void;
+  handleGetProducts?: (pageNumber?: number, limit?: number, search?: string, status?: Estoque_status) => void;
   paginantion?: Pagination;
   status?: Estoque_status;
 }
 
-export default function EntradaDialog({
+export default function DialogEntrada({
   children,
   isOpen,
   setIsOpen,
@@ -67,16 +55,14 @@ export default function EntradaDialog({
   paginantion,
   search,
   status,
-}: EntradaDialogProps) {
+}: DialogEntradaProps) {
   const [newQtd, setNewQtd] = useState(0);
   const [value, setValue] = useState(0);
   const isMobile = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingFornecedor, setIsLoadingFornecedor] = useState(false);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [selectedFornecedorId, setSelectedFornecedorId] = useState<
-    number | undefined
-  >(undefined);
+  const [selectedFornecedorId, setSelectedFornecedorId] = useState<number | undefined>(undefined);
 
   const handleGetFornecedores = async () => {
     setIsLoadingFornecedor(true);
@@ -98,9 +84,7 @@ export default function EntradaDialog({
   const handleCreateEntrada = async () => {
     setIsSubmitting(true);
     if (!newQtd) {
-      toast.error(
-        "Insira uma quantidade maior que zero para realizar a entrada"
-      );
+      toast.error("Insira uma quantidade maior que zero para realizar a entrada");
       setIsSubmitting(false);
       return;
     }
@@ -119,12 +103,7 @@ export default function EntradaDialog({
           duration: 2000,
         });
         setIsOpen?.(false);
-        handleGetProducts?.(
-          paginantion?.page,
-          paginantion?.limit,
-          search,
-          status
-        );
+        handleGetProducts?.(paginantion?.page, paginantion?.limit, search, status);
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -169,7 +148,6 @@ export default function EntradaDialog({
             </DrawerHeader>
 
             <div className="p-4 space-y-4 relative">
-    
               <div className="space-y-2">
                 <Label>Quantidade:</Label>
                 <Input
@@ -193,19 +171,11 @@ export default function EntradaDialog({
                   onValueChange={(v) => setSelectedFornecedorId(Number(v))}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        isLoadingFornecedor ? "Carregando..." : "Selecione"
-                      }
-                    />
+                    <SelectValue placeholder={isLoadingFornecedor ? "Carregando..." : "Selecione"} />
                   </SelectTrigger>
                   <SelectContent>
                     {fornecedores.map((f) => (
-                      <SelectItem
-                        className="hover:cursor-pointer"
-                        key={f.id}
-                        value={f.id.toString()}
-                      >
+                      <SelectItem className="hover:cursor-pointer" key={f.id} value={f.id.toString()}>
                         {f.nomerazaosocial}
                       </SelectItem>
                     ))}
@@ -215,11 +185,7 @@ export default function EntradaDialog({
             </div>
 
             <DrawerFooter className="flex flex-row gap-2 items-center justify-center">
-              <Button
-                onClick={handleCreateEntrada}
-                className="hover:cursor-pointer"
-                disabled={isSubmitting}
-              >
+              <Button onClick={handleCreateEntrada} className="hover:cursor-pointer" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     {" "}
@@ -230,11 +196,7 @@ export default function EntradaDialog({
                 )}
               </Button>
               <DrawerClose asChild>
-                <Button
-                  disabled={isSubmitting}
-                  className="hover:cursor-pointer"
-                  variant="outline"
-                >
+                <Button disabled={isSubmitting} className="hover:cursor-pointer" variant="outline">
                   Cancelar
                 </Button>
               </DrawerClose>
@@ -260,10 +222,7 @@ export default function EntradaDialog({
         }}
       >
         <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent
-          className="p-0 overflow-hidden h-[600px]"
-          onDoubleClick={(e) => e.stopPropagation()}
-        >
+        <DialogContent className="p-0 overflow-hidden h-[600px]" onDoubleClick={(e) => e.stopPropagation()}>
           <div className="flex h-full min-h-0 flex-col">
             <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
               <DialogTitle>Entrada de produto</DialogTitle>
@@ -273,7 +232,6 @@ export default function EntradaDialog({
               </DialogDescription>
             </DialogHeader>
             <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 bg-muted px-6 py-10 space-y-2 relative">
-
               <div className="h-full min-h-0 rounded-md px-4 py-8 space-y-4">
                 <div className="space-y-2">
                   <Label>Quantidade:</Label>
@@ -296,36 +254,23 @@ export default function EntradaDialog({
                     onValueChange={(v) => setSelectedFornecedorId(Number(v))}
                   >
                     <SelectTrigger className="w-full not-dark:bg-white">
-                      <SelectValue
-                        placeholder={
-                          isLoadingFornecedor ? "Carregando..." : "Selecione"
-                        }
-                      />
+                      <SelectValue placeholder={isLoadingFornecedor ? "Carregando..." : "Selecione"} />
                     </SelectTrigger>
                     <SelectContent>
                       {fornecedores.map((f) => (
-                        <SelectItem
-                          className="hover:cursor-pointer"
-                          key={f.id}
-                          value={f.id.toString()}
-                        >
+                        <SelectItem className="hover:cursor-pointer" key={f.id} value={f.id.toString()}>
                           {f.nomerazaosocial}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-               
               </div>
             </div>
 
             <DialogFooter className="px-6 py-4">
               <div className="flex sm:flex-row gap-3 sm:gap-4">
-                <Button
-                  onClick={handleCreateEntrada}
-                  className="hover:cursor-pointer"
-                  disabled={isSubmitting}
-                >
+                <Button onClick={handleCreateEntrada} className="hover:cursor-pointer" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       {" "}
@@ -336,11 +281,7 @@ export default function EntradaDialog({
                   )}
                 </Button>
                 <DialogClose asChild>
-                  <Button
-                    disabled={isSubmitting}
-                    className="hover:cursor-pointer"
-                    variant="outline"
-                  >
+                  <Button disabled={isSubmitting} className="hover:cursor-pointer" variant="outline">
                     Cancelar
                   </Button>
                 </DialogClose>

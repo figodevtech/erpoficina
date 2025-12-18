@@ -1,13 +1,15 @@
+// ProductDialog.tsx
 "use client";
 
 import type React from "react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import RegisterContent from "./registerContent";
+import CadastroProduto from "./cadastro-produto";
+import EdicaoProduto from "./edicao-produto";
 import { ReactNode, useState } from "react";
 import { Estoque_status, Produto, Unidade_medida } from "../../types";
-import EditContent from "./editContent";
 
-interface ProductDialogProps {
+
+interface DialogProdutoProps {
   productId?: number | undefined;
   children?: ReactNode;
   isOpen?: boolean;
@@ -15,7 +17,6 @@ interface ProductDialogProps {
   setSelectedProductId?: (value: number | undefined) => void;
   newProductData?: Produto | undefined;
   handleSearchFornecedor?: () => void;
-  /** Chamado depois que o produto for salvo (create ou update) */
   onAfterSaveProduct?: () => void;
 }
 
@@ -27,7 +28,7 @@ const initialNewProduct: Produto = {
   fornecedor: "DESCONHECIDO",
 };
 
-export function ProductDialog({
+export function DialogProduto({
   productId,
   children,
   isOpen,
@@ -36,7 +37,7 @@ export function ProductDialog({
   newProductData,
   handleSearchFornecedor,
   onAfterSaveProduct,
-}: ProductDialogProps) {
+}: DialogProdutoProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
@@ -48,13 +49,10 @@ export function ProductDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        // sempre sincroniza o estado (controlado ou interno)
         setOpen(nextOpen);
 
         if (newProductData && nextOpen) {
-          setNewProduct({
-            ...newProductData,
-          });
+          setNewProduct({ ...newProductData });
         }
 
         if (!nextOpen) {
@@ -64,22 +62,20 @@ export function ProductDialog({
         }
       }}
     >
-      <DialogTrigger autoFocus={false} asChild>
-        {children}
-      </DialogTrigger>
+      {children ? (
+        <DialogTrigger autoFocus={false} asChild>
+          {children}
+        </DialogTrigger>
+      ) : null}
+
       {productId ? (
-        <EditContent
-          productId={productId}
-          onAfterSaveProduct={onAfterSaveProduct}
-        />
+        <EdicaoProduto key={productId} productId={productId} onAfterSaveProduct={onAfterSaveProduct} />
       ) : (
-        <RegisterContent
+        <CadastroProduto
           handleSearchFornecedor={handleSearchFornecedor}
           setSelectedProductId={setSelectedProductId}
           newProduct={newProduct}
           setNewProduct={setNewProduct}
-          // se quiser que o "novo produto" também dispare recarregar,
-          // pode usar o mesmo callback:
         />
       )}
     </Dialog>

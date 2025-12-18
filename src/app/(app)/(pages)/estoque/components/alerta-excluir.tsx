@@ -11,20 +11,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ReactNode } from "react";
 
-interface DeleteAlertProps {
+interface AlertaExcluirProps {
   children?: ReactNode;
   handleDeleteProduct: (value: number) => void;
   isAlertOpen: boolean;
   setIsAlertOpen: (value: boolean) => void;
   idToDelete?: number;
 }
-export default function DeleteAlert({
+export default function AlertaExcluir({
   children,
   handleDeleteProduct,
   isAlertOpen,
   setIsAlertOpen,
   idToDelete,
-}: DeleteAlertProps) {
+}: AlertaExcluirProps) {
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>

@@ -3,12 +3,12 @@
 import { useState, useEffect, type ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 
-interface ValueInputProps {
+interface EntradaValorProps {
   setPrice: (value: number) => void;
   price?: number ;
 }
 
-export default function ValueInput({ setPrice, price }: ValueInputProps) {
+export default function EntradaValor({ setPrice, price }: EntradaValorProps) {
   // Apenas dígitos (centavos)
   const [digits, setDigits] = useState<string>("");
 

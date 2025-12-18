@@ -13,7 +13,7 @@ interface SearchFilterProps {
   status: Estoque_status;
 }
 
-export default function SearchFilter({ search, setSearch, setStatus, status }: SearchFilterProps) {
+export default function FiltroPesquisa({ search, setSearch, setStatus, status }: SearchFilterProps) {
   return (
     <Card>
       <CardContent className="pt-6">

@@ -22,7 +22,7 @@ import {
   X,
   PackageSearch,
 } from "lucide-react";
-import { ProductDialog } from "@/app/(app)/(pages)/estoque/components/productDialog/productDialog";
+import { DialogProduto } from "@/app/(app)/(pages)/estoque/components/dialog-produto/dialog-produto";
 
 type OsProdutoParaNfeBase = {
   titulo: string;
@@ -519,7 +519,7 @@ export function GerarNotaDeOsDialog({
                               </span>
                             )}
 
-                            <ProductDialog
+                            <DialogProduto
                               productId={item.produtoId}
                               onAfterSaveProduct={() => {
                                 fetchItensOrigem();
@@ -528,7 +528,7 @@ export function GerarNotaDeOsDialog({
                               <div className="p-1 rounded-full bg-primary/50 hover:bg-primary/90 transition-all hover:cursor-pointer">
                                 <PackageSearch className="w-2.5 h-2.5 " />
                               </div>
-                            </ProductDialog>
+                            </DialogProduto>
 
                             {item.ncm && (
                               <Badge variant="outline" className="text-[10px]">

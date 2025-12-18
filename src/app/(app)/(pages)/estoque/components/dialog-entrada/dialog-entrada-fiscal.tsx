@@ -1,4 +1,3 @@
-// import { useIsMobile } from "@/app/(app)/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -12,27 +11,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import {
-  Loader2,
-  Minus,
-  PackagePlus,
-  Plus,
-  Search,
-  TriangleAlert,
-  UserRoundPlus,
-  X,
-} from "lucide-react";
+import { Loader2, Minus, PackagePlus, Plus, Search, TriangleAlert, UserRoundPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Estoque_status, Pagination } from "../../types";
-import BotaoNf from "./botaoNf";
+import BotaoNf from "./botao-nota-fiscal";
 import { Separator } from "@/components/ui/separator";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { NF } from "./types";
@@ -43,22 +27,12 @@ import ProductSelect from "@/app/(app)/components/productSelect";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import FornecedorDialog from "../../../configuracoes/tipos/components/fornecedorDialog";
-import { ProductDialog } from "../productDialog/productDialog";
+import { DialogProduto } from "../dialog-produto/dialog-produto";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import ValueInput from "../productDialog/valueInput";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Banco,
-  Categoria_transacao,
-  Metodo_pagamento,
-} from "../../../(financeiro)/fluxodecaixa/types";
+import ValueInput from "../dialog-produto/entrada-valor";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Banco, Categoria_transacao, Metodo_pagamento } from "../../../(financeiro)/fluxodecaixa/types";
 import { Label } from "@/components/ui/label";
 
 interface EntradaDialogProps {
@@ -66,12 +40,7 @@ interface EntradaDialogProps {
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
   search?: string;
-  handleGetProducts?: (
-    pageNumber?: number,
-    limit?: number,
-    search?: string,
-    status?: Estoque_status
-  ) => void;
+  handleGetProducts?: (pageNumber?: number, limit?: number, search?: string, status?: Estoque_status) => void;
   paginantion?: Pagination;
   status?: Estoque_status;
 }
@@ -82,32 +51,21 @@ interface Parcela {
   valor?: number;
 }
 
-export default function EntradaFiscalDialog({
-  children,
-  isOpen,
-  setIsOpen,
-}: EntradaDialogProps) {
+export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: EntradaDialogProps) {
   const [parsed, setParsed] = useState<NF | null>(null);
   const [file, setFile] = useState<File | undefined>(undefined);
   const [isSubmiting, setIsSubmiting] = useState(false);
 
   // estados de modais de produto / fornecedor
   const [isProductOpen, setIsProductOpen] = useState<boolean>(false);
-  const [productSelectItemIndex, setProductSelectItemIndex] = useState<
-    number | null
-  >(null);
+  const [productSelectItemIndex, setProductSelectItemIndex] = useState<number | null>(null);
 
   const [isFornecedorOpen, setIsFornecedorOpen] = useState<boolean>(false);
-  const [isLoadingFornecedor, setIsLoadingFornecedor] =
-    useState<boolean>(false);
+  const [isLoadingFornecedor, setIsLoadingFornecedor] = useState<boolean>(false);
 
-  const [selectedProductId, setSelectedProductId] = useState<
-    number | undefined
-  >(undefined);
+  const [selectedProductId, setSelectedProductId] = useState<number | undefined>(undefined);
   const [isProductEditOpen, setIsProductEditOpen] = useState<boolean>(false);
-  const [productDialogItemIndex, setProductDialogItemIndex] = useState<
-    number | null
-  >(null);
+  const [productDialogItemIndex, setProductDialogItemIndex] = useState<number | null>(null);
 
   const [searchingFornecedor, setSearchingFornecedor] = useState(false);
   const [isPagamentoFuturo, setIsPagamentoFuturo] = useState(false);
@@ -118,14 +76,9 @@ export default function EntradaFiscalDialog({
 
   // estados controlados para banco / método / categoria
   const [selectedBankId, setSelectedBankId] = useState<string>("");
-  const [selectedMetodo, setSelectedMetodo] = useState<Metodo_pagamento | "">(
-    ""
-  );
-  const [selectedCategoria, setSelectedCategoria] = useState<
-    Categoria_transacao | ""
-  >("");
+  const [selectedMetodo, setSelectedMetodo] = useState<Metodo_pagamento | "">("");
+  const [selectedCategoria, setSelectedCategoria] = useState<Categoria_transacao | "">("");
 
-  
   const handleGetBanks = async () => {
     setIsLoadingBanks(true);
     try {
@@ -147,9 +100,7 @@ export default function EntradaFiscalDialog({
 
     setIsLoadingFornecedor(true);
     try {
-      const response = await axios.get(
-        `/api/tipos/fornecedores/${parsed.emitente.cnpj}?by=cpfcnpj`
-      );
+      const response = await axios.get(`/api/tipos/fornecedores/${parsed.emitente.cnpj}?by=cpfcnpj`);
       if (response.status === 200) {
         const fornecedorData = response.data.item;
         console.log("Fornecedor encontrado:", fornecedorData);
@@ -181,9 +132,7 @@ export default function EntradaFiscalDialog({
     }
 
     if (parsed.itens.some((item) => !item.produtoReferenciaId)) {
-      toast.error(
-        "Todos os itens devem estar vinculados a um produto no sistema."
-      );
+      toast.error("Todos os itens devem estar vinculados a um produto no sistema.");
       return;
     }
 
@@ -194,10 +143,7 @@ export default function EntradaFiscalDialog({
 
     // Validações específicas de pagamento futuro
     if (isPagamentoFuturo) {
-      const somaParcelas = parcelas.reduce(
-        (sum, parcela) => sum + (parcela.valor ?? 0),
-        0
-      );
+      const somaParcelas = parcelas.reduce((sum, parcela) => sum + (parcela.valor ?? 0), 0);
 
       if (somaParcelas !== parsed.totais.valorNota) {
         toast.error("A soma das parcelas deve ser igual ao valor da nota.");
@@ -244,22 +190,12 @@ export default function EntradaFiscalDialog({
         : [],
 
       bancoId: isPagamentoFuturo ? Number(selectedBankId) : 1,
-      metodoPagamento: isPagamentoFuturo
-        ? selectedMetodo
-        : Metodo_pagamento.PIX ?? "PIX",
-      categoria: isPagamentoFuturo
-        ? selectedCategoria
-        : Categoria_transacao.OUTROS ?? "DESPESAS_OPERACIONAIS",
+      metodoPagamento: isPagamentoFuturo ? selectedMetodo : Metodo_pagamento.PIX ?? "PIX",
+      categoria: isPagamentoFuturo ? selectedCategoria : Categoria_transacao.OUTROS ?? "DESPESAS_OPERACIONAIS",
       tipo: "DESPESA",
-      nomePagador:
-        parsed.fornecedorReferente?.nomerazaosocial ??
-        parsed.emitente.nome ??
-        "",
+      nomePagador: parsed.fornecedorReferente?.nomerazaosocial ?? parsed.emitente.nome ?? "",
       cpfCnpjPagador: parsed.emitente.cnpj?.toString() ?? "",
-      descricaoTransacao:
-        parsed.numeroNota != null
-          ? `Compra NF ${parsed.numeroNota}`
-          : "Compra de mercadorias",
+      descricaoTransacao: parsed.numeroNota != null ? `Compra NF ${parsed.numeroNota}` : "Compra de mercadorias",
     };
 
     setIsSubmiting(true);
@@ -271,10 +207,7 @@ export default function EntradaFiscalDialog({
     );
 
     try {
-      const response = await axios.post(
-        "/api/entradas/fiscal",
-        JSON.stringify(payload)
-      );
+      const response = await axios.post("/api/entradas/fiscal", JSON.stringify(payload));
 
       if (response.status === 201) {
         toast.success("Entrada registrada com sucesso!");
@@ -320,9 +253,7 @@ export default function EntradaFiscalDialog({
             const produtos = response.data.data;
 
             if (produtos.length > 1) {
-              toast.warning(
-                `Mais de um produto encontrado para o código ${item.codigo}.`
-              );
+              toast.warning(`Mais de um produto encontrado para o código ${item.codigo}.`);
             }
 
             if (produtos.length === 1) {
@@ -405,10 +336,7 @@ export default function EntradaFiscalDialog({
       }}
     >
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent
-        className="p-0 overflow-hidden h-[600px]"
-        onDoubleClick={(e) => e.stopPropagation()}
-      >
+      <DialogContent className="p-0 overflow-hidden h-[600px]" onDoubleClick={(e) => e.stopPropagation()}>
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
             <DialogTitle>Entrada de Produto</DialogTitle>
@@ -424,21 +352,14 @@ export default function EntradaFiscalDialog({
           {parsed && (
             <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 bg-blue-700/5 px-6 py-10 space-y-2 relative">
               <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
-                <span className="text-xs text-muted-foreground">
-                  1 arquivo selecionado
-                </span>
-                <X
-                  onClick={handleClearFile}
-                  className="w-4 h-4 hover:cursor-pointer text-red-200 hover:text-red-400"
-                />
+                <span className="text-xs text-muted-foreground">1 arquivo selecionado</span>
+                <X onClick={handleClearFile} className="w-4 h-4 hover:cursor-pointer text-red-200 hover:text-red-400" />
               </div>
               <Card className="mt-2 w-full max-w-full">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center justify-between gap-2">
                     <span>Dados da NF-e</span>
-                    {parsed?.numeroNota && (
-                      <Badge variant="outline">NF nº {parsed.numeroNota}</Badge>
-                    )}
+                    {parsed?.numeroNota && <Badge variant="outline">NF nº {parsed.numeroNota}</Badge>}
                   </CardTitle>
                   <CardDescription className="text-xs">
                     Informações identificadas a partir do XML enviado.
@@ -447,29 +368,17 @@ export default function EntradaFiscalDialog({
                 <CardContent className="space-y-3 text-sm">
                   <div className="flex items-start gap-3">
                     <div className="space-y-1 min-w-0 flex flex-col">
-                      <p className="text-xs text-muted-foreground">
-                        Fornecedor:
-                      </p>
+                      <p className="text-xs text-muted-foreground">Fornecedor:</p>
                       <span className="text-xs text-wrap max-w-[250px]">
                         {parsed.emitente.nome || "Fornecedor não identificado"}
                       </span>
-                      <span className="text-[12px] text-muted-foreground">
-                        {parsed.emitente.nomeFantasia}
-                      </span>
+                      <span className="text-[12px] text-muted-foreground">{parsed.emitente.nomeFantasia}</span>
                       {(parsed.emitente.cnpj || parsed.emitente.ie) && (
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           {parsed.emitente.cnpj && (
-                            <span>
-                              CNPJ:{" "}
-                              {formatCpfCnpj(
-                                parsed.emitente.cnpj.toString(),
-                                "JURIDICA"
-                              )}
-                            </span>
+                            <span>CNPJ: {formatCpfCnpj(parsed.emitente.cnpj.toString(), "JURIDICA")}</span>
                           )}
-                          {parsed.emitente.ie && (
-                            <span>IE: {parsed.emitente.ie}</span>
-                          )}
+                          {parsed.emitente.ie && <span>IE: {parsed.emitente.ie}</span>}
                         </div>
                       )}
 
@@ -491,29 +400,28 @@ export default function EntradaFiscalDialog({
                               : "Fornecedor não cadastrado no sistema"}
                           </span>
                         </div>
-                        {parsed.fornecedorReferenteId === undefined &&
-                          !isLoadingFornecedor && (
-                            <FornecedorDialog
-                              dialogOpen={isFornecedorOpen}
-                              handleGetFornecedor={handleGetFornecedor}
-                              setDialogOpen={setIsFornecedorOpen}
-                              dadosNovoFornecedor={{
-                                cpfcnpj: parsed.emitente.cnpj.toString(),
-                                nomefantasia: parsed.emitente.nomeFantasia,
-                                ativo: true,
-                                cep: parsed.emitente.endereco.cep.toString(),
-                                endereco: parsed.emitente.endereco.logradouro,
-                                cidade: parsed.emitente.endereco.municipio,
-                                estado: parsed.emitente.endereco.uf,
-                                contato: "",
-                                nomerazaosocial: parsed.emitente.nome,
-                              }}
-                            >
-                              <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
-                                <UserRoundPlus className="w-4 h-4" />
-                              </div>
-                            </FornecedorDialog>
-                          )}
+                        {parsed.fornecedorReferenteId === undefined && !isLoadingFornecedor && (
+                          <FornecedorDialog
+                            dialogOpen={isFornecedorOpen}
+                            handleGetFornecedor={handleGetFornecedor}
+                            setDialogOpen={setIsFornecedorOpen}
+                            dadosNovoFornecedor={{
+                              cpfcnpj: parsed.emitente.cnpj.toString(),
+                              nomefantasia: parsed.emitente.nomeFantasia,
+                              ativo: true,
+                              cep: parsed.emitente.endereco.cep.toString(),
+                              endereco: parsed.emitente.endereco.logradouro,
+                              cidade: parsed.emitente.endereco.municipio,
+                              estado: parsed.emitente.endereco.uf,
+                              contato: "",
+                              nomerazaosocial: parsed.emitente.nome,
+                            }}
+                          >
+                            <div className="p-1.5 rounded-full bg-primary/20 hover:bg-muted hover:cursor-pointer transition-all">
+                              <UserRoundPlus className="w-4 h-4" />
+                            </div>
+                          </FornecedorDialog>
+                        )}
                       </div>
                     </div>
 
@@ -526,10 +434,7 @@ export default function EntradaFiscalDialog({
                       )}
                       {parsed?.totais.valorNota != null && (
                         <p>
-                          Valor total:{" "}
-                          <span className="font-semibold">
-                            {formatarEmReal(parsed?.totais.valorNota)}
-                          </span>
+                          Valor total: <span className="font-semibold">{formatarEmReal(parsed?.totais.valorNota)}</span>
                         </p>
                       )}
                     </div>
@@ -538,15 +443,11 @@ export default function EntradaFiscalDialog({
 
                   <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                     <span>
-                      Itens na nota:{" "}
-                      <span className="font-semibold">
-                        {parsed.itens.length}
-                      </span>
+                      Itens na nota: <span className="font-semibold">{parsed.itens.length}</span>
                     </span>
                     {parsed?.itens && (
                       <span>
-                        Série:{" "}
-                        <span className="font-semibold">{parsed.serie}</span>
+                        Série: <span className="font-semibold">{parsed.serie}</span>
                       </span>
                     )}
                   </div>
@@ -556,10 +457,7 @@ export default function EntradaFiscalDialog({
               <div className="space-y-2">
                 {parsed.itens.length > 0 ? (
                   parsed.itens.map((item, index) => (
-                    <div
-                      key={`${item.codigo}-${index}`}
-                      className="border rounded-lg p-4 text-xs not-dark:bg-white"
-                    >
+                    <div key={`${item.codigo}-${index}`} className="border rounded-lg p-4 text-xs not-dark:bg-white">
                       <div className="space-y-2 ">
                         {/* Item number and description */}
                         <div className="pb-2 border-b">
@@ -567,77 +465,43 @@ export default function EntradaFiscalDialog({
                             <p className=" font-semibold text-muted-foreground uppercase mb-1">
                               Item {item.numeroItem}
                             </p>
-                            <p className=" font-bold">
-                              Total: {formatarEmReal(item.valorTotal)}
-                            </p>
+                            <p className=" font-bold">Total: {formatarEmReal(item.valorTotal)}</p>
                           </div>
-                          <p className=" font-semibold text-muted-foreground">
-                            {item.descricao}
-                          </p>
+                          <p className=" font-semibold text-muted-foreground">{item.descricao}</p>
                         </div>
 
                         {/* All data concatenated in single column */}
                         <div className="space-y-1.5 text-xs grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-2">
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              Código:
-                            </span>{" "}
-                            <span className="font-mono font-semibold">
-                              {item.codigo}
-                            </span>
+                            <span className="text-muted-foreground font-medium">Código:</span>{" "}
+                            <span className="font-mono font-semibold">{item.codigo}</span>
                           </p>
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              EAN:
-                            </span>{" "}
-                            <span className="font-mono font-semibold">
-                              {item.ean}
-                            </span>
+                            <span className="text-muted-foreground font-medium">EAN:</span>{" "}
+                            <span className="font-mono font-semibold">{item.ean}</span>
                           </p>
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              Unidade:
-                            </span>{" "}
-                            <span className="font-semibold">
-                              {item.unidade}
-                            </span>
+                            <span className="text-muted-foreground font-medium">Unidade:</span>{" "}
+                            <span className="font-semibold">{item.unidade}</span>
                           </p>
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              Qtd:
-                            </span>{" "}
-                            <span className="font-semibold">
-                              {formatNumber(item.quantidade)}
-                            </span>
+                            <span className="text-muted-foreground font-medium">Qtd:</span>{" "}
+                            <span className="font-semibold">{formatNumber(item.quantidade)}</span>
                           </p>
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              V. Unitário:
-                            </span>{" "}
-                            <span className="font-mono font-semibold">
-                              {formatarEmReal(item.valorUnitario)}
-                            </span>
+                            <span className="text-muted-foreground font-medium">V. Unitário:</span>{" "}
+                            <span className="font-mono font-semibold">{formatarEmReal(item.valorUnitario)}</span>
                           </p>
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              NCM:
-                            </span>{" "}
-                            <span className="font-mono font-semibold">
-                              {item.ncm}
-                            </span>
+                            <span className="text-muted-foreground font-medium">NCM:</span>{" "}
+                            <span className="font-mono font-semibold">{item.ncm}</span>
                           </p>
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              CFOP:
-                            </span>{" "}
-                            <span className="font-mono font-semibold">
-                              {item.cfop}
-                            </span>
+                            <span className="text-muted-foreground font-medium">CFOP:</span>{" "}
+                            <span className="font-mono font-semibold">{item.cfop}</span>
                           </p>
                           <p>
-                            <span className="text-muted-foreground font-medium">
-                              ICMS:
-                            </span>{" "}
+                            <span className="text-muted-foreground font-medium">ICMS:</span>{" "}
                             {/* futuro: exibir aliquota / valor */}
                           </p>
                         </div>
@@ -646,10 +510,12 @@ export default function EntradaFiscalDialog({
                           <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md relative">
                             <span
                               className={`text-xs text-muted-foreground max-w-[300px] mr-4 ${
-                               searchingFornecedor ? "text-primary" : !item.produtoReferenciaId && "text-red-400"
+                                searchingFornecedor ? "text-primary" : !item.produtoReferenciaId && "text-red-400"
                               } `}
-                            >{searchingFornecedor ? "Buscando produto vinculado..." :
-                              item.produtoReferenciaId
+                            >
+                              {searchingFornecedor
+                                ? "Buscando produto vinculado..."
+                                : item.produtoReferenciaId
                                 ? `Produto vinculado: ${item.produtoReferencia?.titulo}`
                                 : "Produto não vinculado ao estoque"}
                             </span>
@@ -680,9 +546,7 @@ export default function EntradaFiscalDialog({
 
                           {/* SELECT de produto - controlado por índice */}
                           <ProductSelect
-                            open={
-                              isProductOpen && productSelectItemIndex === index
-                            }
+                            open={isProductOpen && productSelectItemIndex === index}
                             setOpen={(open) => {
                               if (open) {
                                 setIsProductOpen(true);
@@ -717,21 +581,16 @@ export default function EntradaFiscalDialog({
                           </ProductSelect>
 
                           {/* DIALOG de novo produto / edição após criar */}
-                          {(!item.produtoReferenciaId ||
-                            (isProductEditOpen &&
-                              productDialogItemIndex === index)) && (
-                            <ProductDialog
+                          {(!item.produtoReferenciaId || (isProductEditOpen && productDialogItemIndex === index)) && (
+                            <DialogProduto
                               handleSearchFornecedor={handleSearchFornecedor}
                               productId={selectedProductId}
-                              isOpen={
-                                isProductEditOpen &&
-                                productDialogItemIndex === index
-                              }
+                              isOpen={isProductEditOpen && productDialogItemIndex === index}
                               setIsOpen={(open) => {
                                 if (open) {
-                                  if(!parsed.fornecedorReferenteId){
-                                    toast.error("Cadastre um fornecedor para habilitar o cadastro de produto")
-                                    return
+                                  if (!parsed.fornecedorReferenteId) {
+                                    toast.error("Cadastre um fornecedor para habilitar o cadastro de produto");
+                                    return;
                                   }
                                   setIsProductEditOpen(true);
                                   setProductDialogItemIndex(index);
@@ -748,8 +607,7 @@ export default function EntradaFiscalDialog({
                                 cfop: item.cfop.toString(),
                                 precovenda: item.valorUnitario,
                                 estoque: 0,
-                                fornecedorid:
-                                  parsed.fornecedorReferenteId || undefined,
+                                fornecedorid: parsed.fornecedorReferenteId || undefined,
                                 codigofornecedor: item.codigo,
                               }}
                             >
@@ -758,7 +616,7 @@ export default function EntradaFiscalDialog({
                                   <PackagePlus className="w-4 h-4" />
                                 </div>
                               )}
-                            </ProductDialog>
+                            </DialogProduto>
                           )}
                         </div>
 
@@ -766,10 +624,7 @@ export default function EntradaFiscalDialog({
                         <div className="pt-2 border-t mt-3 space-y-1">
                           {item.produtoReferencia?.entradas
                             ?.filter((entrada: any) => {
-                              return (
-                                String(entrada?.notachave ?? "") ===
-                                String(parsed.chaveAcesso ?? "")
-                              );
+                              return String(entrada?.notachave ?? "") === String(parsed.chaveAcesso ?? "");
                             })
                             .map((entrada: any) => (
                               <div
@@ -777,12 +632,9 @@ export default function EntradaFiscalDialog({
                                 className="inline-flex items-center gap-2 px-2 py-1 bg-amber-50 rounded-md border border-amber-200"
                               >
                                 <span className="text-[10px] text-amber-700 flex flex-row flex-nowrap items-center gap-1">
-                                <TriangleAlert className="w-3 h-3"/>
-                                  Existe entrada de{" "}
-                                  <span className="font-semibold">
-                                    {entrada.quantidade}
-                                  </span>{" "}
-                                  un. desta mesma NF para este produto em:{" "} <span>{formatDate(entrada.created_at)}</span>
+                                  <TriangleAlert className="w-3 h-3" />
+                                  Existe entrada de <span className="font-semibold">{entrada.quantidade}</span> un.
+                                  desta mesma NF para este produto em: <span>{formatDate(entrada.created_at)}</span>
                                 </span>
                               </div>
                             ))}
@@ -791,9 +643,7 @@ export default function EntradaFiscalDialog({
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhum item para exibir
-                  </div>
+                  <div className="text-center py-8 text-muted-foreground">Nenhum item para exibir</div>
                 )}
               </div>
 
@@ -805,9 +655,7 @@ export default function EntradaFiscalDialog({
                   <div className="flex flex-row items-center gap-2">
                     <span
                       className={`text-xs ${
-                        isPagamentoFuturo
-                          ? "text-accent-foreground"
-                          : "text-muted-foreground"
+                        isPagamentoFuturo ? "text-accent-foreground" : "text-muted-foreground"
                       } transition-all`}
                     >
                       Lançar como pagamento futuro
@@ -818,9 +666,7 @@ export default function EntradaFiscalDialog({
                         setIsPagamentoFuturo(b);
                         if (b) {
                           setParcelas((prev) =>
-                            prev.length
-                              ? prev
-                              : [{ id: 1, dataVencimento: undefined, valor: 0 }]
+                            prev.length ? prev : [{ id: 1, dataVencimento: undefined, valor: 0 }]
                           );
                         } else {
                           setParcelas([]);
@@ -847,14 +693,10 @@ export default function EntradaFiscalDialog({
                             className="bg-red-500 not-dark:bg-red-400 hover:cursor-pointer rounded-full w-5 h-5 flex items-center justify-center"
                             onClick={() => {
                               if (parcelas.length === 1) {
-                                toast.error(
-                                  "É necessário ao menos uma parcela"
-                                );
+                                toast.error("É necessário ao menos uma parcela");
                                 return;
                               }
-                              setParcelas((prev) =>
-                                prev.filter((_, i) => i !== index)
-                              );
+                              setParcelas((prev) => prev.filter((_, i) => i !== index));
                             }}
                           >
                             <Minus className="w-3 h-3" />
@@ -862,17 +704,13 @@ export default function EntradaFiscalDialog({
 
                           {/* Data vencimento */}
                           <div className="flex flex-col gap-1">
-                            <span className="text-xs text-muted-foreground">
-                              Data Vencimento:
-                            </span>
+                            <span className="text-xs text-muted-foreground">Data Vencimento:</span>
                             <Input
                               type="date"
                               className="not-dark:bg-white"
                               value={
                                 parcela.dataVencimento
-                                  ? new Date(parcela.dataVencimento)
-                                      .toISOString()
-                                      .slice(0, 10)
+                                  ? new Date(parcela.dataVencimento).toISOString().slice(0, 10)
                                   : ""
                               }
                               onChange={(e) => {
@@ -882,9 +720,7 @@ export default function EntradaFiscalDialog({
                                     i === index
                                       ? {
                                           ...p,
-                                          dataVencimento: value
-                                            ? new Date(`${value}T00:00:00`)
-                                            : undefined,
+                                          dataVencimento: value ? new Date(`${value}T00:00:00`) : undefined,
                                         }
                                       : p
                                   )
@@ -895,9 +731,7 @@ export default function EntradaFiscalDialog({
 
                           {/* Valor */}
                           <div className="flex flex-col gap-1">
-                            <span className="text-xs text-muted-foreground">
-                              Valor:
-                            </span>
+                            <span className="text-xs text-muted-foreground">Valor:</span>
                             <ValueInput
                               price={parcela.valor ?? 0}
                               setPrice={(valor) =>
@@ -919,17 +753,10 @@ export default function EntradaFiscalDialog({
 
                       {/* Totais */}
                       <div className="text-xs text-muted-foreground flex flex-row items-center justify-between">
-                        <span>
-                          Valor total: {formatarEmReal(parsed.totais.valorNota)}
-                        </span>
+                        <span>Valor total: {formatarEmReal(parsed.totais.valorNota)}</span>
                         <span>
                           Soma das parcelas:{" "}
-                          {formatarEmReal(
-                            parcelas.reduce(
-                              (sum, parcela) => sum + (parcela.valor ?? 0),
-                              0
-                            )
-                          )}
+                          {formatarEmReal(parcelas.reduce((sum, parcela) => sum + (parcela.valor ?? 0), 0))}
                         </span>
                       </div>
 
@@ -948,27 +775,16 @@ export default function EntradaFiscalDialog({
                         }
                       >
                         <Plus className="w-4 h-4 text-green-300 group-hover:text-green-600" />
-                        <span className="text-xs text-card-foreground">
-                          Adicionar Parcela
-                        </span>
+                        <span className="text-xs text-card-foreground">Adicionar Parcela</span>
                       </div>
 
                       {/* Banco / método / categoria */}
                       <div className="grid mt-2 space-y-2">
                         <div className="flex flex-row space-x-2">
-                          <Label className="text-muted-foreground w-1/2">
-                            Banco:
-                          </Label>
-                          <Select
-                            value={selectedBankId}
-                            onValueChange={(v) => setSelectedBankId(v)}
-                          >
+                          <Label className="text-muted-foreground w-1/2">Banco:</Label>
+                          <Select value={selectedBankId} onValueChange={(v) => setSelectedBankId(v)}>
                             <SelectTrigger className="w-full">
-                              <SelectValue
-                                placeholder={
-                                  isLoadingBanks ? "Carregando..." : "Selecione"
-                                }
-                              />
+                              <SelectValue placeholder={isLoadingBanks ? "Carregando..." : "Selecione"} />
                             </SelectTrigger>
                             <SelectContent>
                               {banks.map((b) => (
@@ -981,14 +797,10 @@ export default function EntradaFiscalDialog({
                         </div>
 
                         <div className="flex flex-row space-x-2">
-                          <Label className="text-muted-foreground w-1/2">
-                            Método:
-                          </Label>
+                          <Label className="text-muted-foreground w-1/2">Método:</Label>
                           <Select
                             value={selectedMetodo}
-                            onValueChange={(v) =>
-                              setSelectedMetodo(v as Metodo_pagamento)
-                            }
+                            onValueChange={(v) => setSelectedMetodo(v as Metodo_pagamento)}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Selecione" />
@@ -1004,14 +816,10 @@ export default function EntradaFiscalDialog({
                         </div>
 
                         <div className="flex flex-row space-x-2">
-                          <Label className="text-muted-foreground w-1/2">
-                            Categoria:
-                          </Label>
+                          <Label className="text-muted-foreground w-1/2">Categoria:</Label>
                           <Select
                             value={selectedCategoria}
-                            onValueChange={(v) =>
-                              setSelectedCategoria(v as Categoria_transacao)
-                            }
+                            onValueChange={(v) => setSelectedCategoria(v as Categoria_transacao)}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Selecione" />
@@ -1033,9 +841,7 @@ export default function EntradaFiscalDialog({
 
               <Separator />
               <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-muted-foreground">
-                  Ver JSON completo
-                </summary>
+                <summary className="cursor-pointer text-xs text-muted-foreground">Ver JSON completo</summary>
                 <pre className="mt-2 text-xs max-h-80 text-wrap text-muted-foreground">
                   {JSON.stringify(parsed, null, 1)}
                 </pre>
@@ -1048,9 +854,7 @@ export default function EntradaFiscalDialog({
               <Button
                 onClick={handleCreateEntradas}
                 className="hover:cursor-pointer"
-                disabled={
-                  isLoadingFornecedor || searchingFornecedor || isSubmiting
-                }
+                disabled={isLoadingFornecedor || searchingFornecedor || isSubmiting}
               >
                 Registrar
               </Button>

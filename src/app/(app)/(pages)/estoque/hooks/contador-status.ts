@@ -6,7 +6,7 @@ type CountsResponse = {
   // raw?: { status: string | null; count: number }[];
 };
 
-export default function useStatusCounter(opts?: { auto?: boolean }) {
+export default function useContadorStatus(opts?: { auto?: boolean }) {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loadingStatusCounter, setLoadingStatusCounter] = useState(true);
   const [error, setError] = useState<string | null>(null);
