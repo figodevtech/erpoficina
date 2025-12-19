@@ -121,7 +121,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
         Ordens
       </TabsTrigger>
       <TabsTrigger value="Fluxo" className={"hover:cursor-pointer" + tabTheme}>
-        Fluxo
+        Entradas
       </TabsTrigger>
     </>
   );

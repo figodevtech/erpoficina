@@ -40,6 +40,7 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "@/app/(app)/(pages)/clientes/types";
+import Image from "next/image";
 
 interface CartItem {
   id: number;
@@ -319,10 +320,26 @@ console.log(cart)
                   }`}
                 >
                   <CardContent className="p-4 space-y-3">
-                    <div className="h-24 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-all relative">
+                    <div className="h-48 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-all relative">
+                      {product.imgUrl ? (
+                        <div className="w-full h-full relative">
+
+                        <div className="w-full h-full overflow-hidden flex items-center justify-center absolute">
+
+                          <img alt={product.titulo || "imagem do produto"} className="w-full blur-xs opacity-50" src={product.imgUrl}/>
+                        </div>
+                        <div className="w-full h-full overflow-hidden flex items-center justify-center absolute z-10">
+
+                          <img alt={product.titulo || "imagem do produto"} className="h-full group-hover:scale-110 transition-all duration-500" src={product.imgUrl}/>
+                        </div>
+                        </div>
+
+                      ):
                       <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+                      
+                      }
                       {product.status_estoque === Estoque_status.CRITICO && (
-                            <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
+                            <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
                         <Tooltip>
                           <TooltipTrigger>
                               <AlertCircle className="h-4 w-4" />
@@ -332,7 +349,7 @@ console.log(cart)
                             </div>
                       )}
                       {product.status_estoque === Estoque_status.BAIXO && (
-                        <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
+                        <div className="absolute top-1 z-20 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
                           <Tooltip>
                           <TooltipTrigger>
                           <AlertTriangle className="h-4 w-4" />
@@ -342,7 +359,7 @@ console.log(cart)
                         </div>
                       )}
                       {product.status_estoque === Estoque_status.SEM_ESTOQUE && (
-                        <div className="absolute top-1 right-1 flex p-1 items-center justify-center rounded-full bg-purple-800 not-dark:bg-purple-300">
+                        <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-purple-800 not-dark:bg-purple-300">
                           <Tooltip>
                           <TooltipTrigger>
                           <CircleOff className="h-4 w-4" />

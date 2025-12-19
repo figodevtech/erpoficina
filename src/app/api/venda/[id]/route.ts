@@ -79,7 +79,6 @@ type VendaPatchBody = {
   dataVenda?: string | null; // ISO string
 };
 
-// Contexto esperado pelo typed routes do Next 15
 type ParamsCtx = { params: Promise<{ id: string }> };
 
 /* ========================= Helpers ========================= */
@@ -105,23 +104,24 @@ function parseId(idStr: string) {
   return { id, error: null as string | null, status: 200 };
 }
 
+function toInt(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.trunc(n);
+}
+
 /* ========================= GET /api/venda/[id] ========================= */
-/**
- * Retorna uma venda específica com itens + produto
- */
+
 export async function GET(req: NextRequest, ctx: ParamsCtx) {
   try {
-    // só pra não dar warning de variável não usada
     req;
 
     const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {
-      return NextResponse.json(
-        { error: parsed.error },
-        { status: parsed.status }
-      );
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
 
     const vendaId = parsed.id as number;
@@ -134,17 +134,11 @@ export async function GET(req: NextRequest, ctx: ParamsCtx) {
 
     if (error) {
       console.error("Erro ao buscar venda por id:", error);
-      return NextResponse.json(
-        { error: "Erro ao buscar venda." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Erro ao buscar venda." }, { status: 500 });
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: "Venda não encontrada." },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Venda não encontrada." }, { status: 404 });
     }
 
     return NextResponse.json({ data });
@@ -158,20 +152,14 @@ export async function GET(req: NextRequest, ctx: ParamsCtx) {
 }
 
 /* ========================= PATCH /api/venda/[id] ========================= */
-/**
- * Atualiza campos básicos da venda.
- * Obs: NÃO atualiza itens (vendaproduto), apenas campos diretos de venda.
- */
+
 export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
   try {
     const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
     if (parsed.error) {
-      return NextResponse.json(
-        { error: parsed.error },
-        { status: parsed.status }
-      );
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
 
     const vendaId = parsed.id as number;
@@ -194,7 +182,6 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       dataVenda,
     } = body;
 
-    // Nenhum campo enviado
     if (
       clienteId === undefined &&
       status === undefined &&
@@ -227,9 +214,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       if (!STATUS_SET.has(upperStatus as Status)) {
         return NextResponse.json(
           {
-            error: `Status inválido. Use um dos: ${Array.from(STATUS_SET).join(
-              ", "
-            )}.`,
+            error: `Status inválido. Use um dos: ${Array.from(STATUS_SET).join(", ")}.`,
           },
           { status: 400 }
         );
@@ -237,27 +222,12 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       updatePayload.status = upperStatus;
     }
 
-    if (descontoTipo !== undefined) {
-      updatePayload.desconto_tipo = descontoTipo;
-    }
+    if (descontoTipo !== undefined) updatePayload.desconto_tipo = descontoTipo;
+    if (descontoValor !== undefined) updatePayload.desconto_valor = descontoValor;
+    if (subTotal !== undefined) updatePayload.sub_total = subTotal;
+    if (valorTotal !== undefined) updatePayload.valortotal = valorTotal;
+    if (dataVenda !== undefined) updatePayload.datavenda = dataVenda;
 
-    if (descontoValor !== undefined) {
-      updatePayload.desconto_valor = descontoValor;
-    }
-
-    if (subTotal !== undefined) {
-      updatePayload.sub_total = subTotal;
-    }
-
-    if (valorTotal !== undefined) {
-      updatePayload.valortotal = valorTotal;
-    }
-
-    if (dataVenda !== undefined) {
-      updatePayload.datavenda = dataVenda;
-    }
-
-    // Se sua tabela venda tiver updatedat e você quiser forçar:
     updatePayload.updatedat = new Date().toISOString();
 
     const { data, error } = await supabaseAdmin
@@ -269,17 +239,11 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
 
     if (error) {
       console.error("Erro ao atualizar venda:", error);
-      return NextResponse.json(
-        { error: "Erro ao atualizar venda." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Erro ao atualizar venda." }, { status: 500 });
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: "Venda não encontrada." },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Venda não encontrada." }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -297,13 +261,12 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
 
 /* ========================= DELETE /api/venda/[id] ========================= */
 /**
- * Remove uma venda.
- *
- * IMPORTANTE: Agora vendaproduto tem ON DELETE CASCADE, então
- * os itens não vão bloquear o delete.
- *
- * Porém, sua tabela transacao tem FK para venda (vendaid) sem cascade,
- * então ainda pode bloquear.
+ * Exclui uma venda fazendo:
+ * - Bloqueio se existir NF-e vinculada com status <> RASCUNHO (inclui AUTORIZADA e CANCELADA)
+ * - Estorno de estoque (produto.estoque += vendaproduto.quantidade)
+ * - Delete de transacao vinculada
+ * - Delete de vendaproduto
+ * - Delete da venda
  */
 export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
   try {
@@ -313,30 +276,23 @@ export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
     const parsed = parseId(idStr);
 
     if (parsed.error) {
-      return NextResponse.json(
-        { error: parsed.error },
-        { status: parsed.status }
-      );
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
 
     const vendaId = parsed.id as number;
 
-    // 1) Bloqueia exclusão se já existe NF-e vinculada à venda
-    //    que NÃO esteja em RASCUNHO (ex: AUTORIZADA, CANCELADA, DENEGADA, REJEITADA etc.)
+    // 1) Bloqueia exclusão se já existe NF-e vinculada à venda que NÃO esteja em RASCUNHO
     const { data: nfesBloqueantes, error: nfeError } = await supabaseAdmin
       .from("nfe")
       .select("id, status, chave_acesso, protocolo")
       .eq("vendaid", vendaId)
-      .neq("status", "RASCUNHO")
+      .neq("status", "RASCUNHO") // AUTORIZADA, CANCELADA, REJEITADA, DENEGADA, etc. bloqueiam
       .limit(1);
 
     if (nfeError) {
       console.error("Erro ao verificar NF-e vinculadas à venda:", nfeError);
       return NextResponse.json(
-        {
-          error:
-            "Erro ao verificar NF-e vinculadas à venda. Exclusão não realizada.",
-        },
+        { error: "Erro ao verificar NF-e vinculadas à venda. Exclusão não realizada." },
         { status: 500 }
       );
     }
@@ -346,7 +302,7 @@ export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
       return NextResponse.json(
         {
           error:
-            "Não é possível excluir a venda pois existe NF-e vinculada (já enviada/registrada na SEFAZ).",
+            "Não é possível excluir a venda pois existe NF-e vinculada (já registrada na SEFAZ).",
           nfeVinculada: {
             id: nfe.id,
             status: nfe.status,
@@ -354,67 +310,154 @@ export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
             protocolo: nfe.protocolo,
           },
         },
-        { status: 409 } // conflito de regra de negócio
-      );
-    }
-
-    // 2) Verifica se existe transação ligada a essa venda
-    const { count: transCount, error: transError } = await supabaseAdmin
-      .from("transacao")
-      .select("id", { count: "exact", head: true })
-      .eq("vendaid", vendaId);
-
-    if (transError) {
-      console.error(
-        "Erro ao verificar transações relacionadas à venda:",
-        transError
-      );
-      return NextResponse.json(
-        {
-          error:
-            "Erro ao verificar transações relacionadas à venda. Exclusão não realizada.",
-        },
-        { status: 500 }
-      );
-    }
-
-    if ((transCount ?? 0) > 0) {
-      return NextResponse.json(
-        {
-          error:
-            "Não é possível excluir a venda pois existem transações vinculadas a ela.",
-          transacoesVinculadas: transCount,
-        },
         { status: 409 }
       );
     }
 
-    // 3) Agora pode excluir (vendaproduto cai em cascade)
-    const { data, error } = await supabaseAdmin
-      .from("venda")
-      .delete()
-      .eq("id", vendaId)
-      .select("id")
-      .single();
+    // 2) Buscar itens da venda (para estornar estoque)
+    const { data: itensVenda, error: itensError } = await supabaseAdmin
+      .from("vendaproduto")
+      .select("id, produtoid, quantidade")
+      .eq("venda_id", vendaId);
 
-    if (error) {
-      console.error("Erro ao excluir venda:", error);
+    if (itensError) {
+      console.error("Erro ao buscar itens da venda (vendaproduto):", itensError);
       return NextResponse.json(
-        { error: "Erro ao excluir venda." },
+        { error: "Erro ao buscar itens da venda para estornar estoque." },
         { status: 500 }
       );
     }
 
-    if (!data) {
+    // Agrupar quantidade por produto
+    const qtyPorProduto = new Map<number, number>();
+
+    for (const row of itensVenda ?? []) {
+      const produtoId = Number((row as any).produtoid);
+      const qtd = toInt((row as any).quantidade);
+
+      if (!Number.isFinite(produtoId) || produtoId <= 0) {
+        return NextResponse.json(
+          { error: "Item da venda com produtoid inválido. Exclusão abortada." },
+          { status: 400 }
+        );
+      }
+
+      if (qtd === null) {
+        return NextResponse.json(
+          { error: `Quantidade inválida no item do produto ${produtoId}. Exclusão abortada.` },
+          { status: 400 }
+        );
+      }
+
+      qtyPorProduto.set(produtoId, (qtyPorProduto.get(produtoId) ?? 0) + qtd);
+    }
+
+    const produtoIds = Array.from(qtyPorProduto.keys());
+
+    // 3) Estornar estoque (produto.estoque += qty)
+    if (produtoIds.length > 0) {
+      const { data: produtos, error: produtosError } = await supabaseAdmin
+        .from("produto")
+        .select("id, estoque")
+        .in("id", produtoIds);
+
+      if (produtosError) {
+        console.error("Erro ao buscar produtos para estorno de estoque:", produtosError);
+        return NextResponse.json(
+          { error: "Erro ao buscar produtos para estornar estoque." },
+          { status: 500 }
+        );
+      }
+
+      const estoqueAtualPorId = new Map<number, number>();
+      for (const p of produtos ?? []) {
+        const id = Number((p as any).id);
+        const est = Number((p as any).estoque ?? 0);
+        estoqueAtualPorId.set(id, Number.isFinite(est) ? est : 0);
+      }
+
+      for (const pid of produtoIds) {
+        if (!estoqueAtualPorId.has(pid)) {
+          return NextResponse.json(
+            { error: `Produto ${pid} não encontrado para estorno de estoque. Exclusão abortada.` },
+            { status: 400 }
+          );
+        }
+
+        const estoqueAtual = estoqueAtualPorId.get(pid) ?? 0;
+        const estornar = qtyPorProduto.get(pid) ?? 0;
+        const novoEstoque = estoqueAtual + estornar;
+
+        const { error: updErr } = await supabaseAdmin
+          .from("produto")
+          .update({
+            estoque: novoEstoque,
+            updatedat: new Date().toISOString(),
+          })
+          .eq("id", pid);
+
+        if (updErr) {
+          console.error(`Erro ao atualizar estoque do produto ${pid}:`, updErr);
+          return NextResponse.json(
+            { error: `Erro ao estornar estoque do produto ${pid}. Exclusão abortada.` },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // 4) Excluir transações vinculadas à venda
+    const { error: delTransError } = await supabaseAdmin
+      .from("transacao")
+      .delete()
+      .eq("vendaid", vendaId);
+
+    if (delTransError) {
+      console.error("Erro ao excluir transações da venda:", delTransError);
       return NextResponse.json(
-        { error: "Venda não encontrada." },
-        { status: 404 }
+        { error: "Erro ao excluir transações vinculadas à venda. Exclusão não realizada." },
+        { status: 500 }
       );
     }
 
+    // 5) Excluir itens da venda (vendaproduto)
+    const { error: delItensError } = await supabaseAdmin
+      .from("vendaproduto")
+      .delete()
+      .eq("venda_id", vendaId);
+
+    if (delItensError) {
+      console.error("Erro ao excluir itens (vendaproduto) da venda:", delItensError);
+      return NextResponse.json(
+        { error: "Erro ao excluir itens da venda. Exclusão não realizada." },
+        { status: 500 }
+      );
+    }
+
+    // 6) Excluir a venda
+    const { data: vendaDel, error: delVendaError } = await supabaseAdmin
+      .from("venda")
+      .delete()
+      .eq("id", vendaId)
+      .select("id")
+      .maybeSingle();
+
+    if (delVendaError) {
+      console.error("Erro ao excluir venda:", delVendaError);
+      return NextResponse.json({ error: "Erro ao excluir venda." }, { status: 500 });
+    }
+
+    if (!vendaDel) {
+      return NextResponse.json({ error: "Venda não encontrada." }, { status: 404 });
+    }
+
     return NextResponse.json({
-      message: "Venda excluída com sucesso.",
-      id: data.id,
+      message: "Venda excluída com sucesso (transações removidas e estoque estornado).",
+      id: vendaDel.id,
+      estorno: {
+        produtosAfetados: produtoIds.length,
+        quantidadePorProduto: Object.fromEntries(qtyPorProduto.entries()),
+      },
     });
   } catch (e: any) {
     console.error("Erro inesperado no DELETE /venda/[id]:", e);
@@ -424,4 +467,3 @@ export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
     );
   }
 }
-

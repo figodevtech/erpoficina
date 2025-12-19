@@ -51,6 +51,8 @@ import DeleteAlert from "./deleteAlert";
 import { GerarNotaDeOsDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/gerarNotaDeOsDialog/gerarNotaDeOsDialog";
 import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 import { VendaDetailsDialog } from "./venda-detail-dialog";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
 
 interface VendasDataTableProps {
   vendas: VendaComItens[];
@@ -111,9 +113,7 @@ const getStatusBadge = (status: vendaStatus) => {
   );
 };
 
-const handleDeleteVenda = async () => {
-  return
-}
+
 
 export default function VendasDataTable({
   isLoading,
@@ -125,10 +125,29 @@ export default function VendasDataTable({
   status,
 }: VendasDataTableProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [openEmissao, setOpenEmissao] = useState(false)
   const [emissaoId, setEmissaoId] = useState <number | null>(null)
   const [selectedVendaId, setSelectedVendaId] = useState <number | null>(null)
   const [openDetails, setOpenDetails] = useState(false)
+
+  const handleDeleteVenda = async (id: number) => {
+    toast(<div className="flex flex-row items-center flex-nowrap gap-1"><Loader2 className="w-3 h-3 animate-spin"/><span>Deletando venda</span></div>)
+  setIsDeleting(true)
+  try {
+    const response = await axios.delete(`/api/venda/${id}`)
+    if(response.status === 200){
+      toast.success("Venda deletada")
+    }
+  } catch (error) {
+    if(isAxiosError(error)){
+      console.log(error)
+      toast.error(error.status + " Erro ao deletar venda", {description: error.response?.data?.error, duration: 5000})
+    }
+  }finally{
+    setIsDeleting(false)
+  }
+}
   return (
     <Card>
       <CardHeader className="border-b-2 pb-4">
@@ -224,6 +243,8 @@ export default function VendasDataTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
+                        {p.status === "FINALIZADA" && (
+
                         <Button
                         onClick={()=>{
                           setEmissaoId(p.id)
@@ -235,6 +256,7 @@ export default function VendasDataTable({
                           <CreditCard className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Emissão de NF-e</span>
                         </Button>
+                        )}
                         <Button
                         onClick={()=> {
                           setSelectedVendaId(p.id)
@@ -249,7 +271,9 @@ export default function VendasDataTable({
                         
 
                         <DeleteAlert
-                          handleDeleteVenda={handleDeleteVenda}
+                          onDelete={()=>{
+                            handleDeleteVenda(p.id)
+                          }}
                           isAlertOpen={isAlertOpen}
                           setIsAlertOpen={setIsAlertOpen}
                           idToDelete={p.id}
@@ -370,6 +394,7 @@ export default function VendasDataTable({
             </Select>
           </div>
         </div>
+        
       <EmissaoNotaDialog
       onOpenChange={setOpenEmissao}
       open={openEmissao}

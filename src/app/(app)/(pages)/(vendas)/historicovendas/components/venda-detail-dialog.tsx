@@ -177,7 +177,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
         {venda && !loading && !error && (
           <>
             <DialogHeader>
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-4 pr-5">
                 <div className="space-y-1">
                   <DialogTitle className="text-2xl font-semibold">Venda #{venda.id}</DialogTitle>
                   <p className="text-sm text-muted-foreground">Detalhes completos da transação</p>

@@ -59,8 +59,7 @@ const VENDA_SELECT = `
     produto:produtoid (
       id,
       titulo,
-      precovenda,
-      imgUrl
+      precovenda
     )
   )
 `;
