@@ -61,9 +61,9 @@ const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
 
   { prefix: "/historicovendas", perm: PERMS.VENDAS },
   { prefix: "/pdv", perm: PERMS.VENDAS },
-
-  // (opcional) se você criar /vendas/... no futuro:
   { prefix: "/vendas", perm: PERMS.VENDAS },
+
+  { prefix: "/acompanhamento", perm: PERMS.ACOMPANHAMENTO },
 ];
 
 function matchRule(pathname: string) {
