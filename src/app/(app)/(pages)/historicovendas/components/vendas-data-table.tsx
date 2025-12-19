@@ -243,6 +243,8 @@ export default function VendasDataTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
+                        {p.status === "FINALIZADA" && (
+
                         <Button
                         onClick={()=>{
                           setEmissaoId(p.id)
@@ -254,6 +256,7 @@ export default function VendasDataTable({
                           <CreditCard className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Emissão de NF-e</span>
                         </Button>
+                        )}
                         <Button
                         onClick={()=> {
                           setSelectedVendaId(p.id)
@@ -391,6 +394,7 @@ export default function VendasDataTable({
             </Select>
           </div>
         </div>
+        
       <EmissaoNotaDialog
       onOpenChange={setOpenEmissao}
       open={openEmissao}

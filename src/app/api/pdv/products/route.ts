@@ -27,7 +27,7 @@ export async function GET(req: Request) {
       .from('produto')
       .select(
         `
-        id, titulo, descricao, precovenda, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, grupo, exibirPdv, tituloMarketplace, descricaoMarketplace
+        id, titulo, descricao, precovenda, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, grupo, exibirPdv, tituloMarketplace, descricaoMarketplace, imgUrl
         `
       )
       .order('id', { ascending: false });

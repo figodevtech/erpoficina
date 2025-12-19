@@ -139,7 +139,7 @@ export interface Produto {
   fabricante?: string;
   grupo?: Grupo_produto; // grupo_produto no banco, default 'OUTROS'
   status_estoque?: Estoque_status;
-  imgLink?: string;
+  imgUrl?: string;
   exibirPdv?: boolean;
   tituloMarketplace?: string;
   descricaoMarketplace?: string;
