@@ -37,7 +37,7 @@ import {
 import { toast } from "sonner";
 
 import type { StatusOS } from "./ordens-tabs";
-import TableSkeleton from "../components/table-skeleton";
+import TableSkeleton from "./table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 import { ChecklistDialog } from "./dialogs/checklist-dialog";

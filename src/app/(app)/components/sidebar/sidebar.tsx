@@ -141,7 +141,7 @@ const data = {
         },
         {
           title: "Checklist",
-          url: "/checklist",
+          url: "/configuracoes/checklist",
           icon: SquareCheckBig,
         },
         {

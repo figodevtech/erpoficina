@@ -6,19 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  LabelList,
-  AreaChart,
-  Area,
-} from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, AreaChart, Area } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -152,12 +140,12 @@ export default function ServiceOrdersDashboard({
             <ClipboardList className="h-5 w-5" aria-hidden="true" />
             Dashboard de Ordens de Serviço
           </CardTitle>
-          <CardDescription className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <span>Visão executiva de produtividade, prazos e receita.</span>
-            <Badge variant="default" className="text-[10px] sm:text-xs">
-              Período: {textoPeriodo}
-            </Badge>
+          <CardDescription className="text-xs sm:text-sm">
+            Visão executiva de produtividade, prazos e receita.
           </CardDescription>
+          <Badge variant="default" className="text-[10px] sm:text-xs">
+            Período: {textoPeriodo}
+          </Badge>
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
@@ -223,10 +211,7 @@ export default function ServiceOrdersDashboard({
               className="h-48 w-full xs:h-56 sm:h-64 md:h-72 lg:h-80"
             >
               {/* key garante que a animação do Recharts roda uma vez por carga de dados */}
-              <AreaChart
-                data={seriesNewDone}
-                margin={{ top: 12, right: 12, left: 12, bottom: 0 }}
-              >
+              <AreaChart data={seriesNewDone} margin={{ top: 12, right: 12, left: 12, bottom: 0 }}>
                 <defs>
                   <linearGradient id="areaNew" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="rgb(43, 127, 255)" stopOpacity={0.25} />
@@ -357,12 +342,7 @@ export default function ServiceOrdersDashboard({
                 <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                   {statusItems.map((s) => (
-                    <Cell
-                      key={s.name}
-                      fill="rgba(43, 127, 255, 0.3)"
-                      stroke="rgb(43, 127, 255)"
-                      strokeWidth={2}
-                    />
+                    <Cell key={s.name} fill="rgba(43, 127, 255, 0.3)" stroke="rgb(43, 127, 255)" strokeWidth={2} />
                   ))}
                   <LabelList stroke="none" dataKey="value" position="top" className="fill-foreground" fontSize={12} />
                 </Bar>

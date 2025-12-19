@@ -29,7 +29,7 @@ import { ChevronDown, Loader, Loader2, Trash2Icon } from "lucide-react";
 import DeleteAlert from "./deleteAlert";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatDate";
-import { VendaComItens } from "@/app/(app)/(pages)/historicovendas/types";
+import { VendaComItens } from "@/app/(app)/(pages)/(vendas)/historicovendas/types";
 
 interface VendasContentProps {
   vendaId: number;

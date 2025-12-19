@@ -1,5 +1,5 @@
-import { Customer } from "../clientes/types";
-import { Produto } from "../estoque/types";
+import { Customer } from "../../clientes/types";
+import { Produto } from "../../estoque/types";
 
 export interface StatusMetrics {
   totalValor: number;

@@ -1,4 +1,4 @@
-import { vendaStatus } from "@/app/(app)/(pages)/historicovendas/types";
+import { vendaStatus } from "@/app/(app)/(pages)/(vendas)/historicovendas/types";
 import {
   AlertDialog,
   AlertDialogAction,

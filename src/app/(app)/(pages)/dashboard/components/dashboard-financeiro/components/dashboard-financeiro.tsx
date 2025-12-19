@@ -126,12 +126,14 @@ export default function DashboardFinanceiro({
             <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
             Dashboard Financeiro
           </CardTitle>
-          <CardDescription className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <span>Visão geral de receitas, despesas e fluxo de caixa a partir das transações.</span>
-            <Badge variant="default" className="text-[10px] sm:text-xs">
-              Período: {textoPeriodo}{" "}
-            </Badge>
+
+          <CardDescription className="text-xs sm:text-sm">
+            Visão geral de receitas, despesas e fluxo de caixa a partir das transações.
           </CardDescription>
+          
+          <Badge variant="default" className="text-[10px] sm:text-xs">
+            Período: {textoPeriodo}
+          </Badge>
 
           {metodoSelecionado && (
             <div className="mt-1 flex flex-wrap items-center gap-2">

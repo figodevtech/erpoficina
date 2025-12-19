@@ -4,7 +4,7 @@ import {
 } from "@/components/ui/dialog";
 import { ReactNode, } from "react";
 import VendasContent from "./vendasContent";
-import { vendaStatus } from "@/app/(app)/(pages)/historicovendas/types";
+import { vendaStatus } from "@/app/(app)/(pages)/(vendas)/historicovendas/types";
 
 interface VendasFinancialDialogProps {
   open?: boolean;

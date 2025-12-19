@@ -35,7 +35,7 @@ import {
 import formatarEmReal from "@/utils/formatarEmReal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
-import { VendaComItens, vendaStatus } from "../../../historicovendas/types";
+import { VendaComItens, vendaStatus } from "../../../(vendas)/historicovendas/types";
 import { formatDate } from "@/utils/formatDate";
 import VendasFinancialDialog from "./vendasFinancialDialog/vendasFinancialDialog";
 

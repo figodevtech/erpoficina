@@ -48,8 +48,8 @@ import { Pagination, VendaComItens, vendaStatus } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
 import DeleteAlert from "./deleteAlert";
-import { GerarNotaDeOsDialog } from "../../ordens/components/dialogs/emissao-nota-dialog/gerarNotaDeOsDialog/gerarNotaDeOsDialog";
-import { EmissaoNotaDialog } from "../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
+import { GerarNotaDeOsDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/gerarNotaDeOsDialog/gerarNotaDeOsDialog";
+import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 import { VendaDetailsDialog } from "./venda-detail-dialog";
 
 interface VendasDataTableProps {

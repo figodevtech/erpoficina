@@ -1,18 +1,15 @@
-// /src/app/(app)/ClientAppShell.tsx
+// src/app/(app)/ClientAppShell.tsx
 "use client";
 
 import * as React from "react";
-import { AppSidebar } from "./components/sidebar/sidebar";
+import { AppSidebar } from "../components/sidebar/sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "./components/mode-toggle";
-import DateTimeBadge from "./components/date-time-badge";
+import { ModeToggle } from "../components/mode-toggle";
+import DateTimeBadge from "../components/date-time-badge";
 import { Toaster } from "@/components/ui/sonner";
 import { usePathname } from "next/navigation";
 
-/* ============================
- * Títulos por rota + fallback
- * ============================ */
 const routeTitles: Record<string, string> = {
   "/": "Início",
   "/usuarios": "Gerenciamento de Usuários",
@@ -30,6 +27,7 @@ const routeTitles: Record<string, string> = {
   "/checklist": "Gerenciamento de Checklists",
   "/nao-autorizado": "Acesso não autorizado",
   "/configuracoes/tipos": "Configurações de Tipos",
+  "/historicovendas": "Histórico de Vendas",
 };
 
 function humanize(path: string) {
@@ -54,11 +52,9 @@ function humanize(path: string) {
 }
 
 export default function ClientAppShell({
-  user,
   children,
   hideHeader = false,
 }: {
-  user: { nome: string; email: string };
   children: React.ReactNode;
   hideHeader?: boolean;
 }) {
@@ -67,10 +63,9 @@ export default function ClientAppShell({
 
   return (
     <SidebarProvider defaultOpen>
-      <AppSidebar user={user} />
+      <AppSidebar />
 
       <SidebarInset className="flex min-h-screen min-w-0">
-        {/* Header só aparece se NÃO for para esconder */}
         {!hideHeader && (
           <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />

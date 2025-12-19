@@ -1,4 +1,4 @@
-import { VendaComItens } from "../historicovendas/types";
+import { VendaComItens } from "../(vendas)/historicovendas/types";
 import { OrdemServico } from "@/types/ordemservico";
 
 export enum Estoque_status {

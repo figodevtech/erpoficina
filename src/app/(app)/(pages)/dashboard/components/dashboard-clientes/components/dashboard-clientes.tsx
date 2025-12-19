@@ -29,8 +29,8 @@ import { percentualDe, taxaCrescimento, formatarRotuloMes, topUfs } from "../lib
 import { listarMesesEntre } from "../lib/months";
 
 import { useInsightsClientes } from "../hooks/use-insights-clientes";
-import IndicadorResumo from "../components/indicador-resumo";
-import SheetClientesFiltros from "../components/sheet-clientes-filtros";
+import IndicadorResumo from "./indicador-resumo";
+import SheetClientesFiltros from "./sheet-clientes-filtros";
 
 // ───────────────── helpers ─────────────────
 

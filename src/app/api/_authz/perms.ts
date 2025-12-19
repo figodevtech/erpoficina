@@ -18,6 +18,8 @@ export const PERMS = {
   USUARIOS: "USUARIOS_ACESSO",
 
   ACOMPANHAMENTO: "ACOMPANHAMENTO_ACESSO",
+
+  VENDAS: "VENDAS_ACESSO",
 } as const;
 
 export type Permission = (typeof PERMS)[keyof typeof PERMS];
@@ -176,4 +178,11 @@ export async function hasFinanceiroAccess() {
 }
 export async function requireFinanceirosAccess() {
   return requirePerm(PERMS.FINANCEIRO);
+}
+
+export async function hasVendasAccess() {
+  return hasPerm(PERMS.VENDAS);
+}
+export async function requireVendasAccess() {
+  return requirePerm(PERMS.VENDAS);
 }

@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { VendaComItens, vendaStatus } from "../../historicovendas/types";
+import { VendaComItens, vendaStatus } from "../../(vendas)/historicovendas/types";
 import VendasTable from "./components/vendasTable";
 
 export default function AssistentePagamentoVendas (){

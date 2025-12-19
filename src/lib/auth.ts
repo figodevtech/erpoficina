@@ -1,8 +1,33 @@
+// src/lib/auth.ts
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+const MAX_AGE_SECONDS = 60 * 60 * 24; // 24h
+
+async function carregarPermissoesPorPerfil(perfilId: number | null): Promise<string[]> {
+  if (!perfilId) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from("perfilpermissao")
+    .select("permissao:permissaoid ( nome )")
+    .eq("perfilid", perfilId);
+
+  if (error) {
+    console.error("[auth] erro ao carregar permissões:", error);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((r: any) =>
+      String(r?.permissao?.nome ?? "")
+        .trim()
+        .toUpperCase()
+    )
+    .filter(Boolean);
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -30,16 +55,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const { user } = data;
 
-          const agora = new Date();
-          console.log("[auth] login realizado no servidor", {
-            iso: agora.toISOString(),
-            local: agora.toString(),
-          });
-
           let perfilid: number | null = null;
           let setorid: number | null = null;
           let nome = user.user_metadata?.nome ?? user.email ?? "Usuário";
+          let ativo = true;
 
+          // tenta por id
           const { data: row } = await supabaseAdmin
             .from("usuario")
             .select("id, email, nome, perfilid, setorid, ativo")
@@ -50,12 +71,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             nome = row.nome ?? nome;
             perfilid = (row.perfilid as number | null) ?? null;
             setorid = (row.setorid as number | null) ?? null;
-
-            if (row.ativo === false) {
-              // 👇 código de usuário bloqueado
-              throw new Error("USER_BLOCKED");
-            }
+            ativo = row.ativo !== false;
           } else {
+            // fallback por email
             const { data: byEmail } = await supabaseAdmin
               .from("usuario")
               .select("id, email, nome, perfilid, setorid, ativo")
@@ -66,12 +84,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               nome = byEmail.nome ?? nome;
               perfilid = (byEmail.perfilid as number | null) ?? null;
               setorid = (byEmail.setorid as number | null) ?? null;
-
-              if (byEmail.ativo === false) {
-                throw new Error("USER_BLOCKED");
-              }
+              ativo = byEmail.ativo !== false;
             }
           }
+
+          if (!ativo) {
+            throw new Error("USER_BLOCKED");
+          }
+
+          const permissoes = await carregarPermissoesPorPerfil(perfilid);
 
           return {
             id: user.id,
@@ -79,9 +100,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             nome,
             perfilId: perfilid,
             setorId: setorid,
+            ativo,
+            permissoes,
           } as any;
         } catch (e: any) {
-          // Se já for um dos códigos conhecidos, só repassa
           if (
             e instanceof Error &&
             ["MISSING_CREDENTIALS", "INVALID_CREDENTIALS", "USER_BLOCKED"].includes(e.message)
@@ -95,40 +117,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+
+  session: {
+    strategy: "jwt",
+    maxAge: MAX_AGE_SECONDS,
+  },
+
+  jwt: {
+    maxAge: MAX_AGE_SECONDS,
+  },
+
   callbacks: {
     async jwt({ token, user }) {
-      // Primeira vez: quando acabou de logar
+      // Primeira vez (login)
       if (user) {
         token.id = (user as any).id;
         token.email = (user as any).email;
+
         (token as any).nome = (user as any).nome;
         (token as any).perfilId = (user as any).perfilId ?? null;
         (token as any).setorId = (user as any).setorId ?? null;
-        (token as any).ativo = true; // assume ativo no login
+
+        (token as any).ativo = (user as any).ativo ?? true;
+        (token as any).permissoes = Array.isArray((user as any).permissoes) ? (user as any).permissoes : [];
+
         return token;
       }
 
-      // Chamadas subsequentes: revalida no banco
-      if (token.id) {
-        const { data: row, error } = await supabaseAdmin
-          .from("usuario")
-          .select("id, ativo")
-          .eq("id", token.id as string)
-          .maybeSingle();
-
-        if (error) {
-          // em caso de erro, mantém token por enquanto
-          return token;
-        }
-
-        if (row && row.ativo === false) {
-          // Invalida completamente o token -> sessão some e cookie é limpo
-          return null;
-        }
-
-        (token as any).ativo = row?.ativo ?? true;
-      }
-
+      // Depois do login: não bater no banco (edge-safe e rápido)
       return token;
     },
 
@@ -136,16 +152,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         (session.user as any).id = token.id as string;
         (session.user as any).email = token.email as string;
+
         (session.user as any).nome = (token as any).nome as string;
         (session.user as any).perfilId = (token as any).perfilId ?? null;
         (session.user as any).setorId = (token as any).setorId ?? null;
+
         (session.user as any).ativo = (token as any).ativo ?? true;
+        (session.user as any).permissoes = (token as any).permissoes ?? [];
       }
 
       return session;
     },
   },
+
   pages: { signIn: "/login" },
-  session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,
 });
