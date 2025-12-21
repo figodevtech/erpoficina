@@ -9,23 +9,27 @@ import * as XLSX from "xlsx";
 type Status = "OK" | "CRITICO" | "BAIXO" | "SEM_ESTOQUE";
 const STATUS_SET = new Set<Status>(["OK", "CRITICO", "BAIXO", "SEM_ESTOQUE"]);
 
-/** Campos a exportar (podem ser ajustados) */
+/** Campos a exportar (somente os que existem em public.produto) */
 const EXPORT_FIELDS = `
   id, titulo, descricao, referencia,
   precovenda, unidade,
   estoque, estoqueminimo, status_estoque,
-  fornecedor, fabricante, grupo,
+  fabricante, grupo,
   ncm, cfop, csosn, cst, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, cest, aliquotaicms, codigobarras,
   createdat, updatedat
 `;
+
+function normalizeQ(input: string) {
+  // evita bagunçar o ilike com % e _
+  return input.trim().slice(0, 200).replace(/[%_]/g, "");
+}
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "")
-      .trim()
-      .slice(0, 200);
+    const qRaw = searchParams.get("search") ?? searchParams.get("q") ?? "";
+    const q = normalizeQ(qRaw);
 
     const statusParam = (searchParams.get("status") ?? "TODOS").toUpperCase();
     const statusFilter = STATUS_SET.has(statusParam as Status)
@@ -49,7 +53,6 @@ export async function GET(req: Request) {
       "Estoque",
       "Estoque Mín.",
       "Status Estoque",
-      "Fornecedor",
       "Fabricante",
       "Grupo",
       "NCM",
@@ -83,7 +86,6 @@ export async function GET(req: Request) {
       { wch: 10 }, // Estoque
       { wch: 12 }, // Estoque Mín.
       { wch: 14 }, // Status
-      { wch: 24 }, // Fornecedor
       { wch: 24 }, // Fabricante
       { wch: 16 }, // Grupo
       { wch: 12 }, // NCM
@@ -91,9 +93,9 @@ export async function GET(req: Request) {
       { wch: 10 }, // CSOSN
       { wch: 10 }, // CST
       { wch: 10 }, // CST PIS
-      { wch: 14 }, // Alpiquota PIS
-      { wch: 10 }, // CST COFINS
-      { wch: 14 }, // Alíquota COFINS
+      { wch: 14 }, // Alíquota PIS
+      { wch: 12 }, // CST COFINS
+      { wch: 16 }, // Alíquota COFINS
       { wch: 10 }, // CEST
       { wch: 14 }, // Alíquota ICMS
       { wch: 18 }, // Código Barras
@@ -106,21 +108,30 @@ export async function GET(req: Request) {
       let query = supabaseAdmin
         .from("produto")
         .select(EXPORT_FIELDS, { count: "exact" })
-        // Para varrer com range em blocos, ordene ASC de forma determinística
         .order("id", { ascending: true });
 
       if (q) {
+        // Somente colunas que existem em produto
         query = query.or(
-          `referencia.ilike.%${q}%,titulo.ilike.%${q}%,fornecedor.ilike.%${q}%,fabricante.ilike.%${q}%`
+          [
+            `referencia.ilike.%${q}%`,
+            `titulo.ilike.%${q}%`,
+            `descricao.ilike.%${q}%`,
+            `fabricante.ilike.%${q}%`,
+            `codigobarras.ilike.%${q}%`,
+            `ncm.ilike.%${q}%`,
+          ].join(",")
         );
       }
+
       if (statusFilter) {
         query = query.eq("status_estoque", statusFilter);
       }
+
       return query;
     };
 
-    // 1ª chamada apenas para obter total
+    // 1ª chamada só pra validar e evitar surpresa
     const first = await buildQuery().range(0, 0);
     if (first.error) throw first.error;
 
@@ -135,12 +146,11 @@ export async function GET(req: Request) {
         p.titulo ?? "",
         p.descricao ?? "",
         p.referencia ?? "",
-        p.precovenda ?? null, // número
+        p.precovenda ?? null,
         p.unidade ?? "",
-        p.estoque ?? null, // número (int)
-        p.estoqueminimo ?? null, // número (int)
+        p.estoque ?? null,
+        p.estoqueminimo ?? null,
         p.status_estoque ?? "",
-        p.fornecedor ?? "",
         p.fabricante ?? "",
         p.grupo ?? "",
         p.ncm ?? "",
@@ -152,7 +162,7 @@ export async function GET(req: Request) {
         p.cst_cofins ?? "",
         p.aliquota_cofins ?? "",
         p.cest ?? "",
-        p.aliquotaicms ?? null, // número
+        p.aliquotaicms ?? null,
         p.codigobarras ?? "",
         p.createdat ? new Date(p.createdat) : "",
         p.updatedat ? new Date(p.updatedat) : "",
@@ -165,8 +175,11 @@ export async function GET(req: Request) {
       if (!data?.length || data.length < CHUNK) break;
     }
 
-    // Buffer do XLSX
-    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const buffer = XLSX.write(wb, {
+      type: "buffer",
+      bookType: "xlsx",
+      cellDates: true,
+    });
 
     const filename = `produtos_${(statusFilter ?? "TODOS")}_${new Date()
       .toISOString()

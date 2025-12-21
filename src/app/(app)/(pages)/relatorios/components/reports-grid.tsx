@@ -19,6 +19,7 @@ import DialogReceitaCategoria from "./dialogs/dialog-receita-categoria";
 import { ProdutosEstoqueBaixo } from "./produtosEstoqueBaixo";
 import { ProdutosEstoqueCritico } from "./produtosEstoqueCrítico";
 import { ProdutosSemEstoque } from "./produtosSemEstoque";
+import DialogClienteCompras from "./dialogs/dialog-cliente-compras";
 
 export function ReportsGrid() {
 
@@ -128,7 +129,8 @@ export function ReportsGrid() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Button
+          <DialogClienteCompras/>
+          {/* <Button
             variant="outline"
             className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
           >
@@ -141,7 +143,7 @@ export function ReportsGrid() {
             <p className="text-xs text-muted-foreground">
               Compras realizadas por clientes
             </p>
-          </Button>
+          </Button> */}
           <Button
             variant="outline"
             className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"

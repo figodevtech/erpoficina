@@ -10,14 +10,18 @@ import * as XLSX from "xlsx";
 const FORTALEZA_TZ = "America/Fortaleza";
 const FORTALEZA_OFFSET = "-03:00";
 
-/** Campos retornados no select (iguais ao seu GET) */
+/**
+ * Campos do seu schema:
+ * transacao: id, descricao, valor, "valorLiquido", data, ordemservicoid, metodopagamento, categoria, tipo,
+ *           cliente_id, banco_id, created_at, updated_at
+ */
 const TRANSACAO_FIELDS =
-  "id, descricao, valor, valorLiquido, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
+  'id, descricao, valor, "valorLiquido", data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at';
 
-const BANCO_FIELDS =
-  "id, titulo, tipo, agencia, contanumero, proprietario, valorinicial, empresa_id, created_at, updated_at";
+/** bancoconta: id, titulo, ... , created_at, updated_at */
+const BANCO_FIELDS = "id, titulo, created_at, updated_at";
 
-// Date helpers (mesma lógica do seu GET)
+// Date helpers
 function localDayStartToUtcIso(dateStr: string) {
   return new Date(`${dateStr}T00:00:00${FORTALEZA_OFFSET}`).toISOString();
 }
@@ -38,10 +42,26 @@ function formatFortaleza(iso?: string | null) {
   }).format(d);
 }
 
-function toNumberOrNull(v: any) {
-  if (v == null || (typeof v === "string" && v.trim() === "")) return null;
+function normalizeQ(input: string) {
+  return input.trim().slice(0, 200).replace(/[%_]/g, "");
+}
+
+// banco_id é bigint: pode vir grande. Aqui aceito número ou string.
+function toBigintFilter(v: string | null) {
+  if (!v) return null;
+  const s = v.trim();
+  if (!s) return null;
+  // só dígitos
+  if (!/^\d+$/.test(s)) return null;
+  // se for seguro como number, ok; senão mantém string (PostgREST aceita string p/ bigint)
+  const n = Number(s);
+  return Number.isSafeInteger(n) ? n : s;
+}
+
+function toIntFilter(v: string | null) {
+  if (!v) return null;
   const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  return Number.isInteger(n) ? n : null;
 }
 
 /** ====== GET: export Excel ====== */
@@ -49,21 +69,19 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    // Mesmos filtros aceitos pela sua listagem:
-    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "")
-      .trim()
-      .slice(0, 200);
+    const q = normalizeQ(searchParams.get("search") ?? searchParams.get("q") ?? "");
 
     const tipo = (searchParams.get("tipo") ?? "").trim();
     const categoria = (searchParams.get("categoria") ?? "").trim();
-    const ordemservicoid = searchParams.get("ordemservicoid");
-    const metodo = (
-      searchParams.get("metodo") ?? searchParams.get("metodopagamento") ?? ""
-    )
+
+    const ordemservicoid = toIntFilter(searchParams.get("ordemservicoid"));
+    const metodo = (searchParams.get("metodo") ?? searchParams.get("metodopagamento") ?? "")
       .trim()
       .slice(0, 100);
-    const bancoId = toNumberOrNull(searchParams.get("bancoId"));
-    const clienteId = toNumberOrNull(searchParams.get("clienteId"));
+
+    const bancoId = toBigintFilter(searchParams.get("bancoId"));
+    const clienteId = toIntFilter(searchParams.get("clienteId"));
+
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
@@ -91,63 +109,58 @@ export async function GET(req: Request) {
       "Atualizado em",
     ] as const;
 
-    // Inicia workbook/planilha
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers as unknown as string[]]);
     XLSX.utils.book_append_sheet(wb, ws, "Transacoes");
 
     ws["!cols"] = [
-      { wch: 8 },   // ID
-      { wch: 40 },  // Descrição
-      { wch: 12 },  // Tipo
-      { wch: 18 },  // Categoria
-      { wch: 18 },  // Método
-      { wch: 14 },  // Valor
-      { wch: 16 },  // Valor Líquido
-      { wch: 22 },  // Data (Fortaleza)
-      { wch: 14 },  // OS
-      { wch: 12 },  // Cliente ID
-      { wch: 10 },  // Banco ID
-      { wch: 28 },  // Banco Título
-      { wch: 20 },  // Criado em
-      { wch: 20 },  // Atualizado em
+      { wch: 8 },  // ID
+      { wch: 40 }, // Descrição
+      { wch: 12 }, // Tipo
+      { wch: 18 }, // Categoria
+      { wch: 18 }, // Método
+      { wch: 14 }, // Valor
+      { wch: 16 }, // Valor Líquido
+      { wch: 22 }, // Data (Fortaleza)
+      { wch: 14 }, // OS
+      { wch: 12 }, // Cliente ID
+      { wch: 14 }, // Banco ID (bigint)
+      { wch: 28 }, // Banco Título
+      { wch: 20 }, // Criado em
+      { wch: 20 }, // Atualizado em
     ];
 
-    // Query base com filtros (mesma lógica do seu GET)
     const buildQuery = () => {
       let query = supabaseAdmin
         .from("transacao")
         .select(
           `
-          ${TRANSACAO_FIELDS},
-          banco:bancoconta!transacao_banco_id_fkey ( ${BANCO_FIELDS} )
-        `,
+            ${TRANSACAO_FIELDS},
+            banco:bancoconta!transacao_banco_id_fkey ( ${BANCO_FIELDS} )
+          `,
           { count: "exact" }
         )
-        // Para varrer em blocos, ordene de forma determinística:
         .order("data", { ascending: true })
         .order("id", { ascending: true });
 
       if (q) query = query.ilike("descricao", `%${q}%`);
-      if (ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
+      if (ordemservicoid != null) query = query.eq("ordemservicoid", ordemservicoid);
       if (tipo) query = query.eq("tipo", tipo);
       if (categoria) query = query.eq("categoria", categoria);
       if (metodo) query = query.eq("metodopagamento", metodo);
-      if (bancoId != null) query = query.eq("banco_id", bancoId);
+      if (bancoId != null) query = query.eq("banco_id", bancoId as any);
       if (clienteId != null) query = query.eq("cliente_id", clienteId);
 
       if (dateFrom) query = query.gte("data", localDayStartToUtcIso(dateFrom));
-      if (dateTo)
-        query = query.lt("data", localNextDayStartToUtcIso(dateTo));
+      if (dateTo) query = query.lt("data", localNextDayStartToUtcIso(dateTo));
 
       return query;
     };
 
-    // Primeira chamada só para obter o total
+    // valida
     const first = await buildQuery().range(0, 0);
     if (first.error) throw first.error;
 
-    // Varrendo em blocos
     for (let from = 0; ; from += CHUNK) {
       const to = from + CHUNK - 1;
       const { data, error } = await buildQuery().range(from, to);
@@ -159,8 +172,8 @@ export async function GET(req: Request) {
         t.tipo ?? "",
         t.categoria ?? "",
         t.metodopagamento ?? "",
-        t.valor ?? null,        // número
-        t.valorLiquido ?? null, // número
+        t.valor ?? null,
+        t["valorLiquido"] ?? null, // <-- no schema é "valorLiquido"
         formatFortaleza(t.data ?? null),
         t.ordemservicoid ?? "",
         t.cliente_id ?? "",
@@ -177,7 +190,6 @@ export async function GET(req: Request) {
       if (!data?.length || data.length < CHUNK) break;
     }
 
-    // Gera buffer do XLSX
     const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
     const filename = `transacoes_${new Date()
