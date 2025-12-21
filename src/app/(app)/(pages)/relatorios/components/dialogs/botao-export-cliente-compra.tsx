@@ -1,14 +1,17 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import axios from "axios";
+import { Download, Loader } from "lucide-react";
 import React, { useState } from "react";
+import { toast } from "sonner";
 
 type FiltrosExport = {
   q?: string;
   status?: string;
   clienteId?: number;
   dateFrom?: string; // "YYYY-MM-DD"
-  dateTo?: string;   // "YYYY-MM-DD"
+  dateTo?: string; // "YYYY-MM-DD"
   chunk?: number;
 };
 
@@ -29,40 +32,52 @@ function buildQuery(params: FiltrosExport) {
 function getFilenameFromDisposition(disposition?: string) {
   // Content-Disposition: attachment; filename="arquivo.xlsx"
   if (!disposition) return null;
-  const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";\n]+)"/i) || disposition.match(/filename=([^;\n]+)/i);
+  const match =
+    disposition.match(/filename\*?=(?:UTF-8''|")?([^";\n]+)"/i) ||
+    disposition.match(/filename=([^;\n]+)/i);
   if (!match?.[1]) return null;
   return decodeURIComponent(match[1].replace(/"/g, "").trim());
 }
 
-export function BotaoExportHistoricoCompras() {
+type BotaoExportHistoricoComprasProps = {
+  clienteId?: number; // passe aqui
+};
+
+export function BotaoExportHistoricoCompras({
+  clienteId,
+}: BotaoExportHistoricoComprasProps) {
   const [loading, setLoading] = useState(false);
 
-  // exemplo: você pode receber isso via props ou do seu state/filtros
-  const filtros: FiltrosExport = {
-    q: "",
-    status: "",         // ex: "PAGO" / "ABERTO" etc (seu enum_status_venda)
-    clienteId: undefined,
-    dateFrom: undefined, // "2025-12-01"
-    dateTo: undefined,   // "2025-12-21"
-    chunk: 1000,
-  };
-
   async function handleExport() {
+    if(!clienteId){
+      toast.error("Selecione um cliente para exportação.")
+      return;
+    }
     try {
       setLoading(true);
 
-      const url =
-        "/api/sales/purchase-history/export" + buildQuery(filtros);
+      const filtros: FiltrosExport = {
+        q: "",
+        status: "",
+        clienteId, // <- vindo por props
+        dateFrom: undefined,
+        dateTo: undefined,
+        chunk: 1000,
+      };
+
+      const url = "/api/venda/export/cliente" + buildQuery(filtros);
 
       const res = await axios.get(url, {
-        responseType: "blob", // importante pro Excel
+        responseType: "blob",
       });
 
       const contentDisposition =
         res.headers["content-disposition"] || res.headers["Content-Disposition"];
       const filename =
         getFilenameFromDisposition(contentDisposition) ||
-        `historico_compras_vendas_${new Date().toISOString().replace(/[:.]/g, "-")}.xlsx`;
+        `historico_compras_vendas_${new Date()
+          .toISOString()
+          .replace(/[:.]/g, "-")}.xlsx`;
 
       const blob = new Blob([res.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -78,26 +93,24 @@ export function BotaoExportHistoricoCompras() {
       URL.revokeObjectURL(href);
     } catch (err: any) {
       console.error(err);
-      alert(err?.response?.data?.error ?? "Falha ao exportar histórico de compras.");
+      alert(
+        err?.response?.data?.error ?? "Falha ao exportar histórico de compras."
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={handleExport}
       disabled={loading}
-      style={{
-        padding: "10px 14px",
-        borderRadius: 10,
-        border: "1px solid #ddd",
-        background: loading ? "#f3f3f3" : "white",
-        cursor: loading ? "not-allowed" : "pointer",
-      }}
+      variant={"secondary"}
+      className="hover:cursor-pointer"
     >
-      {loading ? "Exportando..." : "Exportar histórico de compras (XLSX)"}
-    </button>
+      {loading ? <Loader className="w-3 h-3 animate-spin" /> : <Download/>}{" "}
+      {loading ? "Exportando..." : "Exportar"}
+    </Button>
   );
 }
