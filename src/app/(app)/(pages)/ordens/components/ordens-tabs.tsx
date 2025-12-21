@@ -31,7 +31,7 @@ export type StatusOS =
   | "CANCELADO";
 
 /** Chaves das abas da UI */
-type TabKey = "TODAS" | "ORCAMENTO" | "APROVACAO" | "EM_ANDAMENTO" | "PAGAMENTO" | "FINALIZADAS";
+type TabKey = "ABERTAS" | "ORCAMENTO" | "APROVACAO" | "EM_ANDAMENTO" | "PAGAMENTO" | "FINALIZADAS";
 
 const ALL_STATUSES: StatusOS[] = [
   "AGUARDANDO_CHECKLIST",
@@ -54,8 +54,8 @@ const statusTabs: {
   statuses: StatusOS[];
 }[] = [
   {
-    key: "TODAS",
-    label: "Todas",
+    key: "ABERTAS",
+    label: "Abertas",
     icon: <ClipboardList className="h-4 w-4" />,
     dot: "bg-slate-400",
     active:
@@ -117,7 +117,7 @@ export function OrdensTabs({
   onEditar: (row: any) => void;
   onNovaOS: () => void;
 }) {
-  const [active, setActive] = useState<TabKey>("TODAS");
+  const [active, setActive] = useState<TabKey>("ABERTAS");
   const [stats, setStats] = useState<Record<string, number>>({
     AGUARDANDO_CHECKLIST: 0,
     ORCAMENTO: 0,

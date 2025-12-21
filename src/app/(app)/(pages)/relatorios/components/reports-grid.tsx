@@ -20,6 +20,7 @@ import { ProdutosEstoqueBaixo } from "./produtosEstoqueBaixo";
 import { ProdutosEstoqueCritico } from "./produtosEstoqueCrítico";
 import { ProdutosSemEstoque } from "./produtosSemEstoque";
 import DialogClienteCompras from "./dialogs/dialog-cliente-compras";
+import DialogProdutoCompras from "./dialogs/dialog-produto-compras";
 
 export function ReportsGrid() {
 
@@ -69,21 +70,7 @@ export function ReportsGrid() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Button
-          disabled
-            variant="outline"
-            className="h-auto hover:cursor-not-allowed flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
-          >
-            <div className="flex w-full items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
-                <Wallet />
-              </div>
-              <span className="flex-1 font-medium">Vendas por Produto </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Produtos mais vendidos
-            </p>
-          </Button>
+          <DialogProdutoCompras/>
         </div>
       </Card>
 
@@ -130,21 +117,8 @@ export function ReportsGrid() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DialogClienteCompras/>
+          
           {/* <Button
-            variant="outline"
-            className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
-          >
-            <div className="flex w-full items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
-                <FileText />
-              </div>
-              <span className="flex-1 font-medium">Histórico de compras </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Compras realizadas por clientes
-            </p>
-          </Button> */}
-          <Button
             variant="outline"
             className="h-auto hover:cursor-pointer flex-col items-start justify-start gap-2 p-4 text-left hover:bg-accent hover:text-accent-foreground bg-transparent"
           >
@@ -157,7 +131,7 @@ export function ReportsGrid() {
             <p className="text-xs text-muted-foreground">
               Maiores compradores
             </p>
-          </Button>
+          </Button> */}
         </div>
       </Card>
     </div>

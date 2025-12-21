@@ -31,7 +31,7 @@ export function TabOrdens({ produto }: { produto: Produto }) {
               ordens.map((o: any, idx: number) => (
                 <TableRow key={idx} className="hover:cursor-pointer text-center">
                   <TableCell>{o.ordem.id}</TableCell>
-                  <TableCell>{o.ordem.descricao || "-"}</TableCell>
+                  <TableCell className="max-w-[100px] overflow-hidden  truncate">{o.ordem.descricao || "-"}</TableCell>
                   <TableCell>{o.ordem.status}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

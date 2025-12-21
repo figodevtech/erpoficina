@@ -6,7 +6,8 @@ import { Download, Loader, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 
-type FiltrosExport = {
+type FiltrosExportProduto = {
+  produtoId?: number;
   q?: string;
   status?: string;
   clienteId?: number;
@@ -15,9 +16,10 @@ type FiltrosExport = {
   chunk?: number;
 };
 
-function buildQuery(params: FiltrosExport) {
+function buildQuery(params: FiltrosExportProduto) {
   const sp = new URLSearchParams();
 
+  if (params.produtoId != null) sp.set("produtoId", String(params.produtoId));
   if (params.q) sp.set("q", params.q);
   if (params.status) sp.set("status", params.status);
   if (params.clienteId != null) sp.set("clienteId", String(params.clienteId));
@@ -39,33 +41,53 @@ function getFilenameFromDisposition(disposition?: string) {
   return decodeURIComponent(match[1].replace(/"/g, "").trim());
 }
 
-type BotaoExportHistoricoComprasProps = {
-  clienteId?: number; // passe aqui
+type BotaoExportProdutoVendasProps = {
+  produtoId?: number;
+  q?: string;
+  status?: string;
+  clienteId?: number;
+  dateFrom?: string; // "YYYY-MM-DD"
+  dateTo?: string; // "YYYY-MM-DD"
+  chunk?: number;
+  variant?: "default" | "secondary" | "destructive" | "outline" | "ghost" | "link";
+  className?: string;
+  children?: React.ReactNode;
 };
 
-export function BotaoExportHistoricoCompras({
+export function BotaoExportProdutoVendas({
+  produtoId,
+  q = "",
+  status = "",
   clienteId,
-}: BotaoExportHistoricoComprasProps) {
+  dateFrom,
+  dateTo,
+  chunk = 1000,
+  variant = "secondary",
+  className = "hover:cursor-pointer",
+  children,
+}: BotaoExportProdutoVendasProps) {
   const [loading, setLoading] = useState(false);
 
   async function handleExport() {
-    if(!clienteId){
-      toast.error("Selecione um cliente para exportação.")
+    if (!produtoId) {
+      toast.error("Selecione um produto para exportação.");
       return;
     }
+
     try {
       setLoading(true);
 
-      const filtros: FiltrosExport = {
-        q: "",
-        status: "",
-        clienteId, // <- vindo por props
-        dateFrom: undefined,
-        dateTo: undefined,
-        chunk: 1000,
+      const filtros: FiltrosExportProduto = {
+        produtoId,
+        q,
+        status,
+        clienteId,
+        dateFrom,
+        dateTo,
+        chunk,
       };
 
-      const url = "/api/venda/export/cliente" + buildQuery(filtros);
+      const url = "/api/venda/export/produto" + buildQuery(filtros);
 
       const res = await axios.get(url, {
         responseType: "blob",
@@ -73,9 +95,10 @@ export function BotaoExportHistoricoCompras({
 
       const contentDisposition =
         res.headers["content-disposition"] || res.headers["Content-Disposition"];
+
       const filename =
         getFilenameFromDisposition(contentDisposition) ||
-        `historico_compras_vendas_${new Date()
+        `vendas_produto_${produtoId}_${new Date()
           .toISOString()
           .replace(/[:.]/g, "-")}.xlsx`;
 
@@ -93,8 +116,8 @@ export function BotaoExportHistoricoCompras({
       URL.revokeObjectURL(href);
     } catch (err: any) {
       console.error(err);
-      alert(
-        err?.response?.data?.error ?? "Falha ao exportar histórico de compras."
+      toast.error(
+        err?.response?.data?.error ?? "Falha ao exportar vendas do produto."
       );
     } finally {
       setLoading(false);
@@ -106,11 +129,11 @@ export function BotaoExportHistoricoCompras({
       type="button"
       onClick={handleExport}
       disabled={loading}
-      variant={"secondary"}
-      className="hover:cursor-pointer"
+      variant={variant}
+      className={className}
     >
-      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download/>}{" "}
-      {loading ? "Exportando..." : "Exportar"}
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download />}{" "}
+      {children ?? (loading ? "Exportando..." : "Exportar")}
     </Button>
   );
 }
