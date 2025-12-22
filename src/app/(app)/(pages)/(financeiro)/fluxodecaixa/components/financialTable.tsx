@@ -17,6 +17,7 @@ import {
   Divide,
   Loader,
   Loader2,
+  MoreHorizontal,
   Plus,
   Trash2Icon,
 } from "lucide-react";
@@ -197,7 +198,7 @@ export default function FinancialTable({
               <TableCell className="hidden md:table-cell">Banco</TableCell>
               <TableCell className="hidden md:table-cell">Método</TableCell>
               <TableCell className="text-right">Valor</TableCell>
-              <TableCell />
+              <TableCell className="text-right">Ações</TableCell>
             </TableRow>
           </TableHeader>
 
@@ -260,7 +261,7 @@ export default function FinancialTable({
                           variant="ghost"
                           className="h-8 w-8 p-0 cursor-pointer"
                         >
-                          <ChevronDown className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
 

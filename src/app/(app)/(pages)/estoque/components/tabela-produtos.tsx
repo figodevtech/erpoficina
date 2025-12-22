@@ -20,6 +20,7 @@ import {
   Store,
   Plus,
   FileText,
+  MoreHorizontal,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -278,7 +279,7 @@ export default function TabelaProdutos({
               <TableHead>Mín.</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Preço Unit.</TableHead>
-              <TableHead></TableHead>
+              <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -337,7 +338,7 @@ export default function TabelaProdutos({
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
-                          <ChevronDown className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
 
@@ -353,7 +354,11 @@ export default function TabelaProdutos({
                           Entrada
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem disabled={!canAct || isDeleting} onClick={() => abrirExcluir(id)}>
+                        <DropdownMenuItem
+                          disabled={!canAct || isDeleting}
+                          onClick={() => abrirExcluir(id)}
+                          variant="destructive"
+                        >
                           <Trash2Icon className="mr-2 h-4 w-4" />
                           Excluir
                         </DropdownMenuItem>

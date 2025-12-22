@@ -23,6 +23,7 @@ import {
   Headset,
   History,
   Handbag,
+  Lock,
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -36,6 +37,7 @@ import {
 import { NavSettings } from "./components/nav-settings";
 
 import { useSession } from "next-auth/react";
+import { title } from "process";
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   user?: { nome: string; email: string };
@@ -133,6 +135,12 @@ const data = {
           title: "Tipos",
           url: "/configuracoes/tipos",
           icon: Type,
+        },
+
+        {
+          title: "Perfis & Permissões",
+          url: "/configuracoes/perfis",
+          icon: Lock,
         },
         {
           title: "Usuários",
