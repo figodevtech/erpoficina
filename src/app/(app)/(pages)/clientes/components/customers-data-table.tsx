@@ -1,23 +1,11 @@
 "use client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -33,13 +21,7 @@ import {
   Loader,
 } from "lucide-react";
 
-import {
-  Select,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+import { Select, SelectValue, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Customer, Pagination, Status } from "../types";
 import formatarTelefone from "@/utils/formatarTelefone";
 import Link from "next/link";
@@ -52,12 +34,7 @@ import { toast } from "sonner";
 import { ExportCustomersButton } from "./ExportCustomersButton";
 
 interface CustomerDataTableProps {
-  handleGetCustomers: (
-    pageNumber?: number,
-    limit?: number,
-    search?: string,
-    status?: Status
-  ) => void;
+  handleGetCustomers: (pageNumber?: number, limit?: number, search?: string, status?: Status) => void;
   pagination: Pagination;
   search: string;
   status: Status;
@@ -120,21 +97,13 @@ export default function CustomersDataTable({
             <CardDescription className="flex flex-col">
               <button
                 onClick={() => {
-                  handleGetCustomers(
-                    pagination.page,
-                    pagination.limit,
-                    search,
-                    status
-                  );
+                  handleGetCustomers(pagination.page, pagination.limit, search, status);
                   fetchStatusCounts();
                 }}
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
               >
                 <span>Recarregar</span>
-                <Loader2
-                  width={12}
-                  className={isLoading ? "animate-spin" : ""}
-                />
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
               </button>
             </CardDescription>
           </div>
@@ -143,7 +112,12 @@ export default function CustomersDataTable({
           <div className="flex items-center gap-2">
             <ExportCustomersButton search={search} status={status} />
 
-            <CustomerDialog customerId={selectedCustomerId} isOpen={isOpen} setIsOpen={setIsOpen} setSelectedCustomerId={setSelectedCustomerId}>
+            <CustomerDialog
+              customerId={selectedCustomerId}
+              isOpen={isOpen}
+              setIsOpen={setIsOpen}
+              setSelectedCustomerId={setSelectedCustomerId}
+            >
               <Button className="hover:cursor-pointer">Novo Cliente</Button>
             </CustomerDialog>
           </div>
@@ -186,9 +160,7 @@ export default function CustomersDataTable({
                 <TableCell>{customer.id}</TableCell>
                 <TableCell>
                   <div>
-                    <div className="font-medium">
-                      {customer.nomerazaosocial}
-                    </div>
+                    <div className="font-medium">{customer.nomerazaosocial}</div>
                     <div className="text-sm text-muted-foreground">
                       {customer.tipopessoa === "FISICA" ? "PF" : "PJ"}
                     </div>
@@ -212,9 +184,7 @@ export default function CustomersDataTable({
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="font-mono text-sm">
-                  {customer.cpfcnpj}
-                </TableCell>
+                <TableCell className="font-mono text-sm">{customer.cpfcnpj}</TableCell>
                 <TableCell className="text-sm">
                   {customer.cidade}/{customer.estado}
                 </TableCell>
@@ -226,15 +196,12 @@ export default function CustomersDataTable({
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="space-y-1" align="end">
+                    <DropdownMenuContent className="space-y-1" align="center">
                       <CustomerDialog customerId={customer.id}>
-                        <Button
-                          variant={"ghost"}
-                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer"
-                        >
-                          <Edit className="-ml-1 -mr-1 h-4 w-4" />
+                        <DropdownMenuItem>
+                          <Edit className="h-4 w-4" />
                           <span>Editar</span>
-                        </Button>
+                        </DropdownMenuItem>
                       </CustomerDialog>
 
                       <DeleteAlert
@@ -243,13 +210,10 @@ export default function CustomersDataTable({
                         setIsAlertOpen={setIsAlertOpen}
                         handleDeleteUser={handleDeleteUser}
                       >
-                        <Button
-                          variant={"default"}
-                          className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
-                        >
-                          <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                          <Trash2Icon className=" h-4 w-4" />
                           <span>Excluir</span>
-                        </Button>
+                        </DropdownMenuItem>
                       </DeleteAlert>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -262,16 +226,9 @@ export default function CustomersDataTable({
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
-            <span>
-              {pagination.limit * (pagination.page - 1) +
-                (pagination.pageCount || 0)}
-            </span>
+            <span>{pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0)}</span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
-            <Loader
-              className={`w-4 h-full animate-spin transition-all opacity-0 ${
-                isLoading && "opacity-100"
-              }`}
-            />
+            <Loader className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`} />
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
@@ -279,9 +236,7 @@ export default function CustomersDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetCustomers(1, pagination.limit, search, status)
-              }
+              onClick={() => handleGetCustomers(1, pagination.limit, search, status)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -290,14 +245,7 @@ export default function CustomersDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetCustomers(
-                  pagination.page - 1,
-                  pagination.limit,
-                  search,
-                  status
-                )
-              }
+              onClick={() => handleGetCustomers(pagination.page - 1, pagination.limit, search, status)}
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -310,18 +258,8 @@ export default function CustomersDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleGetCustomers(
-                  pagination.page + 1,
-                  pagination.limit,
-                  search,
-                  status
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetCustomers(pagination.page + 1, pagination.limit, search, status)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
@@ -329,18 +267,8 @@ export default function CustomersDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleGetCustomers(
-                  pagination.totalPages,
-                  pagination.limit,
-                  search,
-                  status
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetCustomers(pagination.totalPages, pagination.limit, search, status)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>

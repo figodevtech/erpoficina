@@ -17,6 +17,7 @@ import {
   Check,
   EyeIcon,
   CreditCard,
+  MoreHorizontal,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -178,7 +179,7 @@ export default function VendasDataTable({
               <TableHead>Valor Total</TableHead>
               <TableHead className="text-center">Status</TableHead>
 
-              <TableHead></TableHead>
+              <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -197,7 +198,7 @@ export default function VendasDataTable({
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
-                          <ChevronDown className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">

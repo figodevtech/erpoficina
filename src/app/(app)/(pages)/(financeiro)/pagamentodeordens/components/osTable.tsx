@@ -12,8 +12,9 @@ import {
   ChevronsRight,
   DollarSign,
   Loader2,
+  MoreHorizontal,
 } from "lucide-react";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,15 +101,15 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
 
         <Table className="text-xs mt-6">
           <TableHeader>
-            <TableRow className="font-bold">
-              <TableCell>ID</TableCell>
-              <TableCell>Descrição</TableCell>
-              <TableCell>Cliente</TableCell>
-              <TableCell>Setor</TableCell>
-              <TableCell>Pago</TableCell>
-              <TableCell>Total</TableCell>
-              <TableCell>Situação</TableCell>
-              <TableCell></TableCell>
+            <TableRow>
+              <TableHead className="whitespace-nowrap">ID</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Setor</TableHead>
+              <TableHead className="whitespace-nowrap">Pago</TableHead>
+              <TableHead className="whitespace-nowrap">Total</TableHead>
+              <TableHead>Situação</TableHead>
+              <TableHead className="text-right whitespace-nowrap w-[90px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -123,7 +124,7 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
                   <TableRow key={o.id} className="hover:cursor-pointer">
                     {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
                     <TableCell>{o.id}</TableCell>
-                    <TableCell>{o.descricao}</TableCell>
+                    <TableCell className="max-w-[320px] truncate">{o.descricao}</TableCell>
                     <TableCell>{o.cliente?.nome}</TableCell>
                     <TableCell>{o.setor?.nome}</TableCell>
                     <TableCell className=" text-blue-300 not-dark:text-blue-700 font-bold">
@@ -142,7 +143,7 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
                         "Orçamento falta valor"
                       )}
                     </TableCell>
-                    <TableCell className="flex justify-end">
+                    <TableCell className="text-right whitespace-nowrap w-[90px]">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -151,11 +152,11 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
                             variant="ghost"
                             className="h-8 w-8 p-0 cursor-pointer"
                           >
-                            <ChevronDown className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
 
-                        <DropdownMenuContent id={menuId} aria-labelledby={triggerId} className="space-y-1">
+                        <DropdownMenuContent id={menuId} aria-labelledby={triggerId} className="space-y-1" align="end">
                           <OsFinancialDialog handleGetOrdens={handleGetOrdens} osId={o.id}>
                             <DropdownMenuItem disabled={o.orcamentototal <= 0} onSelect={(e) => e.preventDefault()}>
                               <DollarSign className="h-4 w-4" />

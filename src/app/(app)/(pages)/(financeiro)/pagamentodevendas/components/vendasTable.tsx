@@ -11,6 +11,7 @@ import {
   ChevronsRight,
   DollarSign,
   Loader2,
+  MoreHorizontal,
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -136,7 +137,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
                             variant="ghost"
                             className="h-8 w-8 p-0 cursor-pointer"
                           >
-                            <ChevronDown className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
 
