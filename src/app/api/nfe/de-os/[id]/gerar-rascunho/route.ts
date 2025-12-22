@@ -47,6 +47,8 @@ export async function POST(req: Request) {
 
     const body = (await req.json().catch(() => null)) as BodyRequest | null;
 
+    console.log("gerar-rascunho body", body)
+
     if (!body || !Array.isArray(body.itens) || body.itens.length === 0) {
       return NextResponse.json(
         {

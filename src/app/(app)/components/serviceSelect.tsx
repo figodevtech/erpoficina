@@ -93,7 +93,11 @@ export default function ServiceSelect({
   }, []);
   useEffect(() => {
     handleGetServices(pagination.page, pagination.limit, search);
-  }, [search, pagination.limit, pagination.page]);
+  }, [pagination.limit, pagination.page]);
+
+  useEffect(() => {
+    handleGetServices(1, pagination.limit, search);
+  }, [search]);
 
   return (
     <Dialog

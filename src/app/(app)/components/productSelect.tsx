@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
+import formatarEmReal from "@/utils/formatarEmReal";
+import { se } from "date-fns/locale";
 
 interface ProductSelectProps {
   children?: ReactNode;
@@ -90,9 +92,14 @@ export default function ProductSelect({
   useEffect(() => {
     handleGetProducts();
   }, []);
+
   useEffect(() => {
     handleGetProducts(pagination.page, pagination.limit, search);
-  }, [search, pagination.limit, pagination.page]);
+  }, [pagination.limit, pagination.page]);
+
+  useEffect(()=> {
+    handleGetProducts(1, pagination.limit, search)
+  }, [search])
 
   return (
     <Dialog
@@ -141,13 +148,14 @@ export default function ProductSelect({
                   <TableCell>ID</TableCell>
                   <TableCell>NOME</TableCell>
                   <TableCell>FRABRICANTE</TableCell>
+                  <TableCell>ESTOQUE</TableCell>
                   <TableCell>VALOR</TableCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {productItems.map((p) => (
                   <TableRow
-                    className="hover:cursor-pointer"
+                    className={`hover:cursor-pointer ${p.estoque === 0 && "bg-red-500/5 text-red-400" }`}
                     onClick={() => {
                       if (OnSelect) {
                         OnSelect(p);
@@ -164,7 +172,8 @@ export default function ProductSelect({
                       {p.titulo}
                     </TableCell>
                     <TableCell>{p.fabricante || "-"}</TableCell>
-                    <TableCell>{p.precovenda}</TableCell>
+                    <TableCell>{p.estoque}</TableCell>
+                    <TableCell>{formatarEmReal(p.precovenda || 0) }</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
