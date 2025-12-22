@@ -309,7 +309,7 @@ console.log(cart)
             </Card>
 
             {/* Products Grid */}
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {filteredProducts.map((product) => (
                 <Card
                   key={product.id}
