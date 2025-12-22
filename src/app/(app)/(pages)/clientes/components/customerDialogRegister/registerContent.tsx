@@ -61,17 +61,20 @@ import {
 import { cn } from "@/lib/utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
+import { Customer } from "../../types";
 
 interface RegisterContentProps {
   newCustomer: NewCustomer;
   setNewCustomer: (value: NewCustomer) => void;
   setSelectedCustomerId?: (value: number | undefined) => void;
+  onRegister?: (c: Customer) => void;
 }
 
 export default function RegisterContent({
   newCustomer,
   setNewCustomer,
   setSelectedCustomerId,
+  onRegister,
 }: RegisterContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { cidades, loading } = useGetCidades(newCustomer?.estado);
@@ -181,6 +184,7 @@ export default function RegisterContent({
         if (setSelectedCustomerId) {
           setSelectedCustomerId(response.data.id);
         }
+        onRegister?.(response.data.data);
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -197,11 +201,11 @@ export default function RegisterContent({
   };
 
   useEffect(() => {
-    setNewCustomer({...newCustomer,
+    setNewCustomer({
+      ...newCustomer,
       tipopessoa: newCustomer.tipopessoa,
       cpfcnpj: "",
       nomerazaosocial: "",
-      
     });
   }, [newCustomer.tipopessoa]);
 

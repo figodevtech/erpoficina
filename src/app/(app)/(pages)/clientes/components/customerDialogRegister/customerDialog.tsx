@@ -15,6 +15,7 @@ interface CustomerDialogProps {
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
   setSelectedCustomerId?: (value: number | undefined) => void;
+  onRegister?:(c: Customer)=> void;
 }
 
 export function CustomerDialog({
@@ -23,6 +24,7 @@ export function CustomerDialog({
   isOpen,
   setIsOpen,
   setSelectedCustomerId,
+  onRegister,
 }: CustomerDialogProps) {
   // estado interno caso o componente não seja controlado por props
   const [internalOpen, setInternalOpen] = useState(false);
@@ -122,6 +124,8 @@ export function CustomerDialog({
           setSelectedCustomerId={setSelectedCustomerId}
           newCustomer={newCustomer}
           setNewCustomer={setNewCustomer}
+          onRegister={onRegister} 
+
         />
       )}
     </Dialog>

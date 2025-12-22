@@ -1,20 +1,42 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, User2, ClipboardList, Building2, Wrench } from "lucide-react";
+import {
+  Search,
+  User2,
+  ClipboardList,
+  Building2,
+  Wrench,
+  Plus,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "../../../clientes/types";
 import { listarSetores } from "../../lib/api";
+import { ClienteInfoCard } from "./cliente-info-card";
+import { CustomerDialog } from "../../../clientes/components/customerDialogRegister/customerDialog";
 
 /* ========== Props ========== */
 export type FormularioNovaOSProps = {
@@ -26,12 +48,18 @@ export type FormularioNovaOSProps = {
 const NONE = "__none__";
 type AlvoTipo = "VEICULO" | "PECA";
 
-export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: FormularioNovaOSProps) {
+export function FormularioNovaOS({
+  exposeSubmit,
+  onDone,
+  onSavingChange,
+}: FormularioNovaOSProps) {
   const [saving, setSaving] = useState(false);
   useEffect(() => onSavingChange?.(saving), [saving, onSavingChange]);
 
   // Setores
-  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
+  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>(
+    []
+  );
   const [loadingSetores, setLoadingSetores] = useState(false);
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
@@ -39,11 +67,17 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   // Cliente (somente cadastrado)
   const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
-  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
+  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<
+    number | null
+  >(null);
   const [openCustomer, setOpenCustomer] = useState(false);
+  const [customerRegisterOpen, setCustomerRegisterOpen] = useState(false)
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>(undefined)
 
   // OS
-  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
+  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">(
+    "NORMAL"
+  );
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
@@ -122,7 +156,8 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
 
       // evita duplicar placa em veículo novo
       if (!veiculoVinculado && placaNorm && veiculosDoCliente.length > 0) {
-        const normalize = (s: string) => s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+        const normalize = (s: string) =>
+          s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
         const jaExiste = veiculosDoCliente.some((v: any) => {
           const placaCliente = (v.placa || "").toString();
           return normalize(placaCliente) === normalize(placaNorm);
@@ -208,33 +243,18 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <User2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              Dados do Cliente
+            </CardTitle>
           </div>
-          <CardDescription>Selecione um cliente já cadastrado para abrir a OS.</CardDescription>
+          <CardDescription>
+            Selecione um cliente já cadastrado para abrir a OS.
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-3 md:items-end">
-            {/* Inputs (crescem) */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Nome/Razão Social</Label>
-                <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Telefone</Label>
-                <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>E-mail</Label>
-                <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
-              </div>
-            </div>
-
-            {/* Botão (menor) */}
-            <div className="md:w-[150px]">
+          <div className="w-full flex flex-row justify-between">
+            <div className="flex flex-row items-center gap-2">
               <CustomerSelect
                 open={openCustomer}
                 setOpen={setOpenCustomer}
@@ -244,13 +264,44 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                   setVeiculosDoCliente(c?.veiculos ?? []);
                 }}
               >
-                <Button className="w-full h-10 hover:cursor-pointer">
-                  <Search className="h-4 w-4" />
+                <Button
+                  variant={"outline"}
+                  className="hover:cursor-pointer w-min text-xs"
+                >
+                  <Search className="h-3 w-3" />
                   Selecionar Cliente
                 </Button>
               </CustomerSelect>
+              {cliente && (
+                <div
+                  onClick={() => setCliente(null)}
+                  className="p-1.5 rounded-full hover:cursor-pointer bg-muted"
+                >
+                  <X className="w-3 h-3 text-red-500" />
+                </div>
+              )}
             </div>
+            <CustomerDialog
+            customerId={selectedCustomerId}
+            setSelectedCustomerId={setSelectedCustomerId}
+            isOpen={customerRegisterOpen}
+            setIsOpen={setCustomerRegisterOpen}
+              onRegister={(c) => {
+                setCliente(c ?? null);
+                setVeiculoSelecionadoId(null);
+                setVeiculosDoCliente(c?.veiculos ?? []);
+              }}
+            />
+              <Button
+              onClick={()=> setCustomerRegisterOpen(true)}
+                variant={"outline"}
+                className="hover:cursor-pointer w-min text-xs"
+              >
+                <Plus className="h-3 w-3" />
+                Novo Cliente
+              </Button>
           </div>
+          {cliente && <ClienteInfoCard customer={cliente} />}
         </CardContent>
       </Card>
 
@@ -259,7 +310,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              Definição da OS
+            </CardTitle>
           </div>
         </CardHeader>
 
@@ -270,7 +323,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
               <Select
                 value={setor}
                 onValueChange={setSetor}
-                disabled={loadingSetores || (!!setoresError && setores.length === 0)}
+                disabled={
+                  loadingSetores || (!!setoresError && setores.length === 0)
+                }
               >
                 <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                   <SelectValue
@@ -291,12 +346,17 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                   ))}
                 </SelectContent>
               </Select>
-              {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
+              {setoresError && (
+                <p className="text-xs text-red-500">{setoresError}</p>
+              )}
             </div>
 
             <div className="space-y-3">
               <Label>Prioridade</Label>
-              <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)}>
+              <Select
+                value={prioridade}
+                onValueChange={(v) => setPrioridade(v as any)}
+              >
                 <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                   <SelectValue placeholder="Selecione a prioridade" />
                 </SelectTrigger>
@@ -337,14 +397,20 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
               <>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Vincular a um veículo já cadastrado (opcional)</Label>
+                    <Label>
+                      Vincular a um veículo já cadastrado (opcional)
+                    </Label>
                     <Badge variant="outline" className="font-normal">
                       {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
                     </Badge>
                   </div>
 
                   <Select
-                    value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
+                    value={
+                      veiculoSelecionadoId === null
+                        ? NONE
+                        : String(veiculoSelecionadoId)
+                    }
                     onValueChange={(v) => {
                       const id = v === NONE ? null : Number(v);
                       setVeiculoSelecionadoId(id);
@@ -422,7 +488,11 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                   </div>
                   <div className="space-y-1.5">
                     <Label>Cor</Label>
-                    <Input value={vCor} onChange={(e) => setVCor(e.target.value)} disabled={veiculoVinculado} />
+                    <Input
+                      value={vCor}
+                      onChange={(e) => setVCor(e.target.value)}
+                      disabled={veiculoVinculado}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>KM atual</Label>
@@ -439,11 +509,19 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Nome da peça</Label>
-                  <Input value={pNome} onChange={(e) => setPNome(e.target.value)} placeholder="Ex.: Bomba d’água" />
+                  <Input
+                    value={pNome}
+                    onChange={(e) => setPNome(e.target.value)}
+                    placeholder="Ex.: Bomba d’água"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Descrição (opcional)</Label>
-                  <Input value={pDesc} onChange={(e) => setPDesc(e.target.value)} placeholder="Detalhes da peça" />
+                  <Input
+                    value={pDesc}
+                    onChange={(e) => setPDesc(e.target.value)}
+                    placeholder="Detalhes da peça"
+                  />
                 </div>
               </div>
             )}
@@ -456,7 +534,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">Descrição do Problema</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              Descrição do Problema
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
