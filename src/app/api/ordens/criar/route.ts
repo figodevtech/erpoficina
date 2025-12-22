@@ -15,17 +15,11 @@ type Payload = {
   veiculoid: number | null;
   descricao: string | null;
   observacoes: string | null;
-  // legado: mantido apenas para compatibilidade, hoje ignorado na criação da OS
-  checklistTemplateId?: string | null;
+  checklistTemplateId?: string | null; // legado
   prioridade?: DBPrioridade;
-  cliente:
-    | { id: number }
-    | {
-        nome: string;
-        documento: string;
-        telefone?: string | null;
-        email?: string | null;
-      };
+
+  // ✅ agora é obrigatório ser cliente cadastrado
+  cliente: { id: number };
 
   alvo?: {
     tipo: DBAlvo;
@@ -40,7 +34,6 @@ type Payload = {
     peca?: { nome: string; descricao?: string | null };
   };
 
-  // legado: checklist completo agora é salvo em /api/ordens/[id]/checklist
   checklist?: Array<{
     item: string;
     status?: DBChecklistStatus | string | null | undefined;
@@ -48,20 +41,8 @@ type Payload = {
   }>;
 };
 
-function onlyDigits(s: string) {
-  return (s || "").replace(/\D+/g, "");
-}
-
-function deduzTipoPessoa(documento: string): "FISICA" | "JURIDICA" {
-  const d = onlyDigits(documento);
-  return d.length === 14 ? "JURIDICA" : "FISICA";
-}
-
-// função de normalização de prioridade
 function normPrioridade(v: any): DBPrioridade {
-  const t = String(v ?? "")
-    .trim()
-    .toUpperCase();
+  const t = String(v ?? "").trim().toUpperCase();
   return t === "BAIXA" || t === "ALTA" ? (t as DBPrioridade) : "NORMAL";
 }
 
@@ -73,65 +54,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const body = (await req.json()) as Payload;
+    const body = (await req.json()) as any;
 
     if (!body?.setorid) {
       return NextResponse.json({ error: "setorid é obrigatório" }, { status: 400 });
     }
 
-    const setorid = Number(body.setorid);
-    const prioridade = normPrioridade(body.prioridade);
+    // ✅ bloqueia payload antigo/avulso
+    if (!body?.cliente || typeof body.cliente?.id !== "number") {
+      return NextResponse.json({ error: "Cliente deve ser cadastrado (cliente.id é obrigatório)." }, { status: 400 });
+    }
+
+    const payload = body as Payload;
+
+    const setorid = Number(payload.setorid);
+    const prioridade = normPrioridade(payload.prioridade);
 
     // ========= Resolve cliente =========
-    let clienteid: number | null = null;
-    if ("id" in body.cliente && typeof body.cliente.id === "number") {
-      clienteid = body.cliente.id;
-    } else {
-      const nome = (body.cliente as any)?.nome?.trim();
-      const documento = onlyDigits((body.cliente as any)?.documento || "");
-      if (!nome || !documento) {
-        return NextResponse.json({ error: "Dados de cliente inválidos" }, { status: 400 });
-      }
-      const tipopessoa = deduzTipoPessoa(documento);
+    const clienteid = Number(payload.cliente.id);
 
-      const { data: ja, error: eJa } = await supabaseAdmin
-        .from("cliente")
-        .select("id")
-        .eq("cpfcnpj", documento)
-        .limit(1)
-        .maybeSingle();
-      if (eJa) throw eJa;
-
-      if (ja?.id) {
-        clienteid = ja.id;
-      } else {
-        const { data: novo, error: eNovo } = await supabaseAdmin
-          .from("cliente")
-          .insert({
-            tipopessoa,
-            cpfcnpj: documento,
-            nomerazaosocial: nome,
-            email: (body.cliente as any)?.email || null,
-            telefone: (body.cliente as any)?.telefone || null,
-            // campos como cidade/estado você pode preencher aqui se quiser
-          })
-          .select("id")
-          .single();
-        if (eNovo) throw eNovo;
-        clienteid = novo.id;
-      }
+    // (opcional mas recomendado) valida se existe
+    const { data: cRow, error: cErr } = await supabaseAdmin.from("cliente").select("id").eq("id", clienteid).maybeSingle();
+    if (cErr) throw cErr;
+    if (!cRow?.id) {
+      return NextResponse.json({ error: "Cliente não encontrado." }, { status: 400 });
     }
 
     // ========= Resolve alvo (veículo/peça) =========
     let alvo_tipo: DBAlvo = "VEICULO";
-    let veiculoid: number | null = body?.veiculoid ? Number(body.veiculoid) : null;
+    let veiculoid: number | null = payload?.veiculoid ? Number(payload.veiculoid) : null;
     let pecaid: number | null = null;
 
     // ids criados nesta chamada (rollback se der ruim)
     let createdVeiculoId: number | null = null;
     let createdPecaId: number | null = null;
 
-    const alvo = body?.alvo;
+    const alvo = payload?.alvo;
+
     if (!alvo) {
       if (!veiculoid) {
         return NextResponse.json(
@@ -156,9 +115,7 @@ export async function POST(req: NextRequest) {
 
         if (!placa) {
           return NextResponse.json(
-            {
-              error: "Para alvo VEICULO sem vínculo, informe ao menos a PLACA (modelo/marca recomendados).",
-            },
+            { error: "Para alvo VEICULO sem vínculo, informe ao menos a PLACA (modelo/marca recomendados)." },
             { status: 400 }
           );
         }
@@ -176,10 +133,13 @@ export async function POST(req: NextRequest) {
           })
           .select("id")
           .single();
+
         if (eVNew) throw eVNew;
+
         veiculoid = vNew.id;
         createdVeiculoId = vNew.id;
       }
+
       pecaid = null;
     } else if (alvo.tipo === "PECA") {
       alvo_tipo = "PECA";
@@ -199,10 +159,11 @@ export async function POST(req: NextRequest) {
         })
         .select("id")
         .single();
+
       if (eP) throw eP;
 
       pecaid = pNew.id;
-      createdPecaId = pNew.id; // 👈 agora de fato usamos createdPecaId
+      createdPecaId = pNew.id;
     } else {
       return NextResponse.json({ error: "alvo.tipo inválido" }, { status: 400 });
     }
@@ -218,27 +179,20 @@ export async function POST(req: NextRequest) {
         usuariocriadorid,
         setorid,
         prioridade,
-        descricao: body.descricao || null,
-        observacoes: body.observacoes || null,
+        descricao: payload.descricao || null,
+        observacoes: payload.observacoes || null,
         status: "AGUARDANDO_CHECKLIST",
       })
       .select("id")
       .single();
 
     if (eOS) {
-      // rollback básico se falhar ao criar OS
-      if (createdPecaId) {
-        await supabaseAdmin.from("peca").delete().eq("id", createdPecaId);
-      }
-      if (createdVeiculoId) {
-        await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
-      }
+      if (createdPecaId) await supabaseAdmin.from("peca").delete().eq("id", createdPecaId);
+      if (createdVeiculoId) await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
       throw eOS;
     }
 
-    const osId = os.id as number;
-
-    return NextResponse.json({ id: osId }, { status: 201 });
+    return NextResponse.json({ id: os.id as number }, { status: 201 });
   } catch (err: any) {
     console.error("POST /api/ordens/criar", err);
     return NextResponse.json({ error: err?.message || "Falha ao criar OS" }, { status: 500 });

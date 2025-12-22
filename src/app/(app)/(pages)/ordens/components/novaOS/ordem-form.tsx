@@ -24,7 +24,6 @@ export type FormularioNovaOSProps = {
 };
 
 const NONE = "__none__";
-
 type AlvoTipo = "VEICULO" | "PECA";
 
 export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: FormularioNovaOSProps) {
@@ -37,24 +36,14 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
 
-  // Atendimento/cliente
-  const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
-  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
-  const [docBusca, setDocBusca] = useState("");
+  // Cliente (somente cadastrado)
   const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
-  const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [openCustomer, setOpenCustomer] = useState(false);
-  const [erroCliente, setErroCliente] = useState<string | null>(null);
 
-  // Avulso
-  const [avulsoNome, setAvulsoNome] = useState("");
-  const [avulsoDoc, setAvulsoDoc] = useState("");
-  const [avulsoTelefone, setAvulsoTelefone] = useState("");
-  const [avulsoEmail, setAvulsoEmail] = useState("");
-
-  // Texto
+  // OS
+  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
@@ -68,6 +57,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   const [vKm, setVKm] = useState("");
   const [pNome, setPNome] = useState("");
   const [pDesc, setPDesc] = useState("");
+
   const veiculoVinculado = veiculoSelecionadoId !== null;
 
   /* ================== Data loading ================== */
@@ -97,30 +87,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     [veiculosDoCliente]
   );
 
-  const buscarClientePorDocumento = async () => {
-    const raw = docBusca.trim();
-    if (!raw) return setErroCliente("Informe um CPF/CNPJ para buscar.");
-    setErroCliente(null);
-    setBuscandoCliente(true);
-    setCliente(null);
-    setVeiculosDoCliente([]);
-    setVeiculoSelecionadoId(null);
-    try {
-      const url = new URL("/api/clientes/buscar-documento", window.location.origin);
-      url.searchParams.set("doc", raw);
-      const r = await fetch(url.toString(), { cache: "no-store" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "Não foi possível buscar o cliente.");
-      setCliente(j?.cliente ?? null);
-      setVeiculosDoCliente(j?.veiculos ?? []);
-    } catch (e: any) {
-      setErroCliente(e?.message ?? "Erro ao consultar o cliente.");
-    } finally {
-      setBuscandoCliente(false);
-    }
-  };
-
-  // expõe submit (mantendo o padrão)
+  // expõe submit
   useEffect(() => {
     exposeSubmit?.(salvar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,7 +95,6 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     setor,
     descricao,
     observacoes,
-    modoAtendimento,
     cliente,
     veiculosDoCliente,
     veiculoSelecionadoId,
@@ -144,38 +110,23 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     pDesc,
   ]);
 
-  // validações (sem checklist, com proteção contra duplicar veículo)
   const validateAll = (): string | null => {
     if (!setor) return "Selecione o setor responsável.";
-
-    if (modoAtendimento === "cadastrado" && !cliente) {
-      return "Busque o cliente pelo CPF/CNPJ.";
-    }
-
-    if (modoAtendimento === "avulso") {
-      if (!avulsoNome || !avulsoDoc) {
-        return "Preencha Nome/Razão Social e CPF/CNPJ para atendimento avulso.";
-      }
-      if (!avulsoTelefone?.trim() || !avulsoEmail?.trim()) {
-        return "Para atendimento avulso, telefone e e-mail são obrigatórios.";
-      }
-    }
+    if (!cliente) return "Selecione um cliente cadastrado.";
 
     if (alvoTipo === "VEICULO") {
-      // se não está vinculado a veículo existente, exigimos placa
       const placaNorm = vPlaca.trim().toUpperCase();
       if (!veiculoVinculado && !placaNorm) {
         return "Para criar um veículo novo, informe ao menos a PLACA.";
       }
 
-      // se está tentando criar um novo veículo com placa que já existe
+      // evita duplicar placa em veículo novo
       if (!veiculoVinculado && placaNorm && veiculosDoCliente.length > 0) {
         const normalize = (s: string) => s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
         const jaExiste = veiculosDoCliente.some((v: any) => {
           const placaCliente = (v.placa || "").toString();
           return normalize(placaCliente) === normalize(placaNorm);
         });
-
         if (jaExiste) {
           return "Já existe um veículo com essa placa para este cliente. Selecione-o na lista em vez de cadastrar outro.";
         }
@@ -190,6 +141,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   /* ================== Submit ================== */
   const salvar = async (): Promise<void> => {
     if (saving) return;
+
     const err = validateAll();
     if (err) return void toast.error(err);
 
@@ -200,16 +152,12 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
         descricao: descricao || null,
         observacoes: (observacoes || "").trim() || null,
         prioridade,
-        cliente:
-          modoAtendimento === "cadastrado"
-            ? { id: cliente!.id }
-            : {
-                nome: avulsoNome,
-                documento: avulsoDoc,
-                telefone: avulsoTelefone || null,
-                email: avulsoEmail || null,
-              },
+
+        // ✅ sempre cadastrado
+        cliente: { id: cliente!.id },
+
         veiculoid: veiculoSelecionadoId,
+
         alvo:
           alvoTipo === "VEICULO"
             ? veiculoVinculado
@@ -236,6 +184,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || "Falha ao criar OS");
 
@@ -261,100 +210,47 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
             <User2 className="h-5 w-5 text-primary" />
             <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
           </div>
-          <CardDescription>Busque pelo CPF/CNPJ ou informe os dados para atendimento avulso.</CardDescription>
+          <CardDescription>Selecione um cliente já cadastrado para abrir a OS.</CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-5">
-          {/* Tipo de atendimento */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Label className="text-sm font-medium">Tipo de atendimento:</Label>
-              <RadioGroup
-                value={modoAtendimento}
-                onValueChange={(v: "cadastrado" | "avulso") => {
-                  setModoAtendimento(v);
-                  setCliente(null);
-                  setVeiculosDoCliente([]);
-                  setVeiculoSelecionadoId(null);
-                }}
-                className="flex flex-wrap gap-4"
-              >
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <RadioGroupItem value="cadastrado" id="r-cadastrado" />
-                  <span>Cliente cadastrado</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <RadioGroupItem value="avulso" id="r-avulso" />
-                  <span>Atendimento avulso</span>
-                </label>
-              </RadioGroup>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-3 md:items-end">
+            {/* Inputs (crescem) */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nome/Razão Social</Label>
+                <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Telefone</Label>
+                <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>E-mail</Label>
+                <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
+              </div>
             </div>
 
-            {modoAtendimento === "cadastrado" && (
+            {/* Botão (menor) */}
+            <div className="md:w-[150px]">
               <CustomerSelect
                 open={openCustomer}
                 setOpen={setOpenCustomer}
                 OnSelect={(c) => {
                   setCliente(c ?? null);
                   setVeiculoSelecionadoId(null);
-                  setVeiculosDoCliente(c?.veiculos ?? []); // <<< popula os veículos do cliente
+                  setVeiculosDoCliente(c?.veiculos ?? []);
                 }}
               >
-                <Button className="w-full md:w-auto hover:cursor-pointer">
-                  <Search className="mr-2 h-4 w-4" />
-                  Selecionar cliente
+                <Button className="w-full h-10 hover:cursor-pointer">
+                  <Search className="h-4 w-4" />
+                  Selecionar Cliente
                 </Button>
               </CustomerSelect>
-            )}
-          </div>
-
-          {modoAtendimento === "cadastrado" ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Nome/Razão Social</Label>
-                  <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Telefone</Label>
-                  <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>E-mail</Label>
-                  <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
-                </div>
-              </div>
-
-              {erroCliente && <div className="text-sm text-red-600">{erroCliente}</div>}
-            </>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Nome/Razão Social</Label>
-                <Input value={avulsoNome} onChange={(e) => setAvulsoNome(e.target.value)} placeholder="Nome completo" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>CPF/CNPJ</Label>
-                <Input value={avulsoDoc} onChange={(e) => setAvulsoDoc(e.target.value)} placeholder="000.000.000-00" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Telefone</Label>
-                <Input
-                  value={avulsoTelefone}
-                  onChange={(e) => setAvulsoTelefone(e.target.value)}
-                  placeholder="(99) 99999-9999"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>E-mail</Label>
-                <Input
-                  value={avulsoEmail}
-                  onChange={(e) => setAvulsoEmail(e.target.value)}
-                  placeholder="email@dominio.com"
-                />
-              </div>
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
@@ -397,6 +293,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
               </Select>
               {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
             </div>
+
             <div className="space-y-3">
               <Label>Prioridade</Label>
               <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)}>
@@ -420,6 +317,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
               <Wrench className="h-4 w-4 text-primary" />
               <Label className="font-medium">Alvo do reparo</Label>
             </div>
+
             <RadioGroup
               value={alvoTipo}
               onValueChange={(v: AlvoTipo) => setAlvoTipo(v)}
@@ -444,12 +342,13 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                       {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
                     </Badge>
                   </div>
+
                   <Select
                     value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
                     onValueChange={(v) => {
                       const id = v === NONE ? null : Number(v);
                       setVeiculoSelecionadoId(id);
-                      // se vinculou, não usamos os campos de veículo novo
+
                       if (id !== null) {
                         setVPlaca("");
                         setVModelo("");
@@ -459,18 +358,16 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                         setVKm("");
                       }
                     }}
-                    disabled={(modoAtendimento === "cadastrado" && !cliente) || veiculoOptions.length === 0}
+                    disabled={!cliente || veiculoOptions.length === 0}
                   >
                     <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                       <SelectValue
                         placeholder={
-                          modoAtendimento === "cadastrado"
-                            ? !cliente
-                              ? "Busque o cliente"
-                              : veiculoOptions.length
-                              ? "Selecione um veículo"
-                              : "Cliente sem veículos"
-                            : "Nenhum veículo cadastrado"
+                          !cliente
+                            ? "Selecione um cliente"
+                            : veiculoOptions.length
+                            ? "Selecione um veículo"
+                            : "Cliente sem veículos"
                         }
                       />
                     </SelectTrigger>

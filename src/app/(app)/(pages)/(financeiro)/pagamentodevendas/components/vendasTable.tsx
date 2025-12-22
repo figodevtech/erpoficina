@@ -12,26 +12,15 @@ import {
   DollarSign,
   Loader2,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
@@ -42,23 +31,12 @@ import VendasFinancialDialog from "./vendasFinancialDialog/vendasFinancialDialog
 interface OsTableProps {
   vendas: VendaComItens[];
   pagination: Pagination;
-  handleGetVendas: (
-    status: vendaStatus,
-    pageNumber?: number,
-    limit?: number,
-    search?: string
-  ) => void;
+  handleGetVendas: (status: vendaStatus, pageNumber?: number, limit?: number, search?: string) => void;
   isLoading: boolean;
   search: string;
 }
 
-export default function VendasTable({
-  vendas,
-  pagination,
-  handleGetVendas,
-  isLoading,
-  search,
-}: OsTableProps) {
+export default function VendasTable({ vendas, pagination, handleGetVendas, isLoading, search }: OsTableProps) {
   // ID estável para o Select de "itens por página"
   const [selectedStatus, setSelectedStatus] = useState<vendaStatus>(vendaStatus.PAGAMENTO);
   const [open, setOpen] = useState(false);
@@ -76,10 +54,7 @@ export default function VendasTable({
       <CardHeader className="border-b-2 flex flex-col">
         <div className="flex flex-row justify-between w-full">
           <CardTitle className="text-lg font-medium">
-            Vendas{" "}
-            <span className="text-muted-foreground text-xs font-mono font-extralight">
-              |EM PAGAMENTO
-            </span>
+            Vendas <span className="text-muted-foreground text-xs font-mono font-extralight">|EM PAGAMENTO</span>
           </CardTitle>
         </div>
 
@@ -151,7 +126,7 @@ export default function VendasTable({
                     <TableCell>{formatDate(v.datavenda)}</TableCell>
                     <TableCell>{formatarEmReal(v.valortotal)}</TableCell>
                     <TableCell>{v.status}</TableCell>
-                   
+
                     <TableCell className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -165,24 +140,17 @@ export default function VendasTable({
                           </Button>
                         </DropdownMenuTrigger>
 
-                        <DropdownMenuContent
-                          id={menuId}
-                          aria-labelledby={triggerId}
-                          className="space-y-1"
-                        >
+                        <DropdownMenuContent id={menuId} aria-labelledby={triggerId} className="space-y-1">
                           <VendasFinancialDialog
-                          handleGetVendas={handleGetVendas}
-                          open={open}
-                          onOpenChange={setOpen}
-                          vendaId={v.id}
+                            handleGetVendas={handleGetVendas}
+                            open={open}
+                            onOpenChange={setOpen}
+                            vendaId={v.id}
                           >
-
-                            <Button
-                              className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 not-dark:text- hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
-                            >
-                              <DollarSign className="-ml-1 -mr-1 h-4 w-4" />
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <DollarSign className="h-4 w-4" />
                               <span>Pagamento</span>
-                            </Button>
+                            </DropdownMenuItem>
                           </VendasFinancialDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -204,9 +172,7 @@ export default function VendasTable({
           <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span>
             {" - "}
-            <span>
-              {pagination.limit * (pagination.page - 1) + vendas.length}
-            </span>
+            <span>{pagination.limit * (pagination.page - 1) + vendas.length}</span>
           </div>
 
           <div className="flex items-center justify-center space-x-2">
@@ -214,9 +180,7 @@ export default function VendasTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetVendas(selectedStatus, 1, pagination.limit, search)
-              }
+              onClick={() => handleGetVendas(selectedStatus, 1, pagination.limit, search)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -226,14 +190,7 @@ export default function VendasTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetVendas(
-                  selectedStatus,
-                  pagination.page - 1,
-                  pagination.limit,
-                  search
-                )
-              }
+              onClick={() => handleGetVendas(selectedStatus, pagination.page - 1, pagination.limit, search)}
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -247,18 +204,8 @@ export default function VendasTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() =>
-                handleGetVendas(
-                  selectedStatus,
-                  pagination.page + 1,
-                  pagination.limit,
-                  search
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetVendas(selectedStatus, pagination.page + 1, pagination.limit, search)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
@@ -267,18 +214,8 @@ export default function VendasTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() =>
-                handleGetVendas(
-                  selectedStatus,
-                  pagination.totalPages,
-                  pagination.limit,
-                  search
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetVendas(selectedStatus, pagination.totalPages, pagination.limit, search)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -287,10 +224,7 @@ export default function VendasTable({
           {/* Select de itens por página com IDs estáveis */}
           <div>
             <Select>
-              <SelectTrigger
-                className="hover:cursor-pointer ml-2"
-                aria-controls={limitListboxId}
-              >
+              <SelectTrigger className="hover:cursor-pointer ml-2" aria-controls={limitListboxId}>
                 <SelectValue placeholder={`${pagination.limit}`} />
               </SelectTrigger>
               <SelectContent id={limitListboxId}>

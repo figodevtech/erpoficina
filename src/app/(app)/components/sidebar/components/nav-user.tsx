@@ -152,16 +152,7 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <BadgeCheck />
-                  Conta
-                </DropdownMenuItem>
-
-                <DropdownMenuItem>
-                  <Bell />
-                  Notificações
-                </DropdownMenuItem>
-
+          
                 {/* Alterar senha */}
                 <DropdownMenuItem
                   onSelect={(e) => {
