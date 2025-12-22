@@ -4,20 +4,8 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Calendar,
   Check,
@@ -38,6 +26,7 @@ import TransactionDialog from "./transactionDialog/transactionDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteAlert from "./deleteAlert";
@@ -78,9 +67,7 @@ export default function FinancialTable({
   dateTo,
   dateFrom,
 }: FinancialTableProps) {
-  const [selectedTransactionId, setSelectedTransactionId] = useState<
-    number | undefined
-  >(undefined);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<number | undefined>(undefined);
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isAlertOpen2, setIsAlertOpen2] = useState(false);
@@ -91,33 +78,31 @@ export default function FinancialTable({
     if (selectedTransactionId) setIsOpen(true);
   }, [selectedTransactionId]);
 
-  const handleSetPago = async(id: number)=> {
-    toast(<div className="flex flex-row flex-nowrap items-center gap-1 "> <span>Marcando como concluído</span> <Loader2 className="w-3 h-3 animate-spin"/></div>)
-    setLoadingPago(true)
+  const handleSetPago = async (id: number) => {
+    toast(
+      <div className="flex flex-row flex-nowrap items-center gap-1 ">
+        {" "}
+        <span>Marcando como concluído</span> <Loader2 className="w-3 h-3 animate-spin" />
+      </div>
+    );
+    setLoadingPago(true);
     try {
       const response = await axios.patch(`/api/transaction/${id}`, {
-        pendente: false
-      })
+        pendente: false,
+      });
 
-      if(response.status === 200){
-        toast.success("Transação Atualizada")
+      if (response.status === 200) {
+        toast.success("Transação Atualizada");
       }
     } catch (error) {
-      if(isAxiosError(error)){
-        toast(error.code, {description: error.message})
+      if (isAxiosError(error)) {
+        toast(error.code, { description: error.message });
       }
-    } finally{
-      setLoadingPago(false)
-      handleGetTransactions(
-          pagination.page,
-          pagination.limit,
-          search,
-          dateFrom,
-          dateTo,
-          tipo
-        );
+    } finally {
+      setLoadingPago(false);
+      handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
     }
-  }
+  };
 
   const handleDeleteTransaction = async (id: number) => {
     setIsDeleting(true);
@@ -131,14 +116,7 @@ export default function FinancialTable({
       const response = await axios.delete(`/api/transaction/${id}`, {});
       if (response.status === 204) {
         toast("Transação deletada!");
-        handleGetTransactions(
-          pagination.page,
-          pagination.limit,
-          search,
-          dateFrom,
-          dateTo,
-          tipo
-        );
+        handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
         handleGetStatusCounter();
       } else {
         toast.warning(`Status inesperado: ${response.status}`);
@@ -164,18 +142,10 @@ export default function FinancialTable({
       <CardHeader className="border-b-2 pb-4 flex flex-col">
         <div className="flex flex-row justify-between w-full">
           <CardTitle className="text-lg font-medium">
-            Transações{" "}
-            <span className="text-muted-foreground text-xs font-mono font-extralight">
-              |LISTA
-            </span>
+            Transações <span className="text-muted-foreground text-xs font-mono font-extralight">|LISTA</span>
           </CardTitle>
           <div className="flex flex-row gap-4 items-center">
-            <ExportTransactionsButton
-              search={search}
-              tipo={tipo}
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-            />
+            <ExportTransactionsButton search={search} tipo={tipo} dateFrom={dateFrom} dateTo={dateTo} />
 
             <TransactionDialog
               open={isOpen}
@@ -183,10 +153,7 @@ export default function FinancialTable({
               selectedTransactionId={selectedTransactionId}
               setSelectedTransactionId={setSelectedTransactionId}
             >
-              <Button
-                className="hover:cursor-pointer"
-                onClick={() => setSelectedTransactionId(undefined)}
-              >
+              <Button className="hover:cursor-pointer" onClick={() => setSelectedTransactionId(undefined)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Transação
               </Button>
@@ -196,14 +163,7 @@ export default function FinancialTable({
 
         <div
           onClick={() => {
-            handleGetTransactions(
-              pagination.page,
-              pagination.limit,
-              search,
-              dateFrom,
-              dateTo,
-              tipo
-            );
+            handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
             handleGetStatusCounter();
           }}
           className="flex flex-row space-x-1 items-center hover:cursor-pointer"
@@ -254,14 +214,10 @@ export default function FinancialTable({
                   className="hover:cursor-pointer"
                 >
                   <TableCell className="flex flex-row items-center gap-2">
-                    <div className="rounded-full p-2 bg-primary/50">
-                      {getCategoryIcon(t.categoria)}
-                    </div>
+                    <div className="rounded-full p-2 bg-primary/50">{getCategoryIcon(t.categoria)}</div>
                     <div className="flex flex-col items-start">
                       {t.descricao}
-                      <span className="text-xs text-muted-foreground">
-                        ID: {t.id}
-                      </span>
+                      <span className="text-xs text-muted-foreground">ID: {t.id}</span>
                       <span className="text-xs text-muted-foreground md:hidden">
                         {t.banco.titulo} - {t.metodopagamento}
                       </span>
@@ -272,25 +228,17 @@ export default function FinancialTable({
                     </div>
                   </TableCell>
 
-                  <TableCell className="hidden md:table-cell">
-                    {formatDate(t.data)}
+                  <TableCell className="hidden md:table-cell">{formatDate(t.data)}</TableCell>
+                  <TableCell className={`hidden md:table-cell ${t.pendente && "text-primary font-semibold"}`}>
+                    {t.pendente ? (
+                      <span className=" flex flex-nowrap gap-1 items-center">PAGAMENTO FUTURO</span>
+                    ) : (
+                      t.tipo
+                    )}
                   </TableCell>
-                  <TableCell
-                    className={`hidden md:table-cell ${
-                      t.pendente && "text-primary font-semibold"
-                    }`}
-                  >
-                    {t.pendente ? <span className=" flex flex-nowrap gap-1 items-center">PAGAMENTO FUTURO</span> : t.tipo}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {t.categoria}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {t.banco.titulo}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {t.metodopagamento}
-                  </TableCell>
+                  <TableCell className="hidden md:table-cell">{t.categoria}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.banco.titulo}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.metodopagamento}</TableCell>
 
                   <TableCell className={`text-right ${getTypeColor(t.tipo)}`}>
                     <div className="flex flex-col items-end">
@@ -298,9 +246,7 @@ export default function FinancialTable({
                       {(t.tipo === "DESPESA" || t.tipo === "SAQUE") && "- "}
                       {formatarEmReal(t.valorLiquido)}
                       {t.valorLiquido !== t.valor && (
-                        <span className="text-xs text-muted-foreground">
-                          Bruto: {formatarEmReal(t.valor)}
-                        </span>
+                        <span className="text-xs text-muted-foreground">Bruto: {formatarEmReal(t.valor)}</span>
                       )}
                     </div>
                   </TableCell>
@@ -318,25 +264,19 @@ export default function FinancialTable({
                         </Button>
                       </DropdownMenuTrigger>
 
-                      <DropdownMenuContent
-                        id={menuId}
-                        aria-labelledby={triggerId}
-                        className="space-y-1"
-                      >
+                      <DropdownMenuContent id={menuId} aria-labelledby={triggerId} className="space-y-1">
                         <DeleteAlert
                           handleDeleteTransaction={handleDeleteTransaction}
                           isAlertOpen={isAlertOpen}
                           setIsAlertOpen={setIsAlertOpen}
                           idToDelete={t.id}
                         >
-                          <Button
-                            variant="default"
-                            className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-red-500/20 hover:bg-red-500 group hover:text-white transition-all"
-                          >
-                            <Trash2Icon className="-ml-1 -mr-1 h-4 w-4" />
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                            <Trash2Icon className="h-4 w-4" />
                             <span>Excluir</span>
-                          </Button>
+                          </DropdownMenuItem>
                         </DeleteAlert>
+
                         {t.pendente && (
                           <ConculidoAlert
                             isAlertOpen={isAlertOpen2}
@@ -344,14 +284,10 @@ export default function FinancialTable({
                             handleSetConcluido={(value) => handleSetPago(value)}
                             idConcluido={t.id}
                           >
-                            <Button
-                              variant="default"
-                              className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer bg-green-500/20 hover:bg-green-500 group hover:text-white transition-all"
-                            
-                            >
-                              <Check className="-ml-1 -mr-1 h-4 w-4" />
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                              <Check className="h-4 w-4" />
                               <span>Pago</span>
-                            </Button>
+                            </DropdownMenuItem>
                           </ConculidoAlert>
                         )}
                       </DropdownMenuContent>
@@ -367,9 +303,7 @@ export default function FinancialTable({
           <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span>
             {" - "}
-            <span>
-              {pagination.limit * (pagination.page - 1) + transactions.length}
-            </span>
+            <span>{pagination.limit * (pagination.page - 1) + transactions.length}</span>
           </div>
 
           <div className="flex items-center justify-center space-x-2">
@@ -377,16 +311,7 @@ export default function FinancialTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetTransactions(
-                  1,
-                  pagination.limit,
-                  search,
-                  dateFrom,
-                  dateTo,
-                  tipo
-                )
-              }
+              onClick={() => handleGetTransactions(1, pagination.limit, search, dateFrom, dateTo, tipo)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -397,14 +322,7 @@ export default function FinancialTable({
               size="icon"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetTransactions(
-                  pagination.page - 1,
-                  pagination.limit,
-                  search,
-                  dateFrom,
-                  dateTo,
-                  tipo
-                )
+                handleGetTransactions(pagination.page - 1, pagination.limit, search, dateFrom, dateTo, tipo)
               }
               disabled={pagination.page === 1}
             >
@@ -420,19 +338,9 @@ export default function FinancialTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetTransactions(
-                  pagination.page + 1,
-                  pagination.limit,
-                  search,
-                  dateFrom,
-                  dateTo,
-                  tipo
-                )
+                handleGetTransactions(pagination.page + 1, pagination.limit, search, dateFrom, dateTo, tipo)
               }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
@@ -442,19 +350,9 @@ export default function FinancialTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetTransactions(
-                  pagination.totalPages,
-                  pagination.limit,
-                  search,
-                  dateFrom,
-                  dateTo,
-                  tipo
-                )
+                handleGetTransactions(pagination.totalPages, pagination.limit, search, dateFrom, dateTo, tipo)
               }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -463,10 +361,7 @@ export default function FinancialTable({
           {/* Select de itens por página com IDs estáveis */}
           <div>
             <Select /* você pode controlar com value/onValueChange depois */>
-              <SelectTrigger
-                className="hover:cursor-pointer ml-2"
-                aria-controls={limitListboxId}
-              >
+              <SelectTrigger className="hover:cursor-pointer ml-2" aria-controls={limitListboxId}>
                 <SelectValue placeholder={pagination.limit} />
               </SelectTrigger>
               <SelectContent id={limitListboxId}>

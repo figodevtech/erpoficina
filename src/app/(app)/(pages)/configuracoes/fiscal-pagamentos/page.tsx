@@ -5,13 +5,11 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Receipt, Landmark, CreditCard, Webhook, Loader2 } from "lucide-react";
+import { Building2, Receipt, Landmark, Loader2 } from "lucide-react";
 
 import { EmpresaTab } from "./components/empresa-tab";
 import { NFeTab } from "./components/nfe-tab";
 import { NFSeTab } from "./components/nfse-tab";
-import { PagamentosTab } from "./components/pagamentos-tab";
-import { WebhooksTab } from "./components/webhooks-tab";
 import type { FormValues } from "./types";
 
 const limparDigitos = (s: string) => (s || "").replace(/\D+/g, "");
@@ -66,30 +64,6 @@ export default function ConfigFiscalPagamentosPage() {
         token: "",
         certificadoA1Base64: "",
         senhaCertificado: "",
-      },
-      pagamentos: {
-        cartao: {
-          habilitado: true,
-          provider: "stone",
-          merchantId: "",
-          apiKey: "",
-          webhookUrl: "",
-          parcelasMax: 1,
-          capturaAutomatica: true,
-          terminalIds: [],
-        },
-        pix: {
-          habilitado: true,
-          provider: "stone",
-          chave: "",
-          clientId: "",
-          clientSecret: "",
-          webhookUrl: "",
-          expiracaoSegundos: 1800,
-        },
-        dinheiro: {
-          habilitado: true,
-        },
       },
     },
   });
@@ -153,58 +127,31 @@ export default function ConfigFiscalPagamentosPage() {
     [setValue]
   );
 
-  const applyPagamentos = useCallback(
-    (p: any) => {
-      if (!p) return;
-      setValue("pagamentos.cartao.habilitado", p.cartao?.habilitado ?? true);
-      setValue("pagamentos.cartao.provider", p.cartao?.provider ?? "stone");
-      setValue("pagamentos.cartao.merchantId", p.cartao?.merchantId ?? "");
-      setValue("pagamentos.cartao.apiKey", p.cartao?.apiKey ?? "");
-      setValue("pagamentos.cartao.webhookUrl", p.cartao?.webhookUrl ?? "");
-      setValue("pagamentos.cartao.parcelasMax", Number(p.cartao?.parcelasMax ?? 1));
-      setValue("pagamentos.cartao.capturaAutomatica", !!p.cartao?.capturaAutomatica);
-      setValue("pagamentos.cartao.terminalIds", Array.isArray(p.cartao?.terminalIds) ? p.cartao.terminalIds : []);
-      setValue("pagamentos.pix.habilitado", p.pix?.habilitado ?? true);
-      setValue("pagamentos.pix.provider", p.pix?.provider ?? "stone");
-      setValue("pagamentos.pix.chave", p.pix?.chave ?? "");
-      setValue("pagamentos.pix.clientId", p.pix?.clientId ?? "");
-      setValue("pagamentos.pix.clientSecret", p.pix?.clientSecret ?? "");
-      setValue("pagamentos.pix.webhookUrl", p.pix?.webhookUrl ?? "");
-      setValue("pagamentos.pix.expiracaoSegundos", Number(p.pix?.expiracaoSegundos ?? 1800));
-      setValue("pagamentos.dinheiro.habilitado", p.dinheiro?.habilitado ?? true);
-    },
-    [setValue]
-  );
-
   const carregarTudo = useCallback(async () => {
     setCarregando(true);
     try {
-      const [rEmp, rNfe, rNfse, rPay] = await Promise.all([
+      const [rEmp, rNfe, rNfse] = await Promise.all([
         fetch("/api/config/empresa", { cache: "no-store" }),
         fetch("/api/config/nfe", { cache: "no-store" }),
         fetch("/api/config/nfse", { cache: "no-store" }),
-        fetch("/api/config/pagamentos", { cache: "no-store" }),
       ]);
       const jEmp = await rEmp.json().catch(() => ({}));
       const jNfe = await rNfe.json().catch(() => ({}));
       const jNfse = await rNfse.json().catch(() => ({}));
-      const jPay = await rPay.json().catch(() => ({}));
       if (rEmp.ok && jEmp?.empresa) applyEmpresa(jEmp.empresa);
       if (rNfe.ok && jNfe?.nfe) applyNfe(jNfe.nfe);
       if (rNfse.ok && jNfse?.nfse) applyNfse(jNfse.nfse);
-      if (rPay.ok && jPay?.pagamentos) applyPagamentos(jPay.pagamentos);
     } catch (e) {
       console.warn(e);
     } finally {
       setCarregando(false);
     }
-  }, [applyEmpresa, applyNfe, applyNfse, applyPagamentos]);
+  }, [applyEmpresa, applyNfe, applyNfse]);
 
   useEffect(() => {
     carregarTudo();
   }, [carregarTudo]);
 
-  
   function validar(v: FormValues, tab: string) {
     const errs: string[] = [];
     if (tab === "empresa") {
@@ -219,15 +166,6 @@ export default function ConfigFiscalPagamentosPage() {
     }
     if (tab === "nfe") {
       if (!v.nfe.naturezaOperacao?.trim()) errs.push("Natureza de operacao (NF-e) obrigatoria.");
-    }
-    if (tab === "pagamentos") {
-      if (v.pagamentos.cartao.habilitado) {
-        if (!v.pagamentos.cartao.merchantId?.trim()) errs.push("Merchant ID (Cartao) e obrigatorio quando habilitado.");
-        if (!v.pagamentos.cartao.apiKey?.trim()) errs.push("API Key (Cartao) e obrigatoria quando habilitado.");
-      }
-      if (v.pagamentos.pix.habilitado) {
-        if (!v.pagamentos.pix.chave?.trim()) errs.push("Chave Pix e obrigatoria quando habilitado.");
-      }
     }
     return errs;
   }
@@ -281,28 +219,6 @@ export default function ConfigFiscalPagamentosPage() {
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || "Falha ao salvar NFS-e");
       }
-      if (activeTab === "pagamentos") {
-        const r = await fetch("/api/config/pagamentos", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pagamentos: values.pagamentos }),
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j?.error || "Falha ao salvar Pagamentos");
-      }
-      if (activeTab === "webhooks") {
-        const { pagamentos } = values;
-        const r = await fetch("/api/config/webhooks", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cartao_webhook_url: pagamentos?.cartao?.webhookUrl ?? null,
-            pix_webhook_url: pagamentos?.pix?.webhookUrl ?? null,
-          }),
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j?.error || "Falha ao salvar Webhooks");
-      }
 
       toast.success("Configurações salvas!");
       await carregarTudo();
@@ -315,11 +231,9 @@ export default function ConfigFiscalPagamentosPage() {
 
   return (
     <div className="min-h-screen w-full">
-      {/* header local removido */}
-
       <main className="w-full">
         <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 rounded-xl bg-muted/60 p-1">
+          <TabsList className="grid w-full grid-cols-3 rounded-xl bg-muted/60">
             <TabsTrigger value="empresa" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" /> <span className="hidden sm:inline">Empresa</span>
             </TabsTrigger>
@@ -328,12 +242,6 @@ export default function ConfigFiscalPagamentosPage() {
             </TabsTrigger>
             <TabsTrigger value="nfse" className="flex items-center gap-2">
               <Landmark className="h-4 w-4" /> <span className="hidden sm:inline">NFS-e</span>
-            </TabsTrigger>
-            <TabsTrigger value="pagamentos" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" /> <span className="hidden sm:inline">Pagamentos</span>
-            </TabsTrigger>
-            <TabsTrigger value="webhooks" className="flex items-center gap-2">
-              <Webhook className="h-4 w-4" /> <span className="hidden sm:inline">Webhooks</span>
             </TabsTrigger>
           </TabsList>
 
@@ -349,15 +257,6 @@ export default function ConfigFiscalPagamentosPage() {
             <NFSeTab register={register} setValue={setValue} />
           </TabsContent>
 
-          <TabsContent value="pagamentos" className="mt-6">
-            <PagamentosTab register={register} setValue={setValue} watch={watch} getValues={getValues} />
-          </TabsContent>
-
-          <TabsContent value="webhooks" className="mt-6">
-            <WebhooksTab />
-          </TabsContent>
-
-          {/* ⬇️ Botão abaixo do conteúdo das abas */}
           <div className="mt-4 flex justify-end">
             <Button
               onClick={handleSubmit(onSalvar)}
