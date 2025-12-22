@@ -52,6 +52,7 @@ const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
   { prefix: "/relatorios", perm: PERMS.RELATORIOS },
 
   { prefix: "/configuracoes", perm: PERMS.CONFIG },
+  { prefix: "/configuracoes/perfis", perm: PERMS.CONFIG },
   { prefix: "/usuarios", perm: PERMS.USUARIOS },
   { prefix: "/acompanhamento", perm: PERMS.ACOMPANHAMENTO },
 

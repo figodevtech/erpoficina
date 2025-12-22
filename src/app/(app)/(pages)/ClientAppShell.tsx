@@ -28,6 +28,7 @@ const routeTitles: Record<string, string> = {
   "/nao-autorizado": "Acesso não autorizado",
   "/configuracoes/tipos": "Configurações de Tipos",
   "/historicovendas": "Histórico de Vendas",
+  "/configuracoes/perfis": "Perfis de Permissões",
 };
 
 function humanize(path: string) {
