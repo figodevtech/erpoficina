@@ -233,8 +233,8 @@ export function OrdensTabela({
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [approveRow, setApproveRow] = useState<OrdemComDatas | null>(null);
 
-  const [emissaoId, setEmissaoId] = useState<number | null>(null)
-  const [emissaoOpen, setEmissaoOpen] = useState(false)
+  const [emissaoId, setEmissaoId] = useState<number | null>(null);
+  const [emissaoOpen, setEmissaoOpen] = useState(false);
 
   const [approvalToastId, setApprovalToastId] = useState<string | number | null>(null);
 
@@ -562,7 +562,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
-                  <TableHead className="min-w-[80px]" />
+                  <TableHead className="min-w-[80px] text-end">Ações</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -887,13 +887,7 @@ export function OrdensTabela({
           handleGetOrdens={() => fetchNow(currentParamsRef.current)}
         />
 
-        <EmissaoNotaDialog
-      osId={emissaoId}
-      open={emissaoOpen}
-      onOpenChange={setEmissaoOpen}
-      >
-
-      </EmissaoNotaDialog>
+        <EmissaoNotaDialog osId={emissaoId} open={emissaoOpen} onOpenChange={setEmissaoOpen}></EmissaoNotaDialog>
 
         {/* Dialog: Pagamento Stone */}
         <OsStonePaymentDialog
