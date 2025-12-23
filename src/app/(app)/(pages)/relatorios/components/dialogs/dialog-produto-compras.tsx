@@ -55,7 +55,7 @@ export default function DialogProdutoCompras() {
         </DialogHeader>
         <div className="flex flex-col gap-6 bg-muted/50 p-4 rounded-2xl">
           <div className="flex flex-col gap-2">
-            <Label>Cliente:</Label>
+            <Label>Produto:</Label>
             <ProductSelect
             setOpen={setOpen}
             open={open}

@@ -502,13 +502,13 @@ export function OrdensTabela({
         <CardContent className="p-3 sm:p-4">
           {/* Tabela */}
           <div className="overflow-x-auto rounded-md border">
-            <Table>
+            <Table className="text-xs">
               <TableHeader>
                 <TableRow className="bg-muted/40">
                   <TableHead className="min-w-[80px]">#</TableHead>
                   <TableHead className="min-w-[240px]">Cliente / Veículo</TableHead>
                   <TableHead className="min-w-[220px]">Descrição</TableHead>
-                  <TableHead className="min-w-[140px]">
+                  {/* <TableHead className="min-w-[140px]">
                     <SortableHeader
                       label="Setor"
                       columnKey="setor"
@@ -516,7 +516,7 @@ export function OrdensTabela({
                       sortDir={sortDir}
                       onChange={handleSortChange}
                     />
-                  </TableHead>
+                  </TableHead> */}
                   <TableHead className="min-w-[130px]">
                     <SortableHeader
                       label="Entrada"
@@ -619,6 +619,10 @@ export function OrdensTabela({
                         <TableCell className="font-mono">{r.id}</TableCell>
 
                         <TableCell className="min-w-0">
+                          <div className="flex items-center justify-center w-min bg-red-500/20 py-1 px-2 rounded-full">
+
+                          <span className="text-[8px]">{r.setor?.nome ?? "-"}</span>
+                          </div>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="truncate font-medium text-[15px]">{clienteShort}</div>
@@ -651,7 +655,7 @@ export function OrdensTabela({
                           </Tooltip>
                         </TableCell>
 
-                        <TableCell>{r.setor?.nome ?? "—"}</TableCell>
+                        {/* <TableCell>{r.setor?.nome ?? "—"}</TableCell> */}
                         <TableCell>{fmtDate((r as any).dataEntrada ?? (r as any).dataentrada)}</TableCell>
                         <TableCell>{fmtDate((r as any).dataSaida ?? (r as any).datasaida)}</TableCell>
                         <TableCell>
