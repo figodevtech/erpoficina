@@ -17,7 +17,13 @@ export async function GET() {
     await ensureAccess(session);
 
     const [s, p, pf] = await Promise.all([
-      supabaseAdmin.from("setor").select("id, nome").order("nome"),
+      // ✅ só setores ativos
+      supabaseAdmin
+        .from("setor")
+        .select("id, nome")
+        .eq("ativo", true) // <- aqui
+        .order("nome"),
+
       supabaseAdmin.from("permissao").select("id, nome, descricao").order("nome"),
       supabaseAdmin.from("perfil").select("id, nome").order("nome"),
     ]);
