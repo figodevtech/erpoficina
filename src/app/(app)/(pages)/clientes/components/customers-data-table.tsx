@@ -1,4 +1,5 @@
 "use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -43,8 +44,10 @@ interface CustomerDataTableProps {
   customerItems: Customer[];
   selectedCustomerId?: number | undefined;
   setSelectedCustomerId: (value: number | undefined) => void;
+
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
+
   isAlertOpen: boolean;
   setIsAlertOpen: (value: boolean) => void;
 }
@@ -64,7 +67,8 @@ export default function CustomersDataTable({
   isAlertOpen,
   setIsAlertOpen,
 }: CustomerDataTableProps) {
-  const [, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [idToDelete, setIdToDelete] = useState<number | null>(null);
 
   const handleDeleteUser = async (id: number) => {
     setIsDeleting(true);
@@ -77,19 +81,19 @@ export default function CustomersDataTable({
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast.error("Error", {
-          description: error.response?.data.error,
-        });
+        toast.error("Error", { description: error.response?.data.error });
+      } else {
+        toast.error("Erro ao deletar.");
       }
     } finally {
       setIsAlertOpen(false);
+      setIdToDelete(null);
       setIsDeleting(false);
     }
   };
 
   return (
     <Card>
-      {/* 🔁 Cabeçalho da tabela com botão Novo Cliente no canto superior direito */}
       <CardHeader className="border-b-2 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -108,10 +112,10 @@ export default function CustomersDataTable({
             </CardDescription>
           </div>
 
-          {/* 👉 Botão movido para cá */}
           <div className="flex items-center gap-2">
             <ExportCustomersButton search={search} status={status} />
 
+            {/* Botão Novo Cliente (ok manter assim) */}
             <CustomerDialog
               customerId={selectedCustomerId}
               isOpen={isOpen}
@@ -131,10 +135,10 @@ export default function CustomersDataTable({
           } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
               isLoading && "animate-slideIn "
             } `}
-          ></div>
+          />
         </div>
 
         <Table className="mt-6 text-xs">
@@ -158,6 +162,7 @@ export default function CustomersDataTable({
                 className="hover:cursor-pointer"
               >
                 <TableCell>{customer.id}</TableCell>
+
                 <TableCell>
                   <div>
                     <div className="font-medium">{customer.nomerazaosocial}</div>
@@ -166,6 +171,7 @@ export default function CustomersDataTable({
                     </div>
                   </div>
                 </TableCell>
+
                 <TableCell>
                   <div>
                     <div className="text-sm">{customer.email}</div>
@@ -178,43 +184,55 @@ export default function CustomersDataTable({
                           href={"http://wa.me/55" + customer.telefone}
                         >
                           Whatsapp
-                          <Send className="" size={10} />
+                          <Send size={10} />
                         </Link>
                       )}
                     </div>
                   </div>
                 </TableCell>
+
                 <TableCell className="font-mono text-sm">{customer.cpfcnpj}</TableCell>
+
                 <TableCell className="text-sm">
                   {customer.cidade}/{customer.estado}
                 </TableCell>
+
                 <TableCell>{getStatusBadge(customer.status)}</TableCell>
+
                 <TableCell>
-                  <DropdownMenu>
+                  {/* ✅ modal={false} ajuda quando vai abrir Dialog/Alert a partir do menu */}
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="h-8 w-8 p-0">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="space-y-1" align="center">
-                      <CustomerDialog customerId={customer.id}>
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4" />
-                          <span>Editar</span>
-                        </DropdownMenuItem>
-                      </CustomerDialog>
 
-                      <DeleteAlert
-                        idToDelete={customer.id}
-                        isAlertOpen={isAlertOpen}
-                        setIsAlertOpen={setIsAlertOpen}
-                        handleDeleteUser={handleDeleteUser}
+                    <DropdownMenuContent className="space-y-1" align="center">
+                      {/* ✅ Editar via estado (não envolve DialogTrigger dentro do menu) */}
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          setSelectedCustomerId(customer.id);
+                          setIsOpen(true);
+                        }}
                       >
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
-                          <Trash2Icon className=" h-4 w-4" />
-                          <span>Excluir</span>
-                        </DropdownMenuItem>
-                      </DeleteAlert>
+                        <Edit className="h-4 w-4" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+
+                      {/* ✅ Excluir via estado (não envolve AlertDialogTrigger dentro do menu) */}
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          setIdToDelete(customer.id);
+                          setIsAlertOpen(true);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2Icon className=" h-4 w-4" />
+                        <span>Excluir</span>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -222,6 +240,21 @@ export default function CustomersDataTable({
             ))}
           </TableBody>
         </Table>
+
+        {/* ✅ Alert fora do DropdownMenu para não desmontar ao fechar o menu */}
+        <DeleteAlert
+          idToDelete={idToDelete}
+          isAlertOpen={isAlertOpen}
+          setIsAlertOpen={(open) => {
+            setIsAlertOpen(open);
+            if (!open) setIdToDelete(null);
+          }}
+          handleDeleteUser={(id) => {
+            // opcional: impede clique duplo
+            if (isDeleting) return;
+            handleDeleteUser(id);
+          }}
+        />
 
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
@@ -241,6 +274,7 @@ export default function CustomersDataTable({
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
+
             <Button
               variant="outline"
               size="sm"
@@ -250,6 +284,7 @@ export default function CustomersDataTable({
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
+
             <span className="text-[10px] sm:text-xs font-medium text-nowrap">
               Pg. {pagination.page} de {pagination.totalPages || 1}
             </span>
@@ -263,6 +298,7 @@ export default function CustomersDataTable({
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
+
             <Button
               className="hover:cursor-pointer"
               variant="outline"
@@ -277,7 +313,7 @@ export default function CustomersDataTable({
           <div>
             <Select>
               <SelectTrigger size="sm" className="hover:cursor-pointer ml-2">
-                <SelectValue placeholder={pagination.limit}></SelectValue>
+                <SelectValue placeholder={pagination.limit} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem className="hover:cursor-pointer" value="20">

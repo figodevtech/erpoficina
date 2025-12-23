@@ -40,11 +40,27 @@ import Kpi from "./kpi-ordemservico";
 import EmptyState from "./emply-state";
 import SheetOsFiltros from "./sheet-os-filtros";
 
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = React.useState(false);
+
+  React.useEffect(() => {
+    const m = window.matchMedia(query);
+    const onChange = () => setMatches(m.matches);
+    onChange();
+    m.addEventListener("change", onChange);
+    return () => m.removeEventListener("change", onChange);
+  }, [query]);
+
+  return matches;
+}
+
 export default function ServiceOrdersDashboard({
   className,
   insightsEndpoint = "/api/ordens/insights",
   autoRefreshMs,
 }: ServiceOrdersDashboardProps) {
+  const isMobile = useMediaQuery("(max-width: 640px)");
+
   const periodoInicial = React.useMemo(obterPeriodoInicial, []);
   const [dataInicio, setDataInicio] = React.useState<Date | null>(periodoInicial.inicio);
   const [dataFim, setDataFim] = React.useState<Date | null>(periodoInicial.fim);
@@ -112,6 +128,7 @@ export default function ServiceOrdersDashboard({
 
   const statusKeys = React.useMemo(() => Object.keys(data?.countsByStatus ?? {}), [data?.countsByStatus]);
 
+  // mantém como no seu original (não vamos usar para colorir, mas deixa disponível)
   const statusItems = (statusKeys.length ? statusKeys : []).map((name) => ({
     name,
     value: data?.countsByStatus?.[name] ?? 0,
@@ -132,6 +149,12 @@ export default function ServiceOrdersDashboard({
   const completed = data?.ordersCompleted ?? 0;
   const avgHrs = data?.avgCompletionHours ?? 0;
 
+  // altura dinâmica só para quando ficar vertical no mobile
+  const statusChartHeight = React.useMemo(() => {
+    const n = statusItems.length || 1;
+    return Math.max(220, n * 38);
+  }, [statusItems.length]);
+
   return (
     <Card className={cn("w-full", className)}>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
@@ -140,9 +163,11 @@ export default function ServiceOrdersDashboard({
             <ClipboardList className="h-5 w-5" aria-hidden="true" />
             Dashboard de Ordens de Serviço
           </CardTitle>
+
           <CardDescription className="text-xs sm:text-sm">
             Visão executiva de produtividade, prazos e receita.
           </CardDescription>
+
           <Badge variant="default" className="text-[10px] sm:text-xs">
             Período: {textoPeriodo}
           </Badge>
@@ -210,7 +235,6 @@ export default function ServiceOrdersDashboard({
               }}
               className="h-48 w-full xs:h-56 sm:h-64 md:h-72 lg:h-80"
             >
-              {/* key garante que a animação do Recharts roda uma vez por carga de dados */}
               <AreaChart data={seriesNewDone} margin={{ top: 12, right: 12, left: 12, bottom: 0 }}>
                 <defs>
                   <linearGradient id="areaNew" x1="0" y1="0" x2="0" y2="1">
@@ -313,45 +337,99 @@ export default function ServiceOrdersDashboard({
             </ChartContainer>
           </ChartCard>
 
-          {/* Status */}
+          {/* OS por status (muda orientação só no mobile) */}
           <ChartCard title="OS por status" description="Distribuição atual" badge="Barras" className="md:col-span-2">
-            <ChartContainer
-              config={{
-                value: { label: "Quantidade de Ordens", color: "hsl(var(--chart-1))" },
-              }}
-              className="h-[280px]"
-            >
-              <BarChart data={statusItems} margin={{ top: 20, right: 12, left: 12, bottom: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  fontSize={12}
-                  tickMargin={8}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis
-                  allowDecimals={false}
-                  axisLine={false}
-                  tickLine={false}
-                  fontSize={12}
-                  tickMargin={8}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {statusItems.map((s) => (
-                    <Cell key={s.name} fill="rgba(43, 127, 255, 0.3)" stroke="rgb(43, 127, 255)" strokeWidth={2} />
-                  ))}
-                  <LabelList stroke="none" dataKey="value" position="top" className="fill-foreground" fontSize={12} />
-                </Bar>
-                <ChartLegend content={<ChartLegendContent />} />
-              </BarChart>
-            </ChartContainer>
+            <div className="w-full" style={{ height: isMobile ? statusChartHeight : 280 }}>
+              <ChartContainer
+                config={{
+                  value: { label: "Quantidade de Ordens", color: "hsl(var(--chart-1))" },
+                }}
+                className="h-full w-full"
+              >
+                {isMobile ? (
+                  <BarChart data={statusItems} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+
+                    <XAxis
+                      type="number"
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      width={120}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+
+                    <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
+
+                    <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                      {statusItems.map((s) => (
+                        <Cell
+                          key={s.name}
+                          fill="rgba(43, 127, 255, 0.3)"
+                          stroke="rgb(43, 127, 255)"
+                          strokeWidth={2}
+                        />
+                      ))}
+                      <LabelList dataKey="value" position="right" className="fill-foreground" fontSize={12} />
+                    </Bar>
+
+                    <ChartLegend content={<ChartLegendContent />} />
+                  </BarChart>
+                ) : (
+                  <BarChart data={statusItems} margin={{ top: 20, right: 12, left: 12, bottom: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+
+                    <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
+
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                      {statusItems.map((s) => (
+                        <Cell
+                          key={s.name}
+                          fill="rgba(43, 127, 255, 0.3)"
+                          stroke="rgb(43, 127, 255)"
+                          strokeWidth={2}
+                        />
+                      ))}
+                      <LabelList dataKey="value" position="top" className="fill-foreground" fontSize={12} />
+                    </Bar>
+
+                    <ChartLegend content={<ChartLegendContent />} />
+                  </BarChart>
+                )}
+              </ChartContainer>
+            </div>
           </ChartCard>
 
-          {/* Prioridade (pizza responsivo) */}
+          {/* Prioridade (pizza) - mantém exatamente as cores originais (azul) */}
           <ChartCard
             title="Prioridade das OS"
             description="Carga por nível"
@@ -374,7 +452,12 @@ export default function ServiceOrdersDashboard({
                   strokeWidth={2}
                 >
                   {prioItems.map((p) => (
-                    <Cell key={p.key} fill="rgba(43, 127, 255, 0.3)" stroke="rgb(43, 127, 255)" />
+                    <Cell
+                      key={p.key}
+                      fill="rgba(43, 127, 255, 0.3)"
+                      stroke="rgb(43, 127, 255)"
+                      strokeWidth={2}
+                    />
                   ))}
                   <LabelList
                     dataKey="value"

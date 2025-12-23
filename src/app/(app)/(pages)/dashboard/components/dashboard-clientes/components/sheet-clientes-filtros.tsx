@@ -115,13 +115,11 @@ export default function SheetClientesFiltros({
             </div>
           </div>
           <div className="mt-2 flex justify-between gap-2">
-            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={aoLimpar}>
+            <Button type="button" variant="outline" onClick={aoLimpar}>
               Limpar filtros
             </Button>
             <SheetClose asChild>
-              <Button type="button" className="w-full sm:w-auto">
-                Aplicar filtros
-              </Button>
+              <Button type="button">Aplicar filtros</Button>
             </SheetClose>
           </div>
         </div>
