@@ -9,7 +9,7 @@ import { traduzStatusNfe } from "@/lib/nfe/statusNfe";
 export const runtime = "nodejs";
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 /* ========= HELPERS DE FORMATAÇÃO ========= */
@@ -481,7 +481,8 @@ function parseNFeXml(xml: string): ParsedNFe {
 /* ========= METADATA ========= */
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const id = Number(params.id);
+  const { id: idStr } = await params;
+  const id = Number(idStr);
   if (Number.isNaN(id)) {
     return { title: "DANFE" };
   }
@@ -500,7 +501,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 /* ========= PÁGINA ========= */
 
 export default async function DanfePage({ params }: PageProps) {
-  const id = Number(params.id);
+  const { id: idStr } = await params;
+  const id = Number(idStr);
   if (Number.isNaN(id)) {
     notFound();
   }

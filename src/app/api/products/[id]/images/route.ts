@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import sharp from "sharp";
 import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -36,7 +35,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<Params> 
     return NextResponse.json({ imagens: data ?? [] }, { status: 200 });
   } catch (e: any) {
     console.error("[GET images] exception:", e);
-    return NextResponse.json({ error: e?.message ?? "Erro ao listar imagens" }, { status: 500 });
+    return NextResponse.json({ error: String(e?.message ?? "Erro ao listar imagens") }, { status: 500 });
   }
 }
 
@@ -57,6 +56,9 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
       return NextResponse.json({ error: "Máximo de 10 imagens por envio." }, { status: 400 });
     }
 
+    // importa sharp só aqui (evita quebrar rota inteira se sharp falhar)
+    const { default: sharp } = await import("sharp");
+
     // última ordem
     const { data: ult, error: ultErr } = await supabaseAdmin
       .from("produto_imagem")
@@ -67,7 +69,10 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
 
     if (ultErr) {
       console.error("[POST images] ultErr:", ultErr);
-      return NextResponse.json({ error: ultErr.message, where: "select ultima ordem" }, { status: 500 });
+      return NextResponse.json(
+        { error: String(ultErr.message), where: "select ultima ordem" },
+        { status: 500 }
+      );
     }
 
     let ordemBase = ult?.[0]?.ordem ?? -1;
@@ -91,7 +96,7 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
       } catch (err: any) {
         console.error("[POST images] sharp error:", err);
         return NextResponse.json(
-          { error: err?.message ?? "Falha ao processar imagem (sharp)", where: "sharp" },
+          { error: String(err?.message ?? "Falha ao processar imagem (sharp)"), where: "sharp" },
           { status: 500 }
         );
       }
@@ -105,7 +110,10 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
 
       if (upErr) {
         console.error("[POST images] upload error:", upErr);
-        return NextResponse.json({ error: upErr.message, where: "storage.upload", bucket: BUCKET }, { status: 500 });
+        return NextResponse.json(
+          { error: String(upErr.message), where: "storage.upload", bucket: BUCKET },
+          { status: 500 }
+        );
       }
 
       const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
@@ -126,7 +134,7 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
 
     if (insErr) {
       console.error("[POST images] insert error:", insErr);
-      return NextResponse.json({ error: insErr.message, where: "insert produto_imagem" }, { status: 500 });
+      return NextResponse.json({ error: String(insErr.message), where: "insert produto_imagem" }, { status: 500 });
     }
 
     // se produto.imgUrl estiver vazio, seta capa como a primeira imagem enviada
@@ -150,6 +158,6 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
     return NextResponse.json({ imagens: saved ?? [] }, { status: 200 });
   } catch (e: any) {
     console.error("[POST images] exception:", e);
-    return NextResponse.json({ error: e?.message ?? "Erro ao enviar imagens" }, { status: 500 });
+    return NextResponse.json({ error: String(e?.message ?? "Erro ao enviar imagens") }, { status: 500 });
   }
 }
