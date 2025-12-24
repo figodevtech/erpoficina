@@ -19,24 +19,20 @@ type Body = {
 };
 
 type Params = { id: string };
-type MaybePromise<T> = T | Promise<T>;
-async function resolveParams(p: MaybePromise<Params>) {
-  return await Promise.resolve(p);
-}
 
 function toDbChecklistStatusOrNull(v: unknown): DBChecklistStatus | null {
   const t = String(v ?? "").trim().toUpperCase();
   return t === "OK" || t === "ALERTA" || t === "FALHA" ? (t as DBChecklistStatus) : null;
 }
 
-export async function PUT(req: NextRequest, ctx: { params: MaybePromise<Params> }) {
+export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { id } = await resolveParams(ctx.params);
+    const { id } = await ctx.params;
     const osId = Number(id);
     if (!osId || Number.isNaN(osId)) {
       return NextResponse.json({ error: "ID de OS inválido" }, { status: 400 });
@@ -77,7 +73,7 @@ export async function PUT(req: NextRequest, ctx: { params: MaybePromise<Params> 
         return {
           ordemservicoid: osId,
           item: label,
-          status, // "OK" | "ALERTA" | "FALHA"
+          status,
           observacao: (x?.observacao ?? null) as string | null,
         };
       })
@@ -105,12 +101,8 @@ export async function PUT(req: NextRequest, ctx: { params: MaybePromise<Params> 
     const checklistCreated = inserted ?? [];
 
     // atualiza OS para ORCAMENTO + vincula modelo de checklist (se enviado)
-    const patch: any = {
-      status: "ORCAMENTO",
-    };
-    if (checklistModeloId) {
-      patch.checklist_modelo_id = checklistModeloId;
-    }
+    const patch: any = { status: "ORCAMENTO" };
+    if (checklistModeloId) patch.checklist_modelo_id = checklistModeloId;
 
     const { error: eUpdate } = await supabaseAdmin
       .from("ordemservico")
