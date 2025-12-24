@@ -18,6 +18,7 @@ import { useUnidadesMedida } from "./hooks/use-unidades-medida";
 import { useProdutoImagens } from "./hooks/use-produto-imagens";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useGruposProduto } from "./hooks/use-grupo-produtos";
 
 interface EdicaoProdutoProps {
   productId: number;
@@ -32,6 +33,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
 
   const reqIdRef = useRef(0);
   const { unidades, loadingUnidades, errorUnidades } = useUnidadesMedida();
+  const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
 
   const handleGetProduct = async (id: number) => {
     const myId = ++reqIdRef.current;
@@ -151,6 +153,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
               produto={selectedProduct}
               onChange={handleChange}
               unidades={unidades}
+              grupos={grupos}
               loadingUnidades={loadingUnidades}
               errorUnidades={errorUnidades}
               showDates

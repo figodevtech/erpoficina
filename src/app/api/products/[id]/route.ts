@@ -9,7 +9,7 @@ type Params = { id: string };
 const PRODUTO_FIELDS = `
   id, descricao, precovenda, estoque, estoqueminimo, ncm, cfop, unidade,
   cest, csosn, cst, aliquotaicms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, codigobarras, createdat, updatedat, referencia,
-  titulo, status_estoque, fabricante, grupo, exibirPdv,
+  titulo, status_estoque, fabricante, grupo_produto_id, grupo: produtogrupo(id, nome, descricao, ativo), exibirPdv,
   tituloMarketplace, descricaoMarketplace
 `;
 const GET_PRODUTO_FIELDS = `
@@ -41,7 +41,7 @@ const WRITABLE_FIELDS = new Set([
   "referencia",
   "titulo",
   "fabricante",
-  "grupo",
+  "grupo_produto_id",
   "exibirPdv",
   "tituloMarketplace",
   "descricaoMarketplace",

@@ -26,6 +26,7 @@ const initialNewProduct: Produto = {
   status_estoque: Estoque_status.OK,
   unidade: Unidade_medida.UN,
   fornecedor: "DESCONHECIDO",
+  grupo_produto_id: 1,
 };
 
 export function DialogProduto({
