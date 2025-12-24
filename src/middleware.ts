@@ -7,7 +7,7 @@ import { PERMS, type Permission } from "@/app/api/_authz/perms";
 const PUBLIC_PATHS = [
   "/login",
   "/recuperar-senha",
-
+  "/os",
   // NextAuth
   "/api/auth",
 ];
@@ -17,6 +17,8 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/check-email",
   "/api/auth/send-recovery",
   // ex: "/api/public",
+
+  "/api/ordens/aprovacao"
 ];
 
 function isStaticAsset(pathname: string) {
