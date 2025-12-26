@@ -13,6 +13,7 @@ import { formatDate } from "@/utils/formatDate";
 import { onlyDigits } from "../lib/utils";
 import { ESTOQUE_STATUS_BADGES } from "../lib/options-fiscais";
 import type { UnidadeFromApi } from "../hooks/use-unidades-medida";
+import { GrupoFromApi } from "../hooks/use-grupo-produtos";
 
 type Props = {
   mode: "create" | "edit";
@@ -22,6 +23,7 @@ type Props = {
   loadingUnidades: boolean;
   errorUnidades: string | null;
   showDates?: boolean;
+  grupos: GrupoFromApi[];
 };
 
 export function TabGeral({
@@ -29,6 +31,7 @@ export function TabGeral({
   produto,
   onChange,
   unidades,
+  grupos,
   loadingUnidades,
   errorUnidades,
   showDates,
@@ -48,14 +51,14 @@ export function TabGeral({
 
           <div className="flex flex-nowrap space-x-2">
             <Label>Grupo:</Label>
-            <Select value={produto.grupo || "OUTROS"} onValueChange={(v) => onChange("grupo", v)}>
+            <Select value={produto.grupo_produto_id?.toString() || "OUTROS"} onValueChange={(v) => onChange("grupo_produto_id", v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
-                {Object.values(Grupo_produto).map((g) => (
-                  <SelectItem className="hover:cursor-pointer" key={g} value={g}>
-                    {g}
+                {grupos.map((g) => (
+                  <SelectItem className="hover:cursor-pointer" key={g.id} value={g.id.toString()}>
+                    {g.nome}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -4,7 +4,7 @@ import { TabsTrigger } from "@/components/ui/tabs";
 import { Save, Upload } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Produto } from "../../types";
+import { Grupo_produto, Produto } from "../../types";
 import { ProductDialogLayout } from "./tabs/dialog-layout";
 import { TabGeral } from "./tabs/tab-geral";
 import { TabFiscal } from "./tabs/tab-fiscal";
@@ -14,6 +14,7 @@ import { useUnidadesMedida } from "./hooks/use-unidades-medida";
 import { useEffect, useState } from "react";
 import { Unidade_medida } from "../../types";
 import { set } from "nprogress";
+import { useGruposProduto } from "./hooks/use-grupo-produtos";
 
 interface ConteudoCadastroProdutoProps {
   setSelectedProductId?: (value: number | undefined) => void;
@@ -32,6 +33,7 @@ export default function CadastroProduto({
   const [imagensArquivos, setImagensArquivos] = useState<File[]>([]);
   const [imagensPreview, setImagensPreview] = useState<string[]>([]);
   const { unidades, loadingUnidades, errorUnidades } = useUnidadesMedida();
+  const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
 
   const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
@@ -46,6 +48,14 @@ export default function CadastroProduto({
       handleChange("unidade", unidades[0].sigla as Unidade_medida);
     }
   }, [unidades]);
+  useEffect(() => {
+    // se não tiver grupo definido ainda, tenta setar uma ativa
+    if (!newProduct.grupo_produto_id && grupos.length > 0) {
+      handleChange("grupo_produto_id", grupos[0].id);
+    }
+  }, [grupos]);
+
+
 
   const handlePickImages = (files: File[]) => {
     setImagensArquivos(files);
@@ -131,6 +141,7 @@ export default function CadastroProduto({
         produto={newProduct}
         onChange={handleChange}
         unidades={unidades}
+        grupos={grupos}
         loadingUnidades={loadingUnidades}
         errorUnidades={errorUnidades}
       />

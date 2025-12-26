@@ -17,6 +17,8 @@ import {
   Store,
   UserRoundX,
   CircleOff,
+  Power,
+  ArrowLeftToLine,
 } from "lucide-react";
 import {
   Estoque_status,
@@ -41,6 +43,9 @@ import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "@/app/(app)/(pages)/clientes/types";
 import Image from "next/image";
+import { useGruposProduto } from "@/app/(app)/(pages)/estoque/components/dialog-produto/hooks/use-grupo-produtos";
+import { Router } from "next/router";
+import { useRouter } from "next/navigation";
 
 interface CartItem {
   id: number;
@@ -64,6 +69,9 @@ export function POSSystem() {
   const [discount, setDiscount] = useState(0)
   const [discountType, setDiscountType] = useState<"POCENTAGEM" | "FIXO" | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
+  const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
+  const router = useRouter();
+  
 
 
   useEffect(() => {
@@ -97,7 +105,7 @@ export function POSSystem() {
 
     // se ALL, não filtra por grupo
     const matchesCategory =
-      selectedCategory === ALL || p.grupo === selectedCategory;
+      selectedCategory === ALL || p.grupo?.nome === selectedCategory;
 
     return matchesText && matchesCategory;
   });
@@ -130,7 +138,7 @@ export function POSSystem() {
         titulo: product.titulo || "SEM TÍTULO",
         precovenda: product.precovenda,     // agora é number garantido
         quantity: 1,
-        grupo: product.grupo || "SEM GRUPO",
+        grupo: product.grupo?.nome || "SEM GRUPO",
         estoque: product.estoque,          // já garantimos que não é null/undefined
       },
     ]);
@@ -253,11 +261,15 @@ console.log(cart)
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
               <Store className="h-6 w-6 text-primary-foreground" />
             </div>
-            <div>
+            <div className="flex flex-row items-center gap-4">
               <h1 className="text-3xl font-bold text-foreground">
                 Ponto de Venda
               </h1>
-              <p className="text-sm text-muted-foreground">Produtos/Peças</p>
+              <div onClick={()=>router.push("/historicovendas")} className=" hover:cursor-pointer flex felx-row gap-1 items-center text-red-800 hover:text-red-500 bg-muted/20 hover:bg-muted/50 py-2 px-3 rounded-2xl">
+
+              <ArrowLeftToLine className="w-5 h-5"/>
+              <span>SAIR</span>
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -297,9 +309,9 @@ console.log(cart)
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="TODOS">TODOS</SelectItem>
-                      {Object.values(Grupo_produto).map((group) => (
-                        <SelectItem key={group} value={group}>
-                          {group}
+                      {grupos.map((group) => (
+                        <SelectItem key={group.id} value={group.id.toString()}>
+                          {group.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -374,7 +386,7 @@ console.log(cart)
                         {product.titulo}
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        {product.grupo}
+                        {product.grupo?.nome}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Estoque: {product.estoque}
