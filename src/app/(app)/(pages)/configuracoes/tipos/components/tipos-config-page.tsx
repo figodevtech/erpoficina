@@ -10,6 +10,7 @@ import {
   Landmark,
   Tags,
   LayoutPanelLeft,
+  Palette,
 } from "lucide-react";
 
 import GruposProdutoSection from "./grupos-produto-section";
@@ -19,6 +20,7 @@ import FornecedoresSection from "./fornecedores-section";
 import BancosSection from "./contas-bancarias-section";
 import CategoriasTransacaoSection from "./categorias-transacao-section";
 import SetoresSection from "./setores-section";
+import CoresVeiculosSection from "./cores-veiculos-section";
 
 type TabId =
   | "grupos"
@@ -27,7 +29,8 @@ type TabId =
   | "fornecedores"
   | "setores"
   | "bancos"
-  | "categorias";
+  | "categorias"
+  | "cores_veiculos";
 
 export default function TiposConfigPage() {
   const [activeTab, setActiveTab] = useState<TabId>("grupos");
@@ -90,6 +93,15 @@ export default function TiposConfigPage() {
               subtitle="Organize o financeiro"
               onClick={() => setActiveTab("categorias")}
             />
+
+            {/* NOVO: Cores de Veículo */}
+            <TabButton
+              active={activeTab === "cores_veiculos"}
+              icon={Palette}
+              title="Cores de veículo"
+              subtitle="Cores para o cadastro"
+              onClick={() => setActiveTab("cores_veiculos")}
+            />
           </nav>
         </div>
 
@@ -103,6 +115,7 @@ export default function TiposConfigPage() {
             {activeTab === "setores" && <SetoresSection />}
             {activeTab === "bancos" && <BancosSection />}
             {activeTab === "categorias" && <CategoriasTransacaoSection />}
+            {activeTab === "cores_veiculos" && <CoresVeiculosSection />}
           </div>
         </div>
       </div>
@@ -118,7 +131,13 @@ type TabButtonProps = {
   onClick: () => void;
 };
 
-function TabButton({ active, icon: Icon, title, subtitle, onClick }: TabButtonProps) {
+function TabButton({
+  active,
+  icon: Icon,
+  title,
+  subtitle,
+  onClick,
+}: TabButtonProps) {
   return (
     <button
       type="button"
