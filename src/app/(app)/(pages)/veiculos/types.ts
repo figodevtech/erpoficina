@@ -9,7 +9,6 @@ export interface Veiculo {
   clienteid?: number,
   placa?: string,
   modelo?: string,
-  modeloId?: number,
   marca?: string,
   marcaId?: number,
   ano?: number,

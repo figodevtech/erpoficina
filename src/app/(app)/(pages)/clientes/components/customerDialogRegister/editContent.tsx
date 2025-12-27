@@ -30,6 +30,9 @@ import {
   Loader2,
   IdCard,
   Plus,
+  ChevronDown,
+  Ellipsis,
+  Pen,
 } from "lucide-react";
 import {
   DialogClose,
@@ -70,6 +73,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { VeiculoDialog } from "../../../veiculos/dialgo-veiculo/dialog-veiculo";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface EditContentProps {
   customerId: number;
@@ -86,6 +90,7 @@ export default function EditContent({ customerId }: EditContentProps) {
   const [open, setOpen] = useState(false);
   const [open2, setOpen2] = useState(false);
   const [openVehicle, setOpenVehicle] = useState(false)
+  const [veiculoId, setSelectedVeiculoId] = useState<number| undefined>(undefined)
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -249,9 +254,12 @@ export default function EditContent({ customerId }: EditContentProps) {
     return (
       <DialogContent className="h-svh min-w-screen p-0  overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <VeiculoDialog
+        setSelectedVeiculoId={setSelectedVeiculoId}
         isOpen={openVehicle}
         setIsOpen={setOpenVehicle}
         clienteId={selectedCustomer.id}
+        veiculoId={veiculoId}
+
 
         />
         <div className="flex h-full min-h-0 flex-col">
@@ -878,10 +886,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center">ID</TableHead>
-                      <TableHead className="text-center">Título</TableHead>
+                      <TableHead className="text-center">Descrição</TableHead>
                       <TableHead className="text-center">Placa</TableHead>
                       <TableHead className="text-center">Cor</TableHead>
                       <TableHead className="text-center">Fab/Mod</TableHead>
+                      <TableHead className="text-center">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -892,10 +901,22 @@ export default function EditContent({ customerId }: EditContentProps) {
                           className="hover:cursor-pointer text-center"
                         >
                           <TableCell>{vehicle.id}</TableCell>
-                          <TableCell>{vehicle.modelo}</TableCell>
+                          <TableCell>{vehicle.marca}/{vehicle.modelo}</TableCell>
                           <TableCell>{vehicle.placa}</TableCell>
                           <TableCell>{vehicle.cor}</TableCell>
                           <TableCell>{vehicle.ano}</TableCell>
+                          <TableCell className="text-center items-center flex justify-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger className="hover:cursor-pointer">
+                                <Ellipsis className="w-4 h-4"/>
+
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem onClick={()=>{setSelectedVeiculoId(vehicle.id); setOpenVehicle(true)}} className="hover:cursor-pointer"><Pen/>Editar</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            
+                            </TableCell>
                         </TableRow>
                       ))
                     ) : (

@@ -37,7 +37,7 @@ export function VeiculoDialog({
   >(undefined);
   const [, setIsLoading] = useState(false);
   const [novoVeiculo, setNovoVeiculo] = useState<Veiculo>({
-    
+    tipo: Veiculo_tipos.CARROS
   });
 
   const handleGetVeiculo = async (id: number) => {
@@ -69,6 +69,7 @@ export function VeiculoDialog({
       onOpenChange={(nextOpen) => {
         // sempre sincroniza o estado (controlado ou interno)
         setOpen(nextOpen);
+        
 
         if (!nextOpen) {
           setSelectedVeiculoId?.(undefined);
@@ -78,6 +79,8 @@ export function VeiculoDialog({
             
           });
         }
+
+        
       }}
     >
       <DialogTrigger autoFocus={false} asChild>

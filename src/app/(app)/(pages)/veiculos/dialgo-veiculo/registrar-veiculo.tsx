@@ -38,6 +38,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
 
 function somenteAlphaNumMaiusculo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -54,8 +55,7 @@ interface Marca {
   valor: number;
 }
 interface Modelo {
-  nome: string;
-  valor: number;
+  modelo: string;
 }
 
 interface RegisterContentProps {
@@ -82,6 +82,7 @@ export default function RegisterContent({
   const [loadingModelos, setLoadingModelos] = useState(false);
   const [open1, setOpen1] = useState(false);
   const [open2, setOpen2] = useState(false);
+  const {cores, errorCores, loadingCores} = useVeiculosCores()
 
   const handleInputChange = (field: keyof Veiculo, value: string) => {
     setNovoVeiculo({ ...novoVeiculo, [field]: value });
@@ -111,15 +112,17 @@ export default function RegisterContent({
   };
 
   const handleGetModelos = async () => {
-    if (!novoVeiculo.marca || !novoVeiculo.tipo) return;
+    if (!novoVeiculo.marcaId || !novoVeiculo.tipo) return;
 
     setLoadingModelos(true);
     try {
       const response = await axios.get(
-        `https://brasilapi.com.br/api/fipe/veiculos/v1/${novoVeiculo.tipo.toLowerCase()}/${novoVeiculo.marcaId}`
+        `https://brasilapi.com.br/api/fipe/veiculos/v1/${novoVeiculo.tipo.toLowerCase()}/${
+          novoVeiculo.marcaId
+        }`
       );
       if (response.status === 200) {
-        console.log(response)
+        console.log(response.data);
         setModelos(response.data);
       }
     } catch (error) {
@@ -185,8 +188,6 @@ export default function RegisterContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, novoVeiculo.tipo, clienteId, novoVeiculo.marcaId]);
 
-  
-
   const marcaSelecionada = marcas.find((m) => m.valor === novoVeiculo.marcaId);
 
   return (
@@ -216,7 +217,7 @@ export default function RegisterContent({
               </SelectTrigger>
               <SelectContent>
                 {Object.keys(Veiculo_tipos).map((tipo, i) => (
-                  <SelectItem key={i} value={tipo}>
+                  <SelectItem className="hover:cursor-pointer" key={i} value={tipo}>
                     {tipo}
                   </SelectItem>
                 ))}
@@ -224,7 +225,7 @@ export default function RegisterContent({
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="placa" className="text-sm sm:text-base">
                 Placa *
@@ -234,7 +235,10 @@ export default function RegisterContent({
                 value={formatarPlacaParaExibicao(novoVeiculo.placa || "")}
                 onChange={(e) => {
                   const digitado = e.target.value;
-                  const semHifen = somenteAlphaNumMaiusculo(digitado).slice(0, 7);
+                  const semHifen = somenteAlphaNumMaiusculo(digitado).slice(
+                    0,
+                    7
+                  );
                   setNovoVeiculo({ ...novoVeiculo, placa: semHifen });
                 }}
                 maxLength={8} // 3 + hífen + 4
@@ -255,13 +259,13 @@ export default function RegisterContent({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open2}
-                    className="w-[200px] justify-between"
+                    className="w-[200px] justify-between text-xs"
                     disabled={loadingMarcas || !novoVeiculo.tipo}
                   >
                     {loadingMarcas
                       ? "Carregando..."
-                      : marcaSelecionada
-                      ? marcaSelecionada.nome
+                      : novoVeiculo.marca
+                      ? novoVeiculo.marca
                       : "Selecione..."}
                     <ChevronsUpDown className="opacity-50" />
                   </Button>
@@ -272,7 +276,10 @@ export default function RegisterContent({
                   onWheelCapture={(e) => e.stopPropagation()}
                 >
                   <Command>
-                    <CommandInput placeholder="Buscar marca..." className="h-9" />
+                    <CommandInput
+                      placeholder="Buscar marca..."
+                      className="h-9"
+                    />
                     <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
                       <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
 
@@ -283,7 +290,12 @@ export default function RegisterContent({
                             key={m.valor}
                             value={m.nome} // ajuda a busca pelo nome
                             onSelect={() => {
-                              setNovoVeiculo({ ...novoVeiculo, marcaId: m.valor, marca: m.nome.toUpperCase() });
+                              setNovoVeiculo({
+                                ...novoVeiculo,
+                                marcaId: m.valor,
+                                marca: m.nome.toUpperCase(),
+                                modelo: "",
+                              });
                               setOpen2(false);
                             }}
                           >
@@ -305,52 +317,64 @@ export default function RegisterContent({
               </Popover>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2">
               <Label htmlFor="modelo" className="text-sm sm:text-base">
                 Modelo *
               </Label>
               <Popover open={open1} onOpenChange={setOpen1}>
                 <PopoverTrigger asChild>
                   <Button
-                    id="marca"
+                    id="modelo"
                     variant="outline"
                     role="combobox"
                     aria-expanded={open1}
-                    className="w-[200px] justify-between"
-                    disabled={loadingModelos || !novoVeiculo.tipo || !novoVeiculo.marcaId}
+                    className="w-[400px] justify-between text-xs"
+                    disabled={
+                      loadingModelos ||
+                      !novoVeiculo.tipo ||
+                      !novoVeiculo.marcaId
+                    }
                   >
                     {loadingModelos
                       ? "Carregando..."
+                      : novoVeiculo.modelo
+                      ? novoVeiculo.modelo
                       : "Selecione..."}
                     <ChevronsUpDown className="opacity-50" />
                   </Button>
                 </PopoverTrigger>
 
                 <PopoverContent
-                  className="w-[200px] p-0"
+                  className="w-[400px] p-0"
                   onWheelCapture={(e) => e.stopPropagation()}
                 >
                   <Command>
-                    <CommandInput placeholder="Buscar marca..." className="h-9" />
+                    <CommandInput
+                      placeholder="Buscar modelo..."
+                      className="h-9"
+                    />
                     <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
                       <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
 
                       <CommandGroup>
                         {modelos.map((m, i) => (
                           <CommandItem
-                            className="hover:cursor-pointer"
-                            key={i + m.nome}
-                            value={m.nome} // ajuda a busca pelo nome
+                            className="hover:cursor-pointer text-xs"
+                            key={i}
+                            value={m.modelo} // ajuda a busca pelo nome
                             onSelect={() => {
-                              setNovoVeiculo({ ...novoVeiculo, modelo: m.nome.toUpperCase(), });
+                              setNovoVeiculo({
+                                ...novoVeiculo,
+                                modelo: m.modelo.toUpperCase(),
+                              });
                               setOpen1(false);
                             }}
                           >
-                            {m.nome}
+                            {m.modelo.toUpperCase()}
                             <Check
                               className={cn(
                                 "ml-auto",
-                                novoVeiculo.modeloId === m.valor
+                                novoVeiculo.modelo === m.modelo.toUpperCase()
                                   ? "opacity-100"
                                   : "opacity-0"
                               )}
@@ -368,12 +392,24 @@ export default function RegisterContent({
               <Label htmlFor="cor" className="text-sm sm:text-base">
                 Cor
               </Label>
-              <Input
+              <Select value={novoVeiculo.cor || ""}
+              onValueChange={(value)=>setNovoVeiculo({...novoVeiculo, cor: value})}
+              >
+                <SelectTrigger className="w-full" disabled={loadingCores}>
+                  <SelectValue placeholder={loadingCores ?"Carregando..." : "Selecione a cor"}></SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {cores.map((c)=>(
+                    <SelectItem className="hover:cursor-pointer" key={c.id} value={c.nome}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* <Input
                 id="cor"
                 value={novoVeiculo.cor || ""}
                 onChange={(e) => handleInputChange("cor", e.target.value)}
                 placeholder="Ex.: Prata"
-              />
+              /> */}
             </div>
 
             <div className="space-y-2">
@@ -384,6 +420,7 @@ export default function RegisterContent({
                 id="ano"
                 inputMode="numeric"
                 className="w-30"
+                maxLength={4}
                 value={novoVeiculo.ano || ""}
                 onChange={(e) => handleInputChange("ano", e.target.value)}
                 placeholder="Ex.: 2019"
