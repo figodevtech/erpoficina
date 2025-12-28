@@ -14,7 +14,7 @@ const CLIENTE_FIELDS = `
 `;
 
 const VEICULO_FIELDS = `
-  id, clienteid, placa, modelo, marca, ano, cor, kmatual, createdat, updatedat
+  id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, createdat, updatedat
 `;
 
 function onlyDigits(v?: string | null) {
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
         `
         id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
         cidade, estado, bairro, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-        createdat, updatedat,endereconumero, enderecocomplemento, status
+        createdat, updatedat,endereconumero, enderecocomplemento, status, veiculos: veiculo (${VEICULO_FIELDS})
         `,
         { count: "exact" }
       )

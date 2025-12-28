@@ -147,12 +147,12 @@ export default function RegisterContent({
           description: "Veículo cadastrado.",
           duration: 2000,
         });
-
+        console.log(response)
         if (setSelectedVeiculoId) {
-          setSelectedVeiculoId(response.data.id);
+          setSelectedVeiculoId(response.data.veiculo.id);
         }
 
-        onRegister?.(response.data.data);
+        onRegister?.(response.data.veiculo);
       }
     } catch (error) {
       if (isAxiosError(error)) {

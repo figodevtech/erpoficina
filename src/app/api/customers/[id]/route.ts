@@ -13,7 +13,7 @@ const CLIENTE_FIELDS = `
 `;
 
 const VEICULO_FIELDS = `
-  id, clienteid, placa, modelo, marca, ano, cor, kmatual, createdat, updatedat
+  id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, createdat, updatedat
 `;
 
 const ORDEM_FIELDS = `

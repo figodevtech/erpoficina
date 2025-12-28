@@ -449,7 +449,7 @@ export function FormularioNovaOS({
                 </div>
 
                 {/* Campos veículo novo – desabilitados quando um veículo está vinculado */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label>Placa</Label>
                     <Input
@@ -503,7 +503,7 @@ export function FormularioNovaOS({
                       disabled={veiculoVinculado}
                     />
                   </div>
-                </div>
+                </div> */}
               </>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

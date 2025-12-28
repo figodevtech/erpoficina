@@ -1,5 +1,6 @@
 import { Timestamp } from "next/dist/server/lib/cache-handlers/types"
 import { Ordem } from "../ordens/types"
+import { Veiculo } from "../veiculos/types"
 
 
 enum TipoPessoa {
@@ -13,17 +14,7 @@ export enum ClientStatus {
   PENDENTE = "PENDENTE",
 }
 
-export interface Vehicle {
-  id: number,
-  clientId: number,
-  placa: string,
-  modelo: string,
-  marca: string
-  ano: number,
-  cor: string, 
-  kmatual: number,
-  
-}
+
 
 
 export interface Customer {
@@ -46,7 +37,7 @@ export interface Customer {
   createdat: string
   updatedat: Timestamp
   status: ClientStatus
-  veiculos: Vehicle[]
+  veiculos: Veiculo[]
   ordens: Ordem[]
 }
 

@@ -91,6 +91,7 @@ export default function EditContent({ customerId }: EditContentProps) {
   const [open2, setOpen2] = useState(false);
   const [openVehicle, setOpenVehicle] = useState(false)
   const [veiculoId, setSelectedVeiculoId] = useState<number| undefined>(undefined)
+  const [isLoadingVeiculos, setIsLoadingVeiculos] = useState(false)
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -221,6 +222,23 @@ export default function EditContent({ customerId }: EditContentProps) {
       setIsSubmitting(false);
     }
   };
+
+  const handleGetClienteVeiculos = async () => {
+    setIsLoadingVeiculos(true)
+    try {
+      const response = await axios.get(`/api/veiculos/cliente/${selectedCustomer?.id}`)
+      if(response.status === 200 && selectedCustomer){
+
+        setselectedCustomer({...selectedCustomer, veiculos: response.data.veiculos})
+      }
+    } catch (error) {
+      if(isAxiosError(error)){
+        toast("Erro:", {description: error.response?.data.error})
+      }
+    }finally{
+      setIsLoadingVeiculos(false)
+    }
+  }
   
 
   useEffect(() => {
@@ -259,7 +277,7 @@ export default function EditContent({ customerId }: EditContentProps) {
         setIsOpen={setOpenVehicle}
         clienteId={selectedCustomer.id}
         veiculoId={veiculoId}
-
+      onRegister={()=>handleGetClienteVeiculos()}
 
         />
         <div className="flex h-full min-h-0 flex-col">
@@ -875,6 +893,9 @@ export default function EditContent({ customerId }: EditContentProps) {
               className="h-full min-h-0 overflow-hidden p-0"
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
+              <span
+              onClick={handleGetClienteVeiculos}
+               className="text-xs text-muted-foreground flex flex-row items-center gap-1 hover:cursor-pointer">Recarregar <Loader2 className={`w-3 h-3 ${isLoadingVeiculos && "animate-spin"}`}/></span>
               <div className="w-full flex flex-row justify-end">
                 <Button
                 onClick={()=>{

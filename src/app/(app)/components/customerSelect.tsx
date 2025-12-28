@@ -146,6 +146,7 @@ export default function CustomerSelect({
                   <TableRow
                     className="hover:cursor-pointer"
                     onClick={() => {
+                      console.log("Selectionado", c)
                       if (OnSelect) {
                         OnSelect(c);
                       }

@@ -89,7 +89,7 @@ export function VeiculoDialog({
 
       {veiculoId ? (
         <EditContent
-        
+          isOpen={isOpen}
           veiculoId={veiculoId}
         />
       ) : (

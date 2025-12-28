@@ -35,12 +35,13 @@ export async function GET(_request: Request, ctx: { params: Params }) {
 
     const { data, error } = await supabase
       .from("veiculo")
-      .select("id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo")
+      .select(
+        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, cliente: cliente (id, nomerazaosocial, cpfcnpj)"
+      )
       .eq("id", id)
       .single();
 
     if (error) {
-      // quando não acha, o supabase pode retornar erro; tratamos como 404
       return respostaJSON({ error: "Veículo não encontrado." }, 404);
     }
 
@@ -59,33 +60,52 @@ export async function PUT(request: Request, ctx: { params: Params }) {
     const body = await request.json().catch(() => null);
     if (!body) return respostaJSON({ error: "JSON inválido no body." }, 400);
 
+    // ✅ agora pegamos de body.selectedVeiculo
+    const v = body?.selectedVeiculo;
+    if (!v || typeof v !== "object") {
+      return respostaJSON({ error: "Body deve conter 'selectedVeiculo'." }, 400);
+    }
+
     const patch: any = {};
 
-    if (body.placa !== undefined) {
-      if (body.placa === null) return respostaJSON({ error: "Campo 'placa' não pode ser null." }, 400);
-      const placaNorm = normalizarPlaca(String(body.placa));
+    // placa
+    if (v.placa !== undefined) {
+      if (v.placa === null)
+        return respostaJSON({ error: "Campo 'placa' não pode ser null." }, 400);
+
+      const placaNorm = normalizarPlaca(String(v.placa));
       if (!placaNorm) return respostaJSON({ error: "Campo 'placa' inválido." }, 400);
+
       patch.placa = placaNorm;
     }
 
-    if (body.modelo !== undefined) {
-      if (body.modelo === null) return respostaJSON({ error: "Campo 'modelo' não pode ser null." }, 400);
-      const modelo = String(body.modelo).trim();
+    // modelo
+    if (v.modelo !== undefined) {
+      if (v.modelo === null)
+        return respostaJSON({ error: "Campo 'modelo' não pode ser null." }, 400);
+
+      const modelo = String(v.modelo).trim();
       if (!modelo) return respostaJSON({ error: "Campo 'modelo' inválido." }, 400);
+
       patch.modelo = modelo;
     }
 
-    if (body.marca !== undefined) {
-      if (body.marca === null) return respostaJSON({ error: "Campo 'marca' não pode ser null." }, 400);
-      const marca = String(body.marca).trim();
+    // marca
+    if (v.marca !== undefined) {
+      if (v.marca === null)
+        return respostaJSON({ error: "Campo 'marca' não pode ser null." }, 400);
+
+      const marca = String(v.marca).trim();
       if (!marca) return respostaJSON({ error: "Campo 'marca' inválido." }, 400);
+
       patch.marca = marca;
     }
 
-    if (body.ano !== undefined) {
-      if (body.ano === null) patch.ano = null;
+    // ano
+    if (v.ano !== undefined) {
+      if (v.ano === null) patch.ano = null;
       else {
-        const ano = Number(body.ano);
+        const ano = Number(v.ano);
         if (!Number.isInteger(ano) || ano < 1900 || ano > 3000) {
           return respostaJSON({ error: "Campo 'ano' inválido." }, 400);
         }
@@ -93,10 +113,11 @@ export async function PUT(request: Request, ctx: { params: Params }) {
       }
     }
 
-    if (body.kmatual !== undefined) {
-      if (body.kmatual === null) patch.kmatual = null;
+    // kmatual
+    if (v.kmatual !== undefined) {
+      if (v.kmatual === null) patch.kmatual = null;
       else {
-        const km = Number(body.kmatual);
+        const km = Number(v.kmatual);
         if (!Number.isInteger(km) || km < 0) {
           return respostaJSON({ error: "Campo 'kmatual' inválido." }, 400);
         }
@@ -104,19 +125,26 @@ export async function PUT(request: Request, ctx: { params: Params }) {
       }
     }
 
-    if (body.cor !== undefined) {
-      patch.cor = body.cor === null ? null : String(body.cor).trim();
+    // cor
+    if (v.cor !== undefined) {
+      patch.cor = v.cor === null ? null : String(v.cor).trim();
     }
 
-    if (body.tipo !== undefined) {
-      if (body.tipo === null) return respostaJSON({ error: "Campo 'tipo' não pode ser null." }, 400);
-      patch.tipo = String(body.tipo).trim();
+    // tipo
+    if (v.tipo !== undefined) {
+      if (v.tipo === null)
+        return respostaJSON({ error: "Campo 'tipo' não pode ser null." }, 400);
+
+      patch.tipo = String(v.tipo).trim();
     }
 
-    if (body.clienteId !== undefined) {
-      // opcional: permitir trocar dono do veículo
-      if (body.clienteId === null) return respostaJSON({ error: "Campo 'clienteId' não pode ser null." }, 400);
-      const clienteId = Number(body.clienteId);
+    // clienteId (aceita clienteId ou clienteid dentro do selectedVeiculo)
+    const rawClienteId = v.clienteId ?? v.clienteid;
+    if (rawClienteId !== undefined) {
+      if (rawClienteId === null)
+        return respostaJSON({ error: "Campo 'clienteId' não pode ser null." }, 400);
+
+      const clienteId = Number(rawClienteId);
       if (!Number.isInteger(clienteId) || clienteId <= 0) {
         return respostaJSON({ error: "Campo 'clienteId' inválido." }, 400);
       }
@@ -137,7 +165,6 @@ export async function PUT(request: Request, ctx: { params: Params }) {
       .single();
 
     if (error) {
-      // se não existir ou qualquer falha
       console.error("Supabase update error:", error);
       return respostaJSON({ error: "Falha ao atualizar veículo." }, 500);
     }

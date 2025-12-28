@@ -33,6 +33,7 @@ import { useState } from "react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { ExportCustomersButton } from "./ExportCustomersButton";
+import { formatCpfCnpj } from "./customerDialogRegister/utils";
 
 interface CustomerDataTableProps {
   handleGetCustomers: (pageNumber?: number, limit?: number, search?: string, status?: Status) => void;
@@ -191,7 +192,7 @@ export default function CustomersDataTable({
                   </div>
                 </TableCell>
 
-                <TableCell className="font-mono text-sm">{customer.cpfcnpj}</TableCell>
+                <TableCell className="font-mono text-sm">{formatCpfCnpj(customer.cpfcnpj, customer.tipopessoa)}</TableCell>
 
                 <TableCell className="text-sm">
                   {customer.cidade}/{customer.estado}
