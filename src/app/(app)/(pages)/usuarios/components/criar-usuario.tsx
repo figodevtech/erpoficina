@@ -1,41 +1,169 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Perfil, Setor } from "../lib/api";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+type Payload = {
+  nome: string;
+  email: string;
+  perfilid?: number | null;
+  setorid?: number | null;
+  ativo?: boolean;
+
+  salario?: number | null;
+  comissao_percent?: number | null;
+  data_admissao?: string | null; // YYYY-MM-DD
+  data_demissao?: string | null; // YYYY-MM-DD
+};
 
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   perfis: Perfil[];
   setores: Setor[];
-  onCreate: (payload: {
-    nome: string;
-    email: string;
-    perfilid?: number | null;
-    setorid?: number | null;
-    ativo?: boolean;
-  }) => void | Promise<void>;
+  onCreate: (payload: Payload) => void | Promise<void>;
+};
+
+// ---------- helpers (datas) ----------
+function parseYYYYMMDDToDate(v?: string | null) {
+  if (!v) return undefined;
+  const s = String(v).includes("T") ? String(v).slice(0, 10) : String(v);
+  if (!s) return undefined;
+  const [y, m, d] = s.split("-").map((x) => Number(x));
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
+function formatDateToYYYYMMDD(d?: Date) {
+  if (!d) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function DatePickerField({
+  label,
+  value,
+  onChange,
+  placeholder = "Selecionar data",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const selected = parseYYYYMMDDToDate(value);
+
+  return (
+    <div className="grid gap-2">
+      <Label>{label}</Label>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={`w-full justify-start text-left font-normal ${!selected ? "text-muted-foreground" : ""}`}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {selected ? format(selected, "dd/MM/yyyy", { locale: ptBR }) : placeholder}
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            locale={ptBR}
+            selected={selected}
+            onSelect={(d) => onChange(d ? formatDateToYYYYMMDD(d) : "")}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+// ---------- helpers (salário BRL) ----------
+const brlFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatBRLFromNumber(v: number | null) {
+  if (v == null || Number.isNaN(v)) return "";
+  return brlFormatter.format(v);
+}
+
+// “R$ 1.234,56” -> 1234.56 (digita só números; trabalha por centavos)
+function parseBRLStringToNumber(raw: string) {
+  const digits = raw.replace(/\D/g, "");
+  const cents = parseInt(digits || "0", 10);
+  return cents / 100;
+}
+
+const clampPercent = (raw: string) => {
+  if (!raw) return "";
+  const n = Number(raw);
+  if (Number.isNaN(n)) return "";
+  return String(Math.min(100, Math.max(0, n)));
 };
 
 export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCreate }: Props) {
+  const [tab, setTab] = useState<"dados" | "financeiro" | "vinculo">("dados");
+
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [perfilid, setPerfilid] = useState<string>("");
-  const [setorid, setSetorid] = useState<string>("");
+  const [perfilid, setPerfilid] = useState("");
+  const [setorid, setSetorid] = useState("");
   const [ativo, setAtivo] = useState(true);
+
+  // salário formatado (string BRL)
+  const [salario, setSalario] = useState("");
+  const [comissao, setComissao] = useState("");
+
+  const [dataAdmissao, setDataAdmissao] = useState("");
+  const [dataDemissao, setDataDemissao] = useState("");
+
   const [saving, setSaving] = useState(false);
 
-  const canSave = nome.trim() && email.trim();
+  const salarioNumber = useMemo(() => {
+    if (!salario.trim()) return null;
+    return parseBRLStringToNumber(salario);
+  }, [salario]);
+
+  const canSave = useMemo(() => {
+    if (!nome.trim() || !email.trim()) return false;
+
+    const c = comissao.trim() ? Number(comissao) : 0;
+    if (Number.isNaN(c) || c < 0 || c > 100) return false;
+
+    if (salarioNumber != null && (Number.isNaN(salarioNumber) || salarioNumber < 0)) return false;
+
+    return true;
+  }, [nome, email, comissao, salarioNumber]);
 
   const handleSave = async () => {
     if (!canSave || saving) return;
+
     setSaving(true);
     try {
       await onCreate({
@@ -44,13 +172,23 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
         perfilid: perfilid ? Number(perfilid) : null,
         setorid: setorid ? Number(setorid) : null,
         ativo,
+
+        salario: salarioNumber,
+        comissao_percent: comissao.trim() ? Number(comissao) : null,
+        data_admissao: dataAdmissao || null,
+        data_demissao: dataDemissao || null,
       });
-      // limpa
+
+      setTab("dados");
       setNome("");
       setEmail("");
       setPerfilid("");
       setSetorid("");
       setAtivo(true);
+      setSalario("");
+      setComissao("");
+      setDataAdmissao("");
+      setDataDemissao("");
     } finally {
       setSaving(false);
     }
@@ -58,76 +196,130 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
 
   return (
     <Dialog open={open} onOpenChange={(v) => !saving && onOpenChange(v)}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl overflow-hidden max-h-[92dvh] sm:h-[500px] sm:flex sm:flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Novo usuário</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Nome</Label>
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>E-mail</Label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@dominio.com" />
-          </div>
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as any)}
+          className="w-full sm:flex-1 sm:min-h-0 sm:flex sm:flex-col"
+        >
+          <TabsList className="shrink-0 grid w-full grid-cols-3 mb-2">
+            <TabsTrigger value="dados">Dados</TabsTrigger>
+            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+            <TabsTrigger value="vinculo">Vínculo</TabsTrigger>
+          </TabsList>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label>Perfil</Label>
-              <Select value={perfilid} onValueChange={setPerfilid}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {perfis.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="overflow-auto pr-1 sm:flex-1 sm:min-h-0">
+            <TabsContent value="dados" className="m-0 space-y-4">
+              <div className="grid gap-2">
+                <Label>Nome</Label>
+                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
+              </div>
 
-            <div className="space-y-1.5">
-              <Label>Setor</Label>
-              <Select value={setorid} onValueChange={setSetorid}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {setores.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {s.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-1.5">
-              <Label htmlFor="ativo">Ativo</Label>
-              <Switch id="ativo" checked={ativo} onCheckedChange={setAtivo} />
-            </div>
-          </div>
+              <div className="grid gap-2">
+                <Label>E-mail</Label>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@dominio.com" />
+              </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={!canSave || saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando…
-                </>
-              ) : (
-                "Salvar"
-              )}
-            </Button>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>Perfil</Label>
+                  <Select value={perfilid} onValueChange={setPerfilid}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {perfis.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Setor</Label>
+                  <Select value={setorid} onValueChange={setSetorid}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {setores.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <div className="text-sm font-medium">Ativo</div>
+                  <div className="text-xs text-muted-foreground">Usuário pode acessar o sistema.</div>
+                </div>
+                <Switch checked={ativo} onCheckedChange={setAtivo} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="financeiro" className="m-0 space-y-4">
+              <div className="grid gap-2">
+                <Label>Salário</Label>
+                <Input
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
+                  value={salario}
+                  onChange={(e) => {
+                    const n = parseBRLStringToNumber(e.target.value);
+                    setSalario(e.target.value ? formatBRLFromNumber(n) : "");
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Comissão (%)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
+                  min={0}
+                  max={100}
+                  value={comissao}
+                  onChange={(e) => setComissao(clampPercent(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  0 a 100. Aplicada sobre o valor dos serviços executados.
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="vinculo" className="m-0 space-y-4">
+              <DatePickerField label="Data de admissão" value={dataAdmissao} onChange={setDataAdmissao} />
+              <DatePickerField label="Data de demissão" value={dataDemissao} onChange={setDataDemissao} />
+            </TabsContent>
           </div>
-        </div>
+        </Tabs>
+
+        <DialogFooter className="gap-2 sm:shrink-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancelar
+          </Button>
+
+          <Button onClick={handleSave} disabled={!canSave || saving}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando…
+              </>
+            ) : (
+              "Salvar"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

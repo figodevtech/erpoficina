@@ -1,4 +1,3 @@
-// app/api/users/route.ts
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -7,10 +6,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ensureAccess } from "./_authz";
 
 function isOpen() {
-  const v = (process.env.OPEN_PERMISSIONS ?? "")
-    .toString()
-    .trim()
-    .toLowerCase();
+  const v = (process.env.OPEN_PERMISSIONS ?? "").toString().trim().toLowerCase();
   return v === "true" || v === "1" || v === "yes";
 }
 
@@ -18,10 +14,21 @@ function gerarSenhaTemporaria() {
   if (typeof crypto !== "undefined" && (crypto as any).randomUUID) {
     return (crypto as any).randomUUID().replace(/-/g, "").slice(0, 16);
   }
-  return (
-    Math.random().toString(36).slice(2) +
-    Math.random().toString(36).slice(2)
-  );
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
+function parseNumberOrNull(v: any) {
+  if (v === null || typeof v === "undefined" || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  if (Number.isNaN(n)) return null;
+  return n;
+}
+
+function parseDateOrNull(v: any) {
+  if (v === null || typeof v === "undefined" || v === "") return null;
+  // aceita "YYYY-MM-DD" ou ISO
+  const s = String(v).trim();
+  return s ? s : null;
 }
 
 // Agora recebe opções pra filtrar (ativos / busca)
@@ -32,7 +39,20 @@ async function carregarUsuarios(opts?: { onlyActive?: boolean; q?: string }) {
   let query = supabaseAdmin
     .from("usuario")
     .select(
-      "id, nome, email, createdat, updatedat, ativo, perfil:perfilid(id,nome), setor:setorid(id,nome)"
+      [
+        "id",
+        "nome",
+        "email",
+        "createdat",
+        "updatedat",
+        "ativo",
+        "salario",
+        "comissao_percent",
+        "data_admissao",
+        "data_demissao",
+        "perfil:perfilid(id,nome)",
+        "setor:setorid(id,nome)",
+      ].join(",")
     )
     .order("createdat", { ascending: false });
 
@@ -41,7 +61,6 @@ async function carregarUsuarios(opts?: { onlyActive?: boolean; q?: string }) {
   }
 
   if (q) {
-    // busca simples por nome OU email
     query = query.or(`nome.ilike.%${q}%,email.ilike.%${q}%`);
   }
 
@@ -55,12 +74,16 @@ async function carregarUsuarios(opts?: { onlyActive?: boolean; q?: string }) {
     createdAt: u.createdat as string | null,
     updatedAt: u.updatedat as string | null,
     ativo: typeof u.ativo === "boolean" ? u.ativo : true,
-    perfil: u.perfil
-      ? { id: u.perfil.id as number, nome: u.perfil.nome as string }
-      : null,
-    setor: u.setor
-      ? { id: u.setor.id as number, nome: u.setor.nome as string }
-      : null,
+
+    salario: u.salario as number | null,
+    comissao_percent: u.comissao_percent as number | null,
+    data_admissao: u.data_admissao as string | null,
+    data_demissao: u.data_demissao as string | null,
+
+    perfil: u.perfil ? { id: u.perfil.id as number, nome: u.perfil.nome as string } : null,
+    setor: u.setor ? { id: u.setor.id as number, nome: u.setor.nome as string } : null,
+
+    // mantém compatibilidade com seu front atual
     perfilId: u.perfil?.id as number | undefined,
     setorId: u.setor?.id as number | undefined,
   }));
@@ -85,13 +108,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ users });
   } catch (e: any) {
     console.error("[/api/users GET] error:", e);
-    const status = /não autenticado|unauth|auth/i.test(String(e?.message))
-      ? 401
-      : 500;
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao listar usuários" },
-      { status }
-    );
+    const status = /não autenticado|unauth|auth/i.test(String(e?.message)) ? 401 : 500;
+    return NextResponse.json({ error: e?.message ?? "Erro ao listar usuários" }, { status });
   }
 }
 
@@ -111,14 +129,21 @@ export async function POST(req: Request) {
     const setoridRaw = body.setorid ?? body.setorId ?? null;
     const bodyAtivo = body.ativo as boolean | undefined;
 
-    if (!nome || !email) {
-      throw new Error("Nome e e-mail são obrigatórios");
+    // novos campos
+    const salario = parseNumberOrNull(body.salario);
+    const comissao_percent = parseNumberOrNull(body.comissao_percent ?? body.comissaoPercent ?? body.comissao);
+    const data_admissao = parseDateOrNull(body.data_admissao ?? body.dataAdmissao);
+    const data_demissao = parseDateOrNull(body.data_demissao ?? body.dataDemissao);
+
+    if (!nome || !email) throw new Error("Nome e e-mail são obrigatórios");
+
+    if (salario != null && salario < 0) throw new Error("Salário não pode ser negativo.");
+    if (comissao_percent != null && (comissao_percent < 0 || comissao_percent > 100)) {
+      throw new Error("Comissão deve estar entre 0 e 100.");
     }
 
     let resolvedPerfilId: number | null = null;
-    if (typeof perfilidRaw === "number") {
-      resolvedPerfilId = perfilidRaw;
-    }
+    if (typeof perfilidRaw === "number") resolvedPerfilId = perfilidRaw;
 
     if (!resolvedPerfilId && perfilNome) {
       const { data: p, error: perr } = await supabaseAdmin
@@ -131,31 +156,29 @@ export async function POST(req: Request) {
       resolvedPerfilId = p.id as number;
     }
 
-    if (!resolvedPerfilId) {
-      throw new Error("Informe o perfil do usuário.");
-    }
+    if (!resolvedPerfilId) throw new Error("Informe o perfil do usuário.");
 
-    const setorid =
-      typeof setoridRaw === "number" ? (setoridRaw as number) : null;
+    const setorid = typeof setoridRaw === "number" ? (setoridRaw as number) : null;
     const ativo = typeof bodyAtivo === "boolean" ? bodyAtivo : true;
 
     const senhaTemp = gerarSenhaTemporaria();
 
-    const { data: created, error: cErr } =
-      await supabaseAdmin.auth.admin.createUser({
-        email,
-        password: senhaTemp,
-        email_confirm: true,
-        user_metadata: {
-          nome,
-          setorid,
-          perfilid: resolvedPerfilId,
-        },
-      });
+    const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: senhaTemp,
+      email_confirm: true,
+      user_metadata: {
+        nome,
+        setorid,
+        perfilid: resolvedPerfilId,
+        salario,
+        comissao_percent,
+        data_admissao,
+        data_demissao,
+      },
+    });
 
-    if (cErr || !created?.user) {
-      throw cErr ?? new Error("Falha ao criar usuário no Auth");
-    }
+    if (cErr || !created?.user) throw cErr ?? new Error("Falha ao criar usuário no Auth");
 
     const userId = created.user.id;
 
@@ -167,6 +190,11 @@ export async function POST(req: Request) {
         setorid,
         perfilid: resolvedPerfilId,
         ativo,
+        salario,
+        comissao_percent,
+        data_admissao,
+        data_demissao,
+
         updatedat: new Date().toISOString(),
       },
       { onConflict: "id" }
@@ -174,17 +202,11 @@ export async function POST(req: Request) {
 
     if (upErr) throw upErr;
 
-    // Depois de criar, sigo retornando a lista completa (como antes)
     const users = await carregarUsuarios();
     return NextResponse.json({ users });
   } catch (e: any) {
     console.error("[/api/users POST] error:", e);
-    const status = /não autenticado|unauth|auth/i.test(String(e?.message))
-      ? 401
-      : 500;
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao criar usuário" },
-      { status }
-    );
+    const status = /não autenticado|unauth|auth/i.test(String(e?.message)) ? 401 : 500;
+    return NextResponse.json({ error: e?.message ?? "Erro ao criar usuário" }, { status });
   }
 }

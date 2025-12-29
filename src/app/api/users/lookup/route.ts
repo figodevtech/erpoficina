@@ -1,4 +1,3 @@
-// app/api/users/lookup/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -17,13 +16,7 @@ export async function GET() {
     await ensureAccess(session);
 
     const [s, p, pf] = await Promise.all([
-      // ✅ só setores ativos
-      supabaseAdmin
-        .from("setor")
-        .select("id, nome")
-        .eq("ativo", true) // <- aqui
-        .order("nome"),
-
+      supabaseAdmin.from("setor").select("id, nome").eq("ativo", true).order("nome"),
       supabaseAdmin.from("permissao").select("id, nome, descricao").order("nome"),
       supabaseAdmin.from("perfil").select("id, nome").order("nome"),
     ]);

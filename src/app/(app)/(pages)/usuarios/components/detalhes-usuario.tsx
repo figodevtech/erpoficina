@@ -1,8 +1,20 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import type { Usuario } from "../lib/api";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { buscarComissaoUsuario, type ComissaoUsuarioResumo } from "../lib/api";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, Loader2 } from "lucide-react";
+
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type Props = {
   open: boolean;
@@ -10,49 +22,287 @@ type Props = {
   usuario: Usuario | null;
 };
 
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+function formatDateToYYYYMMDD(d?: Date) {
+  if (!d) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseYYYYMMDDToDate(v?: string | null) {
+  if (!v) return undefined;
+  const s = String(v).includes("T") ? String(v).slice(0, 10) : String(v);
+  if (!s) return undefined;
+  const [y, m, d] = s.split("-").map((x) => Number(x));
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
+function DatePickerField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const selected = parseYYYYMMDDToDate(value);
+
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={`w-full justify-start text-left text-xs font-normal ${
+              !selected ? "text-muted-foreground" : ""
+            }`}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {selected ? format(selected, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            locale={ptBR}
+            selected={selected}
+            onSelect={(d) => onChange(d ? formatDateToYYYYMMDD(d) : "")}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function monthLabel(yyyymm: string) {
+  // "2025-12" -> "dez/2025"
+  const [y, m] = yyyymm.split("-").map((x) => Number(x));
+  if (!y || !m) return yyyymm;
+  const d = new Date(y, m - 1, 1);
+  return format(d, "MMM/yyyy", { locale: ptBR });
+}
+
 export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
+  const [tab, setTab] = useState<"perfil" | "comissao">("perfil");
+
+  const [dateFrom, setDateFrom] = useState(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    return formatDateToYYYYMMDD(start);
+  });
+
+  const [dateTo, setDateTo] = useState(() => formatDateToYYYYMMDD(new Date()));
+
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [resumo, setResumo] = useState<ComissaoUsuarioResumo | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!usuario?.id) return;
+
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setErro(null);
+        setResumo(null);
+
+        const data = await buscarComissaoUsuario(usuario.id, { dateFrom, dateTo });
+        if (!alive) return;
+        setResumo(data);
+      } catch (e: any) {
+        if (!alive) return;
+        setErro(e?.message ?? "Falha ao carregar comissão.");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [open, usuario?.id, dateFrom, dateTo]);
+
+  const comissaoPercent = usuario?.comissao_percent ?? 0;
+
+  const info = useMemo(() => {
+    if (!usuario) return null;
+    return {
+      nome: usuario.nome,
+      email: usuario.email,
+      perfil: usuario.perfil?.nome ?? "—",
+      setor: usuario.setor?.nome ?? "—",
+      status: usuario.ativo ? "Ativo" : "Inativo",
+      salario: usuario.salario != null ? brl.format(usuario.salario) : "—",
+      comissao: `${Number(comissaoPercent || 0)}%`,
+      admissao: usuario.data_admissao ? usuario.data_admissao : "—",
+      demissao: usuario.data_demissao ? usuario.data_demissao : "—",
+    };
+  }, [usuario, comissaoPercent]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-3xl max-h-[92dvh] overflow-hidden sm:h-[560px] sm:flex sm:flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Detalhes do usuário</DialogTitle>
-          <DialogDescription>Informações básicas do usuário selecionado.</DialogDescription>
         </DialogHeader>
 
-        {!usuario ? (
-          <div className="text-sm text-muted-foreground">Selecione um usuário para visualizar.</div>
+        {!usuario || !info ? (
+          <div className="text-sm text-muted-foreground">Nenhum usuário selecionado.</div>
         ) : (
-          <div className="space-y-3 text-sm">
-            <div>
-              <div className="text-[11px] uppercase text-muted-foreground">Nome</div>
-              <div className="font-medium">{usuario.nome}</div>
-            </div>
-            <div>
-              <div className="text-[11px] uppercase text-muted-foreground">E-mail</div>
-              <div className="font-medium break-words">{usuario.email}</div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <div className="text-[11px] uppercase text-muted-foreground">Perfil</div>
-                <div>{usuario.perfil ? <Badge variant="outline">{usuario.perfil.nome}</Badge> : "—"}</div>
-              </div>
-              <div>
-                <div className="text-[11px] uppercase text-muted-foreground">Setor</div>
-                <div>{usuario.setor ? <Badge variant="secondary">{usuario.setor.nome}</Badge> : "—"}</div>
-              </div>
-              <div>
-                <div className="text-[11px] uppercase text-muted-foreground">Status</div>
-                <div>
-                  {usuario.ativo ? (
-                    <Badge variant="default">Ativo</Badge>
-                  ) : (
-                    <Badge variant="destructive">Inativo</Badge>
-                  )}
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab(v as any)}
+            className="w-full sm:flex-1 sm:min-h-0 sm:flex sm:flex-col"
+          >
+            <TabsList className="shrink-0 grid w-full grid-cols-2 mb-2">
+              <TabsTrigger value="perfil">Perfil</TabsTrigger>
+              <TabsTrigger value="comissao">Comissão</TabsTrigger>
+            </TabsList>
+
+            <div className="overflow-auto pr-1 sm:flex-1 sm:min-h-0">
+              <TabsContent value="perfil" className="m-0 space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Nome</p>
+                    <p className="text-sm font-medium">{info.nome}</p>
+                  </div>
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">E-mail</p>
+                    <p className="text-sm font-medium">{info.email}</p>
+                  </div>
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Setor</p>
+                    <p className="text-sm font-medium">{info.setor}</p>
+                  </div>
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Perfil</p>
+                    <p className="text-sm font-medium">{info.perfil}</p>
+                  </div>
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge variant={usuario.ativo ? "default" : "destructive"}>{info.status}</Badge>
+                  </div>
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Salário</p>
+                    <p className="text-sm font-medium">{info.salario}</p>
+                  </div>
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Comissão</p>
+                    <p className="text-sm font-medium">{info.comissao}</p>
+                  </div>
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Vínculo</p>
+                    <p className="text-sm">
+                      Admissão: <span className="font-medium">{info.admissao}</span>
+                      <br />
+                      Demissão: <span className="font-medium">{info.demissao}</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </TabsContent>
+
+              <TabsContent value="comissao" className="m-0 space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <DatePickerField label="Data inicial" value={dateFrom} onChange={setDateFrom} />
+                  <DatePickerField label="Data final" value={dateTo} onChange={setDateTo} />
+
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Percentual</p>
+                    <p className="text-sm font-medium">{Number(resumo?.comissao_percent ?? 0)}%</p>
+                  </div>
+                </div>
+
+                {erro ? (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                    {erro}
+                  </div>
+                ) : null}
+
+                {loading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando comissão…
+                  </div>
+                ) : null}
+
+                {!loading && resumo ? (
+                  <>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-md border p-3">
+                        <p className="text-xs text-muted-foreground">Serviços (itens)</p>
+                        <p className="text-lg font-semibold">{resumo.totalServicos}</p>
+                      </div>
+                      <div className="rounded-md border p-3">
+                        <p className="text-xs text-muted-foreground">Faturamento (subtotal)</p>
+                        <p className="text-lg font-semibold">{brl.format(resumo.totalFaturamento)}</p>
+                      </div>
+                      <div className="rounded-md border p-3">
+                        <p className="text-xs text-muted-foreground">Comissão estimada</p>
+                        <p className="text-lg font-semibold">{brl.format(resumo.totalComissao)}</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Mês</TableHead>
+                            <TableHead className="text-right">Serviços</TableHead>
+                            <TableHead className="text-right">Faturamento</TableHead>
+                            <TableHead className="text-right">Comissão</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {resumo.meses.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                                Nenhum serviço encontrado no período.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            resumo.meses.map((m) => (
+                              <TableRow key={m.month}>
+                                <TableCell className="font-medium">{monthLabel(m.month)}</TableCell>
+                                <TableCell className="text-right">{m.servicos}</TableCell>
+                                <TableCell className="text-right">{brl.format(Number(m.faturamento || 0))}</TableCell>
+                                <TableCell className="text-right">{brl.format(Number(m.comissao || 0))}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                ) : null}
+              </TabsContent>
             </div>
-          </div>
+          </Tabs>
         )}
+
+        <DialogFooter className="gap-2 sm:shrink-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
