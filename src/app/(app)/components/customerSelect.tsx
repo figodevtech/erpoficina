@@ -63,7 +63,7 @@ export default function CustomerSelect({
   ) => {
     setIsLoading(true);
     try {
-      const response = await axios.get("/api/customers", {
+      const response = await axios.get("/api/customers/com-veiculos", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
