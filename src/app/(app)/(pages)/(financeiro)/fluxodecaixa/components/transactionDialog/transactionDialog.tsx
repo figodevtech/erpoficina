@@ -3,7 +3,7 @@ import { Dialog,  DialogTrigger } from "@/components/ui/dialog";
 import { ReactNode, useState } from "react";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
-import { Categoria_transacao, NewTransaction, Tipo_transacao, TransactionCustomer } from "../../types";
+import { NewTransaction, Tipo_transacao, TransactionCustomer } from "../../types";
 
 interface TransactionDialogProps {
   children?: ReactNode;
@@ -43,7 +43,7 @@ export default function TransactionDialog({
         setNewTransaction({
           ordemservicoid: osId,
           tipo: Tipo_transacao.RECEITA,
-          categoria: Categoria_transacao.ORDEM_SERVICO,
+          categoria: "ORDEM DE SERVICO",
           descricao: `Pagamento da OS #${osId}`,
           valor: 0,
           valorLiquido: 0
@@ -54,7 +54,7 @@ export default function TransactionDialog({
         setNewTransaction({
           vendaid: vendaId,
           tipo: Tipo_transacao.RECEITA,
-          categoria: Categoria_transacao.VENDA,
+          categoria: "VENDA",
           descricao: `Pagamento da Venda #${vendaId}`,
           valor: 0,
           valorLiquido: 0

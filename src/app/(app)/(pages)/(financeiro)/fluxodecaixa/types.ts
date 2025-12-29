@@ -5,22 +5,12 @@ export enum Tipo_transacao {
   SAQUE = "SAQUE",
 }
 
-export enum Categoria_transacao {
-  SERVICO = "SERVICO",
-  PRODUTO = "PRODUTO",
-  TRANSPORTE_LOGISTICA = "TRANSPORTE_LOGISTICA",
-  COMISSAO_REPASSE = "COMISSAO_REPASSE",
-  TRANSFERENCIA = "TRANSFERENCIA",
-  ALUGUEL = "ALUGUEL",
-  EQUIPAMENTO_FERRAMENTA = "EQUIPAMENTO_FERRAMENTA",
-  OUTROS = "OUTROS",
-  PECA = "PECA",
-  SALARIO = "SALARIO",
-  IMPOSTO_TAXA = "IMPOSTO_TAXA",
-  UTILIDADE = "UTILIDADE",
-  ORDEM_SERVICO = "ORDEM_SERVICO",
-  VENDA = "VENDA"
+export interface Categoria_transacao {
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
 }
+
 
 export enum Metodo_pagamento {
   PIX = "PIX",
@@ -63,7 +53,7 @@ export interface Transaction {
   valorLiquido: number;
   data: Date;
   metodopagamento: Metodo_pagamento;
-  categoria: Categoria_transacao;
+  categoria: string;
   tipo: Tipo_transacao;
   cliente_id?: number;
   banco_id: number;
@@ -83,7 +73,7 @@ export interface NewTransaction {
   valorLiquido?: number | 0;
   data?: Date;
   metodopagamento?: Metodo_pagamento;
-  categoria?: Categoria_transacao;
+  categoria?: string;
   tipo?: Tipo_transacao;
   cliente_id?: number | null;
   banco_id?: number;

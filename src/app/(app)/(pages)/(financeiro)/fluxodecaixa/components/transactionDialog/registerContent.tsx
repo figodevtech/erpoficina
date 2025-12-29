@@ -65,6 +65,8 @@ export default function RegisterContent({
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const [isChecked, setIsChecked] = useState(false);
+  const [categorias, setCategorias] = useState<Categoria_transacao[]>([]);
+
   const handleChange = (
     field: keyof NewTransaction,
     value: string | number
@@ -395,7 +397,7 @@ export default function RegisterContent({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ORDEM_SERVICO">
+                      <SelectItem value="ORDEM DE SERVIÇO">
                         ORDEM DE SERVIÇO
                       </SelectItem>
                     </SelectContent>
@@ -424,9 +426,9 @@ export default function RegisterContent({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.values(Categoria_transacao).map((u) => (
-                        <SelectItem key={u} value={u}>
-                          {u}
+                      {categorias.map((c) => (
+                        <SelectItem key={c.id} value={c.nome}>
+                          {c.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>

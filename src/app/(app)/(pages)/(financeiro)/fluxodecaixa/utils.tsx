@@ -17,32 +17,40 @@ export const getTypeColor = (tipo: Tipo_transacao) => {
     }
 }
 
-export const getCategoryIcon = (categoria: Categoria_transacao) => {
+export const getCategoryIcon = (categoria: string) => {
     const theme = "text-black-500 size-4"
     switch (categoria){
-        case Categoria_transacao.ALUGUEL:
+        case "ALUGUEL":
             return <Warehouse className={theme}/>
-        case Categoria_transacao.COMISSAO_REPASSE:
+        case "COMISSÃO":
             return <IdCardLanyard className={theme}/> 
-        case Categoria_transacao.EQUIPAMENTO_FERRAMENTA:
+        case "EQUIPAMENTO":
             return <Pickaxe className={theme}/>
-        case Categoria_transacao.IMPOSTO_TAXA:
+        case "FERRAMENTA":
+            return <Pickaxe className={theme}/>
+        case "IMPOSTO":
             return <Landmark className={theme}/>  
-        case Categoria_transacao.PECA:
+        case "TAXA":
+            return <Landmark className={theme}/>  
+        case "PEÇA":
             return <Spool className={theme}/> 
-        case Categoria_transacao.PRODUTO:
+        case "PRODUTO":
             return <ShoppingCart className={theme}/>  
-        case Categoria_transacao.SALARIO:
+        case "SALÁRIO":
             return <HandCoins className={theme}/>  
-        case Categoria_transacao.SERVICO:
+        case "REMUNERAÇÃO":
+            return <HandCoins className={theme}/>  
+        case "SERVIÇO":
             return <Handshake className={theme}/>   
-        case Categoria_transacao.TRANSFERENCIA:
+        case "TRANSFERÊNCIA":
             return <Banknote className={theme}/>   
-        case Categoria_transacao.TRANSPORTE_LOGISTICA:
+        case "TRANSPORTE":
             return <Truck className={theme}/>   
-        case Categoria_transacao.UTILIDADE:
+        case "LOGÍSTICA":
+            return <Truck className={theme}/>   
+        case "UTILIDADE":
             return <Lightbulb className={theme}/>   
-        case Categoria_transacao.OUTROS:
+        case "OUTROS":
             return <CircleSlash className={theme}/>
         default:
         return <CircleSlash className={theme}/>
