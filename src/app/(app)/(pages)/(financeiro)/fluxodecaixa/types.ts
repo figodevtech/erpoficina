@@ -74,6 +74,7 @@ export interface Transaction {
   vendaid?: number | null
   pendente?: boolean
 
+
 }
 export interface NewTransaction {
   id?: number;
@@ -91,6 +92,7 @@ export interface NewTransaction {
   vendaid?: number | null
   nomepagador?: string;
   cpfcnpjpagador?: string;
+  pendente?: boolean
 }
 
 export interface Pagination {

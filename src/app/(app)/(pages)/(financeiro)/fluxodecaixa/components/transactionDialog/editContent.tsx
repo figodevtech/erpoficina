@@ -31,6 +31,8 @@ import {
   TransactionCustomer,
 } from "../../types";
 import { formatCpfCnpj } from "../../utils";
+import { Switch } from "@/components/ui/switch";
+import { Info } from "lucide-react";
 
 interface EditContentProps {
   selectedTransactionId: number | undefined;
@@ -112,6 +114,18 @@ export default function EditContent({
     }
   }, [selectedCustomer, selectedTransaction]);
 
+  useEffect(() => {
+    if (
+      selectedTransaction?.tipo === Tipo_transacao.SAQUE ||
+      selectedTransaction?.tipo === Tipo_transacao.DEPOSITO
+    ) {
+      setSelectedTransaction({
+        ...selectedTransaction,
+        pendente: false,
+      });
+    }
+  }, [selectedTransaction?.tipo]);
+
   if (isLoading) {
     return (
       <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
@@ -130,9 +144,9 @@ export default function EditContent({
       <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle>Transação {selectedTransaction.id}</DialogTitle>
+            <DialogTitle>Transação #{selectedTransaction.id}</DialogTitle>
             <DialogDescription>
-              Preencha dados para registrar uma transação
+              Preencha dados para editar a transação
             </DialogDescription>
           </DialogHeader>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
@@ -156,6 +170,48 @@ export default function EditContent({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-4 w-full">
+                <Label>Lançamento futuro</Label>
+                <div className="flex felx-row items-center gap-2">
+                  <Switch
+                    className="hover:cursor-pointer"
+                    disabled={
+                      selectedTransaction.tipo === Tipo_transacao.SAQUE ||
+                      selectedTransaction.tipo === Tipo_transacao.DEPOSITO
+                        ? true
+                        : false
+                    }
+                    checked={selectedTransaction.pendente || false}
+                    onCheckedChange={(checked) =>
+                      setSelectedTransaction({
+                        ...selectedTransaction,
+                        pendente: checked,
+                      })
+                    }
+                  />
+                  
+                    {selectedTransaction.tipo === Tipo_transacao.RECEITA && (
+                      <div
+                        className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                          selectedTransaction.pendente ? "opacity-100" : "opacity-50"
+                        }`}
+                      >
+                        <Info className="w-3 h-3" />
+                        <span>LANÇAMENTO A RECEBER</span>
+                      </div>
+                    )}
+                    {selectedTransaction.tipo === Tipo_transacao.DESPESA && (
+                      <div
+                        className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                          selectedTransaction.pendente ? "opacity-100" : "opacity-50"
+                        }`}
+                      >
+                        <Info className="w-3 h-3" />
+                        <span>LANÇAMENTO A PAGAR</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2 w-full col-span-full">
                   <Label htmlFor="descricao">Descrição*</Label>

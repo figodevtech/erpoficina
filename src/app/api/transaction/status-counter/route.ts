@@ -72,7 +72,7 @@ export async function GET(req: Request) {
     const { data: receitas, error: recErr } = await supabaseAdmin
       .from("transacao")
       .select("valorLiquido")
-      .eq("tipo", TIPO_RECEITA)
+      .eq("tipo", TIPO_RECEITA).eq("pendente", false)
       .gte("data", startISO)
       .lt("data", nextStartISO);
     if (recErr) throw recErr;
