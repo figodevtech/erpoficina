@@ -231,9 +231,9 @@ export default function FinancialTable({
 
                   <TableCell className="hidden md:table-cell">{formatDate(t.data)}</TableCell>
                   <TableCell className={`hidden md:table-cell ${t.pendente && "text-primary font-semibold"}`}>
-                    {t.pendente ? (
-                      <span className=" flex flex-nowrap gap-1 items-center">PAGAMENTO FUTURO</span>
-                    ) : (
+                    {t.pendente  && t.tipo === Tipo_transacao.DESPESA ? (
+                      <span className=" flex flex-nowrap gap-1 items-center">A PAGAR</span>
+                    ) : t.pendente  && t.tipo === Tipo_transacao.RECEITA ? ( <span className=" flex flex-nowrap gap-1 items-center">A RECEBER</span>) : (
                       t.tipo
                     )}
                   </TableCell>
@@ -285,7 +285,7 @@ export default function FinancialTable({
                             handleSetConcluido={(value) => handleSetPago(value)}
                             idConcluido={t.id}
                           >
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                               <Check className="h-4 w-4" />
                               <span>Pago</span>
                             </DropdownMenuItem>

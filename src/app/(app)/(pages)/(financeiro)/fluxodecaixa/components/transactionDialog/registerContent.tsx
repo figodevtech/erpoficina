@@ -31,9 +31,10 @@ import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
+import { Info, Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import formatarEmReal from "@/utils/formatarEmReal";
+import { set } from "nprogress";
 
 interface RegisterContentProps {
   osId?: number | undefined;
@@ -109,7 +110,7 @@ export default function RegisterContent({
       if (response.status === 201) {
         const created = response.data?.data ?? response.data;
 
-        toast("Sucesso!", {
+        toast.success("Sucesso!", {
           description: "Transação registrada.",
           duration: 2000,
         });
@@ -168,6 +169,18 @@ export default function RegisterContent({
     }
   }, [newTransaction.valor]);
 
+  useEffect(() => {
+    if (
+      newTransaction.tipo === Tipo_transacao.SAQUE ||
+      newTransaction.tipo === Tipo_transacao.DEPOSITO
+    ) {
+      setNewTransaction({
+        ...newTransaction,
+        pendente: false,
+      });
+    }
+  }, [newTransaction.tipo]);
+
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
@@ -218,6 +231,49 @@ export default function RegisterContent({
                   </Select>
                 )}
               </div>
+              <div className="space-y-4 w-full">
+                <Label>Lançamento futuro</Label>
+                <div className="flex felx-row items-center gap-2">
+                  <Switch
+                    className="hover:cursor-pointer"
+                    disabled={
+                      newTransaction.tipo === Tipo_transacao.SAQUE ||
+                      newTransaction.tipo === Tipo_transacao.DEPOSITO
+                        ? true
+                        : false
+                    }
+                    checked={newTransaction.pendente || false}
+                    onCheckedChange={(checked) =>
+                      setNewTransaction({
+                        ...newTransaction,
+                        pendente: checked,
+                      })
+                    }
+                  />
+                  
+                    {newTransaction.tipo === Tipo_transacao.RECEITA && (
+                      <div
+                        className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                          newTransaction.pendente ? "opacity-100" : "opacity-50"
+                        }`}
+                      >
+                        <Info className="w-3 h-3" />
+                        <span>LANÇAMENTO A RECEBER</span>
+                      </div>
+                    )}
+                    {newTransaction.tipo === Tipo_transacao.DESPESA && (
+                      <div
+                        className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                          newTransaction.pendente ? "opacity-100" : "opacity-50"
+                        }`}
+                      >
+                        <Info className="w-3 h-3" />
+                        <span>LANÇAMENTO A PAGAR</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
               <div className="space-y-2 w-full col-span-full">
                 <Label htmlFor="descricao">Descrição*</Label>
                 <Input
