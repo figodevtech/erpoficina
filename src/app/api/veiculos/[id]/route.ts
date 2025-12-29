@@ -7,7 +7,9 @@ const supabase = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
+// Evita cache no App Router
 export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 function respostaJSON(body: any, status = 200) {
   return NextResponse.json(body, {
@@ -27,10 +29,12 @@ function idValido(raw: string) {
 }
 
 type Params = { id: string };
+type Ctx = { params: Promise<Params> };
 
-export async function GET(_request: Request, ctx: { params: Params }) {
+export async function GET(_request: Request, ctx: Ctx) {
   try {
-    const id = idValido((ctx.params?.id || "").trim());
+    const { id: rawId } = await ctx.params;
+    const id = idValido((rawId || "").trim());
     if (!id) return respostaJSON({ error: "Parâmetro 'id' inválido." }, 400);
 
     const { data, error } = await supabase
@@ -52,9 +56,10 @@ export async function GET(_request: Request, ctx: { params: Params }) {
   }
 }
 
-export async function PUT(request: Request, ctx: { params: Params }) {
+export async function PUT(request: Request, ctx: Ctx) {
   try {
-    const id = idValido((ctx.params?.id || "").trim());
+    const { id: rawId } = await ctx.params;
+    const id = idValido((rawId || "").trim());
     if (!id) return respostaJSON({ error: "Parâmetro 'id' inválido." }, 400);
 
     const body = await request.json().catch(() => null);
@@ -74,7 +79,8 @@ export async function PUT(request: Request, ctx: { params: Params }) {
         return respostaJSON({ error: "Campo 'placa' não pode ser null." }, 400);
 
       const placaNorm = normalizarPlaca(String(v.placa));
-      if (!placaNorm) return respostaJSON({ error: "Campo 'placa' inválido." }, 400);
+      if (!placaNorm)
+        return respostaJSON({ error: "Campo 'placa' inválido." }, 400);
 
       patch.placa = placaNorm;
     }
@@ -85,7 +91,8 @@ export async function PUT(request: Request, ctx: { params: Params }) {
         return respostaJSON({ error: "Campo 'modelo' não pode ser null." }, 400);
 
       const modelo = String(v.modelo).trim();
-      if (!modelo) return respostaJSON({ error: "Campo 'modelo' inválido." }, 400);
+      if (!modelo)
+        return respostaJSON({ error: "Campo 'modelo' inválido." }, 400);
 
       patch.modelo = modelo;
     }
@@ -96,7 +103,8 @@ export async function PUT(request: Request, ctx: { params: Params }) {
         return respostaJSON({ error: "Campo 'marca' não pode ser null." }, 400);
 
       const marca = String(v.marca).trim();
-      if (!marca) return respostaJSON({ error: "Campo 'marca' inválido." }, 400);
+      if (!marca)
+        return respostaJSON({ error: "Campo 'marca' inválido." }, 400);
 
       patch.marca = marca;
     }
@@ -161,7 +169,9 @@ export async function PUT(request: Request, ctx: { params: Params }) {
       .from("veiculo")
       .update(patch)
       .eq("id", id)
-      .select("id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo")
+      .select(
+        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo"
+      )
       .single();
 
     if (error) {
@@ -176,9 +186,10 @@ export async function PUT(request: Request, ctx: { params: Params }) {
   }
 }
 
-export async function DELETE(_request: Request, ctx: { params: Params }) {
+export async function DELETE(_request: Request, ctx: Ctx) {
   try {
-    const id = idValido((ctx.params?.id || "").trim());
+    const { id: rawId } = await ctx.params;
+    const id = idValido((rawId || "").trim());
     if (!id) return respostaJSON({ error: "Parâmetro 'id' inválido." }, 400);
 
     const { error } = await supabase.from("veiculo").delete().eq("id", id);
