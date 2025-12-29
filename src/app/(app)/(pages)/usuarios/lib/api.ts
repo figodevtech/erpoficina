@@ -8,11 +8,22 @@ export type Usuario = {
   id: number | string;
   nome: string;
   email: string;
+
+  // ids “normalizados” pro front
   perfilid?: number | null;
   setorid?: number | null;
+
+  // relações (quando vierem)
   perfil?: Perfil | null;
   setor?: Setor | null;
+
   ativo?: boolean;
+
+  // novos campos
+  salario?: number | null;
+  comissao_percent?: number | null;
+  data_admissao?: string | null;
+  data_demissao?: string | null;
 };
 
 export type UsuarioPayload = {
@@ -21,6 +32,11 @@ export type UsuarioPayload = {
   perfilid?: number | null;
   setorid?: number | null;
   ativo?: boolean;
+
+  salario?: number | null;
+  comissao_percent?: number | null;
+  data_admissao?: string | null;
+  data_demissao?: string | null;
 };
 
 // 🔹 Busca perfis e setores para o cadastro de usuários
@@ -29,8 +45,9 @@ export async function buscarListasUsuarios(): Promise<{
   setores: Setor[];
 }> {
   const r = await fetch("/api/users/lookup", { cache: "no-store" });
-  const j = await r.json();
+  const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error || "Falha ao carregar listas auxiliares");
+
   const perfis: Perfil[] = Array.isArray(j?.perfis) ? j.perfis : [];
   const setores: Setor[] = Array.isArray(j?.setores) ? j.setores : [];
   return { perfis, setores };
@@ -39,20 +56,43 @@ export async function buscarListasUsuarios(): Promise<{
 // 🔹 Lista usuários
 export async function buscarUsuarios(): Promise<Usuario[]> {
   const r = await fetch("/api/users", { cache: "no-store" });
-  const j = await r.json();
+  const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error || "Falha ao carregar usuários");
+
   const arr: any[] = Array.isArray(j?.users) ? j.users : [];
 
-  return arr.map((u) => ({
-    id: u.id,
-    nome: u.nome,
-    email: u.email,
-    perfilid: u.perfilid ?? u.perfilId ?? u?.perfil?.id ?? null,
-    setorid: u.setorid ?? u.setorId ?? u?.setor?.id ?? null,
-    perfil: u.perfil ?? null,
-    setor: u.setor ?? null,
-    ativo: typeof u.ativo === "boolean" ? u.ativo : true,
-  })) as Usuario[];
+  return arr.map((u) => {
+    const perfilIdNorm = u.perfilid ?? u.perfilId ?? u?.perfil?.id ?? u?.perfil?.Id ?? null;
+
+    const setorIdNorm = u.setorid ?? u.setorId ?? u?.setor?.id ?? u?.setor?.Id ?? null;
+
+    const salarioNorm = u.salario ?? u.salario_valor ?? null;
+
+    const comissaoNorm = u.comissao_percent ?? u.comissaoPercent ?? u.comissao ?? null;
+
+    const admissaoNorm = u.data_admissao ?? u.dataAdmissao ?? null;
+
+    const demissaoNorm = u.data_demissao ?? u.dataDemissao ?? null;
+
+    return {
+      id: u.id,
+      nome: u.nome,
+      email: u.email,
+
+      perfilid: typeof perfilIdNorm === "number" ? perfilIdNorm : perfilIdNorm ? Number(perfilIdNorm) : null,
+      setorid: typeof setorIdNorm === "number" ? setorIdNorm : setorIdNorm ? Number(setorIdNorm) : null,
+
+      perfil: u.perfil ?? null,
+      setor: u.setor ?? null,
+
+      ativo: typeof u.ativo === "boolean" ? u.ativo : true,
+
+      salario: salarioNorm != null ? Number(salarioNorm) : null,
+      comissao_percent: comissaoNorm != null ? Number(comissaoNorm) : null,
+      data_admissao: admissaoNorm ? String(admissaoNorm) : null,
+      data_demissao: demissaoNorm ? String(demissaoNorm) : null,
+    } as Usuario;
+  });
 }
 
 // 🔹 Cria usuário
@@ -63,15 +103,26 @@ export async function criarUsuario(payload: UsuarioPayload) {
     body: JSON.stringify({
       nome: payload.nome,
       email: payload.email,
+
+      // seu backend aceita perfilid/setorid (e também perfilId/setorId)
       perfilid: payload.perfilid ?? null,
       setorid: payload.setorid ?? null,
+
       ativo: payload.ativo,
+
+      // novos campos (precisa tratar no backend / banco)
+      salario: payload.salario ?? null,
+      comissao_percent: payload.comissao_percent ?? null,
+      data_admissao: payload.data_admissao ?? null,
+      data_demissao: payload.data_demissao ?? null,
     }),
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || "Erro ao criar usuário");
-  return data.users; // backend devolve lista atualizada (mas o caller não precisa usar)
+
+  // você já trabalha com backend retornando { users }
+  return data.users;
 }
 
 // 🔹 Atualiza usuário
@@ -82,9 +133,18 @@ export async function atualizarUsuario(id: string | number, payload: UsuarioPayl
     body: JSON.stringify({
       nome: payload.nome,
       email: payload.email,
+
+      // seu backend atual usa perfilId/setorId no PUT
       perfilId: payload.perfilid ?? null,
       setorId: payload.setorid ?? null,
+
       ativo: payload.ativo,
+
+      // novos campos (precisa tratar no backend / banco)
+      salario: payload.salario ?? null,
+      comissao_percent: payload.comissao_percent ?? null,
+      data_admissao: payload.data_admissao ?? null,
+      data_demissao: payload.data_demissao ?? null,
     }),
   });
 
@@ -105,7 +165,7 @@ export async function enviarConviteUsuario(id: string | number): Promise<void> {
   const res = await fetch(`/api/users/${id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ acao: "convite" }), // 👈 PT-BR
+    body: JSON.stringify({ acao: "convite" }),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -117,9 +177,46 @@ export async function definirSenhaUsuario(id: string | number, senha: string): P
   const res = await fetch(`/api/users/${id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ acao: "definir_senha", senha }), // 👈 PT-BR
+    body: JSON.stringify({ acao: "definir_senha", senha }),
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || "Erro ao definir senha do usuário");
+}
+
+export type ComissaoMes = {
+  month: string; // "YYYY-MM"
+  servicos: number; // soma de quantidade (ou “itens”)
+  faturamento: number; // soma dos subtotais
+  comissao: number; // faturamento * comissao_percent / 100
+};
+
+export type ComissaoUsuarioResumo = {
+  comissao_percent: number;
+  totalServicos: number;
+  totalFaturamento: number;
+  totalComissao: number;
+  meses: ComissaoMes[];
+};
+
+export async function buscarComissaoUsuario(
+  id: string | number,
+  opts?: { dateFrom?: string; dateTo?: string }
+): Promise<ComissaoUsuarioResumo> {
+  const params = new URLSearchParams();
+  if (opts?.dateFrom) params.set("dateFrom", opts.dateFrom);
+  if (opts?.dateTo) params.set("dateTo", opts.dateTo);
+
+  const url = `/api/users/${id}/comissao${params.toString() ? `?${params}` : ""}`;
+  const r = await fetch(url, { cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.error || "Falha ao carregar comissão do usuário");
+
+  return {
+    comissao_percent: Number(j?.comissao_percent ?? 0),
+    totalServicos: Number(j?.totalServicos ?? 0),
+    totalFaturamento: Number(j?.totalFaturamento ?? 0),
+    totalComissao: Number(j?.totalComissao ?? 0),
+    meses: Array.isArray(j?.meses) ? j.meses : [],
+  };
 }
