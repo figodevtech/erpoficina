@@ -34,6 +34,7 @@ import ValueInput from "../dialog-produto/entrada-valor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Banco, Categoria_transacao, Metodo_pagamento } from "../../../(financeiro)/fluxodecaixa/types";
 import { Label } from "@/components/ui/label";
+import { useCategoriasTransacao } from "../../../(financeiro)/fluxodecaixa/hooks/use-categoria-transacao";
 
 interface EntradaDialogProps {
   children?: React.ReactNode;
@@ -77,7 +78,9 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
   // estados controlados para banco / método / categoria
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [selectedMetodo, setSelectedMetodo] = useState<Metodo_pagamento | "">("");
-  const [selectedCategoria, setSelectedCategoria] = useState<Categoria_transacao | "">("");
+  const [selectedCategoria, setSelectedCategoria] = useState<string>("");
+   const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
+  
 
   const handleGetBanks = async () => {
     setIsLoadingBanks(true);
@@ -191,7 +194,7 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
 
       bancoId: isPagamentoFuturo ? Number(selectedBankId) : 1,
       metodoPagamento: isPagamentoFuturo ? selectedMetodo : Metodo_pagamento.PIX ?? "PIX",
-      categoria: isPagamentoFuturo ? selectedCategoria : Categoria_transacao.OUTROS ?? "DESPESAS_OPERACIONAIS",
+      categoria: isPagamentoFuturo ? selectedCategoria  : "DESPESAS OPERACIONAIS",
       tipo: "DESPESA",
       nomePagador: parsed.fornecedorReferente?.nomerazaosocial ?? parsed.emitente.nome ?? "",
       cpfCnpjPagador: parsed.emitente.cnpj?.toString() ?? "",
@@ -819,15 +822,15 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                           <Label className="text-muted-foreground w-1/2">Categoria:</Label>
                           <Select
                             value={selectedCategoria}
-                            onValueChange={(v) => setSelectedCategoria(v as Categoria_transacao)}
+                            onValueChange={(value) => setSelectedCategoria(value)}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                             <SelectContent>
-                              {Object.values(Categoria_transacao).map((u) => (
-                                <SelectItem key={u} value={u}>
-                                  {u}
+                              {categorias.map((c) => (
+                                <SelectItem key={c.id} value={c.nome}>
+                                  {c.nome}
                                 </SelectItem>
                               ))}
                             </SelectContent>

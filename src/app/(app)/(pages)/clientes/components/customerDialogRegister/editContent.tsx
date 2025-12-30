@@ -53,8 +53,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusCliente, TipoPessoa, ESTADOS_BRASIL, tabTheme } from "./types";
-import { formatCep, formatCpfCnpj, formatTelefone } from "./utils";
-import { Customer } from "../../types";
+import {
+  formatCep,
+  formatCpfCnpj,
+  formatTelefone,
+  getRankEmoji,
+} from "./utils";
+import { Cliente_rank, Customer } from "../../types";
 import axios, { isAxiosError } from "axios";
 import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
 import {
@@ -293,7 +298,33 @@ export default function EditContent({ customerId }: EditContentProps) {
         />
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle>Cliente #{selectedCustomer.id}</DialogTitle>
+            <DialogTitle className="flex flex-row items-center gap-5">
+              Cliente #{selectedCustomer.id}
+              <Select
+                value={selectedCustomer.rank || ""}
+                onValueChange={(value) =>
+                  setselectedCustomer({
+                    ...selectedCustomer,
+                    rank: value as Cliente_rank,
+                  })
+                }
+              >
+                <SelectTrigger className="bg-transparent border-none shadow-none focus:ring-0 focus:ring-offset-0 text-[10px] hover:cursor-pointer">
+                  <SelectValue placeholder="Não Ranqueado" />
+                </SelectTrigger>
+                <SelectContent align="end" className="text-xs w-min bg-none">
+                  {Object.values(Cliente_rank).map((rank) => (
+                    <SelectItem
+                      className="hover:cursor-pointer text-[10px] text-center flex flex-row items-center"
+                      value={rank}
+                      key={rank}
+                    >
+                      {getRankEmoji(rank)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DialogTitle>
             <DialogDescription>
               Modifique dados para atualizar o cliente
             </DialogDescription>
@@ -956,7 +987,6 @@ export default function EditContent({ customerId }: EditContentProps) {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent className="text-xs">
                                 <DropdownMenuItem
-                                
                                   onClick={() => {
                                     setSelectedVeiculoId(vehicle.id);
                                     setOpenVehicle(true);
@@ -966,10 +996,8 @@ export default function EditContent({ customerId }: EditContentProps) {
                                   <Pen />
                                   Editar
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
-                                >
-                                  <ArrowLeftRight/>
+                                <DropdownMenuItem className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all">
+                                  <ArrowLeftRight />
                                   Transferir Propriedade
                                 </DropdownMenuItem>
                               </DropdownMenuContent>

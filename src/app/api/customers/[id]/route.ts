@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
 const CLIENTE_FIELDS = `
   id, tipopessoa, cpfcnpj, nomerazaosocial, email, telefone, endereco,
   cidade, estado, bairro, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio,
-  createdat, updatedat, endereconumero, enderecocomplemento, status
+  createdat, updatedat, endereconumero, enderecocomplemento, status, rank
 `;
 
 const VEICULO_FIELDS = `
@@ -40,6 +40,7 @@ const WRITABLE_FIELDS = new Set([
   "inscricaomunicipal",
   "codigomunicipio",
   "status",
+  "rank",
 ]);
 
 function toNullIfEmpty(v: unknown) {

@@ -14,7 +14,12 @@ export enum ClientStatus {
   PENDENTE = "PENDENTE",
 }
 
-
+export enum Cliente_rank{
+  EXELENTE = "EXCELENTE",
+  ALTO = "ALTO",
+  NORMAL = "NORMAL",
+  BAIXO = "BAIXO",
+}
 
 
 export interface Customer {
@@ -39,6 +44,7 @@ export interface Customer {
   status: ClientStatus
   veiculos: Veiculo[]
   ordens: Ordem[]
+  rank: Cliente_rank
 }
 
 export interface Pagination {
