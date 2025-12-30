@@ -19,21 +19,19 @@ async function ensureAuth() {
 }
 
 // GET /api/tipos/categorias-transacao
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await ensureAuth();
-
-    const { data, error } = await supabaseAdmin
+    const url = new URL(req.url);
+    const ativo = url.searchParams.get("ativo");
+    let q = supabaseAdmin
       .from("categoriatransacao")
-      .select(
-        `
-        id,
-        nome,
-        descricao,
-        ativo
-      `
-      )
+      .select(`id, nome, descricao, ativo`)
       .order("nome", { ascending: true });
+    if (ativo === "true") q = q.eq("ativo", true);
+    if (ativo === "false") q = q.eq("ativo", false);
+
+    const { data, error } = await q;
 
     if (error) throw error;
 
@@ -42,8 +40,7 @@ export async function GET() {
         id: c.id as number,
         nome: c.nome as string,
         descricao: (c.descricao as string | null) ?? null,
-        ativo:
-          typeof c.ativo === "boolean" ? (c.ativo as boolean) : true,
+        ativo: typeof c.ativo === "boolean" ? (c.ativo as boolean) : true,
       })) ?? [];
 
     return NextResponse.json({ items });
@@ -54,8 +51,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        error:
-          e?.message ?? "Erro ao carregar categorias de transação",
+        error: e?.message ?? "Erro ao carregar categorias de transação",
       },
       { status }
     );
@@ -68,11 +64,7 @@ export async function POST(req: NextRequest) {
     await ensureAuth();
 
     const body = await req.json().catch(() => ({}));
-    const {
-      nome,
-      descricao,
-      ativo,
-    } = body as {
+    const { nome, descricao, ativo } = body as {
       nome?: string;
       descricao?: string | null;
       ativo?: boolean;
@@ -119,10 +111,7 @@ export async function POST(req: NextRequest) {
       id: data.id as number,
       nome: data.nome as string,
       descricao: (data.descricao as string | null) ?? null,
-      ativo:
-        typeof data.ativo === "boolean"
-          ? (data.ativo as boolean)
-          : true,
+      ativo: typeof data.ativo === "boolean" ? (data.ativo as boolean) : true,
     };
 
     return NextResponse.json({ item }, { status: 201 });
@@ -137,8 +126,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        error:
-          e?.message ?? "Erro ao cadastrar categoria de transação",
+        error: e?.message ?? "Erro ao cadastrar categoria de transação",
       },
       { status }
     );

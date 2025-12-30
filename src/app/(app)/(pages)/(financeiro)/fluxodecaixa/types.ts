@@ -6,6 +6,7 @@ export enum Tipo_transacao {
 }
 
 export interface Categoria_transacao {
+  id: number;
   nome: string;
   descricao?: string;
   ativo: boolean;

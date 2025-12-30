@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
@@ -35,6 +35,7 @@ import { Info, Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { set } from "nprogress";
+import { useCategoriasTransacao } from "../../hooks/use-categoria-transacao";
 
 interface RegisterContentProps {
   osId?: number | undefined;
@@ -65,7 +66,7 @@ export default function RegisterContent({
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const [isChecked, setIsChecked] = useState(false);
-  const [categorias, setCategorias] = useState<Categoria_transacao[]>([]);
+ const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
 
   const handleChange = (
     field: keyof NewTransaction,
@@ -419,15 +420,16 @@ export default function RegisterContent({
                 )}
                 {!osId && !vendaId && (
                   <Select
+                  disabled={loadingCategorias || !!errorCategorias}
                     value={newTransaction.categoria}
                     onValueChange={(v) => handleChange("categoria", v)}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={loadingCategorias ? "Carregando..." : errorCategorias ? "Erro ao carregar" : "Selecione"} />
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.map((c) => (
-                        <SelectItem key={c.id} value={c.nome}>
+                        <SelectItem className="hover:cursor-pointer"  key={c.id} value={c.nome}>
                           {c.nome}
                         </SelectItem>
                       ))}

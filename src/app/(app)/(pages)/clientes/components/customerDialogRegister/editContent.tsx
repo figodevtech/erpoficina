@@ -33,6 +33,7 @@ import {
   ChevronDown,
   Ellipsis,
   Pen,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   DialogClose,
@@ -71,9 +72,18 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { VeiculoDialog } from "../../../veiculos/dialgo-veiculo/dialog-veiculo";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface EditContentProps {
   customerId: number;
@@ -89,9 +99,11 @@ export default function EditContent({ customerId }: EditContentProps) {
   const { cidades, loading } = useGetCidades(selectedCustomer?.estado);
   const [open, setOpen] = useState(false);
   const [open2, setOpen2] = useState(false);
-  const [openVehicle, setOpenVehicle] = useState(false)
-  const [veiculoId, setSelectedVeiculoId] = useState<number| undefined>(undefined)
-  const [isLoadingVeiculos, setIsLoadingVeiculos] = useState(false)
+  const [openVehicle, setOpenVehicle] = useState(false);
+  const [veiculoId, setSelectedVeiculoId] = useState<number | undefined>(
+    undefined
+  );
+  const [isLoadingVeiculos, setIsLoadingVeiculos] = useState(false);
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -224,22 +236,25 @@ export default function EditContent({ customerId }: EditContentProps) {
   };
 
   const handleGetClienteVeiculos = async () => {
-    setIsLoadingVeiculos(true)
+    setIsLoadingVeiculos(true);
     try {
-      const response = await axios.get(`/api/veiculos/cliente/${selectedCustomer?.id}`)
-      if(response.status === 200 && selectedCustomer){
-
-        setselectedCustomer({...selectedCustomer, veiculos: response.data.veiculos})
+      const response = await axios.get(
+        `/api/veiculos/cliente/${selectedCustomer?.id}`
+      );
+      if (response.status === 200 && selectedCustomer) {
+        setselectedCustomer({
+          ...selectedCustomer,
+          veiculos: response.data.veiculos,
+        });
       }
     } catch (error) {
-      if(isAxiosError(error)){
-        toast("Erro:", {description: error.response?.data.error})
+      if (isAxiosError(error)) {
+        toast("Erro:", { description: error.response?.data.error });
       }
-    }finally{
-      setIsLoadingVeiculos(false)
+    } finally {
+      setIsLoadingVeiculos(false);
     }
-  }
-  
+  };
 
   useEffect(() => {
     if (customerId) {
@@ -250,7 +265,6 @@ export default function EditContent({ customerId }: EditContentProps) {
   useEffect(() => {
     console.log(selectedCustomer);
   }, [selectedCustomer]);
-
 
   if (isLoading) {
     return (
@@ -266,19 +280,16 @@ export default function EditContent({ customerId }: EditContentProps) {
     );
   }
 
-  
-
   if (selectedCustomer) {
     return (
       <DialogContent className="h-svh min-w-screen p-0  overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <VeiculoDialog
-        setSelectedVeiculoId={setSelectedVeiculoId}
-        isOpen={openVehicle}
-        setIsOpen={setOpenVehicle}
-        clienteId={selectedCustomer.id}
-        veiculoId={veiculoId}
-      onRegister={()=>handleGetClienteVeiculos()}
-
+          setSelectedVeiculoId={setSelectedVeiculoId}
+          isOpen={openVehicle}
+          setIsOpen={setOpenVehicle}
+          clienteId={selectedCustomer.id}
+          veiculoId={veiculoId}
+          onRegister={() => handleGetClienteVeiculos()}
         />
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
@@ -448,42 +459,42 @@ export default function EditContent({ customerId }: EditContentProps) {
                       <div className="relative">
                         <Tooltip>
                           <TooltipTrigger asChild>
-
-                        <div
-                        onClick={handleGetCNPJ}
-                        className="p-1 hover:bg-gray-500/20 cursor-pointer transition-all rounded-3xl absolute top-1.5 right-2 m-0">
-
-                        <IdCard className="w-4 h-4"/>
-                        </div>
+                            <div
+                              onClick={handleGetCNPJ}
+                              className="p-1 hover:bg-gray-500/20 cursor-pointer transition-all rounded-3xl absolute top-1.5 right-2 m-0"
+                            >
+                              <IdCard className="w-4 h-4" />
+                            </div>
                           </TooltipTrigger>
-                          <TooltipContent>
-                            Consultar CNPJ
-                          </TooltipContent>
+                          <TooltipContent>Consultar CNPJ</TooltipContent>
                         </Tooltip>
-                      <Input
-                        id="cpfcnpj"
-                        inputMode="numeric"
-                        className=""
-                        value={
-                          formatCpfCnpj(
-                            selectedCustomer.cpfcnpj,
-                            selectedCustomer.tipopessoa
-                          ) || ""
-                        }
-                        onChange={(e) => {
-                          const onlyNumbers = e.target.value.replace(/\D/g, "");
+                        <Input
+                          id="cpfcnpj"
+                          inputMode="numeric"
+                          className=""
+                          value={
+                            formatCpfCnpj(
+                              selectedCustomer.cpfcnpj,
+                              selectedCustomer.tipopessoa
+                            ) || ""
+                          }
+                          onChange={(e) => {
+                            const onlyNumbers = e.target.value.replace(
+                              /\D/g,
+                              ""
+                            );
 
-                          handleInputChange("cpfcnpj", onlyNumbers);
-                        }}
-                        placeholder={
-                          selectedCustomer.tipopessoa === "FISICA"
-                            ? "000.000.000-00"
-                            : "00.000.000/0000-00"
-                        }
-                        maxLength={
-                          selectedCustomer.tipopessoa === "FISICA" ? 14 : 18
-                        }
-                      />
+                            handleInputChange("cpfcnpj", onlyNumbers);
+                          }}
+                          placeholder={
+                            selectedCustomer.tipopessoa === "FISICA"
+                              ? "000.000.000-00"
+                              : "00.000.000/0000-00"
+                          }
+                          maxLength={
+                            selectedCustomer.tipopessoa === "FISICA" ? 14 : 18
+                          }
+                        />
                       </div>
                     </div>
                   </div>
@@ -893,16 +904,26 @@ export default function EditContent({ customerId }: EditContentProps) {
               className="h-full min-h-0 overflow-hidden p-0"
             >
               <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
-              <span
-              onClick={handleGetClienteVeiculos}
-               className="text-xs text-muted-foreground flex flex-row items-center gap-1 hover:cursor-pointer">Recarregar <Loader2 className={`w-3 h-3 ${isLoadingVeiculos && "animate-spin"}`}/></span>
-              <div className="w-full flex flex-row justify-end">
-                <Button
-                onClick={()=>{
-                  setOpenVehicle(true)
-                }}
-                className="text-xs hover:cursor-pointer" variant={"outline"}><Plus/> Veículo</Button>
-              </div>
+                <span
+                  onClick={handleGetClienteVeiculos}
+                  className="text-xs text-muted-foreground flex flex-row items-center gap-1 hover:cursor-pointer"
+                >
+                  Recarregar{" "}
+                  <Loader2
+                    className={`w-3 h-3 ${isLoadingVeiculos && "animate-spin"}`}
+                  />
+                </span>
+                <div className="w-full flex flex-row justify-end">
+                  <Button
+                    onClick={() => {
+                      setOpenVehicle(true);
+                    }}
+                    className="text-xs hover:cursor-pointer"
+                    variant={"outline"}
+                  >
+                    <Plus /> Veículo
+                  </Button>
+                </div>
                 <Table className="text-xs">
                   <TableHeader>
                     <TableRow>
@@ -922,22 +943,38 @@ export default function EditContent({ customerId }: EditContentProps) {
                           className="hover:cursor-pointer text-center"
                         >
                           <TableCell>{vehicle.id}</TableCell>
-                          <TableCell>{vehicle.marca}/{vehicle.modelo}</TableCell>
+                          <TableCell>
+                            {vehicle.marca}/{vehicle.modelo}
+                          </TableCell>
                           <TableCell>{vehicle.placa}</TableCell>
                           <TableCell>{vehicle.cor}</TableCell>
                           <TableCell>{vehicle.ano}</TableCell>
                           <TableCell className="text-center items-center flex justify-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger className="hover:cursor-pointer">
-                                <Ellipsis className="w-4 h-4"/>
-
+                                <Ellipsis className="w-4 h-4" />
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent>
-                                <DropdownMenuItem onClick={()=>{setSelectedVeiculoId(vehicle.id); setOpenVehicle(true)}} className="hover:cursor-pointer"><Pen/>Editar</DropdownMenuItem>
+                              <DropdownMenuContent className="text-xs">
+                                <DropdownMenuItem
+                                
+                                  onClick={() => {
+                                    setSelectedVeiculoId(vehicle.id);
+                                    setOpenVehicle(true);
+                                  }}
+                                  className="hover:cursor-pointer"
+                                >
+                                  <Pen />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
+                                >
+                                  <ArrowLeftRight/>
+                                  Transferir Propriedade
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                            
-                            </TableCell>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (

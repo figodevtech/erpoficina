@@ -33,6 +33,7 @@ import {
 import { formatCpfCnpj } from "../../utils";
 import { Switch } from "@/components/ui/switch";
 import { Info } from "lucide-react";
+import { useCategoriasTransacao } from "../../hooks/use-categoria-transacao";
 
 interface EditContentProps {
   selectedTransactionId: number | undefined;
@@ -51,7 +52,7 @@ export default function EditContent({
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
-  const [categorias, setCategorias] = useState<Categoria_transacao[]>([]);
+ const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
 
   const formatForInput = (date?: string | Date) => {
     if (!date) return "";
@@ -290,15 +291,16 @@ export default function EditContent({
                 <div className="space-y-2 w-full">
                   <Label htmlFor="categoria">Categoria</Label>
                   <Select
+                    disabled={loadingCategorias || !!errorCategorias}
                     value={selectedTransaction.categoria}
                     onValueChange={(v) => handleChange("categoria", v)}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={loadingCategorias ? "Carregando..." : errorCategorias ? "Erro ao carregar" : "Selecione"} />
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.map((c) => (
-                        <SelectItem key={c.id} value={c.nome}>
+                        <SelectItem className="hover:cursor-pointer" key={c.id} value={c.nome}>
                           {c.nome}
                         </SelectItem>
                       ))}
