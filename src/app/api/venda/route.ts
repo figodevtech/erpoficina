@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { auth } from "@/lib/auth";
 
 type Status = "ABERTA" | "PAGAMENTO" | "FINALIZADA" | "CANCELADA";
 const STATUS_SET = new Set<Status>([
@@ -24,7 +25,7 @@ type VendaItemInput = {
 
 type VendaPostBody = {
   clienteId: number;
-  usuarioCriadorId: string; // uuid
+  created_by: string; // uuid
   status: string; // enum_status_venda, ex: 'ABERTA', 'FINALIZADA', etc.
   descontoTipo?: string | null; // enum_tipo_desconto_venda
   descontoValor?: number | null;
@@ -44,7 +45,7 @@ const VENDA_SELECT = `
   datavenda,
   createdat,
   updatedat,
-  usuariocriadorid,
+  created_by,
   desconto_tipo,
   desconto_valor,
   sub_total,
@@ -213,14 +214,23 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
+    const session = await auth()
+
+    if(!session?.user.id) {
+      return NextResponse.json({ error: "Usuário não autenticado." }, { status: 401 });
+    }
+
     const body = (await req.json()) as VendaPostBody;
 
+    body.created_by = session.user.id;
+
+    console.log("Criando venda com body:", body);
     // Validação básica no backend
     if (
       !body ||
       typeof body !== "object" ||
       !body.clienteId ||
-      !body.usuarioCriadorId ||
+      !body.created_by ||
       !body.status ||
       !body.subTotal ||
       !body.valorTotal ||
@@ -230,7 +240,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Campos obrigatórios: clienteId, usuarioCriadorId, status, subTotal, valorTotal, itens[].",
+            "Campos obrigatórios: clienteId, created_by, status, subTotal, valorTotal, itens[].",
         },
         { status: 400 }
       );

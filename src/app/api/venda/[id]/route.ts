@@ -32,7 +32,7 @@ const VENDA_SELECT = `
   datavenda,
   createdat,
   updatedat,
-  usuariocriadorid,
+  created_by,
   desconto_tipo,
   desconto_valor,
   sub_total,

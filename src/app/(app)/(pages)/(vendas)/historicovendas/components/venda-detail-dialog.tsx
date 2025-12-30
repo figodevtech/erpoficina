@@ -57,7 +57,7 @@ interface Venda {
   datavenda: string | null
   createdat: string | null
   updatedat: string | null
-  usuariocriadorid: string | null
+  created_by: string | null
   desconto_tipo: string | null
   desconto_valor: number
   sub_total: number

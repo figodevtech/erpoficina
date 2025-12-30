@@ -194,11 +194,9 @@ console.log(cart)
     toast(<div className="flex flex-row flex-nowrap gap-2"><Loader2 className="animate-spin w-4 h-4"/> <span>Cadastrando Venda...</span></div>)
 
     // TODO: substituir pelos valores reais
-    const usuarioCriadorId = "6e1c2b36-86d5-4bb9-95ce-d94e6550294e"; // UUID do usuário logado
 
     const payload = {
       clienteId: selectedCustomer?.id,
-      usuarioCriadorId,
       status: "PAGAMENTO", // enum_status_venda
       descontoTipo: undefined,
       descontoValor: discount,

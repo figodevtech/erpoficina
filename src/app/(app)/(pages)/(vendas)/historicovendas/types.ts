@@ -52,7 +52,7 @@ export interface VendaComItens {
   datavenda: string;
   createdat: string | null;
   updatedat: string | null;
-  usuariocriadorid: string | null; // uuid
+  created_by: string | null; // uuid
   desconto_tipo: string | null;
   desconto_valor: number;
   sub_total: number;
