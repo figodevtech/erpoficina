@@ -2,12 +2,14 @@
 "use client";
 
 import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback } from "react";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { OrcamentoFormHandle, OrcamentoFormProps, ProdutoBusca, ServicoBusca } from "./tipos";
+
 import { useCarrinhoOrcamento } from "./ganchos/use-carrinho-orcamento";
 import { salvarOrcamentoAPI, EstoqueInsuficienteError } from "./servicos/api-orcamento";
 
@@ -18,7 +20,7 @@ import ServiceSelect from "@/app/(app)/components/serviceSelect";
 import { Button } from "@/components/ui/button";
 
 export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
-  { ordemServico, onTotaisChange },
+  { ordemServico, onTotaisChange, onLoadingChange },
   ref
 ) {
   const osId = ordemServico?.id;
@@ -35,6 +37,9 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
     removerServico,
   } = useCarrinhoOrcamento(osId, onTotaisChange);
 
+  // Gate de render: só mostra o Card quando carregou os dados
+  const [ready, setReady] = useState(false);
+
   // mapa: produtoid -> {disponivel, solicitado}
   const [errosEstoque, setErrosEstoque] = useState<Record<number, { disponivel: number; solicitado: number }>>({});
 
@@ -42,20 +47,46 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
   const [isServiceSelectOpen, setIsServiceSelectOpen] = useState(false);
 
   useEffect(() => {
-    if (!osId) return;
+    if (!osId) {
+      setReady(false);
+      return;
+    }
+
+    let alive = true;
+
     (async () => {
+      onLoadingChange?.(true);
+      setReady(false);
+
       try {
         await carregarItensDaOS();
+        if (!alive) return;
+
         setErrosEstoque({});
+        setReady(true);
       } catch (e: any) {
+        if (!alive) return;
         console.error(e);
         toast.error(e?.message ?? "Falha ao carregar orçamento");
+        // Mantém ready=false para não renderizar o Card “vazio” por trás.
+        setReady(false);
+      } finally {
+        if (alive) onLoadingChange?.(false);
       }
     })();
-  }, [osId, carregarItensDaOS]);
+
+    return () => {
+      alive = false;
+    };
+  }, [osId, carregarItensDaOS, onLoadingChange]);
 
   const salvarOrcamento = useCallback(async () => {
-    if (!osId) return;
+    if (!osId) {
+      const err = new Error("OS inválida para salvar orçamento");
+      toast.error(err.message);
+      throw err;
+    }
+
     try {
       setErrosEstoque({});
       await salvarOrcamentoAPI(osId, itensProduto, itensServico);
@@ -68,12 +99,14 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
           disponivel: number;
           solicitado: number;
         }>;
+
         const map: Record<number, { disponivel: number; solicitado: number }> = {};
-        for (const f of faltas)
+        for (const f of faltas) {
           map[f.produtoid] = {
             disponivel: f.disponivel,
             solicitado: f.solicitado,
           };
+        }
         setErrosEstoque(map);
 
         if (faltas.length) {
@@ -85,9 +118,15 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
         } else {
           toast.error(e.message || "Estoque insuficiente");
         }
-        return;
+
+        // IMPORTANTE: lança erro para o pai NÃO fechar o dialog
+        throw e;
       }
+
       toast.error(e?.message ?? "Erro ao salvar orçamento");
+
+      // IMPORTANTE: lança erro para o pai NÃO fechar o dialog
+      throw e;
     }
   }, [osId, itensProduto, itensServico]);
 
@@ -151,9 +190,7 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
   // 🔹 Adapta o serviço vindo do ServiceSelect para ServicoBusca
   const handleSelecionarServico = (servicoSelecionado: any) => {
     const descricao = servicoSelecionado.descricao ?? String(servicoSelecionado.id);
-
     const codigo = String(servicoSelecionado.codigo ?? servicoSelecionado.id);
-
     const precohora = Number(servicoSelecionado.precohora ?? servicoSelecionado.valor ?? servicoSelecionado.preco ?? 0);
 
     const adaptado: ServicoBusca = {
@@ -167,46 +204,32 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
     toast.success(`Serviço "${adaptado.descricao}" adicionado ao orçamento.`);
   };
 
+  // Enquanto carrega: não renderiza nada (evita card “no fundo”)
+  if (!ready) return null;
+
   return (
     <div className="space-y-6">
-      {/* CAPA */}
-      {/* <Card className="border-border">
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">
-              Orçamento • OS {ordemServico?.numero ?? osId ?? "—"}
-            </CardTitle>
-          </div>
-          <CardDescription className="text-sm">
-            {[ordemServico?.cliente, ordemServico?.veiculo]
-              .filter(Boolean)
-              .join(" • ") || "—"}
-          </CardDescription>
-        </CardHeader>
-      </Card> */}
-
-      {/* ITENS ADICIONADOS + BOTÕES DE SELEÇÃO */}
       <Card className="border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Wrench className="h-5 w-5 text-primary" />
             <CardTitle className="text-base sm:text-lg">Itens do orçamento</CardTitle>
           </div>
+
           <CardDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm">
               Use os botões para buscar e adicionar produtos e serviços ao orçamento. Ajuste as quantidades diretamente
               na tabela.
             </span>
 
-            <div className="flex flex-row items-center gap-2">
+            <div className="flex flex-row items-center gap-3">
               <ServiceSelect
                 open={isServiceSelectOpen}
                 setOpen={setIsServiceSelectOpen}
                 OnSelect={handleSelecionarServico}
               >
-                <Button className="hover:cursor-pointer" variant={"outline"} type="button">
-                  <Plus className="h-4 w-4 mr-1" />
+                <Button className="hover:cursor-pointer" type="button">
+                  <Plus className="h-4 w-4" />
                   Serviço
                 </Button>
               </ServiceSelect>
@@ -216,8 +239,8 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
                 setOpen={setIsProductSelectOpen}
                 OnSelect={handleSelecionarProduto}
               >
-                <Button className="hover:cursor-pointer" variant={"outline"} type="button">
-                  <Plus className="h-4 w-4 mr-1" />
+                <Button className="hover:cursor-pointer" type="button">
+                  <Plus className="h-4 w-4" />
                   Produto
                 </Button>
               </ProductSelect>

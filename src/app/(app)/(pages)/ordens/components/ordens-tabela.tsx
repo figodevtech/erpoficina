@@ -245,35 +245,38 @@ export function OrdensTabela({
     }
   };
 
-  // ------- setStatus com checagem de responsáveis ao iniciar -------
+  // ------- setStatus com checagem de realizadores ao iniciar -------
   async function setStatus(id: number, status: StatusOS) {
     if (status === "EM_ANDAMENTO") {
       try {
-        const r = await fetch(`/api/ordens/${id}`, {
-          cache: "no-store",
-        });
-        const j = await r.json().catch(() => ({}));
+        const r = await fetch(`/api/ordens/${id}`, { cache: "no-store" });
+        const j = await r.json().catch(() => ({} as any));
 
         if (!r.ok) {
-          throw new Error(j?.error || "Não foi possível validar responsáveis da OS.");
+          throw new Error(j?.error || "Não foi possível validar realizadores da OS.");
         }
 
         const itens = (j?.itensServico ?? []) as Array<{
+          realizadores?: Array<{ id: string; nome: string | null }>;
+          // fallback legado (se algum lugar ainda retornar isso)
           idusuariorealizador?: string | null;
         }>;
 
-        const temSemResponsavel = itens.some((it) => !it.idusuariorealizador || it.idusuariorealizador === "");
+        const temSemRealizador = itens.some((it) => {
+          if (Array.isArray(it.realizadores)) return it.realizadores.length === 0;
+          return !it.idusuariorealizador || it.idusuariorealizador === "";
+        });
 
-        if (temSemResponsavel) {
-          toast.error("Antes de iniciar, selecione o responsável para todos os serviços da OS.");
+        if (temSemRealizador) {
+          toast.error("Antes de iniciar, selecione ao menos 1 realizador para todos os serviços da OS.");
           setDetailsId(id);
           setDetailsOpen(true);
           return;
         }
       } catch (err: any) {
-        console.error("Erro ao validar responsáveis:", err);
+        console.error("Erro ao validar realizadores:", err);
         toast.error(
-          err?.message || "Não foi possível verificar os responsáveis. Abra os detalhes da OS para conferir."
+          err?.message || "Não foi possível verificar os realizadores. Abra os detalhes da OS para conferir."
         );
         setDetailsId(id);
         setDetailsOpen(true);
@@ -286,62 +289,53 @@ export function OrdensTabela({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
       toast.error(j?.error || "Falha ao atualizar status");
       return;
     }
+
     window.dispatchEvent(new CustomEvent("os:refresh"));
     toast.success("Status atualizado");
   }
 
-  async function handleSendToApproval(row: OrdemComDatas) {
-    // toast com spinner
-    const id = toast(`Validando orçamento da OS #${row.id}...`, {
-      duration: Infinity,
-      icon: <Loader2 className="h-4 w-4 animate-spin" />,
-    });
+async function handleSendToApproval(row: OrdemComDatas) {
+  const loadingId = toast(`Validando orçamento da OS ${row.id}...`, {
+    duration: Infinity,
+    icon: <Loader2 className="h-4 w-4 animate-spin" />,
+  });
+  setApprovalToastId(loadingId);
 
-    setApprovalToastId(id);
+  const fail = (msg: string) => {
+    toast.dismiss(loadingId);            // remove o toast com spinner
+    setApprovalToastId(null);
+    toast.error(msg, { duration: 4000 }); // toast de erro “normal” e que some
+  };
 
-    try {
-      const r = await fetch(`/api/ordens/${row.id}`, { cache: "no-store" });
-      const j = await r.json().catch(() => ({}));
+  try {
+    const r = await fetch(`/api/ordens/${row.id}`, { cache: "no-store" });
+    const j = await r.json().catch(() => ({} as any));
+    if (!r.ok) return fail(j?.error || "Não foi possível verificar o orçamento da OS.");
 
-      if (!r.ok) {
-        throw new Error(j?.error || "Não foi possível verificar o orçamento da OS.");
-      }
-
-      const itensServico = (j?.itensServico ?? []) as any[];
-      const itensProduto = (j?.itensProduto ?? []) as any[];
-      const totalItens = itensServico.length + itensProduto.length;
-
-      if (totalItens === 0) {
-        toast.error("O orçamento desta OS está vazio. Adicione ao menos 1 item antes de enviar para aprovação.", {
-          id,
-        });
-        setApprovalToastId(null);
-        return;
-      }
-
-      // Tem itens -> abre diálogo de confirmação
-      setApproveRow(row);
-      setApproveDialogOpen(true);
-
-      // Atualiza texto do toast, mas mantém na tela até o usuário decidir
-      toast("Orçamento validado. Revise e confirme o envio para aprovação.", {
-        id,
-        duration: Infinity,
-      });
-    } catch (err: any) {
-      console.error("Erro ao validar orçamento:", err);
-
-      toast.error(err?.message || "Não foi possível verificar o orçamento da OS.", {
-        id,
-      });
-      setApprovalToastId(null);
+    const itensServico = Array.isArray(j?.itensServico) ? j.itensServico : [];
+    if (itensServico.length === 0) {
+      return fail("Não é possível enviar para aprovação sem ao menos 1 serviço no orçamento.");
     }
+
+    // OK -> abre confirmação (mantém o toast com spinner ou troca o texto, como preferir)
+    setApproveRow(row);
+    setApproveDialogOpen(true);
+
+    toast("Orçamento validado. Revise e confirme o envio para aprovação.", {
+      id: loadingId,
+      duration: Infinity,
+    });
+  } catch (err: any) {
+    return fail(err?.message || "Não foi possível verificar o orçamento da OS.");
   }
+}
+
 
   // garante regra: fim não pode ser antes do início, e vice-versa
   const handleSetDataInicio = (date?: Date) => {
@@ -620,8 +614,7 @@ export function OrdensTabela({
 
                         <TableCell className="min-w-0">
                           <div className="flex items-center justify-center w-min bg-red-500/20 py-1 px-2 rounded-full">
-
-                          <span className="text-[8px]">{r.setor?.nome ?? "-"}</span>
+                            <span className="text-[8px]">{r.setor?.nome ?? "-"}</span>
                           </div>
                           <Tooltip>
                             <TooltipTrigger asChild>

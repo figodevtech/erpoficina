@@ -1,7 +1,7 @@
 // src/app/(app)/(pages)/ordens/components/orcamento/tipos.ts
 export type ProdutoBusca = {
   id: number;
-  codigo: string;        // usaremos a referência (referencia) como "código"
+  codigo: string; // usaremos a referência (referencia) como "código"
   descricao: string;
   precounitario: number; // preço de venda
   estoque: number;
@@ -31,8 +31,9 @@ export type ItemServico = {
 };
 
 export type OrcamentoFormProps = {
-    ordemServico: { id: number; numero?: string; cliente?: string; veiculo?: string };
+  ordemServico: { id: number; numero?: string; cliente?: string; veiculo?: string };
   onTotaisChange?: (t: { totalProdutos: number; totalServicos: number }) => void;
+  onLoadingChange?: (loading: boolean) => void;
 };
 
 export type OrcamentoFormHandle = {

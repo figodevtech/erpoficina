@@ -1,3 +1,4 @@
+// /src/app/api/users/[id]/comissao/route.ts
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -30,11 +31,10 @@ function num(v: any) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// GET /api/users/:id/comissao?dateFrom=2025-01-01&dateTo=2025-12-31
-export async function GET(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+type Key = string;
+const keyOf = (ordemservicoid: number, servicoid: number): Key => `${ordemservicoid}::${servicoid}`;
+
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session = isOpen() ? null : await auth();
     await ensureAccess(session);
@@ -45,7 +45,7 @@ export async function GET(
     const dateFrom = toDateOrNull(searchParams.get("dateFrom"));
     const dateTo = toDateOrNull(searchParams.get("dateTo"));
 
-    // 1) pega % comissão do usuário
+    // Usuário (só para cabeçalho/info)
     const { data: userRow, error: uErr } = await supabaseAdmin
       .from("usuario")
       .select("id, nome, email, comissao_percent")
@@ -55,41 +55,71 @@ export async function GET(
     if (uErr) throw uErr;
     if (!userRow) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
 
-    const comissaoPercent = num(userRow.comissao_percent);
+    // Linhas já calculadas (snapshot)
+    const { data: relRows, error: relErr } = await supabaseAdmin
+      .from("osservico_realizador")
+      .select("ordemservicoid, servicoid, valor_base, valor_comissao, comissao_percent_aplicada")
+      .eq("usuarioid", userId);
 
-    // 2) busca serviços executados pelo usuário
-    // IMPORTANTE: ajuste o campo de data da OS aqui:
+    if (relErr) throw relErr;
+
+    const rel = (relRows ?? []).map((r: any) => ({
+      ordemservicoid: Number(r.ordemservicoid),
+      servicoid: Number(r.servicoid),
+      valor_base: num(r.valor_base),
+      valor_comissao: num(r.valor_comissao),
+      comissao_percent_aplicada: num(r.comissao_percent_aplicada),
+    }));
+
+    if (rel.length === 0) {
+      return NextResponse.json({
+        usuario: { id: userRow.id, nome: userRow.nome, email: userRow.email },
+        comissao_percent: num(userRow.comissao_percent), // atual (informativo)
+        totalServicos: 0,
+        totalFaturamento: 0,
+        totalComissao: 0,
+        meses: [],
+      });
+    }
+
+    const osIds = Array.from(new Set(rel.map((x) => x.ordemservicoid))).filter(Boolean);
+
+    // Data da OS (para filtrar/agrupamento)
     const OS_DATE_FIELD = "createdat";
+    const { data: osDateRows, error: osDateErr } = await supabaseAdmin
+      .from("ordemservico")
+      .select(`id, ${OS_DATE_FIELD}`)
+      .in("id", osIds);
 
-    const { data: rows, error: sErr } = await supabaseAdmin
+    if (osDateErr) throw osDateErr;
+
+    const osDateMap = new Map<number, string | null>();
+    for (const r of osDateRows ?? []) {
+      osDateMap.set(Number((r as any).id), (r as any)[OS_DATE_FIELD] ?? null);
+    }
+
+    // Quantidade do item (para "Serviços" inteiro como participação)
+    const { data: osServicoRows, error: osServicoErr } = await supabaseAdmin
       .from("osservico")
-      .select(
-        [
-          "ordemservicoid",
-          "servicoid",
-          "quantidade",
-          "precounitario",
-          "subtotal",
-          "idusuariorealizador",
-          `ordem:ordemservicoid(id, ${OS_DATE_FIELD})`,
-          "servico:servicoid(id, descricao)",
-        ].join(",")
-      )
-      .eq("idusuariorealizador", userId);
+      .select("ordemservicoid, servicoid, quantidade")
+      .in("ordemservicoid", osIds);
 
-    if (sErr) throw sErr;
+    if (osServicoErr) throw osServicoErr;
 
-    // 3) filtra por período e agrupa por mês (no Node)
-    const byMonth = new Map<
-      string,
-      { month: string; servicos: number; faturamento: number; comissao: number }
-    >();
+    const qtdMap = new Map<Key, number>();
+    for (const r of osServicoRows ?? []) {
+      const k = keyOf(Number((r as any).ordemservicoid), Number((r as any).servicoid));
+      qtdMap.set(k, num((r as any).quantidade) || 1);
+    }
+
+    const byMonth = new Map<string, { month: string; servicos: number; faturamento: number; comissao: number }>();
 
     let totalServicos = 0;
     let totalFaturamento = 0;
+    let totalComissao = 0;
 
-    for (const r of rows ?? []) {
-      const osDateRaw = (r as any)?.ordem?.[OS_DATE_FIELD] ?? null;
+    for (const r of rel) {
+      const osDateRaw = osDateMap.get(r.ordemservicoid) ?? null;
       if (!osDateRaw) continue;
 
       const d = new Date(osDateRaw);
@@ -97,52 +127,47 @@ export async function GET(
 
       if (dateFrom && d < dateFrom) continue;
       if (dateTo) {
-        // inclui o dia inteiro do dateTo
         const end = new Date(dateTo);
         end.setHours(23, 59, 59, 999);
         if (d > end) continue;
       }
 
       const month = yyyymm(d);
-      const subtotal = num((r as any).subtotal);
-      const qtd = num((r as any).quantidade) || 1;
+      const k = keyOf(r.ordemservicoid, r.servicoid);
+      const qtd = qtdMap.get(k) ?? 1;
 
       const cur = byMonth.get(month) ?? { month, servicos: 0, faturamento: 0, comissao: 0 };
       cur.servicos += qtd;
-      cur.faturamento += subtotal;
+      cur.faturamento += r.valor_base;
+      cur.comissao += r.valor_comissao;
       byMonth.set(month, cur);
 
       totalServicos += qtd;
-      totalFaturamento += subtotal;
+      totalFaturamento += r.valor_base;
+      totalComissao += r.valor_comissao;
     }
 
-    const items = [...byMonth.values()]
+    const meses = [...byMonth.values()]
       .map((m) => ({
         ...m,
-        comissao: (m.faturamento * comissaoPercent) / 100,
+        servicos: Math.round(m.servicos),
+        faturamento: Number(m.faturamento || 0),
+        comissao: Number(m.comissao || 0),
       }))
-      .sort((a, b) => (a.month < b.month ? 1 : -1)); // desc
-
-    const totalComissao = (totalFaturamento * comissaoPercent) / 100;
+      .sort((a, b) => (a.month < b.month ? 1 : -1));
 
     return NextResponse.json({
-      usuario: {
-        id: userRow.id,
-        nome: userRow.nome,
-        email: userRow.email,
-      },
-      comissao_percent: comissaoPercent,
+      usuario: { id: userRow.id, nome: userRow.nome, email: userRow.email },
+      comissao_percent: num(userRow.comissao_percent), // atual (informativo)
       totalServicos,
       totalFaturamento,
       totalComissao,
-      meses: items,
+      meses,
+      fonte: "osservico_realizador",
     });
   } catch (e: any) {
     console.error("[/api/users/:id/comissao GET] error:", e);
     const status = /não autenticado|unauth|auth/i.test(String(e?.message)) ? 401 : 500;
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao calcular comissão do usuário" },
-      { status }
-    );
+    return NextResponse.json({ error: e?.message ?? "Erro ao calcular comissão do usuário" }, { status });
   }
 }

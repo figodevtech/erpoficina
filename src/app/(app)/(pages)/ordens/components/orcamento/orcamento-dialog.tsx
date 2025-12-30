@@ -1,7 +1,7 @@
 // src/app/(app)/(pages)/ordens/components/orcamento/orcamento-dialog.tsx
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Link as LinkIcon } from "lucide-react";
 import { DialogShell } from "../dialogs/dialog-shell";
@@ -35,14 +35,19 @@ export function OrcamentoDialog({
   const [salvando, setSalvando] = useState(false);
   const [gerandoLink, setGerandoLink] = useState(false);
 
+  // NOVO: loading inicial dos dados do orçamento (itens da OS)
+  const [carregandoDados, setCarregandoDados] = useState(false);
+
   const numero = useMemo(
     () => osSelecionada?.numero ?? (osSelecionada?.id != null ? String(osSelecionada.id) : "—"),
     [osSelecionada]
   );
+
   const clienteNome = useMemo(
     () => (typeof osSelecionada?.cliente === "string" ? osSelecionada.cliente : osSelecionada?.cliente?.nome ?? ""),
     [osSelecionada]
   );
+
   const veiculoStr = useMemo(() => {
     const v = osSelecionada?.veiculo;
     if (!v) return "";
@@ -54,36 +59,56 @@ export function OrcamentoDialog({
   }, [osSelecionada]);
 
   const ordemServico = useMemo(
-    () => ({ id: osSelecionada?.id ?? 0, numero, cliente: clienteNome || undefined, veiculo: veiculoStr || undefined }),
+    () => ({
+      id: osSelecionada?.id ?? 0,
+      numero,
+      cliente: clienteNome || undefined,
+      veiculo: veiculoStr || undefined,
+    }),
     [osSelecionada, numero, clienteNome, veiculoStr]
   );
 
+  // Ao abrir/trocar OS, assume "carregando" até o form avisar que terminou
+  useEffect(() => {
+    if (!open) return;
+    if (!ordemServico.id) return;
+    setCarregandoDados(true);
+  }, [open, ordemServico.id]);
+
+  const busy = salvando || gerandoLink || carregandoDados;
+
   async function handleSalvar() {
-    if (salvando || gerandoLink) return;
+    if (busy) return;
     setSalvando(true);
     try {
       if (onSalvarOrcamento) {
-        await onSalvarOrcamento();
+        await onSalvarOrcamento(); // importante: se falhar, deve dar throw para NÃO fechar
       } else {
-        await formRef.current?.salvarOrcamento();
+        await formRef.current?.salvarOrcamento(); // com a mudança abaixo, dá throw em erro
       }
+
+      onOpenChange(false); // fecha ao salvar com sucesso
     } finally {
       setSalvando(false);
     }
   }
 
   async function handleGerarLink() {
-    if (!onGerarLinkAprovacao) return; // só aparece se vier por props
-    if (salvando || gerandoLink) return;
+    if (!onGerarLinkAprovacao) return;
+    if (busy) return;
+
     setGerandoLink(true);
     try {
-      // garantimos que está salvo antes de gerar o link
+      // salva antes de gerar link
       if (onSalvarOrcamento) {
         await onSalvarOrcamento();
       } else {
         await formRef.current?.salvarOrcamento();
       }
+
       await onGerarLinkAprovacao();
+      // opcional: pode fechar aqui também, se quiser:
+      // onOpenChange(false);
     } finally {
       setGerandoLink(false);
     }
@@ -92,7 +117,10 @@ export function OrcamentoDialog({
   return (
     <DialogShell
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(v) => {
+        if (busy) return; // impede fechar enquanto carrega/salva/gera link
+        onOpenChange(v);
+      }}
       title={`Orçamento • OS ${numero}`}
       description={[clienteNome, veiculoStr].filter(Boolean).join(" • ")}
       footer={
@@ -106,12 +134,7 @@ export function OrcamentoDialog({
           </div>
 
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleSalvar}
-              className="bg-transparent"
-              disabled={salvando || gerandoLink}
-            >
+            <Button variant="outline" onClick={handleSalvar} className="bg-transparent" disabled={busy}>
               {salvando ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -123,7 +146,7 @@ export function OrcamentoDialog({
             </Button>
 
             {onGerarLinkAprovacao && (
-              <Button onClick={handleGerarLink} disabled={salvando || gerandoLink}>
+              <Button onClick={handleGerarLink} disabled={busy}>
                 {gerandoLink ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -141,14 +164,28 @@ export function OrcamentoDialog({
         </div>
       }
     >
-      <OrcamentoForm
-        ref={formRef}
-        ordemServico={ordemServico}
-        onTotaisChange={({ totalProdutos, totalServicos }) => {
-          setTotalProdutos(totalProdutos || 0);
-          setTotalServicos(totalServicos || 0);
-        }}
-      />
+      <div className="relative">
+        {(carregandoDados || salvando || gerandoLink) && (
+          <div className="flex items-center justify-center bg-background/70">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {salvando ? "Salvando orçamento..." : "Carregando orçamento..."}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <OrcamentoForm
+          ref={formRef}
+          ordemServico={ordemServico}
+          onLoadingChange={setCarregandoDados}
+          onTotaisChange={({ totalProdutos, totalServicos }) => {
+            setTotalProdutos(totalProdutos || 0);
+            setTotalServicos(totalServicos || 0);
+          }}
+        />
+      </div>
     </DialogShell>
   );
 }

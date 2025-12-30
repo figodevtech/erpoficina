@@ -32,20 +32,21 @@ import {
   Calculator,
   X,
   AlertTriangle,
+  Users,
 } from "lucide-react";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  carregarDetalhesOS,
-  listarUsuariosAtivos,
-  atualizarResponsavelServico,
-  type UsuarioAtivo,
-} from "../../lib/api";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
+
+import { carregarDetalhesOS, listarUsuariosAtivos, type UsuarioAtivo } from "../../lib/api";
 
 const PUBLIC_APPROVAL_BASE = "/aprovacao";
 function approvalUrlFromToken(token: string) {
@@ -110,9 +111,7 @@ type OS = {
   datasaida?: string | null;
   setor?: { id: number; nome: string } | null;
   cliente?: { id: number; nomerazaosocial: string } | null;
-  veiculo?:
-    | { id: number; placa?: string | null; modelo?: string | null; marca?: string | null }
-    | null;
+  veiculo?: { id: number; placa?: string | null; modelo?: string | null; marca?: string | null } | null;
   alvo_tipo?: "VEICULO" | "PECA" | null;
   peca?: { id: number; titulo: string } | null;
 };
@@ -132,15 +131,23 @@ type ItemProduto = {
   } | null;
 };
 
+type RealizadorLite = {
+  id: string;
+  nome: string | null;
+};
+
 type ItemServico = {
   ordemservicoid: number;
   servicoid: number;
   quantidade: number;
   precounitario: number;
   subtotal: number;
-  servico?:
-    | { id: number; codigo?: string | null; descricao?: string | null; precohora?: number | null }
-    | null;
+  servico?: { id: number; codigo?: string | null; descricao?: string | null; precohora?: number | null } | null;
+
+  // Novo (preferível quando você atualizar o carregarDetalhesOS para ler osservico_realizador)
+  realizadores?: RealizadorLite[] | null;
+
+  // Legado (enquanto carregarDetalhesOS não muda)
   idusuariorealizador?: string | null;
   realizador?: { id: string; nome: string | null } | null;
 };
@@ -177,7 +184,41 @@ type OSDetalhesResponse = {
   aprovacoes?: Aprovacao[];
 };
 
-const SELECT_NONE_VALUE = "__none";
+function uniq(arr: string[]) {
+  return [...new Set(arr)];
+}
+
+function getIdsFromItem(it: ItemServico): string[] {
+  const ids = (it.realizadores ?? []).map((r) => r?.id).filter(Boolean) as string[];
+  if (ids.length) return uniq(ids);
+
+  const legacy = typeof it.idusuariorealizador === "string" && it.idusuariorealizador.trim() ? it.idusuariorealizador : "";
+  return legacy ? [legacy] : [];
+}
+
+function buildRealizadoresFromIds(ids: string[], responsaveis: UsuarioAtivo[]): RealizadorLite[] {
+  return ids.map((id) => ({
+    id,
+    nome: responsaveis.find((u) => u.id === id)?.nome ?? null,
+  }));
+}
+
+async function putRealizadores(ordemservicoid: number, servicoid: number, usuarioIds: string[]) {
+  const r = await fetch(`/api/ordens/${ordemservicoid}/servicos/${servicoid}/responsavel`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ usuarioIds }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.error || "Erro ao atualizar realizadores");
+  return j as {
+    ordemservicoid: number;
+    servicoid: number;
+    usuarioIds: string[];
+    idusuariorealizador: string | null;
+    realizadores: RealizadorLite[];
+  };
+}
 
 function badgeClassForChecklistStatus(status?: string) {
   switch ((status || "").toUpperCase()) {
@@ -192,6 +233,105 @@ function badgeClassForChecklistStatus(status?: string) {
   }
 }
 
+function MultiSelectRealizadores({
+  disabled,
+  responsaveis,
+  valueIds,
+  onChangeIds,
+}: {
+  disabled: boolean;
+  responsaveis: UsuarioAtivo[];
+  valueIds: string[];
+  onChangeIds: (nextIds: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const selected = useMemo(() => new Set(valueIds), [valueIds]);
+
+  const label = useMemo(() => {
+    if (valueIds.length === 0) return "Sem realizador";
+    if (valueIds.length === 1) {
+      const u = responsaveis.find((r) => r.id === valueIds[0]);
+      return u?.nome ?? valueIds[0];
+    }
+    return `${valueIds.length} selecionados`;
+  }, [valueIds, responsaveis]);
+
+  function toggle(id: string) {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChangeIds(Array.from(next));
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm" disabled={disabled} className="h-8 w-full justify-between">
+          <span className="truncate flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            {label}
+          </span>
+          <span className="text-xs text-muted-foreground">{valueIds.length || 0}</span>
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent align="start" className="w-[320px] p-0">
+        <Command>
+          <CommandInput placeholder="Buscar usuário..." />
+          <CommandList>
+            <CommandEmpty>Nenhum usuário encontrado.</CommandEmpty>
+
+            <CommandGroup heading="Usuários ativos">
+              {responsaveis.map((u) => {
+                const checked = selected.has(u.id);
+
+                return (
+                  <CommandItem
+                    key={u.id}
+                    value={`${u.nome ?? ""} ${u.id}`}
+                    onSelect={() => toggle(u.id)}
+                    className="flex items-center gap-2"
+                  >
+                    {/* Checkbox visual; clique é no CommandItem (alvo maior). */}
+                    <Checkbox checked={checked} className="pointer-events-none" />
+                    <span className="truncate">{u.nome ?? u.id}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+
+        {valueIds.length > 0 && (
+          <div className="border-t p-2 flex flex-wrap gap-1">
+            {valueIds.slice(0, 6).map((id) => {
+              const nome = responsaveis.find((r) => r.id === id)?.nome ?? id;
+              return (
+                <Badge key={id} variant="secondary" className="truncate max-w-[140px]">
+                  {nome}
+                </Badge>
+              );
+            })}
+            {valueIds.length > 6 && <Badge variant="outline">+{valueIds.length - 6}</Badge>}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 ml-auto"
+              onClick={() => onChangeIds([])}
+              disabled={disabled}
+              title="Limpar realizadores"
+            >
+              Limpar
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function OSDetalhesDialog({
   open,
   onOpenChange,
@@ -204,38 +344,28 @@ export function OSDetalhesDialog({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<OSDetalhesResponse | null>(null);
 
-  // usamos o tipo vindo do lib
   const [responsaveis, setResponsaveis] = useState<UsuarioAtivo[]>([]);
   const [loadingResponsaveis, setLoadingResponsaveis] = useState(false);
-  const [savingResponsavelKey, setSavingResponsavelKey] =
-    useState<string | null>(null);
+  const [savingResponsavelKey, setSavingResponsavelKey] = useState<string | null>(null);
 
   const canFetch = open && !!osId;
 
   const statusUpper = (data?.os?.status || "").toUpperCase();
 
-  // Agora permite editar responsável em ORCAMENTO_APROVADO e EM_ANDAMENTO
   const podeEditarResponsavel = useMemo(
-    () =>
-      statusUpper === "ORCAMENTO_APROVADO" || statusUpper === "EM_ANDAMENTO",
+    () => statusUpper === "ORCAMENTO_APROVADO" || statusUpper === "EM_ANDAMENTO",
     [statusUpper]
   );
 
-  const temServicoSemResponsavel = useMemo(
-    () =>
-      (data?.itensServico ?? []).some(
-        (s) => !s.idusuariorealizador || s.idusuariorealizador === ""
-      ),
-    [data?.itensServico]
-  );
+  const temServicoSemResponsavel = useMemo(() => {
+    return (data?.itensServico ?? []).some((s) => getIdsFromItem(s).length === 0);
+  }, [data?.itensServico]);
 
-  // Alerta de “antes de iniciar” só faz sentido quando ainda está aprovado e não iniciado
   const mostrarAlertaAntesDeIniciar = useMemo(
     () => statusUpper === "ORCAMENTO_APROVADO" && temServicoSemResponsavel,
     [statusUpper, temServicoSemResponsavel]
   );
 
-  // Fetch detalhes da OS
   useEffect(() => {
     if (!canFetch || !osId) return;
 
@@ -257,7 +387,6 @@ export function OSDetalhesDialog({
     return () => ac.abort();
   }, [canFetch, osId]);
 
-  // Buscar TODOS usuários ativos quando o dialog abrir
   useEffect(() => {
     if (!open) return;
 
@@ -283,110 +412,86 @@ export function OSDetalhesDialog({
     };
   }, [open]);
 
-  const titulo = useMemo(
-    () => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"),
-    [data?.os?.id]
-  );
+  const titulo = useMemo(() => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"), [data?.os?.id]);
 
   const statusBadge = useMemo(() => {
     const st = (data?.os?.status || "ORCAMENTO").toUpperCase();
-    return (
-      <Badge className={statusClasses[st] ?? ""}>
-        {st.replaceAll("_", " ")}
-      </Badge>
-    );
+    return <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>;
   }, [data?.os?.status]);
 
   const prioBadge = useMemo(() => {
     const p = (data?.os?.prioridade || "").toUpperCase();
-    return p ? (
-      <Badge className={prioClasses[p] ?? ""}>{p}</Badge>
-    ) : null;
+    return p ? <Badge className={prioClasses[p] ?? ""}>{p}</Badge> : null;
   }, [data?.os?.prioridade]);
 
   const totalProdutos = useMemo(
-    () =>
-      (data?.itensProduto || []).reduce(
-        (acc, it) => acc + Number(it.subtotal || 0),
-        0
-      ),
+    () => (data?.itensProduto || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0),
     [data?.itensProduto]
   );
   const totalServicos = useMemo(
-    () =>
-      (data?.itensServico || []).reduce(
-        (acc, it) => acc + Number(it.subtotal || 0),
-        0
-      ),
+    () => (data?.itensServico || []).reduce((acc, it) => acc + Number(it.subtotal || 0), 0),
     [data?.itensServico]
   );
-  const totalGeral = useMemo(
-    () => totalProdutos + totalServicos,
-    [totalProdutos, totalServicos]
-  );
+  const totalGeral = useMemo(() => totalProdutos + totalServicos, [totalProdutos, totalServicos]);
 
-  async function handleChangeRealizador(
-    item: ItemServico,
-    novoUsuarioId: string | null
-  ) {
+  async function salvarRealizadores(item: ItemServico, usuarioIds: string[]) {
     if (!data?.os?.id) return;
 
     const key = `${item.ordemservicoid}-${item.servicoid}`;
     setSavingResponsavelKey(key);
 
-    // Atualização otimista
+    const ids = uniq(usuarioIds.filter(Boolean));
+    const otimista = buildRealizadoresFromIds(ids, responsaveis);
+    const principal = ids[0] ?? null;
+
     setData((prev) =>
-      prev
-        ? {
+      !prev
+        ? prev
+        : {
             ...prev,
             itensServico: prev.itensServico.map((s) =>
-              s.ordemservicoid === item.ordemservicoid &&
-              s.servicoid === item.servicoid
+              s.ordemservicoid === item.ordemservicoid && s.servicoid === item.servicoid
                 ? {
                     ...s,
-                    idusuariorealizador: novoUsuarioId ?? undefined,
-                    realizador:
-                      novoUsuarioId == null
-                        ? null
-                        : responsaveis.find((u) => u.id === novoUsuarioId) ??
-                          s.realizador ??
-                          null,
+                    realizadores: otimista,
+                    // legado (pra não quebrar outras partes que ainda leem isso)
+                    idusuariorealizador: principal,
+                    realizador: principal ? { id: principal, nome: otimista[0]?.nome ?? null } : null,
                   }
                 : s
             ),
           }
-        : prev
     );
 
     try {
-      const resp = await atualizarResponsavelServico(
-        data.os.id,
-        item.servicoid,
-        novoUsuarioId
-      );
+      const resp = await putRealizadores(data.os.id, item.servicoid, ids);
 
-      // Sincroniza com o retorno do backend
       setData((prev) =>
-        prev
-          ? {
+        !prev
+          ? prev
+          : {
               ...prev,
               itensServico: prev.itensServico.map((s) =>
-                s.ordemservicoid === resp.ordemservicoid &&
-                s.servicoid === resp.servicoid
+                s.ordemservicoid === resp.ordemservicoid && s.servicoid === resp.servicoid
                   ? {
                       ...s,
+                      realizadores: resp.realizadores ?? [],
                       idusuariorealizador: resp.idusuariorealizador,
-                      realizador: resp.realizador ?? null,
+                      realizador: resp.idusuariorealizador
+                        ? {
+                            id: resp.idusuariorealizador,
+                            nome: resp.realizadores?.find((r) => r.id === resp.idusuariorealizador)?.nome ?? null,
+                          }
+                        : null,
                     }
                   : s
               ),
             }
-          : prev
       );
 
-      toast.success("Responsável atualizado");
+      toast.success("Realizadores atualizados");
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao atualizar responsável");
+      toast.error(e?.message || "Erro ao atualizar realizadores");
     } finally {
       setSavingResponsavelKey(null);
     }
@@ -402,16 +507,9 @@ export function OSDetalhesDialog({
           p-0
         "
       >
-        {/* Header sticky + botão fechar */}
         <div className="top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b relative">
           <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-2"
-              aria-label="Fechar"
-              title="Fechar"
-            >
+            <Button variant="ghost" size="icon" className="absolute right-2 top-2" aria-label="Fechar" title="Fechar">
               <X className="h-4 w-4" />
             </Button>
           </DialogClose>
@@ -421,13 +519,9 @@ export function OSDetalhesDialog({
               <Link2 className="h-5 w-5 text-primary" />
               {titulo}
             </DialogTitle>
-            <DialogDescription>
-              Informações completas da OS, itens, checklist, responsáveis e
-              links de aprovação.
-            </DialogDescription>
+            <DialogDescription>Informações completas da OS, itens, checklist, responsáveis e links de aprovação.</DialogDescription>
           </DialogHeader>
 
-          {/* Barra de estado */}
           <div className="px-5 pb-3 flex items-center gap-2">
             {statusBadge}
             {prioBadge}
@@ -438,30 +532,22 @@ export function OSDetalhesDialog({
           </div>
         </div>
 
-        {/* Conteúdo rolável */}
         <div className="px-5 pb-5">
           {loading ? (
             <div className="h-48 grid place-items-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : !data ? (
-            <div className="h-24 grid place-items-center text-sm text-muted-foreground">
-              Não foi possível carregar os detalhes.
-            </div>
+            <div className="h-24 grid place-items-center text-sm text-muted-foreground">Não foi possível carregar os detalhes.</div>
           ) : (
             <div className="space-y-6">
-              {/* Alerta para induzir seleção de responsável
-                  (apenas antes de iniciar, em ORCAMENTO_APROVADO) */}
               {mostrarAlertaAntesDeIniciar && (
                 <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-300" />
                   <div>
-                    <div className="font-medium text-amber-100">
-                      Defina o responsável pelos serviços antes de iniciar a OS.
-                    </div>
+                    <div className="font-medium text-amber-100">Defina o responsável pelos serviços antes de iniciar a OS.</div>
                     <div className="text-amber-100/80">
-                      Há serviços sem responsável atribuído. Recomenda-se
-                      escolher quem irá executar cada serviço antes de clicar em{" "}
+                      Há serviços sem responsável atribuído. Recomenda-se escolher quem irá executar cada serviço antes de clicar em{" "}
                       <b>Iniciar</b>.
                     </div>
                   </div>
@@ -475,9 +561,7 @@ export function OSDetalhesDialog({
                     <User2 className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Cliente</span>
                   </div>
-                  <div className="text-sm">
-                    {data.os.cliente?.nomerazaosocial ?? "—"}
-                  </div>
+                  <div className="text-sm">{data.os.cliente?.nomerazaosocial ?? "—"}</div>
                 </div>
 
                 <div className="rounded-lg border p-4">
@@ -490,26 +574,15 @@ export function OSDetalhesDialog({
 
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
-                    {data.os.alvo_tipo === "PECA" ? (
-                      <Wrench className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Car className="h-4 w-4 text-primary" />
-                    )}
-                    <span className="text-sm font-medium">
-                      {data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}
-                    </span>
+                    {data.os.alvo_tipo === "PECA" ? <Wrench className="h-4 w-4 text-primary" /> : <Car className="h-4 w-4 text-primary" />}
+                    <span className="text-sm font-medium">{data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</span>
                   </div>
                   {data.os.alvo_tipo === "PECA" ? (
-                    <div className="text-sm">
-                      {data.os.peca?.titulo ??
-                        "Peça (detalhes não informados)"}
-                    </div>
+                    <div className="text-sm">{data.os.peca?.titulo ?? "Peça (detalhes não informados)"}</div>
                   ) : (
                     <div className="text-sm">
                       {data.os.veiculo
-                        ? `${data.os.veiculo.marca ?? ""} ${
-                            data.os.veiculo.modelo ?? ""
-                          } • ${data.os.veiculo.placa ?? ""}`.trim()
+                        ? `${data.os.veiculo.marca ?? ""} ${data.os.veiculo.modelo ?? ""} • ${data.os.veiculo.placa ?? ""}`.trim()
                         : "—"}
                     </div>
                   )}
@@ -518,13 +591,9 @@ export function OSDetalhesDialog({
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <CheckSquare className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">
-                      Status de Aprovação
-                    </span>
+                    <span className="text-sm font-medium">Status de Aprovação</span>
                   </div>
-                  <div className="text-sm">
-                    {data.os.statusaprovacao ?? "—"}
-                  </div>
+                  <div className="text-sm">{data.os.statusaprovacao ?? "—"}</div>
                 </div>
               </section>
 
@@ -535,18 +604,14 @@ export function OSDetalhesDialog({
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Descrição</span>
                   </div>
-                  <div className="text-sm whitespace-pre-wrap">
-                    {data.os.descricao || "—"}
-                  </div>
+                  <div className="text-sm whitespace-pre-wrap">{data.os.descricao || "—"}</div>
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <StickyNote className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Observações</span>
                   </div>
-                  <div className="text-sm whitespace-pre-wrap">
-                    {data.os.observacoes || "—"}
-                  </div>
+                  <div className="text-sm whitespace-pre-wrap">{data.os.observacoes || "—"}</div>
                 </div>
               </section>
 
@@ -566,23 +631,16 @@ export function OSDetalhesDialog({
                   ) : (
                     <ul className="space-y-2 text-sm">
                       {data.itensProduto.map((it, idx) => (
-                        <li
-                          key={`${it.ordemservicoid}-${it.produtoid}-${idx}`}
-                          className="flex items-center justify-between gap-2"
-                        >
+                        <li key={`${it.ordemservicoid}-${it.produtoid}-${idx}`} className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <div className="font-medium truncate">
-                              {it.produto?.descricao ||
-                                it.produto?.codigo ||
-                                `Produto #${it.produtoid}`}
+                              {it.produto?.descricao || it.produto?.codigo || `Produto #${it.produtoid}`}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {it.quantidade} × {fmtMoney(it.precounitario)}
                             </div>
                           </div>
-                          <div className="shrink-0 font-medium">
-                            {fmtMoney(it.subtotal)}
-                          </div>
+                          <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
                         </li>
                       ))}
                     </ul>
@@ -598,108 +656,57 @@ export function OSDetalhesDialog({
                       Total: <b>{fmtMoney(totalServicos)}</b>
                     </span>
                   </div>
+
                   {(data.itensServico ?? []).length === 0 ? (
                     <div className="text-sm text-muted-foreground">—</div>
                   ) : (
                     <ul className="space-y-2 text-sm">
                       {data.itensServico.map((it, idx) => {
                         const rowKey = `${it.ordemservicoid}-${it.servicoid}-${idx}`;
-                        const isSaving =
-                          savingResponsavelKey ===
-                          `${it.ordemservicoid}-${it.servicoid}`;
-
-                        const selectValue =
-                          it.idusuariorealizador ?? SELECT_NONE_VALUE;
-
-                        const estaSemResponsavel =
-                          !it.idusuariorealizador ||
-                          it.idusuariorealizador === "";
+                        const isSaving = savingResponsavelKey === `${it.ordemservicoid}-${it.servicoid}`;
+                        const selectedIds = getIdsFromItem(it);
+                        const estaSemResponsavel = selectedIds.length === 0;
 
                         return (
-                          <li
-                            key={rowKey}
-                            className="flex flex-col gap-1 border-b last:border-b-0 py-2"
-                          >
+                          <li key={rowKey} className="flex flex-col gap-1 border-b last:border-b-0 py-2">
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
                                 <div className="font-medium truncate">
-                                  {it.servico?.descricao ||
-                                    it.servico?.codigo ||
-                                    `Serviço #${it.servicoid}`}
+                                  {it.servico?.descricao || it.servico?.codigo || `Serviço #${it.servicoid}`}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {it.quantidade} ×{" "}
-                                  {fmtMoney(it.precounitario)}
+                                  {it.quantidade} × {fmtMoney(it.precounitario)}
                                 </div>
                               </div>
-                              <div className="shrink-0 font-medium">
-                                {fmtMoney(it.subtotal)}
-                              </div>
+                              <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
                             </div>
 
                             <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <User2 className="h-3.5 w-3.5" />
+                              <div className="flex items-start gap-2">
+                                <User2 className="h-3.5 w-3.5 mt-0.5" />
+
                                 {podeEditarResponsavel ? (
-                                  <div className="flex items-center gap-2 w-full max-w-xs">
-                                    <span>Responsável:</span>
-                                    <Select
-                                      value={selectValue}
-                                      onValueChange={(value) =>
-                                        handleChangeRealizador(
-                                          it,
-                                          value === SELECT_NONE_VALUE
-                                            ? null
-                                            : value
-                                        )
-                                      }
-                                      disabled={
-                                        isSaving || loadingResponsaveis
-                                      }
-                                    >
-                                      <SelectTrigger className="h-8">
-                                        <SelectValue
-                                          placeholder={
-                                            loadingResponsaveis
-                                              ? "Carregando..."
-                                              : isSaving
-                                              ? "Salvando..."
-                                              : "Selecione"
-                                          }
-                                        />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value={SELECT_NONE_VALUE}>
-                                          Sem responsável
-                                        </SelectItem>
-                                        {responsaveis.map((u) => (
-                                          <SelectItem
-                                            key={u.id}
-                                            value={u.id}
-                                          >
-                                            {u.nome || u.id}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                                  <div className="w-full max-w-sm">
+                                    <MultiSelectRealizadores
+                                      disabled={isSaving || loadingResponsaveis}
+                                      responsaveis={responsaveis}
+                                      valueIds={selectedIds}
+                                      onChangeIds={(ids) => salvarRealizadores(it, ids)}
+                                    />
                                   </div>
                                 ) : (
                                   <span>
-                                    Responsável:{" "}
-                                    <b>{it.realizador?.nome ?? "—"}</b>
+                                    Responsável: <b>{it.realizador?.nome ?? "—"}</b>
                                   </span>
                                 )}
                               </div>
 
-                              {podeEditarResponsavel &&
-                                estaSemResponsavel && statusUpper ===
-                                  "ORCAMENTO_APROVADO" && (
-                                  <span className="text-[11px] text-amber-400 flex items-center gap-1 ml-5">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    Selecione o responsável antes de iniciar a
-                                    OS.
-                                  </span>
-                                )}
+                              {podeEditarResponsavel && estaSemResponsavel && statusUpper === "ORCAMENTO_APROVADO" && (
+                                <span className="text-[11px] text-amber-400 flex items-center gap-1 ml-5">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Selecione o responsável antes de iniciar a OS.
+                                </span>
+                              )}
                             </div>
                           </li>
                         );
@@ -713,9 +720,7 @@ export function OSDetalhesDialog({
                     <Calculator className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Total geral</span>
                   </div>
-                  <div className="text-lg font-semibold">
-                    {fmtMoney(totalGeral)}
-                  </div>
+                  <div className="text-lg font-semibold">{fmtMoney(totalGeral)}</div>
                 </div>
               </section>
 
@@ -735,51 +740,43 @@ export function OSDetalhesDialog({
                         <li className="py-4">
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                              <div className="font-medium truncate">
-                                {c.item}
-                              </div>
+                              <div className="font-medium truncate">{c.item}</div>
                               <div className="text-xs text-muted-foreground">
                                 {fmtDate(c.createdat)}
                                 {c.observacao ? ` • ${c.observacao}` : ""}
                               </div>
                             </div>
-                            <Badge
-                              variant="outline"
-                              className={badgeClassForChecklistStatus(
-                                c.status
-                              )}
-                            >
+                            <Badge variant="outline" className={badgeClassForChecklistStatus(c.status)}>
                               {c.status}
                             </Badge>
                           </div>
 
-                          {Array.isArray(c.imagens) &&
-                            c.imagens.length > 0 && (
-                              <div className="mt-3 space-y-1.5">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <ImageIcon className="h-3.5 w-3.5" />
-                                  Imagens anexadas
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {c.imagens.map((img) => {
-                                    const name = fileNameFromUrl(img.url);
-                                    return (
-                                      <a
-                                        key={img.id}
-                                        href={img.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted break-all"
-                                        title={img.descricao || name}
-                                      >
-                                        {name}
-                                        <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-                                      </a>
-                                    );
-                                  })}
-                                </div>
+                          {Array.isArray(c.imagens) && c.imagens.length > 0 && (
+                            <div className="mt-3 space-y-1.5">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                Imagens anexadas
                               </div>
-                            )}
+                              <div className="flex flex-wrap gap-2">
+                                {c.imagens.map((img) => {
+                                  const name = fileNameFromUrl(img.url);
+                                  return (
+                                    <a
+                                      key={img.id}
+                                      href={img.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted break-all"
+                                      title={img.descricao || name}
+                                    >
+                                      {name}
+                                      <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </li>
                       </Fragment>
                     ))}
@@ -790,9 +787,7 @@ export function OSDetalhesDialog({
               {/* Links de aprovação */}
               {Array.isArray(data.aprovacoes) && (
                 <section className="rounded-lg border p-4">
-                  <div className="text-sm font-medium mb-1.5">
-                    Links de aprovação
-                  </div>
+                  <div className="text-sm font-medium mb-1.5">Links de aprovação</div>
                   {data.aprovacoes.length === 0 ? (
                     <div className="text-sm text-muted-foreground">—</div>
                   ) : (
@@ -800,10 +795,7 @@ export function OSDetalhesDialog({
                       {data.aprovacoes.map((a) => {
                         const url = approvalUrlFromToken(a.token);
                         return (
-                          <li
-                            key={a.id}
-                            className="flex items-start justify-between gap-2"
-                          >
+                          <li key={a.id} className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <div className="truncate">
                                 <a
@@ -817,9 +809,7 @@ export function OSDetalhesDialog({
                                 </a>
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                criado: {fmtDate(a.created_at)} • expira:{" "}
-                                {fmtDate(a.expira_em)} • usado:{" "}
-                                {fmtDate(a.usado_em)}
+                                criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado: {fmtDate(a.usado_em)}
                               </div>
                             </div>
                             <div className="shrink-0 flex gap-2">
@@ -832,9 +822,7 @@ export function OSDetalhesDialog({
                                     await navigator.clipboard.writeText(url);
                                     toast.success("Link copiado");
                                   } catch {
-                                    toast.error(
-                                      "Não foi possível copiar"
-                                    );
+                                    toast.error("Não foi possível copiar");
                                   }
                                 }}
                               >
@@ -844,13 +832,7 @@ export function OSDetalhesDialog({
                                 variant="outline"
                                 size="icon"
                                 title="Abrir link"
-                                onClick={() =>
-                                  window.open(
-                                    url,
-                                    "_blank",
-                                    "noopener,noreferrer"
-                                  )
-                                }
+                                onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </Button>

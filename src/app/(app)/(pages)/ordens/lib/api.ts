@@ -3,7 +3,7 @@
 const JSONH = { "Content-Type": "application/json" };
 
 // Helper genérico
-async function handleJson<T = any>(r: Response, defaultError: string): Promise<T> {
+async function handleJson<T>(r: Response, defaultError: string): Promise<T> {
   const j = (await r.json().catch(() => ({}))) as any;
 
   if (!r.ok) {
@@ -17,7 +17,6 @@ async function handleJson<T = any>(r: Response, defaultError: string): Promise<T
 /* =========================================================================
  * OS - criação / edição
  * ========================================================================= */
-
 export async function criarOrdem(payload: any): Promise<{ id: number }> {
   const r = await fetch("/api/ordens/criar", {
     method: "POST",
@@ -41,7 +40,6 @@ export async function editarOrdem(id: number, payload: any) {
 /* =========================================================================
  * OS - status
  * ========================================================================= */
-
 export type StatusOSApi =
   | "ORCAMENTO"
   | "APROVACAO_ORCAMENTO"
@@ -66,19 +64,14 @@ export async function atualizarStatusOS(id: number, status: StatusOSApi) {
 /* =========================================================================
  * OS - detalhes
  * ========================================================================= */
-
 export async function carregarDetalhesOS<T = any>(osId: number): Promise<T> {
-  const r = await fetch(`/api/ordens/${osId}`, {
-    cache: "no-store",
-  });
-
+  const r = await fetch(`/api/ordens/${osId}`, { cache: "no-store" });
   return handleJson<T>(r, "Falha ao carregar OS");
 }
 
 /* =========================================================================
  * Responsáveis / usuários
  * ========================================================================= */
-
 export type UsuarioAtivo = {
   id: string;
   nome: string | null;
@@ -92,13 +85,10 @@ export type UsuarioAtivo = {
  * (rota /api/users?ativos=1)
  */
 export async function listarUsuariosAtivos(): Promise<UsuarioAtivo[]> {
-  const r = await fetch("/api/users?ativos=1", {
-    cache: "no-store",
-  });
-
+  const r = await fetch("/api/users?ativos=1", { cache: "no-store" });
   const j = await handleJson<any>(r, "Falha ao listar usuários ativos");
-  const items = Array.isArray(j) ? j : j.users ?? [];
 
+  const items = Array.isArray(j) ? j : j.users ?? [];
   return items.map((u: any) => ({
     id: String(u.id),
     nome: u.nome ?? u.email ?? null,
@@ -108,6 +98,34 @@ export async function listarUsuariosAtivos(): Promise<UsuarioAtivo[]> {
   }));
 }
 
+// NOVO (N:N)
+export type AtualizarResponsaveisServicoResponse = {
+  ordemservicoid: number;
+  servicoid: number;
+  usuarioIds: string[];
+  realizadores: Array<{ id: string; nome: string | null }>;
+};
+
+/**
+ * Atualiza os realizadores (N:N) de um serviço da OS
+ */
+export async function atualizarResponsaveisServico(
+  osId: number,
+  servicoId: number,
+  usuarioIds: string[]
+): Promise<AtualizarResponsaveisServicoResponse> {
+  const r = await fetch(`/api/ordens/${osId}/servicos/${servicoId}/responsavel`, {
+    method: "PUT",
+    headers: JSONH,
+    body: JSON.stringify({ usuarioIds }),
+  });
+
+  return handleJson<AtualizarResponsaveisServicoResponse>(r, "Falha ao salvar realizadores");
+}
+
+/**
+ * Wrapper LEGADO (1 responsável) - mantém compatibilidade temporária
+ */
 export type AtualizarResponsavelServicoResponse = {
   ordemservicoid: number;
   servicoid: number;
@@ -115,36 +133,30 @@ export type AtualizarResponsavelServicoResponse = {
   realizador?: { id: string; nome: string | null } | null;
 };
 
-/**
- * Atualiza o responsável de um serviço da OS
- */
 export async function atualizarResponsavelServico(
   osId: number,
   servicoId: number,
   idusuariorealizador: string | null
 ): Promise<AtualizarResponsavelServicoResponse> {
-  const r = await fetch(`/api/ordens/${osId}/servicos/${servicoId}/responsavel`, {
-    method: "PUT",
-    headers: JSONH,
-    body: JSON.stringify({ idusuariorealizador }),
-  });
+  const usuarioIds = idusuariorealizador ? [idusuariorealizador] : [];
+  const j = await atualizarResponsaveisServico(osId, servicoId, usuarioIds);
 
-  return handleJson<AtualizarResponsavelServicoResponse>(
-    r,
-    "Falha ao salvar responsável"
-  );
+  return {
+    ordemservicoid: j.ordemservicoid,
+    servicoid: j.servicoid,
+    idusuariorealizador: j.usuarioIds[0] ?? null,
+    realizador: j.realizadores?.[0] ?? null,
+  };
 }
 
 /* =========================================================================
  * Tipos / auxiliares (setores, checklist)
  * ========================================================================= */
-
 export async function listarSetores(): Promise<{ id: number; nome: string }[]> {
   const r = await fetch("/api/tipos/setores", { cache: "no-store" });
   const j = await handleJson<any>(r, "Falha ao listar setores");
 
   const items = Array.isArray(j) ? j : j?.items ?? [];
-
   return items
     .filter((s: any) => s.ativo !== false) // só ativos
     .map((s: any) => ({
@@ -169,17 +181,12 @@ export type ChecklistTemplateModel = {
  * Lista modelos de checklist.
  * - onlyAtivos=true => adiciona ?ativos=1 na query
  */
-export async function listarChecklistModelos(
-  onlyAtivos: boolean = true
-): Promise<ChecklistTemplateModel[]> {
+export async function listarChecklistModelos(onlyAtivos: boolean = true): Promise<ChecklistTemplateModel[]> {
   const qs = onlyAtivos ? "?ativos=1" : "";
-  const r = await fetch(`/api/checklist-modelos${qs}`, {
-    cache: "no-store",
-  });
-
+  const r = await fetch(`/api/checklist-modelos${qs}`, { cache: "no-store" });
   const j = await handleJson<any>(r, "Falha ao listar modelos de checklist");
-  const raw = Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : [];
 
+  const raw = Array.isArray(j) ? j : Array.isArray(j?.items) ? j.items : [];
   return raw.map((t: any) => ({
     id: String(t.id ?? t.uuid ?? ""),
     nome: String(t.nome ?? t.titulo ?? ""),

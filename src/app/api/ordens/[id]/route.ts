@@ -24,6 +24,8 @@ const sanitizeCkStatus = (s?: string): CkStatus => {
     : "OK";
 };
 
+type RealizadorLite = { id: string; nome: string | null };
+
 /* =========================================
  * GET: OS + setor + peça + checklist (+imagens) + itens + aprovações
  * ========================================= */
@@ -34,8 +36,7 @@ export async function GET(
   try {
     const { id } = await ctx.params;
     const osId = Number(id);
-    if (!osId)
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
     // OS base
     const os_res = await supabase
@@ -89,8 +90,7 @@ export async function GET(
     };
 
     const osRow = os_res.data as OrdemRow | null;
-    if (!osRow)
-      return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
+    if (!osRow) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
 
     // Setor
     const setor_res = await supabase
@@ -99,12 +99,9 @@ export async function GET(
       .eq("id", osRow.setorid)
       .maybeSingle();
     if (setor_res.error) throw setor_res.error;
+
     const setor =
-      (setor_res.data as {
-        id: number;
-        nome: string;
-        descricao: string | null;
-      } | null) ?? null;
+      (setor_res.data as { id: number; nome: string; descricao: string | null } | null) ?? null;
 
     // Cliente
     const cli_res = await supabase
@@ -113,6 +110,7 @@ export async function GET(
       .eq("id", osRow.clienteid)
       .maybeSingle();
     if (cli_res.error) throw cli_res.error;
+
     const clienteRow =
       (cli_res.data as {
         id: number;
@@ -166,8 +164,7 @@ export async function GET(
     }
 
     // Peça (opcional)
-    let peca: { id: number; titulo: string; descricao: string | null } | null =
-      null;
+    let peca: { id: number; titulo: string; descricao: string | null } | null = null;
     if (osRow.pecaid) {
       const pc_res = await supabase
         .from("peca")
@@ -202,13 +199,9 @@ export async function GET(
     const ckIds = ckRows.map((r) => r.id);
     const imgsMap = new Map<
       number,
-      Array<{
-        id: number;
-        url: string;
-        descricao: string | null;
-        createdat: string | null;
-      }>
+      Array<{ id: number; url: string; descricao: string | null; createdat: string | null }>
     >();
+
     if (ckIds.length) {
       const img_res = await supabase
         .from("imagemvistoria")
@@ -227,6 +220,7 @@ export async function GET(
         imgsMap.set(it.checklistid, arr);
       }
     }
+
     const checklist = ckRows.map((ck) => ({
       id: ck.id,
       item: ck.item,
@@ -254,20 +248,15 @@ export async function GET(
       produto: r.produto
         ? {
             id: Number(r.produto.id),
-            codigo:
-              String(
-                r.produto.referencia ?? r.produto.codigobarras ?? ""
-              ) || null,
-            descricao: String(
-              r.produto.descricao ?? r.produto.titulo ?? ""
-            ),
+            codigo: String(r.produto.referencia ?? r.produto.codigobarras ?? "") || null,
+            descricao: String(r.produto.descricao ?? r.produto.titulo ?? ""),
             precounitario: r.produto.precovenda ?? null,
             unidade: r.produto.unidade ?? null,
           }
         : null,
     }));
 
-    // Itens — serviços (com realizador)
+    // Itens — serviços (SEM idusuariorealizador; realizadores via tabela N:N)
     const serv_res = await supabase
       .from("osservico")
       .select(
@@ -277,14 +266,45 @@ export async function GET(
           quantidade,
           precounitario,
           subtotal,
-          idusuariorealizador,
-          servico:servicoid (id, codigo, descricao, precohora),
-          realizador:idusuariorealizador (id, nome)
+          servico:servicoid (id, codigo, descricao, precohora)
         `
       )
       .eq("ordemservicoid", osId);
 
     if (serv_res.error) throw serv_res.error;
+
+    // Busca realizadores (tabela de junção)
+    // Ajuste o nome "osservico_realizador" e as colunas (usuarioid, etc) conforme seu schema.
+    const rel_res = await supabase
+      .from("osservico_realizador")
+      .select(
+        `
+          ordemservicoid,
+          servicoid,
+          usuarioid,
+          usuario:usuarioid (id, nome)
+        `
+      )
+      .eq("ordemservicoid", osId);
+
+    if (rel_res.error) throw rel_res.error;
+
+    // Indexa realizadores por servicoid (e osId já é fixo no filtro)
+    const realizadoresByServico = new Map<number, RealizadorLite[]>();
+    for (const rr of rel_res.data ?? []) {
+      const sid = Number((rr as any).servicoid);
+      const usuario = (rr as any).usuario;
+      const usuarioid = (rr as any).usuarioid;
+
+      const item: RealizadorLite = {
+        id: String(usuario?.id ?? usuarioid),
+        nome: usuario?.nome ?? null,
+      };
+
+      const arr = realizadoresByServico.get(sid) ?? [];
+      arr.push(item);
+      realizadoresByServico.set(sid, arr);
+    }
 
     const itensServico = (serv_res.data ?? []).map((r: any) => ({
       ordemservicoid: osId,
@@ -292,13 +312,7 @@ export async function GET(
       quantidade: toNum(r.quantidade),
       precounitario: toNum(r.precounitario),
       subtotal: toNum(r.subtotal),
-      idusuariorealizador: r.idusuariorealizador ?? null,
-      realizador: r.realizador
-        ? {
-            id: String(r.realizador.id),
-            nome: r.realizador.nome ?? null,
-          }
-        : null,
+      realizadores: realizadoresByServico.get(Number(r.servicoid)) ?? [],
       servico: r.servico
         ? {
             id: Number(r.servico.id),
@@ -365,6 +379,7 @@ export async function GET(
         quantidade: s.quantidade,
         precounitario: s.precounitario,
         subtotal: s.subtotal,
+        realizadores: s.realizadores, // opcional: pode remover se não quiser no "orcamento"
       })),
     };
 
@@ -399,8 +414,7 @@ export async function PUT(
   try {
     const { id } = await ctx.params;
     const osId = Number(id);
-    if (!osId)
-      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
     const body: any = await req.json().catch(() => ({}));
 
@@ -432,9 +446,7 @@ export async function PUT(
     const alvo_tipoStr = pickStr("alvo_tipo", "alvoTipo");
     const alvo_tipo = ((): AlvoTipo | undefined => {
       const up = (alvo_tipoStr || "").toUpperCase();
-      return up === "VEICULO" || up === "PECA"
-        ? (up as AlvoTipo)
-        : undefined;
+      return up === "VEICULO" || up === "PECA" ? (up as AlvoTipo) : undefined;
     })();
     const pecaid = pickNum("pecaid", "pecaId");
 
@@ -447,10 +459,7 @@ export async function PUT(
     if (pecaid !== undefined) patch.pecaid = pecaid;
 
     if (Object.keys(patch).length) {
-      const upd_res = await supabase
-        .from("ordemservico")
-        .update(patch)
-        .eq("id", osId);
+      const upd_res = await supabase.from("ordemservico").update(patch).eq("id", osId);
       if (upd_res.error) throw upd_res.error;
     }
 
@@ -464,16 +473,11 @@ export async function PUT(
 
       const ids = (antigos_res.data ?? []).map((r: any) => r.id as number);
       if (ids.length) {
-        const delImgs_res = await supabase
-          .from("imagemvistoria")
-          .delete()
-          .in("checklistid", ids);
+        const delImgs_res = await supabase.from("imagemvistoria").delete().in("checklistid", ids);
         if (delImgs_res.error) throw delImgs_res.error;
       }
-      const delCk_res = await supabase
-        .from("checklist")
-        .delete()
-        .eq("ordemservicoid", osId);
+
+      const delCk_res = await supabase.from("checklist").delete().eq("ordemservicoid", osId);
       if (delCk_res.error) throw delCk_res.error;
 
       for (const it of body.checklist) {
@@ -500,9 +504,7 @@ export async function PUT(
           .filter((x: any) => x.url.length > 0);
 
         if (imgs.length) {
-          const insImgs_res = await supabase
-            .from("imagemvistoria")
-            .insert(imgs);
+          const insImgs_res = await supabase.from("imagemvistoria").insert(imgs);
           if (insImgs_res.error) throw insImgs_res.error;
         }
       }

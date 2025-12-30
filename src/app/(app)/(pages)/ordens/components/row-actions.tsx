@@ -122,7 +122,7 @@ export function RowActions<TRow extends RowBase>({
   // Link de aprovação (NÃO mostra em ORCAMENTO_RECUSADO)
   const showLinkAprov =
     policy.showLinkAprov &&
-    (st === "ORCAMENTO" || st === "APROVACAO_ORCAMENTO");
+    (st === "APROVACAO_ORCAMENTO");
 
   // Fluxo de aprovação
   const showApproveBudget =
