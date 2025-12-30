@@ -25,6 +25,7 @@ function toNum(n: any) {
   const v = Number(n);
   return Number.isFinite(v) ? v : 0;
 }
+
 const MS_PER_HOUR = 1000 * 60 * 60;
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -47,6 +48,16 @@ function localNextDayStartToUtcIso(dateStr: string) {
   return new Date(d.getTime() + 24 * 60 * 60 * 1000).toISOString();
 }
 
+function chunkArray<T>(arr: T[], chunkSize: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += chunkSize) out.push(arr.slice(i, i + chunkSize));
+  return out;
+}
+
+function makeServiceKey(ordemservicoid: number, servicoid: number) {
+  return `${ordemservicoid}:${servicoid}`;
+}
+
 /** ========================= GET ========================= */
 export async function GET(req: Request) {
   try {
@@ -62,12 +73,8 @@ export async function GET(req: Request) {
       .select("id, status, statusaprovacao, prioridade, dataentrada, datasaida, orcamentototal, clienteid, setorid");
 
     // intervalo de datas (inclusive) em timezone Fortaleza
-    if (dateFrom) {
-      query = query.gte("dataentrada", localDayStartToUtcIso(dateFrom));
-    }
-    if (dateTo) {
-      query = query.lt("dataentrada", localNextDayStartToUtcIso(dateTo));
-    }
+    if (dateFrom) query = query.gte("dataentrada", localDayStartToUtcIso(dateFrom));
+    if (dateTo) query = query.lt("dataentrada", localNextDayStartToUtcIso(dateTo));
 
     const { data, error } = await query;
     if (error) throw error;
@@ -137,11 +144,8 @@ export async function GET(req: Request) {
       const pr = String(r.prioridade ?? "NULL");
       countsByPriority[pr] = (countsByPriority[pr] ?? 0) + 1;
 
-      if (isCompleted(r)) {
-        ordersCompleted += 1;
-      } else {
-        ordersOpen += 1;
-      }
+      if (isCompleted(r)) ordersCompleted += 1;
+      else ordersOpen += 1;
 
       if (ve) {
         const key = ymKey(new Date(ve.getFullYear(), ve.getMonth(), 1));
@@ -185,37 +189,16 @@ export async function GET(req: Request) {
 
     const avgTicketAll = totalOrders ? totalBudget / totalOrders : 0;
 
-    const monthlyNewArr = monthKeys.map((k) => ({
-      month: k,
-      count: monthlyNew[k] ?? 0,
-    }));
-    const monthlyCompletedArr = monthKeys.map((k) => ({
-      month: k,
-      count: monthlyCompleted[k] ?? 0,
-    }));
-    const monthlyRevenueArr = monthKeys.map((k) => ({
-      month: k,
-      amount: monthlyRevenue[k] ?? 0,
-    }));
-    const last7DaysNewArr = last7.map((d) => ({
-      date: d,
-      count: daily7[d] ?? 0,
-    }));
+    const monthlyNewArr = monthKeys.map((k) => ({ month: k, count: monthlyNew[k] ?? 0 }));
+    const monthlyCompletedArr = monthKeys.map((k) => ({ month: k, count: monthlyCompleted[k] ?? 0 }));
+    const monthlyRevenueArr = monthKeys.map((k) => ({ month: k, amount: monthlyRevenue[k] ?? 0 }));
+    const last7DaysNewArr = last7.map((d) => ({ date: d, count: daily7[d] ?? 0 }));
 
-    /** ==== Ranking de serviços por usuário (OS concluídas no período) ==== */
+    /** ==== Ranking de serviços por usuário (PK composta) ==== */
     const completedOsIds = rows
-      .filter((r) => isCompleted(r)) // status concluído + datasaida
+      .filter((r) => isCompleted(r))
       .map((r) => r.id)
       .filter((id) => id != null) as number[];
-
-    type RankRow = {
-      idusuariorealizador: string | null;
-      usuario: {
-        id: string;
-        nome: string;
-        email: string;
-      } | null;
-    };
 
     let servicesByUser: {
       usuarioId: string;
@@ -224,48 +207,100 @@ export async function GET(req: Request) {
       totalServicos: number;
     }[] = [];
 
+    let servicesWithoutRealizador = 0;
+
     if (completedOsIds.length > 0) {
-      const { data: rankData, error: rankError } = await supabaseAdmin
-        .from("osservico")
-        .select(
-          `
-      idusuariorealizador,
-      usuario:usuario!osservico_idusuariorealizador_fkey ( id, nome, email )
-      `
-        )
-        .in("ordemservicoid", completedOsIds);
+      // A) Todos os serviços existentes (ordemservicoid, servicoid) das OS concluídas
+      type OsServicoRow = { ordemservicoid: number; servicoid: number };
 
-      if (rankError) throw rankError;
+      const allServicesKeys = new Set<string>();
 
-      const map = new Map<string, { id: string; nome: string; email: string; total: number }>();
+      for (const chunk of chunkArray(completedOsIds, 800)) {
+        const { data: part, error: servErr } = await supabaseAdmin
+          .from("osservico")
+          .select("ordemservicoid, servicoid")
+          .in("ordemservicoid", chunk);
 
-      for (const raw of rankData ?? []) {
-        const row = raw as any;
+        if (servErr) throw servErr;
 
-        // Supabase pode retornar usuario como objeto único ou array
-        const u = Array.isArray(row.usuario) ? row.usuario[0] : row.usuario;
-        if (!u) continue;
-
-        const email = (u.email as string | undefined)?.toLowerCase().trim();
-        if (!email) continue;
-
-        const atual = map.get(email) ?? {
-          id: String(u.id),
-          nome: (u.nome as string | undefined)?.trim() || "Usuário sem nome",
-          email: u.email as string,
-          total: 0,
-        };
-
-        atual.total += 1; // cada linha de osservico = 1 serviço
-        map.set(email, atual);
+        for (const s of (part ?? []) as unknown as OsServicoRow[]) {
+          const osid = Number((s as any).ordemservicoid);
+          const sid = Number((s as any).servicoid);
+          if (!Number.isFinite(osid) || !Number.isFinite(sid)) continue;
+          allServicesKeys.add(makeServiceKey(osid, sid));
+        }
       }
 
-      servicesByUser = Array.from(map.values())
+      // B) Realizadores por serviço via pivot (ordemservicoid, servicoid, usuarioid)
+      type PivotRow = {
+        ordemservicoid: number;
+        servicoid: number;
+        usuarioid: string;
+        usuario:
+          | { id: string; nome: string | null; email: string | null }
+          | { id: string; nome: string | null; email: string | null }[]
+          | null;
+      };
+
+      const userMap = new Map<string, { id: string; nome: string; email: string; services: Set<string> }>();
+      const keysWithRealizador = new Set<string>();
+
+      for (const chunk of chunkArray(completedOsIds, 800)) {
+        const { data: part, error: pivErr } = await supabaseAdmin
+          .from("osservico_realizador")
+          .select(
+            `
+              ordemservicoid,
+              servicoid,
+              usuarioid,
+              usuario:usuarioid ( id, nome, email )
+            `
+          )
+          .in("ordemservicoid", chunk);
+
+        if (pivErr) throw pivErr;
+
+        for (const p of (part ?? []) as unknown as PivotRow[]) {
+          const osid = Number((p as any).ordemservicoid);
+          const sid = Number((p as any).servicoid);
+          if (!Number.isFinite(osid) || !Number.isFinite(sid)) continue;
+
+          const key = makeServiceKey(osid, sid);
+          if (!allServicesKeys.has(key)) continue; // sanity-check
+
+          const uid = String((p as any).usuarioid ?? "").trim();
+          if (!uid) continue;
+
+          const u = Array.isArray((p as any).usuario) ? (p as any).usuario[0] : (p as any).usuario;
+
+          keysWithRealizador.add(key);
+
+          const curr = userMap.get(uid) ?? {
+            id: uid,
+            nome: (u?.nome ?? "").trim(),
+            email: (u?.email ?? "").trim(),
+            services: new Set<string>(),
+          };
+
+          // garante que o serviço conta 1x por usuário, mesmo com linhas duplicadas
+          curr.services.add(key);
+
+          // se caiu aqui antes sem dados do usuário, tenta preencher agora
+          if (!curr.nome && u?.nome) curr.nome = String(u.nome).trim();
+          if (!curr.email && u?.email) curr.email = String(u.email).trim();
+
+          userMap.set(uid, curr);
+        }
+      }
+
+      servicesWithoutRealizador = Array.from(allServicesKeys).filter((k) => !keysWithRealizador.has(k)).length;
+
+      servicesByUser = Array.from(userMap.values())
         .map((u) => ({
           usuarioId: u.id,
-          usuarioNome: u.nome,
+          usuarioNome: u.nome || u.email || "Usuário",
           usuarioEmail: u.email,
-          totalServicos: u.total,
+          totalServicos: u.services.size,
         }))
         .sort((a, b) => b.totalServicos - a.totalServicos)
         .slice(0, 10);
@@ -293,10 +328,18 @@ export async function GET(req: Request) {
         monthlyRevenue: monthlyRevenueArr,
         last7DaysNew: last7DaysNewArr,
         servicesByUser,
+        servicesWithoutRealizador,
       },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Erro ao gerar insights de ordens de serviço" }, { status: 500 });
+    const payload = {
+      error: e?.message || "Erro ao gerar insights de ordens de serviço",
+      code: e?.code,
+      hint: e?.hint,
+      details: e?.details,
+    };
+    console.error("insights error:", payload, e);
+    return NextResponse.json(payload, { status: 500 });
   }
 }

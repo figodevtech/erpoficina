@@ -24,6 +24,7 @@ import {
   ClipboardList,
   CheckCircle2,
   CircleAlert,
+  UserX,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -78,9 +79,7 @@ export default function ServiceOrdersDashboard({
   const { data, loading, error, refetch } = useInsights(endpointComFiltro, autoRefreshMs);
 
   const textoPeriodo =
-    dataInicio && dataFim
-      ? `${formatarDataCompleta(dataInicio)} - ${formatarDataCompleta(dataFim)}`
-      : "Período não definido";
+    dataInicio && dataFim ? `${formatarDataCompleta(dataInicio)} - ${formatarDataCompleta(dataFim)}` : "Período não definido";
 
   function tratarDataInicio(date?: Date) {
     if (!date) return setDataInicio(null);
@@ -149,6 +148,9 @@ export default function ServiceOrdersDashboard({
   const completed = data?.ordersCompleted ?? 0;
   const avgHrs = data?.avgCompletionHours ?? 0;
 
+  // novo: serviços sem realizador (padrão novo)
+  const servicesWithoutRealizador = (data as any)?.servicesWithoutRealizador ?? 0;
+
   // altura dinâmica só para quando ficar vertical no mobile
   const statusChartHeight = React.useMemo(() => {
     const n = statusItems.length || 1;
@@ -164,9 +166,7 @@ export default function ServiceOrdersDashboard({
             Dashboard de Ordens de Serviço
           </CardTitle>
 
-          <CardDescription className="text-xs sm:text-sm">
-            Visão executiva de produtividade, prazos e receita.
-          </CardDescription>
+          <CardDescription className="text-xs sm:text-sm">Visão executiva de produtividade, prazos e receita.</CardDescription>
 
           <Badge variant="default" className="text-[10px] sm:text-xs">
             Período: {textoPeriodo}
@@ -204,13 +204,14 @@ export default function ServiceOrdersDashboard({
 
       <CardContent className="space-y-6">
         {/* KPIs */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-7">
           <Kpi icon={ClipboardList} label="Total de OS" value={formatNumber(total)} />
           <Kpi icon={Activity} label="OS do dia" value={formatNumber(data?.ordersToday ?? 0)} />
           <Kpi icon={CheckCircle2} label="Concluídas" value={formatNumber(completed)} />
           <Kpi icon={CircleAlert} label="Em andamento" value={formatNumber(open)} />
           <Kpi icon={Timer} label="Tempo médio" value={formatDurationHours(avgHrs)} />
           <Kpi icon={DollarSign} label="Receita (30d)" value={formatCurrencyBRL(data?.revenue30d ?? 0)} />
+          <Kpi icon={UserX} label="Serviços sem realizador" value={formatNumber(servicesWithoutRealizador)} />
         </div>
 
         {error && !loading ? (
