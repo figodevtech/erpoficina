@@ -1,0 +1,1 @@
+-- Placeholder: versão existe no histórico do QA, mas o arquivo local não estava no repo.
