@@ -144,7 +144,7 @@ export default function ServicosSection() {
     [limit]
   );
 
-  async function loadServicos() {
+  async function loadServicos() { 
     try {
       setIsLoading(true);
       setErro(null);
@@ -212,22 +212,14 @@ export default function ServicosSection() {
 
   async function handleSave() {
     if (!form.codigo.trim() || !form.descricao.trim()) {
-      toast.error("Código e descrição são obrigatórios.");
+      toast.error("Insira uma descrição.");
       return;
     }
     if (!form.precohora.trim() || Number.isNaN(Number(form.precohora))) {
-      toast.error("Preço/hora inválido.");
+      toast.error("Preço inválido.");
       return;
     }
-    if (!form.codigoservicomunicipal.trim()) {
-      toast.error("Código de serviço municipal é obrigatório.");
-      return;
-    }
-    if (!form.itemlistaservico.trim()) {
-      toast.error("Item da lista de serviço é obrigatório.");
-      return;
-    }
-
+    
     const payload = {
       codigo: form.codigo.trim(),
       descricao: form.descricao.trim(),

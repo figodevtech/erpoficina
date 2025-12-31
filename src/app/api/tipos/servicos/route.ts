@@ -87,7 +87,7 @@ export async function POST(req: Request) {
 
     if (!codigo?.trim() || !descricao?.trim()) {
       return NextResponse.json(
-        { error: "Código e descrição são obrigatórios." },
+        { error: "Insira uma descrição." },
         { status: 400 }
       );
     }
@@ -95,24 +95,11 @@ export async function POST(req: Request) {
     const preco = Number(precohora);
     if (!Number.isFinite(preco)) {
       return NextResponse.json(
-        { error: "Preço/hora inválido." },
+        { error: "Preço inválido." },
         { status: 400 }
       );
     }
 
-    if (!codigoservicomunicipal?.trim()) {
-      return NextResponse.json(
-        { error: "Código de serviço municipal é obrigatório." },
-        { status: 400 }
-      );
-    }
-
-    if (!itemlistaservico?.trim()) {
-      return NextResponse.json(
-        { error: "Item da lista de serviço é obrigatório." },
-        { status: 400 }
-      );
-    }
 
     const aliq =
       aliquotaiss === null || aliquotaiss === undefined || aliquotaiss === ""

@@ -124,6 +124,8 @@ export function AutorizarNfeButton({
             }`,
           icon: <AlertTriangle className="h-5 w-5 text-red-400" />,
         });
+                console.log(protMotivo, loteMotivo);
+
       } else {
         toast.info("Retorno da SEFAZ recebido.", {
           description:
@@ -131,6 +133,7 @@ export function AutorizarNfeButton({
             loteMotivo ||
             `Status da NF-e: ${statusDb || "desconhecido"}`,
         });
+        console.log(protMotivo, loteMotivo);
       }
 
       if (onAfterAuthorize) {

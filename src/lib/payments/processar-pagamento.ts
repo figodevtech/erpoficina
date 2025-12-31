@@ -13,7 +13,7 @@ export const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 const TIPO_TRANSACAO_RECEITA = "RECEITA";
 
 // Categoria fixa da transação (enum categoria_transacao no banco)
-const CATEGORIA_TRANSACAO_ORDEM_SERVICO = "ORDEM DE SERVICO";
+const CATEGORIA_TRANSACAO_ORDEM_SERVICO = "ORDEM DE SERVIÇO";
 
 /**
  * Mapeia o método do pagamento (texto livre da tabela `pagamento.metodo`)

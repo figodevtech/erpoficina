@@ -43,7 +43,7 @@ export default function TransactionDialog({
         setNewTransaction({
           ordemservicoid: osId,
           tipo: Tipo_transacao.RECEITA,
-          categoria: "ORDEM DE SERVICO",
+          categoria: "ORDEM DE SERVIÇO",
           descricao: `Pagamento da OS #${osId}`,
           valor: 0,
           valorLiquido: 0
