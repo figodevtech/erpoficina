@@ -22,11 +22,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Categoria_transacao, Tipo_transacao } from "../../../(financeiro)/fluxodecaixa/types";
+import { useCategoriasTransacao } from "../../../(financeiro)/fluxodecaixa/hooks/use-categoria-transacao";
 
 export default function DialogReceitaCategoria() {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
-  const [categoria, setCategoria] = useState<Categoria_transacao | "">("");
+  const [selectedCategoria, setSelectedCategoria] = useState<string>("");
+   const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
 
   return (
     <Dialog>
@@ -57,10 +59,10 @@ export default function DialogReceitaCategoria() {
           <div className="flex flex-col gap-2">
             <Label>Categoria de Transação:</Label>
             <Select
-              value={categoria || ""}
+              value={selectedCategoria || ""}
               onValueChange={(value) => {
-                if (value === "TODOS") setCategoria("");
-                else setCategoria(value as Categoria_transacao);
+                if (value === "TODOS") setSelectedCategoria("");
+                else setSelectedCategoria(value);
               }}
             >
               <SelectTrigger
@@ -75,14 +77,14 @@ export default function DialogReceitaCategoria() {
                 <SelectItem value="TODOS" className="hover:cursor-pointer">
                   Todos
                 </SelectItem>
-                {Array.from(Object.values(Categoria_transacao)).map((categoria) => (
+                {categorias.map((c) => (
 
                 <SelectItem
-                key={categoria}
-                  value={categoria}
+                key={c.id}
+                  value={c.nome}
                   className="hover:cursor-pointer"
                 >
-                  {categoria}
+                  {c.nome}
                 </SelectItem>
                 ))}
                 
@@ -117,7 +119,7 @@ export default function DialogReceitaCategoria() {
         <DialogFooter className="flex flex-row items-center">
           <ExportTransactionsButton
           tipo={Tipo_transacao.RECEITA}
-          categoria={categoria}
+          categoria={selectedCategoria}
           dateTo={dateTo}
           dateFrom={dateFrom} />
           <DialogClose asChild>
