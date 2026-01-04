@@ -89,6 +89,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { set } from "nprogress";
 
 interface EditContentProps {
   customerId: number;
@@ -109,6 +111,9 @@ export default function EditContent({ customerId }: EditContentProps) {
     undefined
   );
   const [isLoadingVeiculos, setIsLoadingVeiculos] = useState(false);
+  const [openCustomerSelect, setOpenCustomerSelect] = useState(false);
+  const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
+  const [transferindo, setTransferindo] = useState(false);
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -258,6 +263,28 @@ export default function EditContent({ customerId }: EditContentProps) {
       }
     } finally {
       setIsLoadingVeiculos(false);
+    }
+  };
+
+  const handleVehicleTransfer = async ( novoDonoId: number) => {
+
+    toast(<div className="flex felx-row gap-1 items-center"><Loader2 className="w-3 h-3 animate-spin"/><span>Transferindo veículo...</span> </div>);
+    setTransferindo(true)
+    try {
+      const response = await axios.post(`/api/veiculos/${veiculoTransferId}/transferencia`, {
+          novoDonoId: novoDonoId,
+      });
+      if (response.status === 200) {
+        toast.success("Veículo transferido com sucesso!");
+        handleGetClienteVeiculos();
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro ao transferir veículo", { description: error.response?.data.error });
+      }
+    }finally{
+          setTransferindo(false)
+
     }
   };
 
@@ -946,6 +973,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                 </span>
                 <div className="w-full flex flex-row justify-end">
                   <Button
+                  disabled={isLoadingVeiculos || transferindo}
                     onClick={() => {
                       setOpenVehicle(true);
                     }}
@@ -996,7 +1024,10 @@ export default function EditContent({ customerId }: EditContentProps) {
                                   <Pen />
                                   Editar
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all">
+                                <DropdownMenuItem
+                                  onClick={() => {setOpenCustomerSelect(true); setVeiculoTransferId(vehicle?.id)}}
+                                  className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
+                                >
                                   <ArrowLeftRight />
                                   Transferir Propriedade
                                 </DropdownMenuItem>
@@ -1090,6 +1121,11 @@ export default function EditContent({ customerId }: EditContentProps) {
             </div>
           </DialogFooter>
         </div>
+        <CustomerSelect
+          open={openCustomerSelect}
+          setOpen={setOpenCustomerSelect}
+          OnSelect={(c)=> handleVehicleTransfer(c.id)}
+        />
       </DialogContent>
     );
   }
