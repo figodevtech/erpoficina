@@ -1,3 +1,4 @@
+// app/api/veiculos/cliente/[clienteId]/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -33,15 +34,20 @@ function idValido(raw: string) {
 }
 
 // ROTA: /api/veiculos/cliente/[clienteId]
-type Ctx = { params: { clienteId: string } };
+type Ctx = { params: Promise<{ clienteId: string }> };
 
 export async function GET(request: Request, ctx: Ctx) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const rawId = (ctx.params.clienteId || "").trim();
+    // ✅ Next 15: params pode vir como Promise nos tipos gerados
+    const { clienteId: clienteIdRaw } = await ctx.params;
+
+    const rawId = (clienteIdRaw || "").trim();
     const clienteId = idValido(rawId);
-    if (!clienteId) return respostaJSON({ error: "Parâmetro 'clienteId' inválido." }, 400);
+    if (!clienteId) {
+      return respostaJSON({ error: "Parâmetro 'clienteId' inválido." }, 400);
+    }
 
     const placa = (searchParams.get("placa") || "").trim();
     const q = (searchParams.get("q") || "").trim();
@@ -58,7 +64,7 @@ export async function GET(request: Request, ctx: Ctx) {
         "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo",
         { count: "exact" }
       )
-      .eq("clienteid", clienteId) // ✅ AQUI que faltava
+      .eq("clienteid", clienteId)
       .order("modelo", { ascending: true })
       .range(offset, offset + limit - 1);
 
@@ -73,7 +79,12 @@ export async function GET(request: Request, ctx: Ctx) {
     const { data, error, count } = await query;
     if (error) throw error;
 
-    return respostaJSON({ veiculos: data ?? [], total: count ?? 0, limit, offset });
+    return respostaJSON({
+      veiculos: data ?? [],
+      total: count ?? 0,
+      limit,
+      offset,
+    });
   } catch (err) {
     console.error("GET /api/veiculos/cliente/[clienteId]", err);
     return respostaJSON({ error: "Falha ao listar veículos" }, 500);
