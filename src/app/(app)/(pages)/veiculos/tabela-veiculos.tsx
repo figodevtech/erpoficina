@@ -1,0 +1,285 @@
+"use client";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertTriangle,
+  Clock,
+  ChevronDown,
+  Trash2Icon,
+  ChevronsRight,
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  ChevronsLeft,
+  Loader2,
+  Edit,
+  Loader,
+  CircleOff,
+  Store,
+  Plus,
+  FileText,
+  MoreHorizontal,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Pagination, Veiculo, Veiculo_tipos } from "./types";
+
+interface TabelaVeiculosProps {
+  isLoading: boolean;
+  veiculos: Veiculo[];
+  pagination: Pagination;
+  search: string;
+  handleGetVehicles: (
+    pageNumber?: number,
+    limit?: number,
+    search?: string,
+    tipo?: Veiculo_tipos
+    
+  ) => void;
+}
+
+export default function TabelaVeiculos({
+  handleGetVehicles, 
+  isLoading,
+  veiculos,
+  pagination,
+  search
+}: TabelaVeiculosProps) {
+  return (
+    <Card>
+      <CardHeader className="border-b-2 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Lista de Veículos</CardTitle>
+            <CardDescription>
+              {/* <button
+                onClick={() => {
+                  handleGetProducts(pagination.page, pagination.limit, search, status);
+                  fetchStatusCounts();
+                }}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button> */}
+            </CardDescription>
+          </div>
+
+          <div className="flex items-center gap-2">
+            
+                <Button variant={"outline"} size={"sm"} className="cursor-pointer text-xs">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Veículo
+                </Button>
+
+                
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
+        <div
+          className={`${
+            isLoading && " opacity-100"
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+        >
+          <div
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
+              isLoading && "animate-slideIn "
+            }`}
+          />
+        </div>
+
+        <Table className="mt-6">
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead className="text-center">Placa</TableHead>
+              <TableHead className="text-center">Descrição</TableHead>
+              <TableHead className="text-center">Mod/Fab</TableHead>
+              <TableHead>Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {veiculos?.map((v, idx) => {
+              const id = typeof v.id === "number" ? v.id : undefined;
+              const canAct = !!id;
+
+              return (
+                <TableRow
+                  key={id ?? `row-${idx}`}
+                  className="hover:cursor-pointer"
+                >
+                  <TableCell>{id ?? "-"}</TableCell>
+
+                  <TableCell className="text-center">{v.placa ?? "-"}</TableCell>
+
+                  <TableCell className="text-center">{`${v.marca ?? "-"} / ${
+                    v.modelo ?? "-"
+                  }`}</TableCell>
+                  <TableCell className="text-center">{v.ano ?? "-"}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 cursor-pointer"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      {/* ✅ DropdownMenuItem no lugar de Button */}
+                      <DropdownMenuContent align="center">
+                        <DropdownMenuItem
+                          disabled={!canAct}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          disabled={!canAct}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Entrada
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          variant="destructive"
+                        >
+                          <Trash2Icon className="mr-2 h-4 w-4" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+
+        {/* Rodapé */}
+        <div className="flex items-center mt-4 justify-between">
+          <div className="text-xs text-muted-foreground flex flex-nowrap">
+            <span className="ml-1 hidden sm:block">de {pagination?.total}</span>
+            <Loader
+              className={`w-4 h-full animate-spin transition-all opacity-0 ${
+                isLoading && "opacity-100"
+              }`}
+            />
+          </div>
+
+          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:cursor-pointer"
+              onClick={() =>
+                handleGetVehicles(1, pagination?.limit, search, )
+              }
+              disabled={pagination.page === 1}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:cursor-pointer"
+              onClick={() =>
+                handleGetVehicles(
+                  pagination.page - 1,
+                  pagination.limit,
+                  search,
+                )
+              }
+              disabled={pagination.page === 1}
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </Button>
+            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+              Pg. {pagination.page} de {pagination.totalPages || 1}
+            </span>
+            <Button
+              className="hover:cursor-pointer"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                handleGetVehicles(
+                  pagination.page + 1,
+                  pagination.limit,
+                  search,
+                )
+              }
+              disabled={
+                pagination.page === pagination.totalPages ||
+                pagination.totalPages === 0
+              }
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              className="hover:cursor-pointer"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                handleGetVehicles(
+                  pagination.totalPages,
+                  pagination.limit,
+                  search,
+                )
+              }
+              disabled={
+                pagination.page === pagination.totalPages ||
+                pagination.totalPages === 0
+              }
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div>
+            <Select>
+              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2">
+                <SelectValue placeholder={pagination.limit}></SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem className="hover:cursor-pointer" value="20">
+                  {pagination.limit}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

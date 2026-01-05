@@ -24,6 +24,7 @@ import {
   History,
   Handbag,
   Lock,
+  Car,
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -62,6 +63,11 @@ const data = {
       url: "/ordens",
       icon: NotepadText,
       isActive: true,
+    },
+    {
+      title: "Veículos",
+      url: "/veiculos",
+      icon: Car,
     },
     {
       title: "Estoque",

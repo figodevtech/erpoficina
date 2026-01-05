@@ -16,3 +16,11 @@ export interface Veiculo {
   kmatual?: number,
   tipo?: Veiculo_tipos
 }
+
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  pageCount?: number;
+}

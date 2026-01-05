@@ -1,3 +1,7 @@
+// src/app/api/veiculos/route.ts
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -6,8 +10,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
-
-export const revalidate = 0;
 
 function respostaJSON(body: any, status = 200) {
   return NextResponse.json(body, {
@@ -26,47 +28,81 @@ function parseIntSeguro(valor: string | null) {
   return Number.isInteger(n) ? n : null;
 }
 
+/* ========================= GET (lista paginada) ========================= */
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
+    // filtros
     const clienteId = parseIntSeguro(searchParams.get("clienteId"));
-    const placa = (searchParams.get("placa") || "").trim();
-    const q = (searchParams.get("q") || "").trim();
+    const placaRaw = (searchParams.get("placa") || "").trim();
     const tipo = (searchParams.get("tipo") || "").trim();
+    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "").trim();
 
-    const limitRaw = parseIntSeguro(searchParams.get("limit"));
-    const offsetRaw = parseIntSeguro(searchParams.get("offset"));
-    const limit = Math.min(Math.max(limitRaw ?? 50, 1), 200);
-    const offset = Math.max(offsetRaw ?? 0, 0);
+    // paginação (igual ao /products)
+    const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
+    const limitRaw =
+      searchParams.get("limit") ?? searchParams.get("pageSize") ?? "50";
+    const limit = Math.min(Math.max(Number(limitRaw), 1), 200);
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
     let query = supabase
       .from("veiculo")
-      .select("id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo", {
-        count: "exact",
-      })
+      .select(
+        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo",
+        { count: "exact" }
+      )
       .order("modelo", { ascending: true })
-      .range(offset, offset + limit - 1);
+      .range(from, to);
 
     if (clienteId !== null) query = query.eq("clienteid", clienteId);
 
-    if (placa) query = query.eq("placa", normalizarPlaca(placa));
+    if (placaRaw) query = query.eq("placa", normalizarPlaca(placaRaw));
     if (tipo) query = query.eq("tipo", tipo);
 
     if (q) {
-      const termo = `%${q}%`;
-      query = query.or(`modelo.ilike.${termo},marca.ilike.${termo}`);
+      query = query.or(`modelo.ilike.%${q}%,marca.ilike.%${q}%`);
     }
 
     const { data, error, count } = await query;
     if (error) throw error;
 
-    return respostaJSON({ veiculos: data ?? [], total: count ?? 0, limit, offset });
+    const items = data ?? [];
+    const total = count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    const pageCount = items.length;
+    const hasPrevPage = page > 1;
+    const hasNextPage = page * limit < total;
+
+    return respostaJSON({
+      data: items,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages,
+        pageCount,
+        hasPrevPage,
+        hasNextPage,
+      },
+      filters: {
+        search: q,
+        clienteId,
+        placa: placaRaw,
+        tipo,
+      },
+    });
   } catch (err: any) {
     console.error("GET /api/veiculos", err);
-    return respostaJSON({ error: "Falha ao listar veículos" }, 500);
+    return respostaJSON({ error: err?.message || "Falha ao listar veículos" }, 500);
   }
 }
+
+/* ========================= POST (criar veículo) ========================= */
 
 export async function POST(request: Request) {
   try {
@@ -84,13 +120,13 @@ export async function POST(request: Request) {
     const modelo = typeof v?.modelo === "string" ? v.modelo.trim() : "";
     const marca = typeof v?.marca === "string" ? v.marca.trim() : "";
 
-    const ano = v?.ano === null || v?.ano === undefined || v?.ano === ""
-      ? null
-      : Number(v.ano);
+    const ano =
+      v?.ano === null || v?.ano === undefined || v?.ano === "" ? null : Number(v.ano);
 
-    const kmatual = v?.kmatual === null || v?.kmatual === undefined || v?.kmatual === ""
-      ? null
-      : Number(v.kmatual);
+    const kmatual =
+      v?.kmatual === null || v?.kmatual === undefined || v?.kmatual === ""
+        ? null
+        : Number(v.kmatual);
 
     const cor = v?.cor === null || v?.cor === undefined ? null : String(v.cor).trim();
     const tipo = v?.tipo ? String(v.tipo).trim() : undefined;
@@ -131,10 +167,10 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    return respostaJSON({ veiculo: data }, 201);
+    // no mesmo “formato” do /products (opcional, mas costuma ajudar no front)
+    return respostaJSON({ data, id: data.id }, 201);
   } catch (err: any) {
     console.error("POST /api/veiculos", err);
-    return respostaJSON({ error: "Falha ao criar veículo" }, 500);
+    return respostaJSON({ error: err?.message || "Falha ao criar veículo" }, 500);
   }
 }
-
