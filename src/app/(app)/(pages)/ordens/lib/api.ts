@@ -78,6 +78,7 @@ export type UsuarioAtivo = {
   email?: string;
   setor?: { id: number; nome: string } | null;
   perfil?: { id: number; nome: string } | null;
+  comissao_percent?: number | null;
 };
 
 /**
@@ -95,6 +96,7 @@ export async function listarUsuariosAtivos(): Promise<UsuarioAtivo[]> {
     email: u.email,
     setor: u.setor ?? null,
     perfil: u.perfil ?? null,
+    comissao_percent: u.comissao_percent ?? null,
   }));
 }
 

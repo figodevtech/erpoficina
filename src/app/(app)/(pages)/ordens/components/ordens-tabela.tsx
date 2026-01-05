@@ -41,6 +41,7 @@ import TableSkeleton from "./table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 import { ChecklistDialog } from "./dialogs/checklist-dialog";
+import { RealizadoresOSDialog } from "./dialogs/realizadores-os-dialog"; // NOVO
 import { statusClasses, prioClasses, fmtDate, fmtDuration, useNowTick, safeStatus } from "./ordens-utils";
 import { RowActions } from "./row-actions";
 import OsFinancialDialog from "../../(financeiro)/pagamentodeordens/components/osFinancialDialog/osFinancialDialog";
@@ -238,6 +239,10 @@ export function OrdensTabela({
 
   const [approvalToastId, setApprovalToastId] = useState<string | number | null>(null);
 
+  // NOVO: dialog exclusivo para realizadores
+  const [realizadoresOpen, setRealizadoresOpen] = useState(false);
+  const [realizadoresOsId, setRealizadoresOsId] = useState<number | null>(null);
+
   const clearApprovalToast = () => {
     if (approvalToastId != null) {
       toast.dismiss(approvalToastId);
@@ -247,95 +252,120 @@ export function OrdensTabela({
 
   // ------- setStatus com checagem de realizadores ao iniciar -------
   async function setStatus(id: number, status: StatusOS) {
+    // ✅ toast de loading só para o clique em "Iniciar"
+    const loadingToastId =
+      status === "EM_ANDAMENTO"
+        ? toast.loading("Preparando atribuição de realizadores...", {
+            description: "Verificando serviços da OS antes de iniciar.",
+            duration: Infinity,
+          })
+        : null;
+
+    const closeLoading = () => {
+      if (loadingToastId != null) toast.dismiss(loadingToastId);
+    };
+
     if (status === "EM_ANDAMENTO") {
       try {
         const r = await fetch(`/api/ordens/${id}`, { cache: "no-store" });
         const j = await r.json().catch(() => ({} as any));
-
-        if (!r.ok) {
-          throw new Error(j?.error || "Não foi possível validar realizadores da OS.");
-        }
+        if (!r.ok) throw new Error(j?.error || "Não foi possível validar realizadores da OS.");
 
         const itens = (j?.itensServico ?? []) as Array<{
-          realizadores?: Array<{ id: string; nome: string | null }>;
-          // fallback legado (se algum lugar ainda retornar isso)
+          realizadores?: Array<{ id: string; nome: string | null }> | null;
           idusuariorealizador?: string | null;
         }>;
 
         const temSemRealizador = itens.some((it) => {
           if (Array.isArray(it.realizadores)) return it.realizadores.length === 0;
-          return !it.idusuariorealizador || it.idusuariorealizador === "";
+          return !it.idusuariorealizador;
         });
 
         if (temSemRealizador) {
-          toast.error("Antes de iniciar, selecione ao menos 1 realizador para todos os serviços da OS.");
-          setDetailsId(id);
-          setDetailsOpen(true);
+          // abre o dialog
+          setRealizadoresOsId(id);
+          setRealizadoresOpen(true);
+
+          // troca o toast loading por um aviso curto
+          toast.error("Antes de iniciar, selecione ao menos 1 realizador para todos os serviços da OS.", {
+            id: loadingToastId ?? undefined,
+            duration: 4000,
+          });
           return;
         }
+
+        // se passou na validação, pode fechar o loading e seguir
+        closeLoading();
       } catch (err: any) {
-        console.error("Erro ao validar realizadores:", err);
-        toast.error(
-          err?.message || "Não foi possível verificar os realizadores. Abra os detalhes da OS para conferir."
-        );
-        setDetailsId(id);
-        setDetailsOpen(true);
+        // abre o dialog mesmo assim (seu comportamento atual)
+        setRealizadoresOsId(id);
+        setRealizadoresOpen(true);
+
+        toast.error(err?.message || "Não foi possível verificar os realizadores. Abra a seleção para conferir.", {
+          id: loadingToastId ?? undefined,
+          duration: 4000,
+        });
         return;
       }
     }
 
-    const r = await fetch(`/api/ordens/${id}/status`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const r = await fetch(`/api/ordens/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
 
-    if (!r.ok) {
-      const j = await r.json().catch(() => ({}));
-      toast.error(j?.error || "Falha ao atualizar status");
-      return;
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({} as any));
+        closeLoading();
+        toast.error(j?.error || "Falha ao atualizar status");
+        return;
+      }
+
+      closeLoading();
+      window.dispatchEvent(new CustomEvent("os:refresh"));
+      toast.success("Status atualizado");
+    } catch (e: any) {
+      closeLoading();
+      toast.error(e?.message || "Falha ao atualizar status");
     }
-
-    window.dispatchEvent(new CustomEvent("os:refresh"));
-    toast.success("Status atualizado");
   }
 
-async function handleSendToApproval(row: OrdemComDatas) {
-  const loadingId = toast(`Validando orçamento da OS ${row.id}...`, {
-    duration: Infinity,
-    icon: <Loader2 className="h-4 w-4 animate-spin" />,
-  });
-  setApprovalToastId(loadingId);
-
-  const fail = (msg: string) => {
-    toast.dismiss(loadingId);            // remove o toast com spinner
-    setApprovalToastId(null);
-    toast.error(msg, { duration: 4000 }); // toast de erro “normal” e que some
-  };
-
-  try {
-    const r = await fetch(`/api/ordens/${row.id}`, { cache: "no-store" });
-    const j = await r.json().catch(() => ({} as any));
-    if (!r.ok) return fail(j?.error || "Não foi possível verificar o orçamento da OS.");
-
-    const itensServico = Array.isArray(j?.itensServico) ? j.itensServico : [];
-    if (itensServico.length === 0) {
-      return fail("Não é possível enviar para aprovação sem ao menos 1 serviço no orçamento.");
-    }
-
-    // OK -> abre confirmação (mantém o toast com spinner ou troca o texto, como preferir)
-    setApproveRow(row);
-    setApproveDialogOpen(true);
-
-    toast("Orçamento validado. Revise e confirme o envio para aprovação.", {
-      id: loadingId,
+  async function handleSendToApproval(row: OrdemComDatas) {
+    const loadingId = toast(`Validando orçamento da OS ${row.id}...`, {
       duration: Infinity,
+      icon: <Loader2 className="h-4 w-4 animate-spin" />,
     });
-  } catch (err: any) {
-    return fail(err?.message || "Não foi possível verificar o orçamento da OS.");
-  }
-}
+    setApprovalToastId(loadingId);
 
+    const fail = (msg: string) => {
+      toast.dismiss(loadingId);
+      setApprovalToastId(null);
+      toast.error(msg, { duration: 4000 });
+    };
+
+    try {
+      const r = await fetch(`/api/ordens/${row.id}`, { cache: "no-store" });
+      const j = await r.json().catch(() => ({} as any));
+      if (!r.ok) return fail(j?.error || "Não foi possível verificar o orçamento da OS.");
+
+      const itensServico = Array.isArray(j?.itensServico) ? j.itensServico : [];
+      if (itensServico.length === 0) {
+        return fail("Não é possível enviar para aprovação sem ao menos 1 serviço no orçamento.");
+      }
+
+      setApproveRow(row);
+      setApproveDialogOpen(true);
+
+      toast("Orçamento validado. Revise e confirme o envio para aprovação.", {
+        id: loadingId,
+        duration: Infinity,
+      });
+    } catch (err: any) {
+      return fail(err?.message || "Não foi possível verificar o orçamento da OS.");
+    }
+  }
 
   // garante regra: fim não pode ser antes do início, e vice-versa
   const handleSetDataInicio = (date?: Date) => {
@@ -502,15 +532,7 @@ async function handleSendToApproval(row: OrdemComDatas) {
                   <TableHead className="min-w-[80px]">#</TableHead>
                   <TableHead className="min-w-[240px]">Cliente / Veículo</TableHead>
                   <TableHead className="min-w-[220px]">Descrição</TableHead>
-                  {/* <TableHead className="min-w-[140px]">
-                    <SortableHeader
-                      label="Setor"
-                      columnKey="setor"
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onChange={handleSortChange}
-                    />
-                  </TableHead> */}
+
                   <TableHead className="min-w-[130px]">
                     <SortableHeader
                       label="Entrada"
@@ -616,6 +638,7 @@ async function handleSendToApproval(row: OrdemComDatas) {
                           <div className="flex items-center justify-center w-min bg-red-500/20 py-1 px-2 rounded-full">
                             <span className="text-[8px]">{r.setor?.nome ?? "-"}</span>
                           </div>
+
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="truncate font-medium text-[15px]">{clienteShort}</div>
@@ -648,12 +671,13 @@ async function handleSendToApproval(row: OrdemComDatas) {
                           </Tooltip>
                         </TableCell>
 
-                        {/* <TableCell>{r.setor?.nome ?? "—"}</TableCell> */}
                         <TableCell>{fmtDate((r as any).dataEntrada ?? (r as any).dataentrada)}</TableCell>
                         <TableCell>{fmtDate((r as any).dataSaida ?? (r as any).datasaida)}</TableCell>
+
                         <TableCell>
                           <Badge className={statusClasses[st] ?? ""}>{st.replaceAll("_", " ")}</Badge>
                         </TableCell>
+
                         <TableCell>
                           {r.prioridade ? (
                             <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>
@@ -663,6 +687,7 @@ async function handleSendToApproval(row: OrdemComDatas) {
                             "—"
                           )}
                         </TableCell>
+
                         <TableCell>{renderTempo(r)}</TableCell>
 
                         <TableCell className="text-right">
@@ -884,7 +909,7 @@ async function handleSendToApproval(row: OrdemComDatas) {
           handleGetOrdens={() => fetchNow(currentParamsRef.current)}
         />
 
-        <EmissaoNotaDialog osId={emissaoId} open={emissaoOpen} onOpenChange={setEmissaoOpen}></EmissaoNotaDialog>
+        <EmissaoNotaDialog osId={emissaoId} open={emissaoOpen} onOpenChange={setEmissaoOpen} />
 
         {/* Dialog: Pagamento Stone */}
         <OsStonePaymentDialog
@@ -905,6 +930,16 @@ async function handleSendToApproval(row: OrdemComDatas) {
             if (!v) setDetailsId(null);
           }}
           osId={detailsId ?? 0}
+        />
+
+        {/* NOVO Dialog: Realizadores */}
+        <RealizadoresOSDialog
+          open={realizadoresOpen}
+          onOpenChange={(v) => {
+            setRealizadoresOpen(v);
+            if (!v) setRealizadoresOsId(null);
+          }}
+          osId={realizadoresOsId}
         />
 
         {/* Dialog: Checklist */}
