@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pagination, Veiculo } from "./types";
+import { Pagination, Veiculo, Veiculo_tipos } from "./types";
 import axios from "axios";
 import TabelaVeiculos from "./tabela-veiculos";
 
@@ -16,7 +16,7 @@ export default function EstoquePage() {
     totalPages: 0,
   });
   const [search, setSearch] = useState("");
-  const [selectedTipo, setSelectedTipo] = useState<string | undefined>(undefined);
+  const [selectedTipo, setSelectedTipo] = useState<Veiculo_tipos | undefined>(undefined);
 
 const handleGetVehicles = async (pageNumber?: number, limit?: number, search?: string, tipo?: string) => {
     setIsLoading(true);
@@ -52,6 +52,7 @@ const handleGetVehicles = async (pageNumber?: number, limit?: number, search?: s
       
 
       <TabelaVeiculos
+      selectedTipo={selectedTipo}
         handleGetVehicles={handleGetVehicles}
         isLoading={isLoading}
         veiculos={veiculos}

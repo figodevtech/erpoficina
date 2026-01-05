@@ -63,7 +63,7 @@ interface RegisterContentProps {
   setNovoVeiculo: (value: Veiculo) => void;
   setSelectedVeiculoId?: (value: number | undefined) => void;
   onRegister?: (c: Veiculo) => void;
-  clienteId: number;
+  clienteId?: number;
   isOpen: boolean;
 }
 

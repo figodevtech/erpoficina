@@ -39,15 +39,30 @@ export async function GET(_request: Request, ctx: Ctx) {
 
     const { data, error } = await supabase
       .from("veiculo")
-      .select(
-        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, cliente: cliente (id, nomerazaosocial, cpfcnpj)"
-      )
+      .select(`
+        id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo,
+        cliente:cliente (
+          nomerazaosocial,
+          cpfcnpj,
+          email,
+          telefone
+        ),
+        ordens:ordemservico (
+          id, clienteid, veiculoid, setorid,
+          status, statusaprovacao, prioridade,
+          descricao, observacoes,
+          dataentrada, datasaida,
+          orcamentototal,
+          createdat, updatedat,
+          is_deleted, deleted_at
+        )
+      `)
       .eq("id", id)
+      .eq("ordemservico.is_deleted", false)
+      .order("dataentrada", { referencedTable: "ordemservico", ascending: false })
       .single();
 
-    if (error) {
-      return respostaJSON({ error: "Veículo não encontrado." }, 404);
-    }
+    if (error) return respostaJSON({ error: "Veículo não encontrado." }, 404);
 
     return respostaJSON({ veiculo: data });
   } catch (err: any) {
@@ -55,6 +70,8 @@ export async function GET(_request: Request, ctx: Ctx) {
     return respostaJSON({ error: "Falha ao buscar veículo" }, 500);
   }
 }
+
+
 
 export async function PUT(request: Request, ctx: Ctx) {
   try {
