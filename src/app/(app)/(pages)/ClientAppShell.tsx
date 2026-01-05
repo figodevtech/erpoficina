@@ -9,6 +9,8 @@ import { ModeToggle } from "../components/mode-toggle";
 import DateTimeBadge from "../components/date-time-badge";
 import { Toaster } from "@/components/ui/sonner";
 import { usePathname } from "next/navigation";
+import { Config } from "./type";
+import { toast } from "sonner";
 
 const routeTitles: Record<string, string> = {
   "/": "Início",
@@ -53,9 +55,11 @@ function humanize(path: string) {
 }
 
 export default function ClientAppShell({
+  config,
   children,
   hideHeader = false,
 }: {
+  config: Config;
   children: React.ReactNode;
   hideHeader?: boolean;
 }) {
@@ -70,6 +74,20 @@ const title = routeTitles[pathname] ?? humanize(pathname);
     setSidebarOpen(false);
   }
 }, [pathname]);
+
+React.useEffect(() => {
+  if(!config.aviso_pagamento) return;
+  toast.warning(<div><span className="text-xs text-center">Pagamento pendente, contate o time da FIGO para regularizar</span></div>, {
+    richColors: true,
+    closeButton:false,
+    duration:999999999,
+    position:"bottom-center",
+    dismissible:false
+    
+  });
+}, [config.aviso_pagamento])
+
+if(config){
 
   return (
     <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen} >
@@ -92,10 +110,11 @@ const title = routeTitles[pathname] ?? humanize(pathname);
         <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
           <div className="mx-auto w-full px-4 md:px-6 py-4 md:py-6">
             {children}
-            <Toaster duration={4000} richColors position="bottom-right" />
+            {/* <Toaster duration={4000} richColors position="bottom-right" /> */}
           </div>
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
+}
 }
