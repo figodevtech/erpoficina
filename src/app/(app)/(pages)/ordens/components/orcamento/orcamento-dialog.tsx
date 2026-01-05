@@ -165,7 +165,7 @@ export function OrcamentoDialog({
       }
     >
       <div className="relative">
-        {(carregandoDados || salvando || gerandoLink) && (
+        {(carregandoDados) && (
           <div className="flex items-center justify-center bg-background/70">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />

@@ -265,7 +265,7 @@ function MultiSelectRealizadores({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal={true} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm" disabled={disabled} className="h-8 w-full justify-between">
           <span className="truncate flex items-center gap-2">
