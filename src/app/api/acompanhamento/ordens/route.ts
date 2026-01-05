@@ -1,5 +1,4 @@
 // src/app/api/acompanhamento/ordens/route.ts
-
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,7 +13,7 @@ function inicioHojeFortalezaISO() {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now); // "YYYY-MM-DD"
+  }).format(now);
 
   const [y, m, d] = ymd.split("-").map(Number);
   const utcMidnight = new Date(Date.UTC(y!, m! - 1, d!, 0, 0, 0));
@@ -42,6 +41,9 @@ const SET_FINALIZADAS: StatusOS[] = ["CONCLUIDO", "CANCELADO"];
 /**
  * campos/joins usados pelo painel
  * - inclui itens de orçamento (osproduto e osservico)
+ *
+ * Observação: ajuste `usuario:usuarioid` caso o nome da FK na sua tabela
+ * `osservico_realizador` seja diferente (ex.: idusuario, user_id, etc.).
  */
 const BASE_SELECT = `
   id,
@@ -72,7 +74,11 @@ const BASE_SELECT = `
     quantidade,
     precounitario,
     subtotal,
-    realizador:idusuariorealizador ( id, nome ),
+
+    realizadores:osservico_realizador (
+      usuario:usuarioid ( id, nome )
+    ),
+
     servico:servicoid ( id, descricao )
   )
 `;
@@ -103,7 +109,6 @@ export async function GET(req: NextRequest) {
 
     let qExec = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_EXECUCAO);
     if (hasSetor) qExec = qExec.eq("setorid", setorId as number);
-    // a UI ordena de novo, mas aqui já deixa estável:
     qExec = qExec
       .order("execucao_inicio_em", { ascending: true })
       .order("dataentrada", { ascending: true })
