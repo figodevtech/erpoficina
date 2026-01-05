@@ -15,7 +15,7 @@ interface CustomerDialogProps {
   setIsOpen?: (value: boolean) => void;
   setSelectedVeiculoId?: (value: number | undefined) => void;
   onRegister?:(c: Veiculo)=> void;
-  clienteId: number;
+  clienteId?: number;
 }
 
 export function VeiculoDialog({

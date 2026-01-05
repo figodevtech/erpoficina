@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, ChevronsUpDown, Save } from "lucide-react";
+import { Check, ChevronsUpDown, Save, Search, X } from "lucide-react";
 import {
   DialogClose,
   DialogContent,
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Veiculo, Veiculo_tipos } from "../types";
+import { tabTheme, Veiculo, Veiculo_tipos } from "../types";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -38,6 +38,16 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
 
 function somenteAlphaNumMaiusculo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -71,7 +81,11 @@ interface EditContentProps {
   onUpdated?: (v: Veiculo) => void;
 }
 
-export default function EditContent({ veiculoId, isOpen, onUpdated }: EditContentProps) {
+export default function EditContent({
+  veiculoId,
+  isOpen,
+  onUpdated,
+}: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingVeiculo, setIsLoadingVeiculo] = useState(false);
 
@@ -79,11 +93,14 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [loadingMarcas, setLoadingMarcas] = useState(false);
   const [loadingModelos, setLoadingModelos] = useState(false);
+  const [openCustomer, setOpenCustomer] = useState(false);
 
   const [openMarca, setOpenMarca] = useState(false);
   const [openModelo, setOpenModelo] = useState(false);
 
-  const [selectedVeiculo, setSelectedVeiculo] = useState<(Veiculo & { marcaId?: number }) | undefined>(undefined);
+  const [selectedVeiculo, setSelectedVeiculo] = useState<
+    (Veiculo & { marcaId?: number }) | undefined
+  >(undefined);
 
   const { cores, loadingCores } = useVeiculosCores();
 
@@ -99,12 +116,16 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
 
     setIsLoadingVeiculo(true);
     try {
-      const response = await axios.get<GetVeiculoResponse>(`/api/veiculos/${veiculoId}`);
+      const response = await axios.get<GetVeiculoResponse>(
+        `/api/veiculos/${veiculoId}`
+      );
       if (response.status === 200) {
         const v = response.data.veiculo;
 
         // garantia: placa no state sem hífen e com 7 chars
-        const placaNormalizada = somenteAlphaNumMaiusculo(String(v.placa ?? "")).slice(0, 7);
+        const placaNormalizada = somenteAlphaNumMaiusculo(
+          String(v.placa ?? "")
+        ).slice(0, 7);
 
         setSelectedVeiculo({
           ...v,
@@ -114,7 +135,9 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast.error("Erro", { description: error.response?.data?.error ?? "Falha ao buscar veículo" });
+        toast.error("Erro", {
+          description: error.response?.data?.error ?? "Falha ao buscar veículo",
+        });
       }
     } finally {
       setIsLoadingVeiculo(false);
@@ -125,11 +148,14 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
     setLoadingMarcas(true);
     try {
       const response = await axios.get<Marca[]>(
-        `https://brasilapi.com.br/api/fipe/marcas/v1/${String(tipo).toLowerCase()}`
+        `https://brasilapi.com.br/api/fipe/marcas/v1/${String(
+          tipo
+        ).toLowerCase()}`
       );
       if (response.status === 200) setMarcas(response.data);
     } catch (error) {
-      if (isAxiosError(error)) toast.error("Erro", { description: error.response?.data?.error });
+      if (isAxiosError(error))
+        toast.error("Erro", { description: error.response?.data?.error });
     } finally {
       setLoadingMarcas(false);
     }
@@ -139,11 +165,14 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
     setLoadingModelos(true);
     try {
       const response = await axios.get<Modelo[]>(
-        `https://brasilapi.com.br/api/fipe/veiculos/v1/${String(tipo).toLowerCase()}/${marcaId}`
+        `https://brasilapi.com.br/api/fipe/veiculos/v1/${String(
+          tipo
+        ).toLowerCase()}/${marcaId}`
       );
       if (response.status === 200) setModelos(response.data);
     } catch (error) {
-      if (isAxiosError(error)) toast.error("Erro", { description: error.response?.data?.error });
+      if (isAxiosError(error))
+        toast.error("Erro", { description: error.response?.data?.error });
     } finally {
       setLoadingModelos(false);
     }
@@ -160,15 +189,20 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
       });
 
       if (response.status === 200) {
-        toast.success("Sucesso!", { description: "Veículo atualizado.", duration: 2000 });
+        toast.success("Sucesso!", {
+          description: "Veículo atualizado.",
+          duration: 2000,
+        });
 
         // se seu endpoint retornar o veículo atualizado, você pode usar response.data.veiculo
+        handleGetVeiculo();
         onUpdated?.(selectedVeiculo);
       }
     } catch (error) {
       if (isAxiosError(error)) {
         toast.error("Erro", {
-          description: error.response?.data?.error ?? "Falha ao atualizar veículo",
+          description:
+            error.response?.data?.error ?? "Falha ao atualizar veículo",
           duration: 2000,
         });
       }
@@ -202,7 +236,9 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
     const achada = marcas.find((m) => m.nome.trim().toLowerCase() === alvo);
 
     if (achada && selectedVeiculo.marcaId !== achada.valor) {
-      setSelectedVeiculo((prev) => (prev ? { ...prev, marcaId: achada.valor } : prev));
+      setSelectedVeiculo((prev) =>
+        prev ? { ...prev, marcaId: achada.valor } : prev
+      );
     }
   }, [marcas, selectedVeiculo?.marca, selectedVeiculo?.marcaId]);
 
@@ -212,7 +248,10 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
     if (!selectedVeiculo?.tipo) return;
     if (!selectedVeiculo?.marcaId) return;
 
-    handleGetModelos(String(selectedVeiculo.tipo), Number(selectedVeiculo.marcaId));
+    handleGetModelos(
+      String(selectedVeiculo.tipo),
+      Number(selectedVeiculo.marcaId)
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedVeiculo?.tipo, selectedVeiculo?.marcaId]);
 
@@ -223,317 +262,470 @@ export default function EditContent({ veiculoId, isOpen, onUpdated }: EditConten
     return marcas.find((m) => m.valor === selectedVeiculo.marcaId);
   }, [marcas, selectedVeiculo?.marcaId]);
 
-    if (isLoadingVeiculo) {
-      return (
-        <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
-          <DialogHeader className="hidden">
-            <DialogTitle></DialogTitle>
+  if (isLoadingVeiculo) {
+    return (
+      <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+        <DialogHeader className="hidden">
+          <DialogTitle></DialogTitle>
+        </DialogHeader>
+        <div className="flex h-full min-h-0 flex-col justify-center items-center">
+          <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
+          <span className="text-primary">Carregando</span>
+        </div>
+      </DialogContent>
+    );
+  }
+
+  if (selectedVeiculo) {
+    return (
+      <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+        <div className="flex h-full min-h-0 flex-col">
+          <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
+            <DialogTitle>
+              {isLoadingVeiculo
+                ? "Carregando..."
+                : `Editar Veículo ID #${selectedVeiculo?.id ?? "-"}`}
+            </DialogTitle>
+            <DialogDescription>Atualize os dados do veículo</DialogDescription>
           </DialogHeader>
-          <div className="flex h-full min-h-0 flex-col justify-center items-center">
-            <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
-            <span className="text-primary">Carregando</span>
-          </div>
-        </DialogContent>
-      );
-    }
-  
+          <CustomerSelect
+          open={openCustomer}
+          setOpen={setOpenCustomer}
+          OnSelect={(c)=> setSelectedVeiculo({...selectedVeiculo, clienteid: c.id, cliente: c})}
+          />
 
-    if(selectedVeiculo){
+          <Tabs
+            defaultValue="Geral"
+            className="flex-1 min-h-0 overflow-hidden pb-0"
+          >
+            <TabsList className="shrink-0 top-0 z-10 bg-background mt-3 ml-3">
+              <TabsTrigger
+                value="Geral"
+                className={"hover:cursor-pointer" + tabTheme}
+              >
+                Geral
+              </TabsTrigger>
+              <TabsTrigger
+                value="Ordens"
+                className={"hover:cursor-pointer" + tabTheme}
+              >
+                Ordens
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent
+              value="Geral"
+              className="h-full min-h-0 overflow-hidden p-0 b"
+            >
+              <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
+                {/* Tipo */}
+                <div className="flex flex-row items-center gap-4">
 
-      return (
-        <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
-          <div className="flex h-full min-h-0 flex-col">
-            <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-              <DialogTitle>
-                {isLoadingVeiculo ? "Carregando..." : `Editar Veículo ID #${selectedVeiculo?.id ?? "-"}`}
-              </DialogTitle>
-              <DialogDescription>Atualize os dados do veículo</DialogDescription>
-            </DialogHeader>
-    
-            <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-4">
-              {/* Tipo */}
-              <div className="space-y-2">
-                <Label htmlFor="tipo" className="text-sm sm:text-base">
-                  Tipo de Veículo *
-                </Label>
-                <Select
-                  value={(selectedVeiculo?.tipo as unknown as string) || ""}
-                  onValueChange={(value: Veiculo_tipos) => {
-                    // ao trocar o tipo, resetar marca/modelo para evitar inconsistência
-                    setSelectedVeiculo((prev) => {
-                      if (!prev) return prev;
-                      return {
-                        ...prev,
-                        tipo: value as any,
-                        marca: "",
-                        modelo: "",
-                        marcaId: undefined,
-                      };
-                    });
-                  }}
-                  disabled={disabledForm}
-                >
-                  <SelectTrigger className="h-10 sm:h-11">
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(Veiculo_tipos).map((tipo, i) => (
-                      <SelectItem className="hover:cursor-pointer" key={i} value={tipo}>
-                        {tipo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-    
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
-                {/* Placa */}
-                <div className="space-y-2">
-                  <Label htmlFor="placa" className="text-sm sm:text-base">
-                    Placa *
-                  </Label>
-                  <Input
-                    id="placa"
-                    value={formatarPlacaParaExibicao(selectedVeiculo?.placa || "")}
-                    onChange={(e) => {
-                      const digitado = e.target.value;
-                      const semHifen = somenteAlphaNumMaiusculo(digitado).slice(0, 7);
-                      setSelectedVeiculo((prev) => (prev ? { ...prev, placa: semHifen } : prev));
-                    }}
-                    maxLength={8}
-                    placeholder="ABC-1D23 ou ABC-1234"
-                    autoCapitalize="characters"
-                    disabled={disabledForm}
-                  />
-                </div>
-    
-                {/* Marca */}
-                <div className="space-y-2">
-                  <Label htmlFor="marca" className="text-sm sm:text-base">
-                    Marca *
-                  </Label>
-    
-                  <Popover open={openMarca} onOpenChange={setOpenMarca}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        id="marca"
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openMarca}
-                        className="w-[200px] justify-between text-xs"
-                        disabled={disabledForm || loadingMarcas || !selectedVeiculo?.tipo}
-                      >
-                        {loadingMarcas
-                          ? "Carregando..."
-                          : selectedVeiculo?.marca
-                          ? selectedVeiculo.marca
-                          : "Selecione..."}
-                        <ChevronsUpDown className="opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-    
-                    <PopoverContent className="w-[200px] p-0" onWheelCapture={(e) => e.stopPropagation()}>
-                      <Command>
-                        <CommandInput placeholder="Buscar marca..." className="h-9" />
-                        <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                          <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
-                          <CommandGroup>
-                            {marcas.map((m) => (
-                              <CommandItem
-                                className="hover:cursor-pointer"
-                                key={m.valor}
-                                value={m.nome}
-                                onSelect={() => {
-                                  setSelectedVeiculo((prev) => {
-                                    if (!prev) return prev;
-                                    return {
-                                      ...prev,
-                                      marcaId: m.valor,
-                                      marca: m.nome.toUpperCase(),
-                                      modelo: "",
-                                    };
-                                  });
-                                  setOpenMarca(false);
-                                }}
-                              >
-                                {m.nome.toUpperCase()}
-                                <Check
-                                  className={cn(
-                                    "ml-auto",
-                                    selectedVeiculo?.marcaId === m.valor ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-    
-                {/* Modelo */}
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="modelo" className="text-sm sm:text-base">
-                    Modelo *
-                  </Label>
-    
-                  <Popover open={openModelo} onOpenChange={setOpenModelo}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        id="modelo"
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openModelo}
-                        className="w-[400px] justify-between text-xs"
-                        disabled={
-                          disabledForm ||
-                          loadingModelos ||
-                          !selectedVeiculo?.tipo ||
-                          !selectedVeiculo?.marcaId
-                        }
-                      >
-                        {loadingModelos
-                          ? "Carregando..."
-                          : selectedVeiculo?.modelo
-                          ? selectedVeiculo.modelo
-                          : "Selecione..."}
-                        <ChevronsUpDown className="opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-    
-                    <PopoverContent className="w-[400px] p-0" onWheelCapture={(e) => e.stopPropagation()}>
-                      <Command>
-                        <CommandInput placeholder="Buscar modelo..." className="h-9" />
-                        <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                          <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
-    
-                          <CommandGroup>
-                            {modelos.map((m, i) => (
-                              <CommandItem
-                                className="hover:cursor-pointer text-xs"
-                                key={i}
-                                value={m.modelo}
-                                onSelect={() => {
-                                  setSelectedVeiculo((prev) =>
-                                    prev ? { ...prev, modelo: m.modelo.toUpperCase() } : prev
-                                  );
-                                  setOpenModelo(false);
-                                }}
-                              >
-                                {m.modelo.toUpperCase()}
-                                <Check
-                                  className={cn(
-                                    "ml-auto",
-                                    selectedVeiculo?.modelo === m.modelo.toUpperCase()
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-    
-                  {/* Dica rápida pra debug: */}
-                  {/* <div className="text-xs opacity-60">
-                    marcaId resolvida: {marcaSelecionada?.valor ?? "-"}
-                  </div> */}
-                </div>
-    
-                {/* Cor */}
-                <div className="space-y-2">
-                  <Label htmlFor="cor" className="text-sm sm:text-base">
-                    Cor
+                <div className="space-y-2 text-nowrap">
+                  <Label htmlFor="tipo" className="text-sm sm:text-base">
+                    Tipo de Veículo *
                   </Label>
                   <Select
-                    value={selectedVeiculo?.cor || ""}
-                    onValueChange={(value) => handleInputChange("cor", value)}
-                    disabled={disabledForm || loadingCores}
+                    value={(selectedVeiculo?.tipo as unknown as string) || ""}
+                    onValueChange={(value: Veiculo_tipos) => {
+                      // ao trocar o tipo, resetar marca/modelo para evitar inconsistência
+                      setSelectedVeiculo((prev) => {
+                        if (!prev) return prev;
+                        return {
+                          ...prev,
+                          tipo: value as any,
+                          marca: "",
+                          modelo: "",
+                          marcaId: undefined,
+                        };
+                      });
+                    }}
+                    disabled={disabledForm}
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={loadingCores ? "Carregando..." : "Selecione a cor"} />
+                    <SelectTrigger className="h-10 sm:h-11">
+                      <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cores.map((c) => (
-                        <SelectItem className="hover:cursor-pointer" key={c.id} value={c.nome}>
-                          {c.nome}
+                      {Object.keys(Veiculo_tipos).map((tipo, i) => (
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          key={i}
+                          value={tipo}
+                        >
+                          {tipo}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-    
-                {/* Ano */}
-                <div className="space-y-2">
-                  <Label htmlFor="ano" className="text-sm sm:text-base">
-                    Ano
+                <div className="space-y-2 w-full">
+                  <Label htmlFor="tipo" className="text-sm sm:text-base">
+                    Cliente proprietário
                   </Label>
+                  <div className="flex flex-row items-center gap-1">
+
                   <Input
-                    id="ano"
-                    inputMode="numeric"
-                    className="w-30"
-                    maxLength={4}
-                    value={selectedVeiculo?.ano ? String(selectedVeiculo.ano) : ""}
-                    onChange={(e) => handleInputChange("ano", e.target.value)}
-                    placeholder="Ex.: 2019"
-                    disabled={disabledForm}
+                  className="w-full"
+                    value={selectedVeiculo?.cliente?.nomerazaosocial || ""}
+                    disabled={true}
                   />
+                  <div
+                  onClick={()=> setOpenCustomer(true)}
+                  className="flex items-center hover:cursor-pointer p-1.5 rounded-full bg-muted"><Search className="w-4 h-4 text-primary"/></div>
+                  </div>
+                </div>
+                </div>
+
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+                  {/* Placa */}
+                  <div className="space-y-2">
+                    <Label htmlFor="placa" className="text-sm sm:text-base">
+                      Placa *
+                    </Label>
+                    <Input
+                      id="placa"
+                      value={formatarPlacaParaExibicao(
+                        selectedVeiculo?.placa || ""
+                      )}
+                      onChange={(e) => {
+                        const digitado = e.target.value;
+                        const semHifen = somenteAlphaNumMaiusculo(
+                          digitado
+                        ).slice(0, 7);
+                        setSelectedVeiculo((prev) =>
+                          prev ? { ...prev, placa: semHifen } : prev
+                        );
+                      }}
+                      maxLength={8}
+                      placeholder="ABC-1D23 ou ABC-1234"
+                      autoCapitalize="characters"
+                      disabled={disabledForm}
+                    />
+                  </div>
+
+                  {/* Marca */}
+                  <div className="space-y-2">
+                    <Label htmlFor="marca" className="text-sm sm:text-base">
+                      Marca *
+                    </Label>
+
+                    <Popover open={openMarca} onOpenChange={setOpenMarca}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="marca"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openMarca}
+                          className="w-[200px] justify-between text-xs"
+                          disabled={
+                            disabledForm ||
+                            loadingMarcas ||
+                            !selectedVeiculo?.tipo
+                          }
+                        >
+                          {loadingMarcas
+                            ? "Carregando..."
+                            : selectedVeiculo?.marca
+                            ? selectedVeiculo.marca
+                            : "Selecione..."}
+                          <ChevronsUpDown className="opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        className="w-[200px] p-0"
+                        onWheelCapture={(e) => e.stopPropagation()}
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="Buscar marca..."
+                            className="h-9"
+                          />
+                          <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
+                            <CommandEmpty>
+                              Nenhuma marca encontrada.
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {marcas.map((m) => (
+                                <CommandItem
+                                  className="hover:cursor-pointer"
+                                  key={m.valor}
+                                  value={m.nome}
+                                  onSelect={() => {
+                                    setSelectedVeiculo((prev) => {
+                                      if (!prev) return prev;
+                                      return {
+                                        ...prev,
+                                        marcaId: m.valor,
+                                        marca: m.nome.toUpperCase(),
+                                        modelo: "",
+                                      };
+                                    });
+                                    setOpenMarca(false);
+                                  }}
+                                >
+                                  {m.nome.toUpperCase()}
+                                  <Check
+                                    className={cn(
+                                      "ml-auto",
+                                      selectedVeiculo?.marcaId === m.valor
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Modelo */}
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="modelo" className="text-sm sm:text-base">
+                      Modelo *
+                    </Label>
+
+                    <Popover open={openModelo} onOpenChange={setOpenModelo}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="modelo"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openModelo}
+                          className="w-[400px] justify-between text-xs"
+                          disabled={
+                            disabledForm ||
+                            loadingModelos ||
+                            !selectedVeiculo?.tipo ||
+                            !selectedVeiculo?.marcaId
+                          }
+                        >
+                          {loadingModelos
+                            ? "Carregando..."
+                            : selectedVeiculo?.modelo
+                            ? selectedVeiculo.modelo
+                            : "Selecione..."}
+                          <ChevronsUpDown className="opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        className="w-[400px] p-0"
+                        onWheelCapture={(e) => e.stopPropagation()}
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="Buscar modelo..."
+                            className="h-9"
+                          />
+                          <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
+                            <CommandEmpty>
+                              Nenhum modelo encontrado.
+                            </CommandEmpty>
+
+                            <CommandGroup>
+                              {modelos.map((m, i) => (
+                                <CommandItem
+                                  className="hover:cursor-pointer text-xs"
+                                  key={i}
+                                  value={m.modelo}
+                                  onSelect={() => {
+                                    setSelectedVeiculo((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            modelo: m.modelo.toUpperCase(),
+                                          }
+                                        : prev
+                                    );
+                                    setOpenModelo(false);
+                                  }}
+                                >
+                                  {m.modelo.toUpperCase()}
+                                  <Check
+                                    className={cn(
+                                      "ml-auto",
+                                      selectedVeiculo?.modelo ===
+                                        m.modelo.toUpperCase()
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Dica rápida pra debug: */}
+                    {/* <div className="text-xs opacity-60">
+                    marcaId resolvida: {marcaSelecionada?.valor ?? "-"}
+                  </div> */}
+                  </div>
+
+                  {/* Cor */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cor" className="text-sm sm:text-base">
+                      Cor
+                    </Label>
+                    <Select
+                      value={selectedVeiculo?.cor || ""}
+                      onValueChange={(value) => handleInputChange("cor", value)}
+                      disabled={disabledForm || loadingCores}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue
+                          placeholder={
+                            loadingCores ? "Carregando..." : "Selecione a cor"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cores.map((c) => (
+                          <SelectItem
+                            className="hover:cursor-pointer"
+                            key={c.id}
+                            value={c.nome}
+                          >
+                            {c.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Ano */}
+                  <div className="space-y-2">
+                    <Label htmlFor="ano" className="text-sm sm:text-base">
+                      Ano
+                    </Label>
+                    <Input
+                      id="ano"
+                      inputMode="numeric"
+                      className="w-30"
+                      maxLength={4}
+                      value={
+                        selectedVeiculo?.ano ? String(selectedVeiculo.ano) : ""
+                      }
+                      onChange={(e) => handleInputChange("ano", e.target.value)}
+                      placeholder="Ex.: 2019"
+                      disabled={disabledForm}
+                    />
+                  </div>
+                </div>
+
+                {/* KM atual */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="kmatual" className="text-sm sm:text-base">
+                      KM atual
+                    </Label>
+                    <Input
+                      className="w-30"
+                      id="kmatual"
+                      inputMode="numeric"
+                      value={
+                        selectedVeiculo?.kmatual
+                          ? String(selectedVeiculo.kmatual)
+                          : ""
+                      }
+                      onChange={(e) =>
+                        handleInputChange("kmatual", e.target.value)
+                      }
+                      placeholder="Ex.: 85000"
+                      disabled={disabledForm}
+                    />
+                  </div>
                 </div>
               </div>
-    
-              {/* KM atual */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="kmatual" className="text-sm sm:text-base">
-                    KM atual
-                  </Label>
-                  <Input
-                    className="w-30"
-                    id="kmatual"
-                    inputMode="numeric"
-                    value={selectedVeiculo?.kmatual ? String(selectedVeiculo.kmatual) : ""}
-                    onChange={(e) => handleInputChange("kmatual", e.target.value)}
-                    placeholder="Ex.: 85000"
-                    disabled={disabledForm}
-                  />
-                </div>
+            </TabsContent>
+            <TabsContent
+              value="Ordens"
+              className="h-full min-h-0 overflow-hidden p-0"
+            >
+              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
+                <Table className="text-xs">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Descrição</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedVeiculo.ordens ? (
+                      selectedVeiculo.ordens.length > 0 ? (
+                        selectedVeiculo.ordens.map((ordem) => (
+                          <TableRow
+                            key={ordem.id}
+                            className="hover:cursor-pointer"
+                          >
+                            <TableCell className="text-center">
+                              {ordem.id}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {ordem.descricao}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {ordem.status}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell className="text-center h-20" colSpan={5}>
+                            Veículo não possui ordens vinculadas
+                          </TableCell>
+                        </TableRow>
+                      )
+                    ) : (
+                      <TableRow>
+                        <TableCell className="text-center h-20" colSpan={5}>
+                          Veículo não possui ordens vinculadas
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            </div>
-    
-            <DialogFooter className="px-6 py-4">
-              <div className="flex sm:flex-row gap-3 sm:gap-4">
-                <Button
-                  type="button"
-                  disabled={isSubmitting || disabledForm}
-                  onClick={handleUpdateVeiculo}
-                  className="flex-1 text-sm sm:text-base hover:cursor-pointer"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar alterações
-                    </>
-                  )}
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="px-6 py-4">
+            <div className="flex sm:flex-row gap-3 sm:gap-4">
+              <Button
+                type="button"
+                disabled={isSubmitting || disabledForm}
+                onClick={handleUpdateVeiculo}
+                className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar alterações
+                  </>
+                )}
+              </Button>
+
+              <DialogClose asChild>
+                <Button className="hover:cursor-pointer" variant={"outline"}>
+                  Cancelar
                 </Button>
-    
-                <DialogClose asChild>
-                  <Button className="hover:cursor-pointer" variant={"outline"}>
-                    Cancelar
-                  </Button>
-                </DialogClose>
-              </div>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      );
-    }
+              </DialogClose>
+            </div>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    );
+  }
 }

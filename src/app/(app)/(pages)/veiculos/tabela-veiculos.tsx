@@ -34,6 +34,7 @@ import {
   Plus,
   FileText,
   MoreHorizontal,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   Select,
@@ -49,8 +50,15 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Pagination, Veiculo, Veiculo_tipos } from "./types";
+import { VeiculoDialog } from "./dialgo-veiculo/dialog-veiculo";
+import { useState } from "react";
+import { set } from "nprogress";
+import CustomerSelect from "../../components/customerSelect";
+import { toast } from "sonner";
+import axios, { isAxiosError } from "axios";
 
 interface TabelaVeiculosProps {
+  selectedTipo?: Veiculo_tipos; 
   isLoading: boolean;
   veiculos: Veiculo[];
   pagination: Pagination;
@@ -69,25 +77,73 @@ export default function TabelaVeiculos({
   isLoading,
   veiculos,
   pagination,
-  search
+  search,
+  selectedTipo,
 }: TabelaVeiculosProps) {
+  const [openVeiculo, setOpenVeiculo] = useState(false);
+  const [veiculoId, setSelectedVeiculoId] = useState<number | undefined>(undefined);
+  const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
+  const [openCustomerSelect, setOpenCustomerSelect] = useState(false);
+  const [transferindo, setTransferindo] = useState(false);
+
+
+  const handleVehicleTransfer = async ( novoDonoId: number) => {
+
+    toast(<div className="flex felx-row gap-1 items-center"><Loader2 className="w-3 h-3 animate-spin"/><span>Transferindo veículo...</span> </div>);
+    setTransferindo(true)
+    try {
+      const response = await axios.post(`/api/veiculos/${veiculoTransferId}/transferencia`, {
+          novoDonoId: novoDonoId,
+      });
+      if (response.status === 200) {
+        toast.success("Veículo transferido com sucesso!");
+        handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro ao transferir veículo", { description: error.response?.data.error });
+      }
+    }finally{
+          setTransferindo(false)
+
+    }
+  };
+
   return (
     <Card>
+      <VeiculoDialog
+
+      isOpen={openVeiculo}
+      setIsOpen={(open)=>{
+        setOpenVeiculo(open);
+        if(!open){
+          setSelectedVeiculoId(undefined);
+          handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo);
+        }
+      }}
+      veiculoId={veiculoId}
+      setSelectedVeiculoId={setSelectedVeiculoId}
+      onRegister={()=>handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo)}
+      />
+      <CustomerSelect
+                open={openCustomerSelect}
+                setOpen={setOpenCustomerSelect}
+                OnSelect={(c)=> handleVehicleTransfer(c.id)}
+              />
       <CardHeader className="border-b-2 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle>Lista de Veículos</CardTitle>
             <CardDescription>
-              {/* <button
+              <button
                 onClick={() => {
-                  handleGetProducts(pagination.page, pagination.limit, search, status);
-                  fetchStatusCounts();
+                  handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo);
                 }}
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
               >
                 <span>Recarregar</span>
                 <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
-              </button> */}
+              </button>
             </CardDescription>
           </div>
 
@@ -123,6 +179,7 @@ export default function TabelaVeiculos({
               <TableHead className="text-center">Placa</TableHead>
               <TableHead className="text-center">Descrição</TableHead>
               <TableHead className="text-center">Mod/Fab</TableHead>
+              <TableHead className="text-center">Proprietário</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -145,6 +202,7 @@ export default function TabelaVeiculos({
                     v.modelo ?? "-"
                   }`}</TableCell>
                   <TableCell className="text-center">{v.ano ?? "-"}</TableCell>
+                  <TableCell className="text-center">{v.cliente?.nomerazaosocial ?? "-"}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -159,20 +217,23 @@ export default function TabelaVeiculos({
                       {/* ✅ DropdownMenuItem no lugar de Button */}
                       <DropdownMenuContent align="center">
                         <DropdownMenuItem
+                        className="hover:cursor-pointer"
+                        onClick={()=>{setSelectedVeiculoId(v.id); setOpenVeiculo(true);}}
                           disabled={!canAct}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-
+                      <DropdownMenuItem
+                                  onClick={() => {setOpenCustomerSelect(true); setVeiculoTransferId(v?.id)}}
+                                  className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
+                                >
+                                  <ArrowLeftRight />
+                                  Transferir Propriedade
+                                </DropdownMenuItem>
+                       
                         <DropdownMenuItem
-                          disabled={!canAct}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Entrada
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem
+                        className="hover:cursor-pointer"
                           variant="destructive"
                         >
                           <Trash2Icon className="mr-2 h-4 w-4" />

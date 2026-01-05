@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("veiculo")
       .select(
-        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo",
+        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, cliente: cliente( nomerazaosocial, cpfcnpj, email, telefone )",
         { count: "exact" }
       )
       .order("modelo", { ascending: true })

@@ -1038,7 +1038,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell className="text-center h-20" colSpan={5}>
+                        <TableCell className="text-center h-20" colSpan={6}>
                           Cliente não possui veículos cadastrados
                         </TableCell>
                       </TableRow>

@@ -1,3 +1,5 @@
+import { Customer } from "../clientes/types";
+import { Ordem } from "../ordens/types";
 
 export enum Veiculo_tipos {
   CARROS = "CARROS",
@@ -7,6 +9,7 @@ export enum Veiculo_tipos {
 export interface Veiculo {
   id?: number,
   clienteid?: number,
+  cliente?: Customer,
   placa?: string,
   modelo?: string,
   marca?: string,
@@ -15,6 +18,8 @@ export interface Veiculo {
   cor?: string,
   kmatual?: number,
   tipo?: Veiculo_tipos
+  ordens?: Ordem[]
+  
 }
 
 export interface Pagination {
@@ -24,3 +29,6 @@ export interface Pagination {
   totalPages: number;
   pageCount?: number;
 }
+
+export const tabTheme =
+    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
