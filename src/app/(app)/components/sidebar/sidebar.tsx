@@ -42,6 +42,7 @@ import { title } from "process";
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   user?: { nome: string; email: string };
+  setOpen?: (open: boolean) => void;
 };
 
 const data = {
@@ -168,7 +169,7 @@ const data = {
   ],
 };
 
-export function AppSidebar({ user, ...props }: AppSidebarProps) {
+export function AppSidebar({ user, setOpen, ...props }: AppSidebarProps) {
   const { data: session } = useSession();
 
   // Se tiver sessão, usa usuário da sessão; senão, usa o user vindo por props (do layout)
@@ -182,7 +183,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       : null);
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar onMouseOver={()=>setOpen?.(true)} collapsible="icon" {...props}>
       <SidebarContent>
         <NavMain items={data.navOptions} />
         <NavSettings items={data.navSettings} />

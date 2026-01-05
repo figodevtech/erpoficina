@@ -60,11 +60,20 @@ export default function ClientAppShell({
   hideHeader?: boolean;
 }) {
   const pathname = usePathname();
-  const title = routeTitles[pathname] ?? humanize(pathname);
+const title = routeTitles[pathname] ?? humanize(pathname);
+
+  const [sideBarOpen, setSidebarOpen] = React.useState(true);
+
+  React.useEffect(() => {
+  // fecha sempre que entrar em /ordens (ou qualquer subrota /ordens/...)
+  if (pathname === "/ordens" || pathname.startsWith("/ordens/")) {
+    setSidebarOpen(false);
+  }
+}, [pathname]);
 
   return (
-    <SidebarProvider defaultOpen>
-      <AppSidebar />
+    <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen} >
+      <AppSidebar setOpen={setSidebarOpen}   />
 
       <SidebarInset className="flex min-h-screen min-w-0">
         {!hideHeader && (
