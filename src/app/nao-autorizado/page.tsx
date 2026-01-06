@@ -16,7 +16,7 @@ export default async function UnauthorizedPage() {
   }
 
   return (
-    <ClientAppShell config={undefined} hideHeader>
+    <ClientAppShell hideHeader>
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardHeader>
