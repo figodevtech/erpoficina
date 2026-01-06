@@ -59,7 +59,7 @@ export default function ClientAppShell({
   children,
   hideHeader = false,
 }: {
-  config: Config;
+  config: Config | undefined;
   children: React.ReactNode;
   hideHeader?: boolean;
 }) {
@@ -76,7 +76,7 @@ const title = routeTitles[pathname] ?? humanize(pathname);
 }, [pathname]);
 
 React.useEffect(() => {
-  if(!config.aviso_pagamento) return;
+  if(!config?.aviso_pagamento) return;
   toast.warning(<div><span className="text-xs text-center">Pagamento pendente, contate o time da FIGO para regularizar</span></div>, {
     richColors: true,
     closeButton:false,
@@ -85,7 +85,7 @@ React.useEffect(() => {
     dismissible:false
     
   });
-}, [config.aviso_pagamento])
+}, [config?.aviso_pagamento])
 
 if(config){
 
