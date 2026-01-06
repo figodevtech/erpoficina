@@ -3,14 +3,18 @@
 
 import * as React from "react";
 import { AppSidebar } from "../components/sidebar/sidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "../components/mode-toggle";
 import DateTimeBadge from "../components/date-time-badge";
-import { Toaster } from "@/components/ui/sonner";
 import { usePathname } from "next/navigation";
 import { Config } from "./type";
 import { toast } from "sonner";
+import { useConfig } from "./config-context";
 
 const routeTitles: Record<string, string> = {
   "/": "Início",
@@ -55,96 +59,103 @@ function humanize(path: string) {
 }
 
 export default function ClientAppShell({
-  config,
   children,
   hideHeader = false,
 }: {
-  config: Config | undefined;
   children: React.ReactNode;
   hideHeader?: boolean;
 }) {
   const pathname = usePathname();
-const title = routeTitles[pathname] ?? humanize(pathname);
+  const title = routeTitles[pathname] ?? humanize(pathname);
 
   const [sideBarOpen, setSidebarOpen] = React.useState(true);
   const [hoverHabilitado, setHoverHabilitado] = React.useState(true);
   const hoverTimerRef = React.useRef<number | null>(null);
+  const config = useConfig();
 
-
-
-React.useEffect(() => {
-  // limpa timer anterior se trocar de rota rápido
-  if (hoverTimerRef.current) {
-    window.clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = null;
-  }
-
-  const isOrdens = pathname === "/ordens" || pathname.startsWith("/ordens/");
-
-  if (isOrdens) {
-    setSidebarOpen(false);
-
-    // bloqueia hover por 1s (tempo da animação de fechar)
-    setHoverHabilitado(false);
-    hoverTimerRef.current = window.setTimeout(() => {
-      setHoverHabilitado(true);
-    }, 1000);
-  } else {
-    // fora de ordens, deixa normal
-    setHoverHabilitado(true);
-  }
-
-  return () => {
+  React.useEffect(() => {
+    // limpa timer anterior se trocar de rota rápido
     if (hoverTimerRef.current) {
       window.clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
     }
-  };
-}, [pathname]);
 
-React.useEffect(() => {
-  if(!config?.aviso_pagamento) return;
-  toast.warning(<div><span className="text-xs text-center">Pagamento pendente, contate o time da FIGO para regularizar</span></div>, {
-    richColors: true,
-    closeButton:false,
-    duration:999999999,
-    position:"bottom-center",
-    dismissible:false
-    
-  });
-}, [config?.aviso_pagamento])
+    const isOrdens = pathname === "/ordens" || pathname.startsWith("/ordens/");
 
-if(config){
+    if (isOrdens) {
+      setSidebarOpen(false);
 
-  return (
-    <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen} >
-      <AppSidebar
-        hoverHabilitado={hoverHabilitado}
+      // bloqueia hover por 1s (tempo da animação de fechar)
+      setHoverHabilitado(false);
+      hoverTimerRef.current = window.setTimeout(() => {
+        setHoverHabilitado(true);
+      }, 1000);
+    } else {
+      // fora de ordens, deixa normal
+      setHoverHabilitado(true);
+    }
 
-      setOpen={setSidebarOpen}   />
+    return () => {
+      if (hoverTimerRef.current) {
+        window.clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+    };
+  }, [pathname]);
 
-      <SidebarInset className="flex min-h-screen min-w-0">
-        {!hideHeader && (
-          <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+  React.useEffect(() => {
+    if (!config?.aviso_pagamento) return;
+    toast.warning(
+      <div>
+        <span className="text-xs text-center">
+          Pagamento pendente, contate o time da FIGO
+        </span>
+      </div>,
+      {
+        richColors: true,
+        closeButton: false,
+        duration: 999999999,
+        position: "bottom-center",
+        dismissible: false,
+      }
+    );
+  }, [config?.aviso_pagamento]);
 
-            <h2 className="text-base md:text-lg font-medium text-foreground/80">{title}</h2>
-            <div className="flex-1" />
+  if (config) {
+    return (
+      <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen}>
+        <AppSidebar
+          hoverHabilitado={hoverHabilitado}
+          setOpen={setSidebarOpen}
+        />
 
-            <DateTimeBadge />
-            <ModeToggle />
-          </header>
-        )}
+        <SidebarInset className="flex min-h-screen min-w-0">
+          {!hideHeader && (
+            <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
 
-        <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
-          <div className="mx-auto w-full px-4 md:px-6 py-4 md:py-6">
-            {children}
-            {/* <Toaster duration={4000} richColors position="bottom-right" /> */}
-          </div>
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
-  );
-}
+              <h2 className="text-base md:text-lg font-medium text-foreground/80">
+                {title}
+              </h2>
+              <div className="flex-1" />
+
+              <DateTimeBadge />
+              <ModeToggle />
+            </header>
+          )}
+
+          <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
+            <div className="mx-auto w-full px-4 md:px-6 py-4 md:py-6">
+              {children}
+              {/* <Toaster duration={4000} richColors position="bottom-right" /> */}
+            </div>
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 }
