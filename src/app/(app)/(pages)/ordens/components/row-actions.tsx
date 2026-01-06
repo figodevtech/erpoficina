@@ -29,6 +29,7 @@ import {
   ClipboardList,
   CreditCard,
 } from "lucide-react";
+import { useConfig } from "../../config-context";
 
 /** Tipo base mínimo da linha */
 export type RowBase = {
@@ -104,6 +105,8 @@ export function RowActions<TRow extends RowBase>({
   setEmissaoId: (id: number) => void;
   setEmissaoOpen: (open: boolean) => void;
 }) {
+
+  const config = useConfig();
   const st = String(row.status ?? "").toUpperCase();
 
   // Checklist
@@ -291,7 +294,7 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )}
 
-        {showEmissaoDeNota && (
+        {config.habilitar_emissao_nfe && showEmissaoDeNota && (
           <DropdownMenuItem
             onClick={() => {
               setEmissaoId(row.id)

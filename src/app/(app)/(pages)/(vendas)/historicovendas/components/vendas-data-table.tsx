@@ -36,6 +36,7 @@ import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-no
 import { VendaDetailsDialog } from "./venda-detail-dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
+import { useConfig } from "../../../config-context";
 
 interface VendasDataTableProps {
   vendas: VendaComItens[];
@@ -100,6 +101,7 @@ export default function VendasDataTable({
   const [emissaoId, setEmissaoId] = useState<number | null>(null);
   const [selectedVendaId, setSelectedVendaId] = useState<number | null>(null);
   const [openDetails, setOpenDetails] = useState(false);
+  const config = useConfig();
 
   const handleDeleteVenda = async (id: number) => {
     toast(
@@ -202,7 +204,7 @@ export default function VendasDataTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
-                        {p.status === "FINALIZADA" && (
+                        {config.habilitar_emissao_nfe && p.status === "FINALIZADA" && (
                           <DropdownMenuItem
                             onClick={() => {
                               setEmissaoId(p.id);

@@ -46,6 +46,7 @@ import Image from "next/image";
 import { useGruposProduto } from "@/app/(app)/(pages)/estoque/components/dialog-produto/hooks/use-grupo-produtos";
 import { Router } from "next/router";
 import { useRouter } from "next/navigation";
+import { useConfig } from "@/app/(app)/(pages)/config-context";
 
 interface CartItem {
   id: number;
@@ -71,6 +72,7 @@ export function POSSystem() {
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
   const router = useRouter();
+  const config = useConfig();
   
 
 
@@ -348,7 +350,8 @@ console.log(cart)
                       <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                       
                       }
-                      {product.status_estoque === Estoque_status.CRITICO && (
+                      
+                      {config.alerta_estoque_pdv && product.status_estoque === Estoque_status.CRITICO && (
                             <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
                         <Tooltip>
                           <TooltipTrigger>
@@ -358,7 +361,7 @@ console.log(cart)
                         </Tooltip>
                             </div>
                       )}
-                      {product.status_estoque === Estoque_status.BAIXO && (
+                      {config.alerta_estoque_pdv && product.status_estoque === Estoque_status.BAIXO && (
                         <div className="absolute top-1 z-20 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
                           <Tooltip>
                           <TooltipTrigger>
@@ -368,7 +371,7 @@ console.log(cart)
                         </Tooltip>
                         </div>
                       )}
-                      {product.status_estoque === Estoque_status.SEM_ESTOQUE && (
+                      {config.alerta_estoque_pdv && product.status_estoque === Estoque_status.SEM_ESTOQUE && (
                         <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-purple-800 not-dark:bg-purple-300">
                           <Tooltip>
                           <TooltipTrigger>
