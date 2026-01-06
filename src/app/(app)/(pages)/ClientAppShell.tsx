@@ -67,12 +67,39 @@ export default function ClientAppShell({
 const title = routeTitles[pathname] ?? humanize(pathname);
 
   const [sideBarOpen, setSidebarOpen] = React.useState(true);
+  const [hoverHabilitado, setHoverHabilitado] = React.useState(true);
+  const hoverTimerRef = React.useRef<number | null>(null);
 
-  React.useEffect(() => {
-  // fecha sempre que entrar em /ordens (ou qualquer subrota /ordens/...)
-  if (pathname === "/ordens" || pathname.startsWith("/ordens/")) {
-    setSidebarOpen(false);
+
+
+React.useEffect(() => {
+  // limpa timer anterior se trocar de rota rápido
+  if (hoverTimerRef.current) {
+    window.clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = null;
   }
+
+  const isOrdens = pathname === "/ordens" || pathname.startsWith("/ordens/");
+
+  if (isOrdens) {
+    setSidebarOpen(false);
+
+    // bloqueia hover por 1s (tempo da animação de fechar)
+    setHoverHabilitado(false);
+    hoverTimerRef.current = window.setTimeout(() => {
+      setHoverHabilitado(true);
+    }, 1000);
+  } else {
+    // fora de ordens, deixa normal
+    setHoverHabilitado(true);
+  }
+
+  return () => {
+    if (hoverTimerRef.current) {
+      window.clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  };
 }, [pathname]);
 
 React.useEffect(() => {
@@ -91,7 +118,10 @@ if(config){
 
   return (
     <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen} >
-      <AppSidebar setOpen={setSidebarOpen}   />
+      <AppSidebar
+        hoverHabilitado={hoverHabilitado}
+
+      setOpen={setSidebarOpen}   />
 
       <SidebarInset className="flex min-h-screen min-w-0">
         {!hideHeader && (
