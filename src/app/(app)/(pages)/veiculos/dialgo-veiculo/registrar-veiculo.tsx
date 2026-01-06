@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, ChevronsUpDown, Upload } from "lucide-react";
+import { Check, ChevronsUpDown, Search, Upload } from "lucide-react";
 import {
   DialogClose,
   DialogContent,
@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
 
 function somenteAlphaNumMaiusculo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -82,7 +83,8 @@ export default function RegisterContent({
   const [loadingModelos, setLoadingModelos] = useState(false);
   const [open1, setOpen1] = useState(false);
   const [open2, setOpen2] = useState(false);
-  const {cores, errorCores, loadingCores} = useVeiculosCores()
+  const { cores, errorCores, loadingCores } = useVeiculosCores();
+  const [openCustomer, setOpenCustomer] = useState(false);
 
   const handleInputChange = (field: keyof Veiculo, value: string) => {
     setNovoVeiculo({ ...novoVeiculo, [field]: value });
@@ -147,12 +149,12 @@ export default function RegisterContent({
           description: "Veículo cadastrado.",
           duration: 2000,
         });
-        console.log(response)
+        console.log(response);
         if (setSelectedVeiculoId) {
-          setSelectedVeiculoId(response.data.veiculo.id);
+          setSelectedVeiculoId(response.data.data.id);
         }
 
-        onRegister?.(response.data.veiculo);
+        onRegister?.(response.data.data);
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -182,11 +184,23 @@ export default function RegisterContent({
   }, [isOpen, novoVeiculo.tipo, clienteId]);
 
   useEffect(() => {
+    if (isOpen && novoVeiculo.tipo) {
+      handleGetMarcas();
+    }
+  }, [isOpen, novoVeiculo.tipo]);
+
+  useEffect(() => {
     if (isOpen && clienteId && novoVeiculo.tipo && novoVeiculo.marcaId) {
       handleGetModelos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, novoVeiculo.tipo, clienteId, novoVeiculo.marcaId]);
+  useEffect(() => {
+    if (isOpen && novoVeiculo.tipo && novoVeiculo.marcaId) {
+      handleGetModelos();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, novoVeiculo.tipo, novoVeiculo.marcaId]);
 
   const marcaSelecionada = marcas.find((m) => m.valor === novoVeiculo.marcaId);
 
@@ -199,30 +213,64 @@ export default function RegisterContent({
             Preencha os dados para registrar um novo veículo
           </DialogDescription>
         </DialogHeader>
+        <CustomerSelect
+          open={openCustomer}
+          setOpen={setOpenCustomer}
+          OnSelect={(c) =>
+            setNovoVeiculo({ ...novoVeiculo, clienteid: c.id, cliente: c })
+          }
+        />
 
         <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
           {/* Tipo */}
-          <div className="space-y-2">
-            <Label htmlFor="tipo" className="text-sm sm:text-base">
-              Tipo de Veículo *
-            </Label>
-            <Select
-              value={(novoVeiculo.tipo as unknown as string) || ""}
-              onValueChange={(value: Veiculo_tipos) =>
-                handleInputChange("tipo", value)
-              }
-            >
-              <SelectTrigger className="h-10 sm:h-11">
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.keys(Veiculo_tipos).map((tipo, i) => (
-                  <SelectItem className="hover:cursor-pointer" key={i} value={tipo}>
-                    {tipo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-row items-center gap-4">
+            <div className="space-y-2 text-nowrap">
+              <Label htmlFor="tipo" className="text-sm sm:text-base">
+                Tipo de Veículo *
+              </Label>
+              <Select
+                value={(novoVeiculo.tipo as unknown as string) || ""}
+                onValueChange={(value: Veiculo_tipos) =>
+                  handleInputChange("tipo", value)
+                }
+              >
+                <SelectTrigger className="h-10 sm:h-11">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(Veiculo_tipos).map((tipo, i) => (
+                    <SelectItem
+                      className="hover:cursor-pointer"
+                      key={i}
+                      value={tipo}
+                    >
+                      {tipo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {!clienteId && (
+
+            <div className="space-y-2 w-full">
+              <Label htmlFor="tipo" className="text-sm sm:text-base">
+                Cliente proprietário
+              </Label>
+              <div className="flex flex-row items-center gap-1">
+                <Input
+                  className="w-full"
+                  value={novoVeiculo?.cliente?.nomerazaosocial || ""}
+                  disabled={true}
+                />
+                <div
+                  onClick={() => setOpenCustomer(true)}
+                  className="flex items-center hover:cursor-pointer p-1.5 rounded-full bg-muted"
+                >
+                  <Search className="w-4 h-4 text-primary" />
+                </div>
+              </div>
+            </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -392,15 +440,28 @@ export default function RegisterContent({
               <Label htmlFor="cor" className="text-sm sm:text-base">
                 Cor
               </Label>
-              <Select value={novoVeiculo.cor || ""}
-              onValueChange={(value)=>setNovoVeiculo({...novoVeiculo, cor: value})}
+              <Select
+                value={novoVeiculo.cor || ""}
+                onValueChange={(value) =>
+                  setNovoVeiculo({ ...novoVeiculo, cor: value })
+                }
               >
                 <SelectTrigger className="w-full" disabled={loadingCores}>
-                  <SelectValue placeholder={loadingCores ?"Carregando..." : "Selecione a cor"}></SelectValue>
+                  <SelectValue
+                    placeholder={
+                      loadingCores ? "Carregando..." : "Selecione a cor"
+                    }
+                  ></SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {cores.map((c)=>(
-                    <SelectItem className="hover:cursor-pointer" key={c.id} value={c.nome}>{c.nome}</SelectItem>
+                  {cores.map((c) => (
+                    <SelectItem
+                      className="hover:cursor-pointer"
+                      key={c.id}
+                      value={c.nome}
+                    >
+                      {c.nome}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
