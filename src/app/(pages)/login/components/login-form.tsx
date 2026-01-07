@@ -11,14 +11,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import ForgotPasswordDialog from "./forgot-password-dialog";
-import PatioDemir from "@/lib/images/Patio_Demir-Injecao-Eletronica-Diesel-scaled.jpg";
-import DemirLogo from "@/lib/images/demirLogo.png";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const supabaseUrl =process.env.NEXT_PUBLIC_SUPABASE_URL
 
   const [forgotOpen, setForgotOpen] = useState(false);
 
@@ -147,14 +146,18 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
           <div className="bg-muted relative hidden overflow-hidden md:block group">
             <div className="w-full absolute z-20 h-full flex p-6 justify-center">
               <Image
-                src={DemirLogo}
+              width={480}
+              height={480}
+                src={supabaseUrl + "/storage/v1/object/public/empresa/images/logo/image.png"}
                 alt="Patio Demir - Injeção Eletrônica Diesel"
                 className="absolute object-cover w-[120px] opacity-85 group-hover:opacity-95 transition-all"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-b from-blue-800/50 to-cyan-300/10 z-10"></div>
             <Image
-              src={PatioDemir}
+            width={720}
+            height={720}
+              src={supabaseUrl + "/storage/v1/object/public/empresa/images/login/image.jpg"}
               alt="Patio Demir - Injeção Eletrônica Diesel"
               className="absolute h-full w-full object-cover scale-150"
             />
