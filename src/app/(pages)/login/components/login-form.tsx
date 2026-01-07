@@ -8,18 +8,72 @@ import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import ForgotPasswordDialog from "./forgot-password-dialog";
+
+type StatusImagem = "idle" | "ok" | "erro";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabaseUrl =process.env.NEXT_PUBLIC_SUPABASE_URL
 
   const [forgotOpen, setForgotOpen] = useState(false);
+
+  // Base do Supabase
+  const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+
+  // URLs (Supabase)
+  const logoSrc = useMemo(() => {
+    if (!supabaseBaseUrl) return "";
+    try {
+      return new URL(
+        "/storage/v1/object/public/empresa/images/logo/logo.png",
+        supabaseBaseUrl
+      ).toString();
+    } catch {
+      return "";
+    }
+  }, [supabaseBaseUrl]);
+
+  const loginBgSupabaseSrc = useMemo(() => {
+    if (!supabaseBaseUrl) return "";
+    try {
+      return new URL(
+        "/storage/v1/object/public/empresa/images/login/login.jpg",
+        supabaseBaseUrl
+      ).toString();
+    } catch {
+      return "";
+    }
+  }, [supabaseBaseUrl]);
+
+  // ✅ Fallback local SOMENTE do background
+  // Coloque essa imagem em /public/images/login-fallback.jpg
+  const loginBgFallbackSrc = "/images/login-fallback.jpg";
+
+  /**
+   * ✅ Logo: se falhar -> some e NÃO mostra fallback
+   * - começa invisível (idle)
+   * - só aparece quando carregar (ok)
+   * - se der erro (erro) -> não renderiza mais
+   */
+  const [statusLogo, setStatusLogo] = useState<StatusImagem>("idle");
+
+  /**
+   * ✅ Background: tenta Supabase, se falhar troca pro fallback local
+   * - se não tiver supabase url válido, já começa no fallback
+   */
+  const [bgSrcAtual, setBgSrcAtual] = useState<string>(
+    loginBgSupabaseSrc || loginBgFallbackSrc
+  );
+  const [statusBg, setStatusBg] = useState<StatusImagem>("idle");
+  const [jaCaiuNoFallback, setJaCaiuNoFallback] = useState<boolean>(
+    !loginBgSupabaseSrc
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,17 +93,12 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
       });
 
       if (res?.error) {
-        // Se quiser ver o erro exato enquanto ajusta:
-        // console.log("res.error =>", res.error);
-
         switch (res.error) {
-          // Erro padrão do CredentialsProvider quando authorize retorna null
           case "CredentialsSignin":
           case "INVALID_CREDENTIALS":
             toast.error("E-mail ou senha inválidos.");
             break;
 
-          // Erro padrão quando authorize lança uma exception (USER_BLOCKED no servidor)
           case "CallbackRouteError":
           case "USER_BLOCKED":
             toast.error(
@@ -57,8 +106,6 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
             );
             break;
 
-          // Se em algum lugar você ainda lançar essas mensagens literais,
-          // elas continuam tratadas aqui:
           case "MISSING_CREDENTIALS":
           case "Por favor, forneça e-mail e senha.":
             toast.error("Por favor, preencha e-mail e senha.");
@@ -98,7 +145,9 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Bem-vindo de volta</h1>
-                <p className="text-muted-foreground text-balance">Conectar ao ERP</p>
+                <p className="text-muted-foreground text-balance">
+                  Conectar ao ERP
+                </p>
               </div>
 
               <div className="grid gap-3">
@@ -118,6 +167,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Senha</Label>
                 </div>
+
                 <Input
                   id="password"
                   type="password"
@@ -144,22 +194,50 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
           </form>
 
           <div className="bg-muted relative hidden overflow-hidden md:block group">
+            {/* Logo: NÃO tem fallback — se falhar, não aparece */}
             <div className="w-full absolute z-20 h-full flex p-6 justify-center">
-              <Image
-              width={480}
-              height={480}
-                src={supabaseUrl + "/storage/v1/object/public/empresa/images/logo/logo.png"}
-                alt="logo"
-                className="absolute object-cover w-[120px] opacity-85 group-hover:opacity-95 transition-all"
-              />
+              {!!logoSrc && statusLogo !== "erro" && (
+                <Image
+                  width={480}
+                  height={480}
+                  src={logoSrc}
+                  alt="logo"
+                  className={cn(
+                    "absolute object-cover w-[120px] transition-all",
+                    statusLogo === "ok"
+                      ? "opacity-85 group-hover:opacity-95"
+                      : "opacity-0"
+                  )}
+                  onLoadingComplete={() => setStatusLogo("ok")}
+                  onError={() => setStatusLogo("erro")}
+                />
+              )}
             </div>
-            <div className="absolute inset-0 bg-gradient-to-b from-blue-800/50 to-cyan-300/10 z-10"></div>
+
+            <div className="absolute inset-0 bg-gradient-to-b from-blue-800/50 to-cyan-300/10 z-10" />
+
+            {/* Background: com fallback local */}
             <Image
-            width={720}
-            height={720}
-              src={supabaseUrl + "/storage/v1/object/public/empresa/images/login/login.jpg"}
+              width={720}
+              height={720}
+              src={bgSrcAtual}
               alt="imagem_login"
-              className="absolute h-full w-full object-cover scale-150"
+              className={cn(
+                "absolute h-full w-full object-cover scale-150 transition-opacity",
+                statusBg === "ok" ? "opacity-100" : "opacity-0"
+              )}
+              onLoadingComplete={() => setStatusBg("ok")}
+              onError={() => {
+                // Se falhar no Supabase, troca pro fallback e tenta de novo
+                if (!jaCaiuNoFallback) {
+                  setJaCaiuNoFallback(true);
+                  setStatusBg("idle");
+                  setBgSrcAtual(loginBgFallbackSrc);
+                  return;
+                }
+                // Se até o fallback falhar, só não mostra
+                setStatusBg("erro");
+              }}
             />
           </div>
         </CardContent>
@@ -170,7 +248,6 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
         <a href="#">Política de Privacidade</a>.
       </div>
 
-      {/* Dialog Esqueci minha senha */}
       <ForgotPasswordDialog open={forgotOpen} onOpenChange={setForgotOpen} />
     </div>
   );
