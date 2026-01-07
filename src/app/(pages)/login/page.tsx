@@ -4,6 +4,9 @@ import { getQuoteOfTheDay } from "@/lib/quotes";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function LoginPage() {
   const { text, author, obs } = getQuoteOfTheDay();
   const session = await auth();
@@ -11,7 +14,7 @@ export default async function LoginPage() {
   if (session) {
     redirect("/dashboard");
   }
-  
+
   return (
     <div className="flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
       <span className="mb-4 text-xs text-muted-foreground">
@@ -25,6 +28,7 @@ export default async function LoginPage() {
           </Tooltip>
         </blockquote>
       </span>
+
       <div className="w-full max-w-sm md:max-w-3xl">
         <LoginForm />
       </div>
