@@ -8,11 +8,72 @@ import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import ForgotPasswordDialog from "./forgot-password-dialog";
 
-type StatusImagem = "idle" | "ok" | "erro";
+/**
+ * Checa existência da URL evitando cache (quando possível).
+ * Alguns servidores não suportam HEAD (405) ou bloqueiam (403) — nesse caso tenta GET.
+ */
+async function urlExiste(url: string, signal?: AbortSignal): Promise<boolean> {
+  try {
+    const head = await fetch(url, { method: "HEAD", cache: "no-store", signal });
+    if (head.ok) return true;
+
+    if (head.status === 405 || head.status === 403) {
+      const get = await fetch(url, { method: "GET", cache: "no-store", signal });
+      return get.ok;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pré-carrega imagem no browser sem renderizar.
+ * Assim você evita mostrar fallback “primeiro” e trocar depois.
+ */
+function preloadImage(src: string, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Em SSR não existe window/Image
+    if (typeof window === "undefined") return resolve();
+
+    const img = new window.Image();
+    img.decoding = "async";
+
+    const cleanup = () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+
+    const onAbort = () => {
+      cleanup();
+      reject(new Error("abort"));
+    };
+
+    if (signal) {
+      if (signal.aborted) return onAbort();
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    img.onload = () => {
+      cleanup();
+      resolve();
+    };
+
+    img.onerror = () => {
+      cleanup();
+      reject(new Error("error"));
+    };
+
+    img.src = src;
+  });
+}
+
+type BgState = "loading" | "ready" | "hidden";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("");
@@ -26,7 +87,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   // Base do Supabase
   const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 
-  // URLs (Supabase)
+  // URLs (Supabase) montadas com segurança
   const logoSrc = useMemo(() => {
     if (!supabaseBaseUrl) return "";
     try {
@@ -51,29 +112,101 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
     }
   }, [supabaseBaseUrl]);
 
-  // ✅ Fallback local SOMENTE do background
-  // Coloque essa imagem em /public/images/login-fallback.jpg
+  /**
+   * ✅ Fallback local SOMENTE para o background
+   * Coloque em: /public/images/login-fallback.jpg
+   */
   const loginBgFallbackSrc = "/images/login-fallback.jpg";
 
   /**
-   * ✅ Logo: se falhar -> some e NÃO mostra fallback
-   * - começa invisível (idle)
-   * - só aparece quando carregar (ok)
-   * - se der erro (erro) -> não renderiza mais
+   * ✅ Logo: só renderiza se for válida (sem fallback)
    */
-  const [statusLogo, setStatusLogo] = useState<StatusImagem>("idle");
+  const [logoOk, setLogoOk] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function validarLogo() {
+      if (!logoSrc) {
+        setLogoOk(false);
+        return;
+      }
+      const existe = await urlExiste(logoSrc, controller.signal);
+      if (controller.signal.aborted) return;
+      setLogoOk(existe);
+    }
+
+    validarLogo();
+    return () => controller.abort();
+  }, [logoSrc]);
 
   /**
-   * ✅ Background: tenta Supabase, se falhar troca pro fallback local
-   * - se não tiver supabase url válido, já começa no fallback
+   * ✅ Background sem "troca feia":
+   * - Enquanto decide/carrega, não mostra imagem (só bg-muted + gradiente).
+   * - Se Supabase existir: pré-carrega e só então exibe.
+   * - Se não existir/falhar: pré-carrega fallback e exibe.
    */
-  const [bgSrcAtual, setBgSrcAtual] = useState<string>(
-    loginBgSupabaseSrc || loginBgFallbackSrc
-  );
-  const [statusBg, setStatusBg] = useState<StatusImagem>("idle");
-  const [jaCaiuNoFallback, setJaCaiuNoFallback] = useState<boolean>(
-    !loginBgSupabaseSrc
-  );
+  const [bgSrc, setBgSrc] = useState<string>("");
+  const [bgState, setBgState] = useState<BgState>("loading");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let ativo = true;
+
+    async function resolverBackground() {
+      setBgState("loading");
+      setBgSrc("");
+
+      // 1) Se não tem URL de supabase, vai direto pro fallback (sem piscar)
+      if (!loginBgSupabaseSrc) {
+        try {
+          await preloadImage(loginBgFallbackSrc, controller.signal);
+          if (!ativo || controller.signal.aborted) return;
+          setBgSrc(loginBgFallbackSrc);
+          setBgState("ready");
+        } catch {
+          if (!ativo || controller.signal.aborted) return;
+          setBgState("hidden");
+        }
+        return;
+      }
+
+      // 2) Se tem URL, valida se existe de verdade
+      const existe = await urlExiste(loginBgSupabaseSrc, controller.signal);
+      if (!ativo || controller.signal.aborted) return;
+
+      // 3) Se existe: pré-carrega Supabase e só então mostra
+      if (existe) {
+        try {
+          await preloadImage(loginBgSupabaseSrc, controller.signal);
+          if (!ativo || controller.signal.aborted) return;
+          setBgSrc(loginBgSupabaseSrc);
+          setBgState("ready");
+          return;
+        } catch {
+          // falhou no preload -> cai pro fallback
+        }
+      }
+
+      // 4) Fallback (só aparece aqui se supabase não existir ou falhou)
+      try {
+        await preloadImage(loginBgFallbackSrc, controller.signal);
+        if (!ativo || controller.signal.aborted) return;
+        setBgSrc(loginBgFallbackSrc);
+        setBgState("ready");
+      } catch {
+        if (!ativo || controller.signal.aborted) return;
+        setBgState("hidden");
+      }
+    }
+
+    resolverBackground();
+
+    return () => {
+      ativo = false;
+      controller.abort();
+    };
+  }, [loginBgSupabaseSrc, loginBgFallbackSrc]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +257,6 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
             toast.error("Não foi possível fazer login. Tente novamente.");
             break;
         }
-
         return;
       }
 
@@ -194,51 +326,40 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
           </form>
 
           <div className="bg-muted relative hidden overflow-hidden md:block group">
-            {/* Logo: NÃO tem fallback — se falhar, não aparece */}
+            {/* Logo: SEM fallback — só aparece se for válida */}
             <div className="w-full absolute z-20 h-full flex p-6 justify-center">
-              {!!logoSrc && statusLogo !== "erro" && (
+              {logoOk && !!logoSrc && (
                 <Image
                   width={480}
                   height={480}
                   src={logoSrc}
                   alt="logo"
-                  className={cn(
-                    "absolute object-cover w-[120px] transition-all",
-                    statusLogo === "ok"
-                      ? "opacity-85 group-hover:opacity-95"
-                      : "opacity-0"
-                  )}
-                  onLoadingComplete={() => setStatusLogo("ok")}
-                  onError={() => setStatusLogo("erro")}
+                  className="absolute object-cover w-[120px] opacity-85 group-hover:opacity-95 transition-all"
+                  unoptimized
+                  onError={() => setLogoOk(false)}
                 />
               )}
             </div>
 
+            {/* Gradiente sempre presente */}
             <div className="absolute inset-0 bg-gradient-to-b from-blue-800/50 to-cyan-300/10 z-10" />
 
-            {/* Background: com fallback local */}
-            <Image
-              width={720}
-              height={720}
-              src={bgSrcAtual}
-              alt="imagem_login"
-              className={cn(
-                "absolute h-full w-full object-cover scale-150 transition-opacity",
-                statusBg === "ok" ? "opacity-100" : "opacity-0"
-              )}
-              onLoadingComplete={() => setStatusBg("ok")}
-              onError={() => {
-                // Se falhar no Supabase, troca pro fallback e tenta de novo
-                if (!jaCaiuNoFallback) {
-                  setJaCaiuNoFallback(true);
-                  setStatusBg("idle");
-                  setBgSrcAtual(loginBgFallbackSrc);
-                  return;
-                }
-                // Se até o fallback falhar, só não mostra
-                setStatusBg("erro");
-              }}
-            />
+            {/* Background: só aparece quando estiver pronto (supabase OU fallback) */}
+            {bgState === "ready" && !!bgSrc && (
+              <Image
+                key={bgSrc}
+                width={720}
+                height={720}
+                src={bgSrc}
+                alt="imagem_login"
+                className="absolute h-full w-full object-cover scale-150"
+                unoptimized
+                onError={() => {
+                  // Se por algum motivo der erro mesmo após preload, esconde
+                  setBgState("hidden");
+                }}
+              />
+            )}
           </div>
         </CardContent>
       </Card>
