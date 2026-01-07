@@ -148,8 +148,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
               <Image
               width={480}
               height={480}
-                src={supabaseUrl + "/storage/v1/object/public/empresa/images/logo/image.png"}
-                alt="Patio Demir - Injeção Eletrônica Diesel"
+                src={supabaseUrl + "/storage/v1/object/public/empresa/images/logo/logo.png"}
+                alt="logo"
                 className="absolute object-cover w-[120px] opacity-85 group-hover:opacity-95 transition-all"
               />
             </div>
@@ -157,8 +157,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
             <Image
             width={720}
             height={720}
-              src={supabaseUrl + "/storage/v1/object/public/empresa/images/login/image.jpg"}
-              alt="Patio Demir - Injeção Eletrônica Diesel"
+              src={supabaseUrl + "/storage/v1/object/public/empresa/images/login/login.jpg"}
+              alt="imagem_login"
               className="absolute h-full w-full object-cover scale-150"
             />
           </div>
