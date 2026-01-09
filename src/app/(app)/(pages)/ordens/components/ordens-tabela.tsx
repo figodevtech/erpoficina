@@ -529,11 +529,11 @@ export function OrdensTabela({
             <Table className="text-xs">
               <TableHeader>
                 <TableRow className="bg-muted/40">
-                  <TableHead className="min-w-[80px]">#</TableHead>
+                  <TableHead className="min-w-[40px]">#</TableHead>
                   <TableHead className="min-w-[240px]">Cliente / Veículo</TableHead>
                   <TableHead className="min-w-[220px]">Descrição</TableHead>
 
-                  <TableHead className="min-w-[130px]">
+                  <TableHead className="min-w-[100px]">
                     <SortableHeader
                       label="Entrada"
                       columnKey="entrada"
@@ -542,7 +542,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
-                  <TableHead className="min-w-[130px]">
+                  <TableHead className="min-w-[100px]">
                     <SortableHeader
                       label="Saída"
                       columnKey="saida"
@@ -569,7 +569,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
-                  <TableHead className="min-w-[120px]">
+                  <TableHead className="min-w-[70px]">
                     <SortableHeader
                       label="Tempo"
                       columnKey="tempo"
@@ -578,7 +578,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
-                  <TableHead className="min-w-[80px] text-end">Ações</TableHead>
+                  <TableHead className="min-w-[70px] text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -661,13 +661,21 @@ export function OrdensTabela({
                         <TableCell className="max-w-[380px]">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="truncate">{descShort}</div>
+                              <div
+                                className="
+          whitespace-normal break-words
+          line-clamp-2
+          text-sm
+        "
+                              >
+                                {descFull}
+                              </div>
                             </TooltipTrigger>
-                            {descFull.length > MAX_DESC_CHARS && (
-                              <TooltipContent>
-                                <p className="max-w-xs break-words">{descFull}</p>
-                              </TooltipContent>
-                            )}
+
+                            {/* Tooltip sempre mostra completo (ou deixe condicional se preferir) */}
+                            <TooltipContent className="max-w-sm">
+                              <p className="whitespace-pre-wrap break-words">{descFull}</p>
+                            </TooltipContent>
                           </Tooltip>
                         </TableCell>
 
@@ -690,7 +698,7 @@ export function OrdensTabela({
 
                         <TableCell>{renderTempo(r)}</TableCell>
 
-                        <TableCell className="text-right">
+                        <TableCell className="text-center">
                           <RowActions
                             row={r}
                             policy={policy}
