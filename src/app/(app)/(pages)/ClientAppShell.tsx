@@ -138,6 +138,8 @@ export default function ClientAppShell({
           </div>
         )}
 
+        {/* teste */}
+
         <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
           {/* se estiver sem header, adiciona padding-top pra não ficar “por baixo” do trigger flutuante */}
           <div className={`mx-auto w-full px-4 md:px-6 py-4 md:py-6 ${hideHeader ? "pt-14" : ""}`}>{children}</div>
