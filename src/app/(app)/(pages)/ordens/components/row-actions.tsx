@@ -294,7 +294,7 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )}
 
-        {config.habilitar_emissao_nfe && showEmissaoDeNota && (
+        {config?.habilitar_emissao_nfe && showEmissaoDeNota && (
           <DropdownMenuItem
             onClick={() => {
               setEmissaoId(row.id)
