@@ -4,7 +4,7 @@ import * as React from "react";
 import type { Config } from "./type";
 
 type ConfigContextValue = {
-  config: Config;
+  config: Config | null;
 };
 
 const ConfigContext = React.createContext<ConfigContextValue | null>(null);
@@ -13,14 +13,18 @@ export function ConfigProvider({
   config,
   children,
 }: {
-  config: Config;
+  config: Config | null;
   children: React.ReactNode;
 }) {
-  return (
-    <ConfigContext.Provider value={{ config }}>
-      {children}
-    </ConfigContext.Provider>
-  );
+
+
+    
+    return (
+      <ConfigContext.Provider value={{ config }}>
+        {children}
+      </ConfigContext.Provider>
+    );
+  
 }
 
 export function useConfig() {

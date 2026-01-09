@@ -121,7 +121,6 @@ export default function ClientAppShell({
     );
   }, [config?.aviso_pagamento]);
 
-  if (config) {
     return (
       <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen}>
         <AppSidebar
@@ -158,4 +157,4 @@ export default function ClientAppShell({
       </SidebarProvider>
     );
   }
-}
+

@@ -5,6 +5,7 @@ import ClientAppShell from "../(app)/(pages)/ClientAppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ConfigProvider } from "../(app)/(pages)/config-context";
 
 export const dynamic = "force-dynamic";
 
@@ -16,24 +17,26 @@ export default async function UnauthorizedPage() {
   }
 
   return (
-    <ClientAppShell hideHeader>
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Acesso não autorizado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">
-              Você não tem permissão para acessar esta página.
-              <br />
-              Consulte o administrador do sistema para solicitar acesso.
-            </p>
-            <Button asChild variant="outline">
-              <Link href="/">Ir para o início</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </ClientAppShell>
+    <ConfigProvider config={null}>
+      <ClientAppShell hideHeader>
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Acesso não autorizado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Você não tem permissão para acessar esta página.
+                <br />
+                Consulte o administrador do sistema para solicitar acesso.
+              </p>
+              <Button asChild variant="outline">
+                <Link href="/">Ir para o início</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </ClientAppShell>
+    </ConfigProvider>
   );
 }
