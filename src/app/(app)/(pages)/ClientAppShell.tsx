@@ -3,11 +3,7 @@
 
 import * as React from "react";
 import { AppSidebar } from "../components/sidebar/sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "../components/mode-toggle";
 import DateTimeBadge from "../components/date-time-badge";
@@ -107,9 +103,7 @@ export default function ClientAppShell({
     if (!config?.aviso_pagamento) return;
     toast.warning(
       <div>
-        <span className="text-xs text-center">
-          Pagamento pendente, contate o time da FIGO
-        </span>
+        <span className="text-xs text-center">Pagamento pendente, contate o time da FIGO</span>
       </div>,
       {
         richColors: true,
@@ -121,40 +115,34 @@ export default function ClientAppShell({
     );
   }, [config?.aviso_pagamento]);
 
-    return (
-      <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen}>
-        <AppSidebar
-          hoverHabilitado={hoverHabilitado}
-          setOpen={setSidebarOpen}
-        />
+  return (
+    <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen}>
+      <AppSidebar hoverHabilitado={hoverHabilitado} setOpen={setSidebarOpen} />
 
-        <SidebarInset className="flex min-h-screen min-w-0">
-          {!hideHeader && (
-            <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger className="-ml-1" />
-              <Separator
-                orientation="vertical"
-                className="mr-2 data-[orientation=vertical]:h-4"
-              />
+      <SidebarInset className="flex min-h-screen min-w-0">
+        {!hideHeader ? (
+          <header className="flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
 
-              <h2 className="text-base md:text-lg font-medium text-foreground/80">
-                {title}
-              </h2>
-              <div className="flex-1" />
+            <h2 className="text-base md:text-lg font-medium text-foreground/80">{title}</h2>
+            <div className="flex-1" />
 
-              <DateTimeBadge />
-              <ModeToggle />
-            </header>
-          )}
+            <DateTimeBadge />
+            <ModeToggle />
+          </header>
+        ) : (
+          // ✅ quando não tem header, mostra um trigger flutuante no mobile
+          <div className="md:hidden fixed left-3 top-3 z-50">
+            <SidebarTrigger className="h-10 w-10 rounded-md border bg-background/90 shadow-sm backdrop-blur" />
+          </div>
+        )}
 
-          <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
-            <div className="mx-auto w-full px-4 md:px-6 py-4 md:py-6">
-              {children}
-              {/* <Toaster duration={4000} richColors position="bottom-right" /> */}
-            </div>
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
+        <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
+          {/* se estiver sem header, adiciona padding-top pra não ficar “por baixo” do trigger flutuante */}
+          <div className={`mx-auto w-full px-4 md:px-6 py-4 md:py-6 ${hideHeader ? "pt-14" : ""}`}>{children}</div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
