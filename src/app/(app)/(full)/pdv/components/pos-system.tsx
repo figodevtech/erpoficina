@@ -351,7 +351,7 @@ console.log(cart)
                       
                       }
                       
-                      {config.alerta_estoque_pdv && product.status_estoque === Estoque_status.CRITICO && (
+                      {config?.alerta_estoque_pdv && product.status_estoque === Estoque_status.CRITICO && (
                             <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
                         <Tooltip>
                           <TooltipTrigger>
@@ -361,7 +361,7 @@ console.log(cart)
                         </Tooltip>
                             </div>
                       )}
-                      {config.alerta_estoque_pdv && product.status_estoque === Estoque_status.BAIXO && (
+                      {config?.alerta_estoque_pdv && product.status_estoque === Estoque_status.BAIXO && (
                         <div className="absolute top-1 z-20 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
                           <Tooltip>
                           <TooltipTrigger>
@@ -371,7 +371,7 @@ console.log(cart)
                         </Tooltip>
                         </div>
                       )}
-                      {config.alerta_estoque_pdv && product.status_estoque === Estoque_status.SEM_ESTOQUE && (
+                      {config?.alerta_estoque_pdv && product.status_estoque === Estoque_status.SEM_ESTOQUE && (
                         <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-purple-800 not-dark:bg-purple-300">
                           <Tooltip>
                           <TooltipTrigger>
