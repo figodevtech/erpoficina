@@ -1,4 +1,5 @@
 export default function formatarTelefone(numero: string) {
+  if(!numero) return null;
   const numeros = numero.replace(/\D/g, '');
 
   if (numeros.length === 11) {
