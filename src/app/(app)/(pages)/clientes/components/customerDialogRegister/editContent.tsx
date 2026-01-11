@@ -140,7 +140,8 @@ export default function EditContent({ customerId }: EditContentProps) {
   };
 
   const handleGetCNPJ = async () => {
-    if (selectedCustomer && selectedCustomer?.cpfcnpj?.length < 14) {
+    if (selectedCustomer?.cpfcnpj && selectedCustomer?.cpfcnpj?.length < 14) {
+      toast.warning("CPF inválido para consulta de CNPJ");
       return;
     }
     setIsLoadingCNPJ(true);
@@ -151,18 +152,21 @@ export default function EditContent({ customerId }: EditContentProps) {
       if (response.status === 200) {
         console.log(response.data);
         const juridica = response.data;
-        ({
-          ...selectedCustomer,
-          nomerazaosocial: juridica.razao_social,
-          cep: juridica.estabelecimento.cep,
-          email: juridica.estabelecimento.email,
-          endereconumero: juridica.estabelecimento.numero,
-          telefone: `${juridica.estabelecimento.ddd1}${juridica.estabelecimento.telefone1}`,
-          estado: juridica.estabelecimento.estado.sigla,
-          cidade: juridica.estabelecimento.cidade.nome,
-          endereco: juridica.estabelecimento.logradouro,
-          enderecocomplemento: juridica.estabelecimento.complemento,
-          bairro: juridica.estabelecimento.bairro,
+        setselectedCustomer((prev) => {
+          if (!prev) return undefined;
+          return {
+            ...prev,
+            nomerazaosocial: juridica.razao_social,
+            cep: juridica.estabelecimento.cep,
+            email: juridica.estabelecimento.email,
+            endereconumero: juridica.estabelecimento.numero,
+            telefone: `${juridica.estabelecimento.ddd1}${juridica.estabelecimento.telefone1}`,
+            estado: juridica.estabelecimento.estado.sigla,
+            cidade: juridica.estabelecimento.cidade.nome,
+            endereco: juridica.estabelecimento.logradouro,
+            enderecocomplemento: juridica.estabelecimento.complemento,
+            bairro: juridica.estabelecimento.bairro,
+          };
         });
       }
     } catch (error) {

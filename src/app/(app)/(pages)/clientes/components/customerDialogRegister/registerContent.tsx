@@ -121,6 +121,8 @@ export default function RegisterContent({
 
   const handleGetCNPJ = async () => {
     if (newCustomer.cpfcnpj.length < 14) {
+      toast.warning("CPF inválido para consulta de CNPJ");
+      
       return;
     }
     setIsLoadingCNPJ(true);
@@ -413,7 +415,7 @@ export default function RegisterContent({
                 inputMode="tel"
                 id="telefone"
                 className=""
-                value={formatTelefone(newCustomer.telefone || "")}
+                value={formatTelefone(newCustomer.telefone) || ""}
                 onChange={(e) => {
                   const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
                   handleInputChange("telefone", raw);
@@ -440,7 +442,7 @@ export default function RegisterContent({
                   <Input
                     id="cep"
                     className=""
-                    value={formatCep(newCustomer.cep || "")}
+                    value={formatCep(newCustomer.cep) || ""}
                     onChange={(e) => handleInputChange("cep", e.target.value)}
                     placeholder="00000-000"
                     maxLength={9}
