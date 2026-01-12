@@ -1,4 +1,3 @@
-// src/app/(app)/(pages)/ordens/components/orcamento/components/tabela-itens-produto.tsx
 "use client";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, AlertTriangle } from "lucide-react";
 import type { ItemProduto } from "../tipos";
 import { CampoQuantidade } from "./campo-quantidade";
+import { CampoPreco } from "./campo-preco";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -15,7 +15,6 @@ type Props = {
   itens: ItemProduto[];
   onAtualizar: (index: number, patch: Partial<ItemProduto>) => void;
   onRemover: (index: number) => void;
-  // produtoid -> {disponivel, solicitado}
   errosEstoque?: Record<number, { disponivel: number; solicitado: number }>;
 };
 
@@ -40,6 +39,7 @@ export function TabelaItensProduto({ itens, onAtualizar, onRemover, errosEstoque
               <TableHead className="w-[4%] text-center">Ação</TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {itens.length === 0 ? (
               <TableRow>
@@ -50,6 +50,7 @@ export function TabelaItensProduto({ itens, onAtualizar, onRemover, errosEstoque
             ) : (
               itens.map((it, i) => {
                 const falta = errosEstoque?.[it.produtoid];
+
                 return (
                   <TableRow
                     key={`${it.produtoid}-${i}`}
@@ -61,6 +62,7 @@ export function TabelaItensProduto({ itens, onAtualizar, onRemover, errosEstoque
                         {falta && <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />}
                         <span>{it.descricao}</span>
                       </div>
+
                       {falta && (
                         <div className="mt-1 text-xs text-destructive">
                           Estoque insuficiente — disponível: <b>{falta.disponivel}</b>, solicitado:{" "}
@@ -68,11 +70,34 @@ export function TabelaItensProduto({ itens, onAtualizar, onRemover, errosEstoque
                         </div>
                       )}
                     </TableCell>
+
                     <TableCell className="text-center">
-                      <CampoQuantidade value={it.quantidade} onChange={(n) => onAtualizar(i, { quantidade: n })} min={0} />
+                      <CampoQuantidade
+                        value={it.quantidade}
+                        onChange={(n) =>
+                          onAtualizar(i, {
+                            quantidade: n,
+                            subtotal: Number((n * it.precounitario).toFixed(2)),
+                          })
+                        }
+                        min={0}
+                      />
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{money(it.precounitario)}</TableCell>
+
+                    <TableCell className="text-right">
+                      <CampoPreco
+                        value={it.precounitario}
+                        onChange={(n) =>
+                          onAtualizar(i, {
+                            precounitario: n,
+                            subtotal: Number((n * it.quantidade).toFixed(2)),
+                          })
+                        }
+                      />
+                    </TableCell>
+
                     <TableCell className="text-right tabular-nums">{money(it.subtotal)}</TableCell>
+
                     <TableCell className="text-center">
                       <Button size="icon" variant="ghost" onClick={() => onRemover(i)} title="Remover">
                         <Trash2 className="h-4 w-4" />

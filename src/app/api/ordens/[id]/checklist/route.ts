@@ -51,20 +51,18 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
     }
 
     // garante que a OS existe
-    const { data: os, error: eOS } = await supabaseAdmin
+    const osRes = await supabaseAdmin
       .from("ordemservico")
       .select("id")
       .eq("id", osId)
       .maybeSingle();
 
-    if (eOS) throw eOS;
-    if (!os) {
+    if (osRes.error) throw osRes.error;
+    if (!osRes.data) {
       return NextResponse.json({ error: "OS não encontrada." }, { status: 404 });
     }
 
-    // apaga checklist anterior (se houver)
-    await supabaseAdmin.from("checklist").delete().eq("ordemservicoid", osId);
-
+    // normaliza payload
     const itens = reqItens
       .map((x) => {
         const label = (x?.item || "").trim();
@@ -91,25 +89,27 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
       );
     }
 
-    const { data: inserted, error: eCheck } = await supabaseAdmin
+    // UPSERT (exige índice único em (ordemservicoid,item))
+    const up = await supabaseAdmin
       .from("checklist")
-      .insert(itens)
+      .upsert(itens, { onConflict: "ordemservicoid,item" })
       .select("id, item, status, observacao");
 
-    if (eCheck) throw eCheck;
+    if (up.error) throw up.error;
 
-    const checklistCreated = inserted ?? [];
+    // vincula modelo do checklist (se enviado)
+    if (checklistModeloId) {
+      const upd = await supabaseAdmin
+        .from("ordemservico")
+        .update({ checklist_modelo_id: checklistModeloId })
+        .eq("id", osId);
+      if (upd.error) throw upd.error;
+    }
 
-    // atualiza OS para ORCAMENTO + vincula modelo de checklist (se enviado)
-    const patch: any = { status: "ORCAMENTO" };
-    if (checklistModeloId) patch.checklist_modelo_id = checklistModeloId;
-
-    const { error: eUpdate } = await supabaseAdmin
-      .from("ordemservico")
-      .update(patch)
-      .eq("id", osId);
-
-    if (eUpdate) throw eUpdate;
+    const checklistCreated = (up.data ?? []).map((r: any) => ({
+      id: Number(r.id),
+      item: String(r.item),
+    }));
 
     return NextResponse.json({ id: osId, checklistCreated }, { status: 200 });
   } catch (err: any) {
