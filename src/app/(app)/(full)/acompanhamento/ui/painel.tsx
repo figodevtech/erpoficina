@@ -408,7 +408,7 @@ export default function PainelAcompanhamento({
 
           {/* Voltar ao sistema */}
           <Button asChild variant="outline" className="h-9">
-            <Link href="/">Voltar ao sistema</Link>
+            <Link href="/">Sair</Link>
           </Button>
 
           {/* Atualizar */}
