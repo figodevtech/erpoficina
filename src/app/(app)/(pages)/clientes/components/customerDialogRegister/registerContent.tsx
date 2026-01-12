@@ -62,6 +62,7 @@ import { cn } from "@/lib/utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Customer } from "../../types";
+import { set } from "nprogress";
 
 interface RegisterContentProps {
   newCustomer: NewCustomer;
@@ -187,6 +188,25 @@ export default function RegisterContent({
           setSelectedCustomerId(response.data.id);
         }
         onRegister?.(response.data.data);
+        setNewCustomer({
+            tipopessoa: "FISICA",
+            cpfcnpj: "",
+            nomerazaosocial: "",
+            email: "",
+            bairro:"",
+            telefone: "",
+            endereco: "",
+            enderecocomplemento: "",
+            endereconumero: "",
+            cidade: "",
+            estado: "",
+            cep: "",
+            inscricaoestadual: "",
+            inscricaomunicipal: "",
+            codigomunicipio: "",
+            status: "ATIVO",
+            foto: "",
+          });
       }
     } catch (error) {
       if (isAxiosError(error)) {

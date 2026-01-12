@@ -23,6 +23,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Loader,
+  Plus,
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { se } from "date-fns/locale";
+import { DialogProduto } from "../(pages)/estoque/components/dialog-produto/dialog-produto";
 
 interface ProductSelectProps {
   children?: ReactNode;
@@ -59,6 +61,10 @@ export default function ProductSelect({
   });
   const [productItems, setProductItems] = useState<Produto[] | []>([]);
   const [search, setSearch] = useState("");
+  const [openProduto, setOpenProduto] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<
+    number | undefined
+  >(undefined);
 
   const handleGetProducts = async (
     pageNumber?: number,
@@ -90,16 +96,18 @@ export default function ProductSelect({
   };
 
   useEffect(() => {
+    if (open) {
+    }
     handleGetProducts();
-  }, []);
+  }, [open]);
 
   useEffect(() => {
     handleGetProducts(pagination.page, pagination.limit, search);
   }, [pagination.limit, pagination.page]);
 
-  useEffect(()=> {
-    handleGetProducts(1, pagination.limit, search)
-  }, [search])
+  useEffect(() => {
+    handleGetProducts(1, pagination.limit, search);
+  }, [search]);
 
   return (
     <Dialog
@@ -122,12 +130,33 @@ export default function ProductSelect({
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-            <div className="relative w-full mb-2">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nome, email ou telefone..."
-                className="pl-10"
+            <div className="flex flex-row items-center gap-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por nome, email ou telefone..."
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                onClick={() => setOpenProduto(true)}
+                className="hover:cursor-pointer text-xs"
+                variant={"outline"}
+              >
+                <Plus /> Novo
+              </Button>
+              <DialogProduto
+                isOpen={openProduto}
+                setIsOpen={(open) => {
+                  if (!open) {
+                    setSelectedProductId(undefined);
+                    handleGetProducts(1, pagination.limit, "");
+                  }
+                  setOpenProduto(open);
+                }}
+                productId={selectedProductId}
+                setSelectedProductId={setSelectedProductId}
               />
             </div>
 
@@ -155,7 +184,9 @@ export default function ProductSelect({
               <TableBody>
                 {productItems.map((p) => (
                   <TableRow
-                    className={`hover:cursor-pointer ${p.estoque === 0 && "bg-red-500/5 text-red-400" }`}
+                    className={`hover:cursor-pointer ${
+                      p.estoque === 0 && "bg-red-500/5 text-red-400"
+                    }`}
                     onClick={() => {
                       if (OnSelect) {
                         OnSelect(p);
@@ -173,7 +204,7 @@ export default function ProductSelect({
                     </TableCell>
                     <TableCell>{p.fabricante || "-"}</TableCell>
                     <TableCell>{p.estoque}</TableCell>
-                    <TableCell>{formatarEmReal(p.precovenda || 0) }</TableCell>
+                    <TableCell>{formatarEmReal(p.precovenda || 0)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

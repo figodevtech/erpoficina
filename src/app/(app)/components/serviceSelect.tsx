@@ -23,6 +23,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Loader,
+  Plus,
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,8 @@ import { Input } from "@/components/ui/input";
 import { Servico } from "@/types/servico";
 import { Pagination } from "../(pages)/estoque/types";
 import { set } from "nprogress";
+import ServicoDialog from "../(pages)/configuracoes/tipos/components/servicoDialog/servico-dialog";
+import formatarEmReal from "@/utils/formatarEmReal";
 
 interface ServiceSelectProps {
   children?: ReactNode;
@@ -44,6 +47,20 @@ interface ServiceSelectProps {
   setOpen?: (value: boolean) => void;
   open?: boolean;
 }
+
+type ServicoForm = {
+  codigo: string;
+  descricao: string;
+  precohora: string;
+  ativo: boolean;
+};
+
+const emptyForm: ServicoForm = {
+  codigo: "",
+  descricao: "",
+  precohora: "",
+  ativo: true,
+};
 export default function ServiceSelect({
   children,
   OnSelect,
@@ -59,6 +76,9 @@ export default function ServiceSelect({
   });
   const [serviceItems, setServiceItems] = useState<Servico[] | []>([]);
   const [search, setSearch] = useState("");
+  const [form, setForm] = useState<ServicoForm>(emptyForm);
+
+  const [openServico, setOpenServico] = useState(false);
 
   const handleGetServices = async (
     pageNumber?: number,
@@ -99,6 +119,11 @@ export default function ServiceSelect({
     handleGetServices(1, pagination.limit, search);
   }, [search]);
 
+  function openNovo() {
+    setForm(emptyForm);
+    setOpenServico(true);
+  }
+
   return (
     <Dialog
       onOpenChange={(nextOpen) => {
@@ -119,12 +144,33 @@ export default function ServiceSelect({
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-            <div className="relative w-full mb-2">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nome, email ou telefone..."
-                className="pl-10"
+            <div className="flex flex-row items-center gap-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por nome, email ou telefone..."
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                onClick={() => openNovo()}
+                variant={"outline"}
+                className="hover:cursor-pointer text-xs"
+              >
+                <Plus /> Novo
+              </Button>
+              <ServicoDialog
+                open={openServico}
+                setOpen={(open) => {
+                  if (!open) {
+                    setForm(emptyForm);
+                    handleGetServices(1, pagination.limit, "");
+                  }
+                  setOpenServico(open);
+                }}
+                form={form}
+                setForm={setForm}
               />
             </div>
 
@@ -143,8 +189,9 @@ export default function ServiceSelect({
               <TableHeader>
                 <TableRow>
                   <TableCell>ID</TableCell>
-                  <TableCell>DESCRIÇÃO</TableCell>
                   <TableCell>CÓDIGO</TableCell>
+                  <TableCell>DESCRIÇÃO</TableCell>
+                  <TableCell>VALOR</TableCell>
                   <TableCell></TableCell>
                 </TableRow>
               </TableHeader>
@@ -164,8 +211,9 @@ export default function ServiceSelect({
                     key={s.id}
                   >
                     <TableCell>{s.id}</TableCell>
-                    <TableCell>{s.descricao}</TableCell>
                     <TableCell>{s.codigo}</TableCell>
+                    <TableCell>{s.descricao}</TableCell>
+                    <TableCell>{formatarEmReal(s.precohora)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

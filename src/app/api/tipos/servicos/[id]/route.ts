@@ -40,11 +40,6 @@ export async function PUT(
       codigo,
       descricao,
       precohora,
-      codigoservicomunicipal,
-      aliquotaiss,
-      cnae,
-      itemlistaservico,
-      tiposervicoid,
       ativo,
     } = body ?? {};
 
@@ -63,29 +58,7 @@ export async function PUT(
       );
     }
 
-    const aliq =
-      aliquotaiss === null || aliquotaiss === undefined || aliquotaiss === ""
-        ? null
-        : Number(aliquotaiss);
-    if (aliq !== null && !Number.isFinite(aliq)) {
-      return NextResponse.json(
-        { error: "Alíquota ISS inválida." },
-        { status: 400 }
-      );
-    }
-
-    const tipoId =
-      tiposervicoid === null ||
-      tiposervicoid === undefined ||
-      tiposervicoid === ""
-        ? null
-        : Number(tiposervicoid);
-    if (tipoId !== null && !Number.isFinite(tipoId)) {
-      return NextResponse.json(
-        { error: "Tipo de serviço (ID) inválido." },
-        { status: 400 }
-      );
-    }
+   
 
     const now = new Date().toISOString();
 
@@ -93,11 +66,6 @@ export async function PUT(
       codigo: codigo.trim(),
       descricao: descricao.trim(),
       precohora: preco,
-      codigoservicomunicipal: codigoservicomunicipal.trim(),
-      aliquotaiss: aliq,
-      cnae: cnae?.trim() || null,
-      itemlistaservico: itemlistaservico.trim(),
-      tiposervicoid: tipoId,
       updatedat: now,
     };
 

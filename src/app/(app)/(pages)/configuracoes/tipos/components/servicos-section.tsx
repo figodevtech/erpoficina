@@ -3,14 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+
 import {
   Table,
   TableBody,
@@ -20,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
   ChevronsLeft,
   ChevronLeft as ChevronLeftIcon,
@@ -45,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import ServicoDialog from "./servicoDialog/servico-dialog";
 
 type Servico = {
   id: number;
@@ -63,11 +56,6 @@ type ServicoForm = {
   codigo: string;
   descricao: string;
   precohora: string;
-  codigoservicomunicipal: string;
-  aliquotaiss: string;
-  cnae: string;
-  itemlistaservico: string;
-  tiposervicoid: string;
   ativo: boolean;
 };
 
@@ -75,11 +63,6 @@ const emptyForm: ServicoForm = {
   codigo: "",
   descricao: "",
   precohora: "",
-  codigoservicomunicipal: "",
-  aliquotaiss: "",
-  cnae: "",
-  itemlistaservico: "",
-  tiposervicoid: "",
   ativo: true,
 };
 
@@ -99,6 +82,7 @@ export default function ServicosSection() {
   // paginação (padrão TabelaUsuarios / Fornecedores)
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  const [open, setOpen] = useState<boolean>(false);
 
   const total = servicos.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -175,14 +159,10 @@ export default function ServicosSection() {
     loadServicos();
   }, []);
 
-  function handleChange<K extends keyof ServicoForm>(key: K, value: ServicoForm[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
   function openNovo() {
     setEditing(null);
     setForm(emptyForm);
-    setDialogOpen(true);
+    setOpen(true);
   }
 
   function openEditar(s: Servico) {
@@ -194,81 +174,9 @@ export default function ServicosSection() {
         s.precohora !== null && s.precohora !== undefined
           ? String(s.precohora)
           : "",
-      codigoservicomunicipal: s.codigoservicomunicipal ?? "",
-      aliquotaiss:
-        s.aliquotaiss !== null && s.aliquotaiss !== undefined
-          ? String(s.aliquotaiss)
-          : "",
-      cnae: s.cnae ?? "",
-      itemlistaservico: s.itemlistaservico ?? "",
-      tiposervicoid:
-        s.tiposervicoid !== null && s.tiposervicoid !== undefined
-          ? String(s.tiposervicoid)
-          : "",
       ativo: s.ativo ?? true,
     });
-    setDialogOpen(true);
-  }
-
-  async function handleSave() {
-    if (!form.codigo.trim() || !form.descricao.trim()) {
-      toast.error("Insira uma descrição.");
-      return;
-    }
-    if (!form.precohora.trim() || Number.isNaN(Number(form.precohora))) {
-      toast.error("Preço inválido.");
-      return;
-    }
-    
-    const payload = {
-      codigo: form.codigo.trim(),
-      descricao: form.descricao.trim(),
-      precohora: Number(form.precohora),
-      codigoservicomunicipal: form.codigoservicomunicipal.trim(),
-      aliquotaiss: form.aliquotaiss.trim()
-        ? Number(form.aliquotaiss)
-        : null,
-      cnae: form.cnae.trim() || null,
-      itemlistaservico: form.itemlistaservico.trim(),
-      tiposervicoid: form.tiposervicoid.trim()
-        ? Number(form.tiposervicoid)
-        : null,
-      ativo: form.ativo,
-    };
-
-    try {
-      setIsSaving(true);
-
-      if (editing) {
-        const res = await fetch(`/api/tipos/servicos/${editing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const j = await res.json();
-        if (!res.ok) throw new Error(j?.error || "Falha ao atualizar serviço");
-        toast.success("Serviço atualizado");
-      } else {
-        const res = await fetch("/api/tipos/servicos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const j = await res.json();
-        if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar serviço");
-        toast.success("Serviço cadastrado");
-      }
-
-      setDialogOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
-      await loadServicos();
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Erro ao salvar serviço");
-    } finally {
-      setIsSaving(false);
-    }
+    setOpen(true);
   }
 
   return (
@@ -297,147 +205,21 @@ export default function ServicosSection() {
         </div>
 
         {/* Botão Novo serviço + Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
-              <Plus className="mr-1 h-4 w-4" />
-              Novo serviço
-            </Button>
-          </DialogTrigger>
-
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editing ? "Editar serviço" : "Novo serviço"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="mt-4 space-y-4">
-              {/* Linha 1: Código + Descrição */}
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Código</label>
-                  <Input
-                    value={form.codigo}
-                    onChange={(e) => handleChange("codigo", e.target.value)}
-                    placeholder="Ex.: ALINH001"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Descrição</label>
-                  <Input
-                    value={form.descricao}
-                    onChange={(e) => handleChange("descricao", e.target.value)}
-                    placeholder="Ex.: Alinhamento e balanceamento"
-                  />
-                </div>
-              </div>
-
-              {/* Linha 2: Preço/hora + Cód. Serv. Municipal */}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Preço/hora</label>
-                  <Input
-                    value={form.precohora}
-                    onChange={(e) => handleChange("precohora", e.target.value)}
-                    placeholder="0,00"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Código serviço municipal</label>
-                  <Input
-                    value={form.codigoservicomunicipal}
-                    onChange={(e) =>
-                      handleChange("codigoservicomunicipal", e.target.value)
-                    }
-                    placeholder="Código conforme prefeitura"
-                  />
-                </div>
-              </div>
-
-              {/* Linha 3: Aliquota ISS + CNAE */}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Alíquota ISS (%)</label>
-                  <Input
-                    value={form.aliquotaiss}
-                    onChange={(e) => handleChange("aliquotaiss", e.target.value)}
-                    placeholder="Ex.: 5"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">CNAE</label>
-                  <Input
-                    value={form.cnae}
-                    onChange={(e) => handleChange("cnae", e.target.value)}
-                    placeholder="CNAE do serviço (opcional)"
-                  />
-                </div>
-              </div>
-
-              {/* Linha 4: Item lista serviço + Tipo de serviço (id) */}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Item da lista de serviço</label>
-                  <Input
-                    value={form.itemlistaservico}
-                    onChange={(e) =>
-                      handleChange("itemlistaservico", e.target.value)
-                    }
-                    placeholder="Ex.: 14.01"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Tipo de serviço (ID)</label>
-                  <Input
-                    value={form.tiposervicoid}
-                    onChange={(e) =>
-                      handleChange("tiposervicoid", e.target.value)
-                    }
-                    placeholder="ID da categoria do serviço (opcional)"
-                  />
-                </div>
-              </div>
-
-              {/* Status dentro do diálogo */}
-              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-                <div className="space-y-0.5">
-                  <span className="text-sm font-medium">Status do serviço</span>
-                  <p className="text-xs text-muted-foreground">
-                    Defina se este serviço está ativo para uso nas ordens de serviço.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativo" : "Inativo"}
-                  </span>
-                  <Switch
-                    checked={form.ativo}
-                    onCheckedChange={(val) => handleChange("ativo", val)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
+          <Plus className="mr-1 h-4 w-4" />
+          Novo serviço
+        </Button>
+        <ServicoDialog
+        form={form}
+        setForm={setForm}
+        openNovo={openNovo}
+        loadServicos={loadServicos}
+        open={open}
+        setOpen={setOpen}
+        editing={editing}
+        setEditing={setEditing}
+        onRegister={()=>loadServicos()}
+        />
       </div>
 
       {/* Tabela de serviços, no padrão das outras páginas (sem Card) */}
@@ -460,9 +242,7 @@ export default function ServicosSection() {
             <TableRow>
               <TableHead>Código</TableHead>
               <TableHead>Descrição</TableHead>
-              <TableHead>Preço/hora</TableHead>
-              <TableHead>Item lista</TableHead>
-              <TableHead>Cód. mun.</TableHead>
+              <TableHead>Preço</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -489,8 +269,6 @@ export default function ServicosSection() {
                       ? Number(s.precohora).toFixed(2)
                       : "—"}
                   </TableCell>
-                  <TableCell>{s.itemlistaservico}</TableCell>
-                  <TableCell>{s.codigoservicomunicipal}</TableCell>
                   <TableCell>
                     <Badge
                       variant={s.ativo ? "default" : "outline"}

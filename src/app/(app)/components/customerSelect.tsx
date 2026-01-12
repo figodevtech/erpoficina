@@ -23,6 +23,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Loader,
+  Plus,
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { CustomerDialog } from "../(pages)/clientes/components/customerDialogRegister/customerDialog";
 
 interface CustomerSelectProps {
   children?: ReactNode;
@@ -56,6 +58,7 @@ export default function CustomerSelect({
   });
   const [customerItems, setCustomerItems] = useState<Customer[] | []>([]);
   const [search, setSearch] = useState("");
+  const [openCustomer, setOpenCustomer] = useState(false);
   const handleGetCustomers = async (
     pageNumber?: number,
     limit?: number,
@@ -113,12 +116,32 @@ export default function CustomerSelect({
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-            <div className="relative w-full mb-2">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nome, email ou telefone..."
-                className="pl-10"
+            <div className="flex flex-row items-center gap-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por nome, email ou telefone..."
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                onClick={() => setOpenCustomer(true)}
+                variant={"outline"}
+                className="text-xs hover:cursor-pointer"
+              >
+                <Plus />
+                Novo
+              </Button>
+              <CustomerDialog
+                isOpen={openCustomer}
+                setIsOpen={(open)=>{
+                  if(!open){
+                    handleGetCustomers(1, pagination.limit, search);
+                  }
+                  setOpenCustomer(open);
+                }}
+                
               />
             </div>
 
@@ -146,7 +169,7 @@ export default function CustomerSelect({
                   <TableRow
                     className="hover:cursor-pointer"
                     onClick={() => {
-                      console.log("Selectionado", c)
+                      console.log("Selectionado", c);
                       if (OnSelect) {
                         OnSelect(c);
                       }
@@ -158,7 +181,9 @@ export default function CustomerSelect({
                     key={c.id}
                   >
                     <TableCell>{c.id}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{c.nomerazaosocial}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">
+                      {c.nomerazaosocial}
+                    </TableCell>
                     <TableCell>{c.tipopessoa}</TableCell>
                   </TableRow>
                 ))}
