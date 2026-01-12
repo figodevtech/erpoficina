@@ -212,7 +212,7 @@ export default function ServiceSelect({
                   >
                     <TableCell>{s.id}</TableCell>
                     <TableCell>{s.codigo}</TableCell>
-                    <TableCell>{s.descricao}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{s.descricao}</TableCell>
                     <TableCell>{formatarEmReal(s.precohora)}</TableCell>
                   </TableRow>
                 ))}
