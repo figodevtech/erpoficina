@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -383,6 +384,7 @@ export default function PainelAcompanhamento({
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
+
             <Select value={setorSelecionado ?? ""} onValueChange={(v) => confirmarSetor(v)}>
               <SelectTrigger className="h-9 w-[260px] text-xs">
                 <SelectValue placeholder="Selecione um setor" />
@@ -404,6 +406,12 @@ export default function PainelAcompanhamento({
             </Select>
           </div>
 
+          {/* Voltar ao sistema */}
+          <Button asChild variant="outline" className="h-9">
+            <Link href="/">Voltar ao sistema</Link>
+          </Button>
+
+          {/* Atualizar */}
           <Button
             variant="outline"
             size="icon"
