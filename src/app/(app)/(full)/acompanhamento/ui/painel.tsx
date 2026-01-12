@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 import { listarQuadro, listarSetoresAtivos, QuadItem, SetorItem } from "../lib/api";
@@ -26,6 +26,7 @@ function normStatus(s?: string | null) {
     .replace(/\s+/g, "_")
     .toUpperCase();
 }
+
 const IS_ORCAMENTO = (s?: string | null) => {
   const ns = normStatus(s);
   return ns === "ORCAMENTO" || ns === "ORCAMENTO_RECUSADO" || ns === "APROVACAO_ORCAMENTO" || ns === "ORCAMENTO_APROVADO";
@@ -126,6 +127,53 @@ const useDoorbellChime = () => {
 };
 
 const LS_SETOR_KEY = "acompanhamento:setor";
+
+/* ---------------- Coluna estável (IMPORTANTE) ---------------- */
+
+const BoardColumn = React.memo(function BoardColumn({
+  title,
+  items,
+  emptyLabel,
+  hint,
+  now,
+  initialLoading,
+  boardHeightClass,
+}: {
+  title: string;
+  items: QuadItem[];
+  emptyLabel: string;
+  hint?: string;
+  now?: number;
+  initialLoading: boolean;
+  boardHeightClass: string;
+}) {
+  return (
+    <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 backdrop-blur`}>
+      <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+          {hint ? <p className="truncate text-[11px] text-muted-foreground/80">{hint}</p> : null}
+        </div>
+
+        <Badge variant="outline" className="text-[10px]">
+          {items.length}
+        </Badge>
+      </div>
+
+      <div className="flex-1 space-y-2 overflow-y-auto p-2 no-scroll-anchor">
+        {initialLoading ? (
+          Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[108px] w-full rounded-lg" />)
+        ) : items.length ? (
+          items.map((os) => <OsTile key={os.id} os={os} now={now} />)
+        ) : (
+          <EmptyColumn label={emptyLabel} />
+        )}
+      </div>
+    </Card>
+  );
+});
+
+/* ---------------- main ---------------- */
 
 export default function PainelAcompanhamento({
   finalizadas = "recentes",
@@ -250,14 +298,14 @@ export default function PainelAcompanhamento({
     void load();
   }, [setorSelecionado, finalizadas, horasRecentes, load]);
 
-  // tick 1s para contador (agora: setor selecionado, inclusive "all")
+  // tick 1s para contador
   useEffect(() => {
     if (!setorSelecionado) return;
     const id = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(id);
   }, [setorSelecionado]);
 
-  // fallback: polling (garante atualização mesmo se realtime falhar)
+  // fallback: polling
   useEffect(() => {
     if (!setorSelecionado) return;
     const id = setInterval(() => void load(), 15000);
@@ -304,42 +352,6 @@ export default function PainelAcompanhamento({
   }
 
   const boardHeightClass = "h-[calc(100vh-170px)] md:h-[calc(100vh-190px)]";
-
-  const Column = ({
-    title,
-    items,
-    emptyLabel,
-    hint,
-    now,
-  }: {
-    title: string;
-    items: QuadItem[];
-    emptyLabel: string;
-    hint?: string;
-    now?: number;
-  }) => (
-    <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 backdrop-blur`}>
-      <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-          {hint ? <p className="truncate text-[11px] text-muted-foreground/80">{hint}</p> : null}
-        </div>
-        <Badge variant="outline" className="text-[10px]">
-          {items.length}
-        </Badge>
-      </div>
-
-      <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        {initialLoading ? (
-          Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[108px] w-full rounded-lg" />)
-        ) : items.length ? (
-          items.map((os) => <OsTile key={os.id} os={os} now={now} />)
-        ) : (
-          <EmptyColumn label={emptyLabel} />
-        )}
-      </div>
-    </Card>
-  );
 
   return (
     <div className="relative w-full">
@@ -450,19 +462,46 @@ export default function PainelAcompanhamento({
       {!precisaSelecionar ? (
         modoGeral ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <Column
+            <BoardColumn
               title="Aguardando"
               hint={rawAguardando.some((x) => IS_ORCAMENTO(x.status)) ? "Contém itens em orçamento" : undefined}
               items={rawAguardando}
               emptyLabel="Nenhuma OS aguardando."
+              initialLoading={initialLoading}
+              boardHeightClass={boardHeightClass}
             />
-            <Column title="Em execução" items={execucao} now={nowTick} emptyLabel="Nenhuma OS em execução." />
-            <Column title="Aguardando pagamento" items={faturamento} emptyLabel="Nenhuma OS aguardando pagamento." />
-            <Column title="Finalizadas hoje" items={finalizadasHojeList} emptyLabel="Nenhuma OS finalizada hoje." />
-            <Column
+
+            <BoardColumn
+              title="Em execução"
+              items={execucao}
+              now={nowTick}
+              emptyLabel="Nenhuma OS em execução."
+              initialLoading={initialLoading}
+              boardHeightClass={boardHeightClass}
+            />
+
+            <BoardColumn
+              title="Aguardando pagamento"
+              items={faturamento}
+              emptyLabel="Nenhuma OS aguardando pagamento."
+              initialLoading={initialLoading}
+              boardHeightClass={boardHeightClass}
+            />
+
+            <BoardColumn
+              title="Finalizadas hoje"
+              items={finalizadasHojeList}
+              emptyLabel="Nenhuma OS finalizada hoje."
+              initialLoading={initialLoading}
+              boardHeightClass={boardHeightClass}
+            />
+
+            <BoardColumn
               title={finalizadas === "hoje" ? "Finalizadas (hoje)" : `Finalizadas recentes (${horasRecentes}h)`}
               items={finalizadasRecentesList}
               emptyLabel="Nenhuma OS finalizada recentemente."
+              initialLoading={initialLoading}
+              boardHeightClass={boardHeightClass}
             />
           </div>
         ) : (
@@ -474,7 +513,9 @@ export default function PainelAcompanhamento({
                   <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Em andamento • {textoSetor}
                   </p>
-                  <p className="truncate text-[11px] text-muted-foreground/80">Contador (desde a entrada) + itens do orçamento</p>
+                  <p className="truncate text-[11px] text-muted-foreground/80">
+                    Contador (desde a entrada) + itens do orçamento
+                  </p>
                 </div>
 
                 <Badge variant="outline" className="text-[10px]">
@@ -482,7 +523,7 @@ export default function PainelAcompanhamento({
                 </Badge>
               </div>
 
-              <div className="flex-1 space-y-2 overflow-y-auto p-2">
+              <div className="flex-1 space-y-2 overflow-y-auto p-2 no-scroll-anchor">
                 {initialLoading ? (
                   Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-[98px] w-full rounded-lg" />)
                 ) : execucao.length ? (
@@ -508,7 +549,7 @@ export default function PainelAcompanhamento({
                 </Badge>
               </div>
 
-              <div className="flex-1 space-y-2 overflow-y-auto p-2">
+              <div className="flex-1 space-y-2 overflow-y-auto p-2 no-scroll-anchor">
                 {initialLoading ? (
                   Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[98px] w-full rounded-lg" />)
                 ) : finalizadasHojeList.length ? (
