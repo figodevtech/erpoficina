@@ -144,10 +144,8 @@ type ItemServico = {
   subtotal: number;
   servico?: { id: number; codigo?: string | null; descricao?: string | null; precohora?: number | null } | null;
 
-  // Novo (preferível quando você atualizar o carregarDetalhesOS para ler osservico_realizador)
   realizadores?: RealizadorLite[] | null;
 
-  // Legado (enquanto carregarDetalhesOS não muda)
   idusuariorealizador?: string | null;
   realizador?: { id: string; nome: string | null } | null;
 };
@@ -159,12 +157,21 @@ type ChecklistImage = {
   createdat?: string | null;
 };
 
+type ChecklistUser = {
+  id: string;
+  nome: string | null;
+};
+
 type ChecklistItem = {
   id: number;
   item: string;
   status: "PENDENTE" | "OK" | "ALERTA" | "FALHA";
   observacao?: string | null;
   createdat?: string | null;
+
+  created_by?: string | null;
+  usuario?: ChecklistUser | null;
+
   imagens?: ChecklistImage[];
 };
 
@@ -293,7 +300,6 @@ function MultiSelectRealizadores({
                     onSelect={() => toggle(u.id)}
                     className="flex items-center gap-2"
                   >
-                    {/* Checkbox visual; clique é no CommandItem (alvo maior). */}
                     <Checkbox checked={checked} className="pointer-events-none" />
                     <span className="truncate">{u.nome ?? u.id}</span>
                   </CommandItem>
@@ -434,6 +440,13 @@ export function OSDetalhesDialog({
   );
   const totalGeral = useMemo(() => totalProdutos + totalServicos, [totalProdutos, totalServicos]);
 
+  const checklistAutores = useMemo(() => {
+    const nomes = (data?.checklist ?? [])
+      .map((c) => c.usuario?.nome)
+      .filter((x): x is string => Boolean(x && x.trim()));
+    return [...new Set(nomes)];
+  }, [data?.checklist]);
+
   async function salvarRealizadores(item: ItemServico, usuarioIds: string[]) {
     if (!data?.os?.id) return;
 
@@ -454,7 +467,6 @@ export function OSDetalhesDialog({
                 ? {
                     ...s,
                     realizadores: otimista,
-                    // legado (pra não quebrar outras partes que ainda leem isso)
                     idusuariorealizador: principal,
                     realizador: principal ? { id: principal, nome: otimista[0]?.nome ?? null } : null,
                   }
@@ -729,7 +741,14 @@ export function OSDetalhesDialog({
                 <div className="flex items-center gap-2 mb-1.5">
                   <ListChecks className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">Checklist</span>
+
+                  {checklistAutores.length ? (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Realizado por: <b>{checklistAutores.join(", ")}</b>
+                    </span>
+                  ) : null}
                 </div>
+
                 {(data.checklist ?? []).length === 0 ? (
                   <div className="text-sm text-muted-foreground">—</div>
                 ) : (
@@ -743,6 +762,7 @@ export function OSDetalhesDialog({
                               <div className="font-medium truncate">{c.item}</div>
                               <div className="text-xs text-muted-foreground">
                                 {fmtDate(c.createdat)}
+                                {c.usuario?.nome ? ` • por ${c.usuario.nome}` : ""}
                                 {c.observacao ? ` • ${c.observacao}` : ""}
                               </div>
                             </div>

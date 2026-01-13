@@ -282,7 +282,7 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )}
 
-        {showStonePayment && (
+        {/* {showStonePayment && (
           <DropdownMenuItem
             onClick={() => {
               setStoneRow(row);
@@ -292,7 +292,7 @@ export function RowActions<TRow extends RowBase>({
             <CreditCard className="mr-2 h-4 w-4" />
             Cobrar na maquineta
           </DropdownMenuItem>
-        )}
+        )} */}
 
         {config?.habilitar_emissao_nfe && showEmissaoDeNota && (
           <DropdownMenuItem

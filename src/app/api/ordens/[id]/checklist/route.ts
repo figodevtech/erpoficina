@@ -21,7 +21,9 @@ type Body = {
 type Params = { id: string };
 
 function toDbChecklistStatusOrNull(v: unknown): DBChecklistStatus | null {
-  const t = String(v ?? "").trim().toUpperCase();
+  const t = String(v ?? "")
+    .trim()
+    .toUpperCase();
   return t === "OK" || t === "ALERTA" || t === "FALHA" ? (t as DBChecklistStatus) : null;
 }
 
@@ -31,6 +33,8 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
     if (!session?.user) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
+
+    const userId = session.user.id; // uuid do auth.users
 
     const { id } = await ctx.params;
     const osId = Number(id);
@@ -51,15 +55,20 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
     }
 
     // garante que a OS existe
-    const osRes = await supabaseAdmin
-      .from("ordemservico")
-      .select("id")
-      .eq("id", osId)
-      .maybeSingle();
-
+    const osRes = await supabaseAdmin.from("ordemservico").select("id").eq("id", osId).maybeSingle();
     if (osRes.error) throw osRes.error;
     if (!osRes.data) {
       return NextResponse.json({ error: "OS não encontrada." }, { status: 404 });
+    }
+
+    // garante que o usuário logado existe em public.usuario (necessário se você colocou FK created_by -> public.usuario)
+    const uRes = await supabaseAdmin.from("usuario").select("id").eq("id", userId).maybeSingle();
+    if (uRes.error) throw uRes.error;
+    if (!uRes.data) {
+      return NextResponse.json(
+        { error: "Usuário não encontrado em public.usuario (perfil interno ausente)." },
+        { status: 400 }
+      );
     }
 
     // normaliza payload
@@ -68,11 +77,13 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
         const label = (x?.item || "").trim();
         const status = toDbChecklistStatusOrNull(x?.status);
         if (!label || !status) return null;
+
         return {
           ordemservicoid: osId,
           item: label,
           status,
           observacao: (x?.observacao ?? null) as string | null,
+          created_by: userId,
         };
       })
       .filter(Boolean) as Array<{
@@ -80,20 +91,18 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
       item: string;
       status: DBChecklistStatus;
       observacao: string | null;
+      created_by: string;
     }>;
 
     if (!itens.length) {
-      return NextResponse.json(
-        { error: "Nenhum item de checklist válido para salvar." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Nenhum item de checklist válido para salvar." }, { status: 400 });
     }
 
     // UPSERT (exige índice único em (ordemservicoid,item))
     const up = await supabaseAdmin
       .from("checklist")
       .upsert(itens, { onConflict: "ordemservicoid,item" })
-      .select("id, item, status, observacao");
+      .select("id, item, status, observacao, created_by");
 
     if (up.error) throw up.error;
 
@@ -109,14 +118,12 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
     const checklistCreated = (up.data ?? []).map((r: any) => ({
       id: Number(r.id),
       item: String(r.item),
+      created_by: String(r.created_by ?? ""),
     }));
 
     return NextResponse.json({ id: osId, checklistCreated }, { status: 200 });
   } catch (err: any) {
     console.error("PUT /api/ordens/[id]/checklist", err);
-    return NextResponse.json(
-      { error: err?.message || "Erro ao salvar checklist" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err?.message || "Erro ao salvar checklist" }, { status: 500 });
   }
 }
