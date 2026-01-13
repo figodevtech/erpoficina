@@ -1,6 +1,6 @@
 "use client";
 
-import { JSX, useEffect, useState } from "react";
+import { JSX, useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -24,15 +24,21 @@ export type StatusOS =
   | "ORCAMENTO_RECUSADO"
   | "APROVACAO_ORCAMENTO"
   | "ORCAMENTO_APROVADO"
-  | "AGUARDANDO_CHECKLIST"
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
   | "CONCLUIDO"
   | "CANCELADO";
 
 /** Chaves das abas da UI */
-type TabKey = "ABERTAS" | "ORCAMENTO" | "APROVACAO" | "EM_ANDAMENTO" | "PAGAMENTO" | "FINALIZADAS";
+type TabKey =
+  | "ABERTAS"
+  | "ORCAMENTO"
+  | "APROVACAO"
+  | "EM_ANDAMENTO"
+  | "PAGAMENTO"
+  | "FINALIZADAS";
 
+/** Lista completa (sem duplicar e sem faltar) */
 const ALL_STATUSES: StatusOS[] = [
   "AGUARDANDO_CHECKLIST",
   "ORCAMENTO",
@@ -41,8 +47,25 @@ const ALL_STATUSES: StatusOS[] = [
   "ORCAMENTO_APROVADO",
   "EM_ANDAMENTO",
   "PAGAMENTO",
-  "AGUARDANDO_CHECKLIST"
+  "CONCLUIDO",
+  "CANCELADO",
+];
 
+/** Default com zeros (pra não depender do backend mandar chave com 0) */
+const DEFAULT_STATS: Record<StatusOS, number> = ALL_STATUSES.reduce((acc, s) => {
+  acc[s] = 0;
+  return acc;
+}, {} as Record<StatusOS, number>);
+
+/** Abertas = tudo exceto finalizadas */
+const OPEN_STATUSES: StatusOS[] = [
+  "AGUARDANDO_CHECKLIST",
+  "ORCAMENTO",
+  "ORCAMENTO_RECUSADO",
+  "APROVACAO_ORCAMENTO",
+  "ORCAMENTO_APROVADO",
+  "EM_ANDAMENTO",
+  "PAGAMENTO",
 ];
 
 const statusTabs: {
@@ -60,7 +83,7 @@ const statusTabs: {
     dot: "bg-slate-400",
     active:
       "data-[state=active]:bg-slate-500/15 data-[state=active]:text-slate-200 data-[state=active]:ring-slate-500/30",
-    statuses: ALL_STATUSES,
+    statuses: OPEN_STATUSES,
   },
   {
     key: "ORCAMENTO",
@@ -69,6 +92,7 @@ const statusTabs: {
     dot: "bg-fuchsia-500",
     active:
       "data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-200 data-[state=active]:ring-fuchsia-500/30",
+    // você pediu explicitamente: inclui AGUARDANDO_CHECKLIST
     statuses: ["ORCAMENTO", "ORCAMENTO_RECUSADO", "AGUARDANDO_CHECKLIST"],
   },
   {
@@ -76,7 +100,8 @@ const statusTabs: {
     label: "Aprovação",
     icon: <ClipboardCheck className="h-4 w-4" />,
     dot: "bg-sky-500",
-    active: "data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-200 data-[state=active]:ring-sky-500/30",
+    active:
+      "data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-200 data-[state=active]:ring-sky-500/30",
     statuses: ["APROVACAO_ORCAMENTO", "ORCAMENTO_APROVADO"],
   },
   {
@@ -108,6 +133,10 @@ const statusTabs: {
   },
 ];
 
+function sumByStatuses(stats: Record<StatusOS, number>, statuses: StatusOS[]) {
+  return statuses.reduce((sum, s) => sum + (stats[s] || 0), 0);
+}
+
 export function OrdensTabs({
   onOpenOrcamento,
   onEditar,
@@ -118,25 +147,22 @@ export function OrdensTabs({
   onNovaOS: () => void;
 }) {
   const [active, setActive] = useState<TabKey>("ABERTAS");
-  const [stats, setStats] = useState<Record<string, number>>({
-    AGUARDANDO_CHECKLIST: 0,
-    ORCAMENTO: 0,
-    APROVACAO_ORCAMENTO: 0,
-    EM_ANDAMENTO: 0,
-    PAGAMENTO: 0,
-    CONCLUIDO: 0,
-    CANCELADO: 0,
-  });
-
-  const total = Object.values(stats).reduce((a, b) => a + b, 0);
-
+  const [stats, setStats] = useState<Record<StatusOS, number>>(DEFAULT_STATS);
   const [showSummaryMobile, setShowSummaryMobile] = useState(false);
+
+  // Total deve bater com a aba ABERTAS (abertas == OPEN_STATUSES)
+  const totalAbertas = useMemo(() => sumByStatuses(stats, OPEN_STATUSES), [stats]);
 
   const loadStats = async () => {
     try {
       const r = await fetch("/api/ordens/stats", { cache: "no-store" });
-      const j = await r.json();
-      if (r.ok) setStats(j.counters ?? {});
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return;
+
+      const counters = (j?.counters ?? {}) as Partial<Record<StatusOS, number>>;
+
+      // merge: não perder chaves quando API não manda (useState não faz merge). [web:395][web:394]
+      setStats({ ...DEFAULT_STATS, ...counters });
     } catch {}
   };
 
@@ -150,7 +176,10 @@ export function OrdensTabs({
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     if (!url || !anon) return;
 
-    const supabase = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const supabase = createClient(url, anon, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
     const channel = supabase
       .channel("os-realtime-stats")
       .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () => loadStats())
@@ -182,14 +211,14 @@ export function OrdensTabs({
 
         {showSummaryMobile && (
           <div id="os-summary-grid" className="mt-2">
-            <SummaryGrid total={total} stats={stats} />
+            <SummaryGrid totalAbertas={totalAbertas} stats={stats} />
           </div>
         )}
       </div>
 
       {/* Resumo sempre visível em sm+ */}
       <div className="hidden sm:block">
-        <SummaryGrid total={total} stats={stats} />
+        <SummaryGrid totalAbertas={totalAbertas} stats={stats} />
       </div>
 
       <Tabs value={active} onValueChange={(v) => setActive(v as TabKey)} className="w-full">
@@ -236,40 +265,63 @@ export function OrdensTabs({
   );
 }
 
-function SummaryGrid({ total, stats }: { total: number; stats: Record<string, number> }) {
+function SummaryGrid({
+  totalAbertas,
+  stats,
+}: {
+  totalAbertas: number;
+  stats: Record<StatusOS, number>;
+}) {
+  // Cards calculados do MESMO jeito que as abas (pra sempre bater)
+  const tabOrcamento = statusTabs.find((t) => t.key === "ORCAMENTO")!.statuses;
+  const tabAprovacao = statusTabs.find((t) => t.key === "APROVACAO")!.statuses;
+  const tabEmAndamento = statusTabs.find((t) => t.key === "EM_ANDAMENTO")!.statuses;
+  const tabPagamento = statusTabs.find((t) => t.key === "PAGAMENTO")!.statuses;
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
-      <MiniCard accent="text-slate-300" title="Total" value={total} icon={<ClipboardList className="h-4 w-4" />} />
+      <MiniCard
+        accent="text-slate-300"
+        title="Total (Abertas)"
+        value={totalAbertas}
+        icon={<ClipboardList className="h-4 w-4" />}
+      />
+
       <MiniCard
         accent="text-fuchsia-300"
         title="Orçamento"
-        value={stats.ORCAMENTO || 0}
+        value={sumByStatuses(stats, tabOrcamento)} // inclui AGUARDANDO_CHECKLIST
         icon={<ClipboardList className="h-4 w-4" />}
       />
+
       <MiniCard
         accent="text-sky-300"
         title="Aprovação"
-        value={(stats.APROVACAO_ORCAMENTO || 0) + (stats.ORCAMENTO_APROVADO || 0)}
+        value={sumByStatuses(stats, tabAprovacao)} // inclui ORCAMENTO_APROVADO
         icon={<ClipboardCheck className="h-4 w-4" />}
       />
+
       <MiniCard
         accent="text-amber-300"
         title="Em Andamento"
-        value={stats.EM_ANDAMENTO || 0}
+        value={sumByStatuses(stats, tabEmAndamento)}
         icon={<Loader2 className="h-4 w-4" />}
       />
+
       <MiniCard
         accent="text-indigo-300"
         title="Pagamento"
-        value={stats.PAGAMENTO || 0}
+        value={sumByStatuses(stats, tabPagamento)}
         icon={<CreditCard className="h-4 w-4" />}
       />
+
       <MiniCard
         accent="text-emerald-300"
         title="Concluído"
         value={stats.CONCLUIDO || 0}
         icon={<CheckCircle2 className="h-4 w-4" />}
       />
+
       <MiniCard
         accent="text-rose-300"
         title="Cancelado"

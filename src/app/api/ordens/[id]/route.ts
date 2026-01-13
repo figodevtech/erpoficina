@@ -1,10 +1,10 @@
-// /src/app/api/ordens/[id]/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { auth } from "@/lib/auth";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,9 +19,7 @@ type CkStatus = "OK" | "ALERTA" | "FALHA";
 const toNum = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const sanitizeCkStatus = (s?: string): CkStatus => {
   const up = String(s || "").toUpperCase();
-  return (["OK", "ALERTA", "FALHA"] as const).includes(up as CkStatus)
-    ? (up as CkStatus)
-    : "OK";
+  return (["OK", "ALERTA", "FALHA"] as const).includes(up as CkStatus) ? (up as CkStatus) : "OK";
 };
 
 type RealizadorLite = { id: string; nome: string | null };
@@ -29,10 +27,7 @@ type RealizadorLite = { id: string; nome: string | null };
 /* =========================================
  * GET: OS + setor + peça + checklist (+imagens) + itens + aprovações
  * ========================================= */
-export async function GET(
-  _req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     const osId = Number(id);
@@ -93,15 +88,10 @@ export async function GET(
     if (!osRow) return NextResponse.json({ error: "OS não encontrada" }, { status: 404 });
 
     // Setor
-    const setor_res = await supabase
-      .from("setor")
-      .select("id, nome, descricao")
-      .eq("id", osRow.setorid)
-      .maybeSingle();
+    const setor_res = await supabase.from("setor").select("id, nome, descricao").eq("id", osRow.setorid).maybeSingle();
     if (setor_res.error) throw setor_res.error;
 
-    const setor =
-      (setor_res.data as { id: number; nome: string; descricao: string | null } | null) ?? null;
+    const setor = (setor_res.data as { id: number; nome: string; descricao: string | null } | null) ?? null;
 
     // Cliente
     const cli_res = await supabase
@@ -144,11 +134,7 @@ export async function GET(
       | null = null;
 
     if (osRow.veiculoid) {
-      const v_res = await supabase
-        .from("veiculo")
-        .select("id, placa, modelo, marca, ano, cor, kmatual")
-        .eq("id", osRow.veiculoid)
-        .maybeSingle();
+      const v_res = await supabase.from("veiculo").select("id, placa, modelo, marca, ano, cor, kmatual").eq("id", osRow.veiculoid).maybeSingle();
       if (v_res.error) throw v_res.error;
       if (v_res.data) {
         veiculo = {
@@ -166,47 +152,68 @@ export async function GET(
     // Peça (opcional)
     let peca: { id: number; titulo: string; descricao: string | null } | null = null;
     if (osRow.pecaid) {
-      const pc_res = await supabase
-        .from("peca")
-        .select("id, titulo, descricao")
-        .eq("id", osRow.pecaid)
-        .maybeSingle();
+      const pc_res = await supabase.from("peca").select("id, titulo, descricao").eq("id", osRow.pecaid).maybeSingle();
       if (pc_res.error) throw pc_res.error;
       if (pc_res.data) {
-        peca = {
-          id: pc_res.data.id,
-          titulo: pc_res.data.titulo,
-          descricao: pc_res.data.descricao ?? null,
-        };
+        peca = { id: pc_res.data.id, titulo: pc_res.data.titulo, descricao: pc_res.data.descricao ?? null };
       }
     }
 
-    // Checklist + imagens
+    // Checklist + imagens (+ usuário que respondeu)
     const ck_res = await supabase
       .from("checklist")
-      .select("id, item, status, observacao, createdat")
+      .select(
+        `
+          id,
+          item,
+          status,
+          observacao,
+          createdat,
+          created_by,
+          usuario:usuario!checklist_created_by_fkey (
+            id,
+            nome
+          )
+        `
+      )
       .eq("ordemservicoid", osId);
+
     if (ck_res.error) throw ck_res.error;
 
-    const ckRows = (ck_res.data ?? []) as Array<{
-      id: number;
-      item: string;
-      status: CkStatus;
-      observacao: string | null;
-      createdat: string | null;
-    }>;
+    // RAW: usuario pode vir como array ou objeto (tipagem/shape varia)
+    type CkRowRaw = {
+      id: any;
+      item: any;
+      status: any;
+      observacao: any;
+      createdat: any;
+      created_by: any;
+      usuario: any; // pode ser [{...}] ou {...} ou null
+    };
+
+    const ckRowsRaw = (ck_res.data ?? []) as unknown as CkRowRaw[];
+
+    const ckRows = ckRowsRaw.map((r) => {
+      const embedded = r.usuario;
+      const u = Array.isArray(embedded) ? embedded[0] : embedded;
+
+      return {
+        id: Number(r.id),
+        item: String(r.item),
+        status: sanitizeCkStatus(String(r.status ?? "OK")),
+        observacao: (r.observacao ?? null) as string | null,
+        createdat: (r.createdat ?? null) as string | null,
+        created_by: (r.created_by ?? null) as string | null,
+        usuario: u ? { id: String(u.id), nome: (u.nome ?? null) as string | null } : null,
+      };
+    });
 
     const ckIds = ckRows.map((r) => r.id);
-    const imgsMap = new Map<
-      number,
-      Array<{ id: number; url: string; descricao: string | null; createdat: string | null }>
-    >();
+
+    const imgsMap = new Map<number, Array<{ id: number; url: string; descricao: string | null; createdat: string | null }>>();
 
     if (ckIds.length) {
-      const img_res = await supabase
-        .from("imagemvistoria")
-        .select("id, checklistid, url, descricao, createdat")
-        .in("checklistid", ckIds);
+      const img_res = await supabase.from("imagemvistoria").select("id, checklistid, url, descricao, createdat").in("checklistid", ckIds);
       if (img_res.error) throw img_res.error;
 
       for (const it of img_res.data ?? []) {
@@ -227,15 +234,15 @@ export async function GET(
       status: ck.status,
       observacao: ck.observacao ?? null,
       createdat: ck.createdat ?? null,
+      created_by: ck.created_by ?? null,
+      usuario: ck.usuario ?? null,
       imagens: imgsMap.get(ck.id) ?? [],
     }));
 
     // Itens — produtos
     const prod_res = await supabase
       .from("osproduto")
-      .select(
-        "ordemservicoid, produtoid, quantidade, precounitario, subtotal, produto:produtoid (id, titulo, descricao, referencia, codigobarras, precovenda, unidade)"
-      )
+      .select("ordemservicoid, produtoid, quantidade, precounitario, subtotal, produto:produtoid (id, titulo, descricao, referencia, codigobarras, precovenda, unidade)")
       .eq("ordemservicoid", osId);
     if (prod_res.error) throw prod_res.error;
 
@@ -256,7 +263,7 @@ export async function GET(
         : null,
     }));
 
-    // Itens — serviços (SEM idusuariorealizador; realizadores via tabela N:N)
+    // Itens — serviços
     const serv_res = await supabase
       .from("osservico")
       .select(
@@ -273,8 +280,7 @@ export async function GET(
 
     if (serv_res.error) throw serv_res.error;
 
-    // Busca realizadores (tabela de junção)
-    // Ajuste o nome "osservico_realizador" e as colunas (usuarioid, etc) conforme seu schema.
+    // Realizadores (N:N)
     const rel_res = await supabase
       .from("osservico_realizador")
       .select(
@@ -289,7 +295,6 @@ export async function GET(
 
     if (rel_res.error) throw rel_res.error;
 
-    // Indexa realizadores por servicoid (e osId já é fixo no filtro)
     const realizadoresByServico = new Map<number, RealizadorLite[]>();
     for (const rr of rel_res.data ?? []) {
       const sid = Number((rr as any).servicoid);
@@ -323,21 +328,12 @@ export async function GET(
         : null,
     }));
 
-    // Aprovações (tokens)
-    const ap_res = await supabase
-      .from("osaprovacao")
-      .select("id, token, expira_em, usado_em, created_at")
-      .eq("ordemservicoid", osId);
+    // Aprovações
+    const ap_res = await supabase.from("osaprovacao").select("id, token, expira_em, usado_em, created_at").eq("ordemservicoid", osId);
     if (ap_res.error) throw ap_res.error;
 
     const aprovacoes =
-      (ap_res.data as Array<{
-        id: number;
-        token: string;
-        expira_em: string | null;
-        usado_em: string | null;
-        created_at: string | null;
-      }>) ?? [];
+      (ap_res.data as Array<{ id: number; token: string; expira_em: string | null; usado_em: string | null; created_at: string | null }>) ?? [];
 
     // OS agregada
     const os = {
@@ -379,39 +375,29 @@ export async function GET(
         quantidade: s.quantidade,
         precounitario: s.precounitario,
         subtotal: s.subtotal,
-        realizadores: s.realizadores, // opcional: pode remover se não quiser no "orcamento"
+        realizadores: s.realizadores,
       })),
     };
 
     return NextResponse.json(
-      {
-        os,
-        cliente: os.cliente,
-        itensProduto,
-        itensServico,
-        checklist,
-        aprovacoes,
-        orcamento,
-      },
+      { os, cliente: os.cliente, itensProduto, itensServico, checklist, aprovacoes, orcamento },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (e: any) {
     console.error("GET /api/ordens/[id]", e);
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao carregar OS" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message ?? "Erro ao carregar OS" }, { status: 500 });
   }
 }
 
 /* =====================================================
- * PUT: atualiza campos básicos + substitui checklist
+ * PUT: atualiza campos básicos + substitui checklist (fluxo legado)
  * ===================================================== */
-export async function PUT(
-  req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    const userId = session.user.id;
+
     const { id } = await ctx.params;
     const osId = Number(id);
     if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
@@ -465,10 +451,7 @@ export async function PUT(
 
     // Substituição do checklist (fluxo legado)
     if (Array.isArray(body.checklist)) {
-      const antigos_res = await supabase
-        .from("checklist")
-        .select("id")
-        .eq("ordemservicoid", osId);
+      const antigos_res = await supabase.from("checklist").select("id").eq("ordemservicoid", osId);
       if (antigos_res.error) throw antigos_res.error;
 
       const ids = (antigos_res.data ?? []).map((r: any) => r.id as number);
@@ -488,9 +471,11 @@ export async function PUT(
             item: String(it?.item || "").slice(0, 255),
             status: sanitizeCkStatus(it?.status),
             observacao: it?.observacao ?? null,
+            created_by: userId, // <-- importante pro NOT NULL
           })
           .select("id")
           .single();
+
         if (ins_res.error) throw ins_res.error;
 
         const checklistid = ins_res.data.id as number;
@@ -513,9 +498,6 @@ export async function PUT(
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error("PUT /api/ordens/[id]", e);
-    return NextResponse.json(
-      { error: e?.message ?? "Erro ao salvar OS" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message ?? "Erro ao salvar OS" }, { status: 500 });
   }
 }

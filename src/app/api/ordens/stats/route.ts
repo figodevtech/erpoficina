@@ -4,43 +4,50 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-async function countByStatus(status: string) {
+type StatusOS =
+  | "AGUARDANDO_CHECKLIST"
+  | "ORCAMENTO"
+  | "ORCAMENTO_RECUSADO"
+  | "APROVACAO_ORCAMENTO"
+  | "ORCAMENTO_APROVADO"
+  | "EM_ANDAMENTO"
+  | "PAGAMENTO"
+  | "CONCLUIDO"
+  | "CANCELADO";
+
+const ALL_STATUSES: StatusOS[] = [
+  "AGUARDANDO_CHECKLIST",
+  "ORCAMENTO",
+  "ORCAMENTO_RECUSADO",
+  "APROVACAO_ORCAMENTO",
+  "ORCAMENTO_APROVADO",
+  "EM_ANDAMENTO",
+  "PAGAMENTO",
+  "CONCLUIDO",
+  "CANCELADO",
+];
+
+async function countByStatus(status: StatusOS) {
   const { count, error } = await supabaseAdmin
     .from("ordemservico")
     .select("*", { count: "exact", head: true })
     .eq("status", status);
+
   if (error) throw error;
   return count ?? 0;
 }
 
 export async function GET() {
   try {
-    const [
-      orcamento,
-      aprovacao,
-      emAndamento,
-      pagamento,
-      concluido,
-      cancelado,
-    ] = await Promise.all([
-      countByStatus("ORCAMENTO"),
-      countByStatus("APROVACAO_ORCAMENTO"),
-      countByStatus("EM_ANDAMENTO"),
-      countByStatus("PAGAMENTO"),
-      countByStatus("CONCLUIDO"),
-      countByStatus("CANCELADO"),
-    ]);
+    // roda 9 contagens (1 por status)
+    const counts = await Promise.all(ALL_STATUSES.map((s) => countByStatus(s)));
 
-    return NextResponse.json({
-      counters: {
-        ORCAMENTO: orcamento,
-        APROVACAO_ORCAMENTO: aprovacao,
-        EM_ANDAMENTO: emAndamento,
-        PAGAMENTO: pagamento,
-        CONCLUIDO: concluido,
-        CANCELADO: cancelado,
-      },
-    });
+    const counters = ALL_STATUSES.reduce((acc, status, idx) => {
+      acc[status] = counts[idx] ?? 0;
+      return acc;
+    }, {} as Record<StatusOS, number>);
+
+    return NextResponse.json({ counters });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Erro ao calcular estatísticas" }, { status: 500 });
   }
