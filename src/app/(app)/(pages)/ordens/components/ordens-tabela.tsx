@@ -64,6 +64,7 @@ import {
 } from "./ordens-tabela-helpers";
 import { OrdensFilterSheet } from "./ordens-filtros";
 import { EmissaoNotaDialog } from "./dialogs/emissao-nota-dialog/emissao-nota-dialog";
+import { Label } from "@/components/ui/label";
 
 // ------------------ COMPONENTE PRINCIPAL ------------------
 export function OrdensTabela({
@@ -77,38 +78,30 @@ export function OrdensTabela({
   onEditar: (row: OrdemComDatas) => void;
   onNovaOS: () => void;
 }) {
-  // dados
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
 
-  // paginação
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // ✅ busca
   const [localSearch, setLocalSearch] = useState("");
 
-  // ordenação (já começa por prioridade desc => ALTA no topo)
   const [sortKey, setSortKey] = useState<SortKey>("prioridade");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  // filtros
   const [filtroAberto, setFiltroAberto] = useState(false);
   const [prioFiltro, setPrioFiltro] = useState<PrioFiltro>("TODAS");
   const [dataInicio, setDataInicioState] = useState<Date | undefined>();
   const [dataFim, setDataFimState] = useState<Date | undefined>();
 
-  // loading + guarda de request
   const [isLoading, setIsLoading] = useState(true);
   const reqIdRef = useRef(0);
 
-  // tick para tempo correndo (5s)
   const now = useNowTick(5000);
 
   const statusesKey = useMemo(() => (statuses?.length ? statuses.join("|") : ""), [statuses]);
 
-  // params atuais p/ realtime
   const currentParamsRef = useRef({ statuses, search: "", page: 1, limit: 10 });
   useEffect(() => {
     currentParamsRef.current = { statuses, search: localSearch, page, limit };
@@ -131,7 +124,6 @@ export function OrdensTabela({
     try {
       const url = new URL("/api/ordens", window.location.origin);
 
-      // ✅ garante exclusividade (nunca manda os dois)
       if (sts.length === 1) {
         url.searchParams.set("status", sts[0]);
         url.searchParams.delete("statuses");
@@ -148,9 +140,6 @@ export function OrdensTabela({
 
       url.searchParams.set("page", String(pg));
       url.searchParams.set("limit", String(lm));
-
-      // debug opcional:
-      // console.log("GET", url.toString());
 
       const r = await fetch(url.toString(), { cache: "no-store" });
       const j = await r.json().catch(() => ({} as any));
@@ -190,23 +179,19 @@ export function OrdensTabela({
     }
   }
 
-  // ✅ debounce de busca/paginação/status
   useEffect(() => {
     const t = setTimeout(() => fetchNow({ statuses, search: localSearch, page, limit }), 300);
     return () => clearTimeout(t);
   }, [statusesKey, localSearch, page, limit]);
 
-  // quando mudar tab/status, volta para página 1
   useEffect(() => {
     setPage(1);
   }, [statusesKey]);
 
-  // quando mudar busca, volta para página 1
   useEffect(() => {
     setPage(1);
   }, [localSearch]);
 
-  // realtime via supabase
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -235,7 +220,6 @@ export function OrdensTabela({
     };
   }, [statusesKey]);
 
-  // rodapé (baseado na página que veio do backend, antes de filtros locais)
   const pageCount = rows.length;
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
@@ -246,7 +230,7 @@ export function OrdensTabela({
     return fmtDuration(ms);
   };
 
-  // Estados de diálogos
+  // dialogs
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkRow, setLinkRow] = useState<OrdemComDatas | null>(null);
 
@@ -275,6 +259,15 @@ export function OrdensTabela({
 
   const [realizadoresOpen, setRealizadoresOpen] = useState(false);
   const [realizadoresOsId, setRealizadoresOsId] = useState<number | null>(null);
+
+  // ✅ Reset (confirm)
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetRow, setResetRow] = useState<OrdemComDatas | null>(null);
+
+  // ✅ Cancelar (motivo obrigatório)
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelRow, setCancelRow] = useState<OrdemComDatas | null>(null);
+  const [cancelMotivo, setCancelMotivo] = useState("");
 
   const clearApprovalToast = () => {
     if (approvalToastId != null) {
@@ -394,25 +387,65 @@ export function OrdensTabela({
     }
   }
 
+  // ✅ Reset UI (confirma)
+  function handleResetOS(row: OrdemComDatas) {
+    setResetRow(row);
+    setResetOpen(true);
+  }
+
+  // ✅ Reset reaproveitando endpoint existente de status
+  async function doResetOS(id: number) {
+    const tId = toast.loading(`Reiniciando OS #${id}...`, { duration: Infinity });
+    try {
+      const r = await fetch(`/api/ordens/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ORCAMENTO" }),
+      });
+      const j = await r.json().catch(() => ({} as any));
+      if (!r.ok) throw new Error(j?.error || "Falha ao reiniciar OS");
+
+      toast.success("OS reiniciada (voltou para ORCAMENTO)", { id: tId, duration: 2500 });
+      window.dispatchEvent(new CustomEvent("os:refresh"));
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao reiniciar OS", { id: tId, duration: 4000 });
+    }
+  }
+
+  // ✅ Cancelar UI (motivo)
+  function handleCancelarOS(row: OrdemComDatas) {
+    setCancelRow(row);
+    setCancelMotivo("");
+    setCancelOpen(true);
+  }
+
+  async function doCancelarOS(id: number, motivo: string) {
+    const tId = toast.loading(`Cancelando OS #${id}...`, { duration: Infinity });
+    try {
+      const r = await fetch(`/api/ordens/${id}/cancelar`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo }),
+      });
+      const j = await r.json().catch(() => ({} as any));
+      if (!r.ok) throw new Error(j?.error || "Falha ao cancelar OS");
+
+      toast.success("OS cancelada", { id: tId, duration: 2500 });
+      window.dispatchEvent(new CustomEvent("os:refresh"));
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao cancelar OS", { id: tId, duration: 4000 });
+    }
+  }
+
   const handleSetDataInicio = (date?: Date) => {
-    if (!date) {
-      setDataInicioState(undefined);
-      return;
-    }
-    if (dataFim && date > dataFim) {
-      setDataFimState(date);
-    }
+    if (!date) return setDataInicioState(undefined);
+    if (dataFim && date > dataFim) setDataFimState(date);
     setDataInicioState(date);
   };
 
   const handleSetDataFim = (date?: Date) => {
-    if (!date) {
-      setDataFimState(undefined);
-      return;
-    }
-    if (dataInicio && date < dataInicio) {
-      setDataFimState(date);
-    }
+    if (!date) return setDataFimState(undefined);
+    if (dataInicio && date < dataInicio) setDataFimState(date);
     setDataFimState(date);
   };
 
@@ -422,7 +455,6 @@ export function OrdensTabela({
     setDataFimState(undefined);
   };
 
-  // ------- Filtro em memória (só na página atual) -------
   const filteredRows = useMemo(() => {
     const inicioDay = normalizeDateDay(dataInicio ?? null);
     const fimDay = normalizeDateDay(dataFim ?? null);
@@ -448,7 +480,6 @@ export function OrdensTabela({
     });
   }, [rows, prioFiltro, dataInicio, dataFim]);
 
-  // ------- Ordenação em memória -------
   const sortedRows = useMemo(() => {
     if (!sortKey) return filteredRows;
     const decorated = filteredRows.map((r, i) => ({ r, i }));
@@ -529,12 +560,7 @@ export function OrdensTabela({
             <div className="flex items-center gap-2">
               <div className="relative hidden md:block w-[400px]">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={localSearch}
-                  onChange={(e) => setLocalSearch(e.target.value)}
-                  placeholder="Buscar..."
-                  className="pl-8 pr-9"
-                />
+                <Input value={localSearch} onChange={(e) => setLocalSearch(e.target.value)} placeholder="Buscar..." className="pl-8 pr-9" />
                 {localSearch?.length > 0 && (
                   <button
                     type="button"
@@ -570,12 +596,7 @@ export function OrdensTabela({
           <div className="mt-3 md:hidden">
             <div className="relative w-full">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                placeholder="Buscar..."
-                className="pl-8 pr-9"
-              />
+              <Input value={localSearch} onChange={(e) => setLocalSearch(e.target.value)} placeholder="Buscar..." className="pl-8 pr-9" />
               {localSearch?.length > 0 && (
                 <button
                   type="button"
@@ -601,53 +622,23 @@ export function OrdensTabela({
                   <TableHead className="min-w-[220px]">Descrição</TableHead>
 
                   <TableHead className="min-w-[100px]">
-                    <SortableHeader
-                      label="Entrada"
-                      columnKey="entrada"
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onChange={handleSortChange}
-                    />
+                    <SortableHeader label="Entrada" columnKey="entrada" sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
                   </TableHead>
 
                   <TableHead className="min-w-[100px]">
-                    <SortableHeader
-                      label="Saída"
-                      columnKey="saida"
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onChange={handleSortChange}
-                    />
+                    <SortableHeader label="Saída" columnKey="saida" sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
                   </TableHead>
 
                   <TableHead className="min-w-[120px]">
-                    <SortableHeader
-                      label="Status"
-                      columnKey="status"
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onChange={handleSortChange}
-                    />
+                    <SortableHeader label="Status" columnKey="status" sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
                   </TableHead>
 
                   <TableHead className="min-w-[120px]">
-                    <SortableHeader
-                      label="Prioridade"
-                      columnKey="prioridade"
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onChange={handleSortChange}
-                    />
+                    <SortableHeader label="Prioridade" columnKey="prioridade" sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
                   </TableHead>
 
                   <TableHead className="min-w-[70px]">
-                    <SortableHeader
-                      label="Tempo"
-                      columnKey="tempo"
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onChange={handleSortChange}
-                    />
+                    <SortableHeader label="Tempo" columnKey="tempo" sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
                   </TableHead>
 
                   <TableHead className="min-w-[70px] text-center">Ações</TableHead>
@@ -680,9 +671,7 @@ export function OrdensTabela({
 
                     const clienteFull = clienteNome || "—";
                     const clienteShort =
-                      clienteFull.length > MAX_CLIENTE_CHARS
-                        ? `${clienteFull.slice(0, MAX_CLIENTE_CHARS - 1)}…`
-                        : clienteFull;
+                      clienteFull.length > MAX_CLIENTE_CHARS ? `${clienteFull.slice(0, MAX_CLIENTE_CHARS - 1)}…` : clienteFull;
 
                     const veiculoStr = r.veiculo
                       ? `${r.veiculo.marca ?? ""} ${r.veiculo.modelo ?? ""} - ${r.veiculo.placa ?? ""}`.trim()
@@ -762,6 +751,8 @@ export function OrdensTabela({
                             onEditar={onEditar}
                             setStatus={setStatus}
                             onSendToApproval={handleSendToApproval}
+                            onResetOS={handleResetOS}
+                            onCancelarOS={handleCancelarOS}
                             setLinkRow={setLinkRow}
                             setLinkDialogOpen={setLinkDialogOpen}
                             setConfirmRow={setConfirmRow}
@@ -797,26 +788,19 @@ export function OrdensTabela({
             <div className="flex flex-nowrap text-xs text-muted-foreground">
               <span>{start || 0}</span> - <span>{end || 0}</span>
               <span className="ml-1 hidden sm:block">de {total}</span>
-              <Loader
-                className={`ml-2 h-full w-4 animate-spin transition-all ${isLoading ? "opacity-100" : "opacity-0"}`}
-                aria-label="carregando"
-              />
+              <Loader className={`ml-2 h-full w-4 animate-spin transition-all ${isLoading ? "opacity-100" : "opacity-0"}`} aria-label="carregando" />
             </div>
 
             <div className="flex items-center justify-center space-x-1 sm:space-x-3">
               <Button variant="outline" size="icon" aria-label="Primeira página" onClick={() => setPage(1)} disabled={page === 1}>
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Página anterior"
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-              >
+              <Button variant="outline" size="icon" aria-label="Página anterior" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
-              <span className="text-xs font-medium text-nowrap">Pg. {page} de {totalPages || 1}</span>
+              <span className="text-xs font-medium text-nowrap">
+                Pg. {page} de {totalPages || 1}
+              </span>
               <Button
                 variant="outline"
                 size="icon"
@@ -869,6 +853,7 @@ export function OrdensTabela({
           clienteTelefone={linkRow?.cliente?.telefone}
         />
 
+        {/* Confirmar envio ao financeiro */}
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -896,6 +881,7 @@ export function OrdensTabela({
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Enviar para aprovação */}
         <AlertDialog
           open={approveDialogOpen}
           onOpenChange={(open) => {
@@ -915,22 +901,15 @@ export function OrdensTabela({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-
               <AlertDialogAction
                 onClick={async () => {
                   if (!approveRow) return;
 
-                  if (approvalToastId != null) {
-                    toast("Enviando orçamento para aprovação...", { id: approvalToastId });
-                  }
-
+                  if (approvalToastId != null) toast("Enviando orçamento para aprovação...", { id: approvalToastId });
                   await setStatus(approveRow.id, "APROVACAO_ORCAMENTO");
 
                   if (approvalToastId != null) {
-                    toast.success("Orçamento enviado para aprovação!", {
-                      id: approvalToastId,
-                      duration: 3000,
-                    });
+                    toast.success("Orçamento enviado para aprovação!", { id: approvalToastId, duration: 3000 });
                     setApprovalToastId(null);
                   }
 
@@ -939,6 +918,87 @@ export function OrdensTabela({
                 }}
               >
                 Enviar para aprovação
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ✅ Confirmar reset */}
+        <AlertDialog
+          open={resetOpen}
+          onOpenChange={(open) => {
+            setResetOpen(open);
+            if (!open) setResetRow(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reiniciar OS</AlertDialogTitle>
+              <AlertDialogDescription>
+                Isso vai retornar a OS <b>#{resetRow?.id}</b> para <b>ORCAMENTO</b>.
+                Os checklists existentes serão mantidos. Confirma?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (!resetRow) return;
+                  await doResetOS(resetRow.id);
+                  setResetOpen(false);
+                  setResetRow(null);
+                }}
+              >
+                Confirmar reset
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ✅ Cancelar com motivo obrigatório */}
+        <AlertDialog
+          open={cancelOpen}
+          onOpenChange={(open) => {
+            setCancelOpen(open);
+            if (!open) {
+              setCancelRow(null);
+              setCancelMotivo("");
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancelar OS</AlertDialogTitle>
+              <AlertDialogDescription>
+                Informe o motivo do cancelamento da OS <b>#{cancelRow?.id}</b>. Esse campo é obrigatório.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="mt-2 space-y-2">
+              <Label className="">Motivo</Label>
+              <Input
+                value={cancelMotivo}
+                onChange={(e) => setCancelMotivo(e.target.value)}
+                placeholder="Ex.: Cliente desistiu / peça indisponível..."
+              />
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Voltar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={cancelMotivo.trim().length === 0}
+                onClick={async () => {
+                  if (!cancelRow) return;
+                  const motivo = cancelMotivo.trim();
+                  if (!motivo) return;
+
+                  await doCancelarOS(cancelRow.id, motivo);
+                  setCancelOpen(false);
+                  setCancelRow(null);
+                  setCancelMotivo("");
+                }}
+              >
+                Confirmar cancelamento
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
