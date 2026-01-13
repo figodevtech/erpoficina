@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/theme-provider";
@@ -6,8 +6,22 @@ import NProgressHandler from "@/components/NProgressHandler";
 import { RouteAwareToaster } from "@/components/route-aware-toaster";
 
 export const metadata: Metadata = {
-  title: "ERP",
-  description: "Erp Oficina",
+  title: "ERP Oficina",
+  description: "Sistema de gestão para oficinas",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    apple: "/icons/icon-512x512.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'ERP Oficina',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#3b82f6",
 };
 
 const geistSans = Geist({
