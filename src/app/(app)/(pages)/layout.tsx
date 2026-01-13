@@ -65,7 +65,7 @@ export default function ShellLayout({ children }: { children: ReactNode }) {
   if (!loadingConfigs && config) {
     return (
       <ConfigProvider config={config}>
-        <ClientAppShell>{children}</ClientAppShell>;
+        <ClientAppShell>{children}</ClientAppShell>
       </ConfigProvider>
     );
   }
