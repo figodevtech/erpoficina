@@ -92,7 +92,6 @@ const statusTabs: {
     dot: "bg-fuchsia-500",
     active:
       "data-[state=active]:bg-fuchsia-500/15 data-[state=active]:text-fuchsia-200 data-[state=active]:ring-fuchsia-500/30",
-    // você pediu explicitamente: inclui AGUARDANDO_CHECKLIST
     statuses: ["ORCAMENTO", "ORCAMENTO_RECUSADO", "AGUARDANDO_CHECKLIST"],
   },
   {

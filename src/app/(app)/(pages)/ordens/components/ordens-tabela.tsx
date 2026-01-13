@@ -1,4 +1,3 @@
-// ./src/app/(app)/(pages)/ordens/components/ordens-tabela.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -32,6 +32,8 @@ import {
   Plus,
   Package,
   AlertTriangle,
+  Search,
+  X,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -41,7 +43,7 @@ import TableSkeleton from "./table-skeleton";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 import { ChecklistDialog } from "./dialogs/checklist-dialog";
-import { RealizadoresOSDialog } from "./dialogs/realizadores-os-dialog"; // NOVO
+import { RealizadoresOSDialog } from "./dialogs/realizadores-os-dialog";
 import { statusClasses, prioClasses, fmtDate, fmtDuration, useNowTick, safeStatus } from "./ordens-utils";
 import { RowActions } from "./row-actions";
 import OsFinancialDialog from "../../(financeiro)/pagamentodeordens/components/osFinancialDialog/osFinancialDialog";
@@ -66,13 +68,11 @@ import { EmissaoNotaDialog } from "./dialogs/emissao-nota-dialog/emissao-nota-di
 // ------------------ COMPONENTE PRINCIPAL ------------------
 export function OrdensTabela({
   statuses = [],
-  search = "",
   onOpenOrcamento,
   onEditar,
   onNovaOS,
 }: {
   statuses?: StatusOS[];
-  search?: string;
   onOpenOrcamento: (row: OrdemComDatas) => void;
   onEditar: (row: OrdemComDatas) => void;
   onNovaOS: () => void;
@@ -85,6 +85,9 @@ export function OrdensTabela({
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+
+  // ✅ busca
+  const [localSearch, setLocalSearch] = useState("");
 
   // ordenação (já começa por prioridade desc => ALTA no topo)
   const [sortKey, setSortKey] = useState<SortKey>("prioridade");
@@ -103,11 +106,13 @@ export function OrdensTabela({
   // tick para tempo correndo (5s)
   const now = useNowTick(5000);
 
+  const statusesKey = useMemo(() => (statuses?.length ? statuses.join("|") : ""), [statuses]);
+
   // params atuais p/ realtime
-  const currentParamsRef = useRef({ statuses, search, page, limit });
+  const currentParamsRef = useRef({ statuses, search: "", page: 1, limit: 10 });
   useEffect(() => {
-    currentParamsRef.current = { statuses, search, page, limit };
-  }, [statuses, search, page, limit]);
+    currentParamsRef.current = { statuses, search: localSearch, page, limit };
+  }, [statuses, localSearch, page, limit]);
 
   async function fetchNow({
     statuses: sts,
@@ -122,36 +127,58 @@ export function OrdensTabela({
   }) {
     const myId = ++reqIdRef.current;
     setIsLoading(true);
+
     try {
       const url = new URL("/api/ordens", window.location.origin);
+
+      // ✅ garante exclusividade (nunca manda os dois)
       if (sts.length === 1) {
         url.searchParams.set("status", sts[0]);
+        url.searchParams.delete("statuses");
       } else if (sts.length > 1) {
         url.searchParams.set("statuses", sts.join(","));
+        url.searchParams.delete("status");
+      } else {
+        url.searchParams.delete("status");
+        url.searchParams.delete("statuses");
       }
-      if (q) url.searchParams.set("q", q);
+
+      if (q?.trim()) url.searchParams.set("q", q.trim());
+      else url.searchParams.delete("q");
+
       url.searchParams.set("page", String(pg));
       url.searchParams.set("limit", String(lm));
 
+      // debug opcional:
+      // console.log("GET", url.toString());
+
       const r = await fetch(url.toString(), { cache: "no-store" });
-      const j = await r.json();
+      const j = await r.json().catch(() => ({} as any));
 
       if (myId !== reqIdRef.current) return;
 
-      if (r.ok) {
-        let items: OrdemComDatas[] = j.items ?? [];
-        if (sts.length > 0) {
-          items = items.filter((row: OrdemComDatas) => sts.includes(safeStatus(row.status) as StatusOS));
-        }
-        setRows(items);
-        setTotalPages(j.totalPages ?? 1);
-        setTotal(j.total ?? j.totalItems ?? items.length);
-      } else {
+      if (!r.ok) {
         toast.error(j?.error || "Falha ao carregar as ordens");
         setRows([]);
         setTotalPages(1);
         setTotal(0);
+        return;
       }
+
+      const items: OrdemComDatas[] = Array.isArray(j.items) ? j.items : [];
+      setRows(items);
+
+      const apiTotal = Number(j.total ?? j.totalItems ?? 0);
+      const safeTotal = Number.isFinite(apiTotal) ? apiTotal : items.length;
+      setTotal(safeTotal);
+
+      const apiTotalPages = Number(j.totalPages ?? 0);
+      const safeTotalPages =
+        Number.isFinite(apiTotalPages) && apiTotalPages > 0 ? apiTotalPages : Math.max(1, Math.ceil(safeTotal / lm));
+
+      setTotalPages(safeTotalPages);
+
+      if (pg > safeTotalPages) setPage(safeTotalPages);
     } catch (err: any) {
       if (myId !== reqIdRef.current) return;
       if (err?.name !== "AbortError") toast.error(err?.message || "Erro ao carregar as ordens");
@@ -163,16 +190,21 @@ export function OrdensTabela({
     }
   }
 
+  // ✅ debounce de busca/paginação/status
   useEffect(() => {
-    const t = setTimeout(() => fetchNow({ statuses, search, page, limit }), 300);
+    const t = setTimeout(() => fetchNow({ statuses, search: localSearch, page, limit }), 300);
     return () => clearTimeout(t);
-  }, [statuses, search, page, limit]);
+  }, [statusesKey, localSearch, page, limit]);
 
-  const statusesKey = useMemo(() => (statuses?.length ? statuses.join("|") : ""), [statuses]);
-
+  // quando mudar tab/status, volta para página 1
   useEffect(() => {
     setPage(1);
   }, [statusesKey]);
+
+  // quando mudar busca, volta para página 1
+  useEffect(() => {
+    setPage(1);
+  }, [localSearch]);
 
   // realtime via supabase
   useEffect(() => {
@@ -183,8 +215,10 @@ export function OrdensTabela({
     const supabase = createClient(url, anon, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
     const suffix = statusesKey ? statusesKey.replace(/\|/g, "+") : "all";
     const channelName = `os-realtime-list-${suffix}`;
+
     const ch = supabase
       .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () =>
@@ -201,7 +235,7 @@ export function OrdensTabela({
     };
   }, [statusesKey]);
 
-  // rodapé
+  // rodapé (baseado na página que veio do backend, antes de filtros locais)
   const pageCount = rows.length;
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
@@ -239,7 +273,6 @@ export function OrdensTabela({
 
   const [approvalToastId, setApprovalToastId] = useState<string | number | null>(null);
 
-  // NOVO: dialog exclusivo para realizadores
   const [realizadoresOpen, setRealizadoresOpen] = useState(false);
   const [realizadoresOsId, setRealizadoresOsId] = useState<number | null>(null);
 
@@ -250,9 +283,7 @@ export function OrdensTabela({
     }
   };
 
-  // ------- setStatus com checagem de realizadores ao iniciar -------
   async function setStatus(id: number, status: StatusOS) {
-    // ✅ toast de loading só para o clique em "Iniciar"
     const loadingToastId =
       status === "EM_ANDAMENTO"
         ? toast.loading("Preparando atribuição de realizadores...", {
@@ -282,11 +313,9 @@ export function OrdensTabela({
         });
 
         if (temSemRealizador) {
-          // abre o dialog
           setRealizadoresOsId(id);
           setRealizadoresOpen(true);
 
-          // troca o toast loading por um aviso curto
           toast.error("Antes de iniciar, selecione ao menos 1 realizador para todos os serviços da OS.", {
             id: loadingToastId ?? undefined,
             duration: 4000,
@@ -294,10 +323,8 @@ export function OrdensTabela({
           return;
         }
 
-        // se passou na validação, pode fechar o loading e seguir
         closeLoading();
       } catch (err: any) {
-        // abre o dialog mesmo assim (seu comportamento atual)
         setRealizadoresOsId(id);
         setRealizadoresOpen(true);
 
@@ -367,7 +394,6 @@ export function OrdensTabela({
     }
   }
 
-  // garante regra: fim não pode ser antes do início, e vice-versa
   const handleSetDataInicio = (date?: Date) => {
     if (!date) {
       setDataInicioState(undefined);
@@ -385,7 +411,7 @@ export function OrdensTabela({
       return;
     }
     if (dataInicio && date < dataInicio) {
-      setDataInicioState(date);
+      setDataFimState(date);
     }
     setDataFimState(date);
   };
@@ -425,12 +451,10 @@ export function OrdensTabela({
   // ------- Ordenação em memória -------
   const sortedRows = useMemo(() => {
     if (!sortKey) return filteredRows;
-    const decorated = filteredRows.map((r, i) => ({ r, i })); // estável
+    const decorated = filteredRows.map((r, i) => ({ r, i }));
 
     const compareStr = (a?: string | null, b?: string | null) =>
-      (a || "—").localeCompare(b || "—", "pt-BR", {
-        sensitivity: "base",
-      });
+      (a || "—").localeCompare(b || "—", "pt-BR", { sensitivity: "base" });
 
     decorated.sort((a, b) => {
       let cmp = 0;
@@ -503,6 +527,27 @@ export function OrdensTabela({
             </div>
 
             <div className="flex items-center gap-2">
+              <div className="relative hidden md:block w-[400px]">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={localSearch}
+                  onChange={(e) => setLocalSearch(e.target.value)}
+                  placeholder="Buscar..."
+                  className="pl-8 pr-9"
+                />
+                {localSearch?.length > 0 && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => setLocalSearch("")}
+                    aria-label="Limpar busca"
+                    title="Limpar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
               <OrdensFilterSheet
                 open={filtroAberto}
                 onOpenChange={setFiltroAberto}
@@ -521,10 +566,32 @@ export function OrdensTabela({
               </Button>
             </div>
           </div>
+
+          <div className="mt-3 md:hidden">
+            <div className="relative w-full">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
+                placeholder="Buscar..."
+                className="pl-8 pr-9"
+              />
+              {localSearch?.length > 0 && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => setLocalSearch("")}
+                  aria-label="Limpar busca"
+                  title="Limpar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent className="p-3 sm:p-4">
-          {/* Tabela */}
           <div className="overflow-x-auto rounded-md border">
             <Table className="text-xs">
               <TableHeader>
@@ -542,6 +609,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
+
                   <TableHead className="min-w-[100px]">
                     <SortableHeader
                       label="Saída"
@@ -551,6 +619,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
+
                   <TableHead className="min-w-[120px]">
                     <SortableHeader
                       label="Status"
@@ -560,6 +629,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
+
                   <TableHead className="min-w-[120px]">
                     <SortableHeader
                       label="Prioridade"
@@ -569,6 +639,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
+
                   <TableHead className="min-w-[70px]">
                     <SortableHeader
                       label="Tempo"
@@ -578,6 +649,7 @@ export function OrdensTabela({
                       onChange={handleSortChange}
                     />
                   </TableHead>
+
                   <TableHead className="min-w-[70px] text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -617,7 +689,6 @@ export function OrdensTabela({
                       : "";
 
                     const isPeca = (r as any).alvo_tipo === "PECA" || (r as any).alvoTipo === "PECA";
-
                     const pecaTitulo = (r as any)?.peca?.titulo as string | undefined;
                     const pecaDesc = (r as any)?.peca?.descricao as string | undefined;
                     const pecaStr = isPeca ? pecaTitulo || pecaDesc || "Peça" : "";
@@ -625,9 +696,6 @@ export function OrdensTabela({
                     const alvoStr = isPeca ? pecaStr : veiculoStr;
 
                     const descFull = r.descricao || "—";
-                    const descShort =
-                      descFull.length > MAX_DESC_CHARS ? `${descFull.slice(0, MAX_DESC_CHARS - 1)}…` : descFull;
-
                     const policy = buildPolicy(st);
 
                     return (
@@ -661,18 +729,8 @@ export function OrdensTabela({
                         <TableCell className="max-w-[380px]">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div
-                                className="
-          whitespace-normal break-words
-          line-clamp-2
-          text-sm
-        "
-                              >
-                                {descFull}
-                              </div>
+                              <div className="whitespace-normal break-words line-clamp-2 text-sm">{descFull}</div>
                             </TooltipTrigger>
-
-                            {/* Tooltip sempre mostra completo (ou deixe condicional se preferir) */}
                             <TooltipContent className="max-w-sm">
                               <p className="whitespace-pre-wrap break-words">{descFull}</p>
                             </TooltipContent>
@@ -688,9 +746,7 @@ export function OrdensTabela({
 
                         <TableCell>
                           {r.prioridade ? (
-                            <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>
-                              {r.prioridade}
-                            </Badge>
+                            <Badge className={prioClasses[(r.prioridade || "").toUpperCase()] ?? ""}>{r.prioridade}</Badge>
                           ) : (
                             "—"
                           )}
@@ -737,7 +793,6 @@ export function OrdensTabela({
             </Table>
           </div>
 
-          {/* Rodapé — paginação */}
           <div className="mt-4 flex items-center justify-between">
             <div className="flex flex-nowrap text-xs text-muted-foreground">
               <span>{start || 0}</span> - <span>{end || 0}</span>
@@ -749,13 +804,7 @@ export function OrdensTabela({
             </div>
 
             <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Primeira página"
-                onClick={() => setPage(1)}
-                disabled={page === 1}
-              >
+              <Button variant="outline" size="icon" aria-label="Primeira página" onClick={() => setPage(1)} disabled={page === 1}>
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
               <Button
@@ -767,9 +816,7 @@ export function OrdensTabela({
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
-              <span className="text-xs font-medium text-nowrap">
-                Pg. {page} de {totalPages || 1}
-              </span>
+              <span className="text-xs font-medium text-nowrap">Pg. {page} de {totalPages || 1}</span>
               <Button
                 variant="outline"
                 size="icon"
@@ -811,7 +858,6 @@ export function OrdensTabela({
           </div>
         </CardContent>
 
-        {/* Dialog: Link de aprovação */}
         <LinkAprovacaoDialog
           open={linkDialogOpen}
           onOpenChange={(v) => {
@@ -823,7 +869,6 @@ export function OrdensTabela({
           clienteTelefone={linkRow?.cliente?.telefone}
         />
 
-        {/* Alerta: enviar p/ pagamento */}
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -851,16 +896,11 @@ export function OrdensTabela({
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Alerta “Enviar para aprovação” */}
         <AlertDialog
           open={approveDialogOpen}
           onOpenChange={(open) => {
             setApproveDialogOpen(open);
-
-            // se o dialog está fechando e ainda temos um toast "pendente", some com ele
-            if (!open) {
-              clearApprovalToast();
-            }
+            if (!open) clearApprovalToast();
           }}
         >
           <AlertDialogContent>
@@ -881,9 +921,7 @@ export function OrdensTabela({
                   if (!approveRow) return;
 
                   if (approvalToastId != null) {
-                    toast("Enviando orçamento para aprovação...", {
-                      id: approvalToastId,
-                    });
+                    toast("Enviando orçamento para aprovação...", { id: approvalToastId });
                   }
 
                   await setStatus(approveRow.id, "APROVACAO_ORCAMENTO");
@@ -906,7 +944,6 @@ export function OrdensTabela({
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Dialog: Receber pagamento */}
         <OsFinancialDialog
           open={payOpen}
           onOpenChange={(v) => {
@@ -919,7 +956,6 @@ export function OrdensTabela({
 
         <EmissaoNotaDialog osId={emissaoId} open={emissaoOpen} onOpenChange={setEmissaoOpen} />
 
-        {/* Dialog: Pagamento Stone */}
         <OsStonePaymentDialog
           open={stoneDialogOpen}
           onOpenChange={(v) => {
@@ -930,7 +966,6 @@ export function OrdensTabela({
           handleGetOrdens={() => fetchNow(currentParamsRef.current)}
         />
 
-        {/* Dialog: Detalhes */}
         <OSDetalhesDialog
           open={detailsOpen}
           onOpenChange={(v) => {
@@ -940,7 +975,6 @@ export function OrdensTabela({
           osId={detailsId ?? 0}
         />
 
-        {/* NOVO Dialog: Realizadores */}
         <RealizadoresOSDialog
           open={realizadoresOpen}
           onOpenChange={(v) => {
@@ -950,7 +984,6 @@ export function OrdensTabela({
           osId={realizadoresOsId}
         />
 
-        {/* Dialog: Checklist */}
         <ChecklistDialog
           open={checklistOpen}
           onOpenChange={(v) => {
