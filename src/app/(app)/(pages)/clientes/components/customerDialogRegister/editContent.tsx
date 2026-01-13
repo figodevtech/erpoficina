@@ -90,7 +90,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
-import { set } from "nprogress";
 
 interface EditContentProps {
   customerId: number;

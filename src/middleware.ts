@@ -29,7 +29,7 @@ function isStaticAsset(pathname: string) {
   ) {
     return true;
   }
-  return /\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map)$/.test(pathname);
+  return /\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map|json|webmanifest)$/.test(pathname);
 }
 
 function isPublicPath(pathname: string) {
