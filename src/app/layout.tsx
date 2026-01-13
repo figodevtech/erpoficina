@@ -8,10 +8,15 @@ import { RouteAwareToaster } from "@/components/route-aware-toaster";
 export const metadata: Metadata = {
   title: "ERP Oficina",
   description: "Sistema de gestão para oficinas",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon-192x192.png",
     apple: "/icons/icon-512x512.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'ERP Oficina',
   },
 };
 
