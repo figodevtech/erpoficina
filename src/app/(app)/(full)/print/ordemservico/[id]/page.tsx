@@ -1,124 +1,131 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin"
-import { notFound } from "next/navigation"
-import type { Metadata } from "next"
-import Image from "next/image"
-import { PrintButton } from "../../../components/PrintButton"
-import { User } from "lucide-react"
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import Image from "next/image";
+import { PrintButton } from "../../../components/PrintButton";
+import { Car, ClipboardList, Cog, Info, List, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-export const runtime = "nodejs"
+export const runtime = "nodejs";
 
 type PageProps = {
-  params: Promise<{ id: string }>
-}
+  params: Promise<{ id: string }>;
+};
 
-const EMPTY = "-"
+const EMPTY = "-";
 
 /* ========= HELPERS DE FORMATAÇÃO ========= */
 
 function fmtMoney(v: number | string | null | undefined) {
-  if (v == null) return "R$ 0,00"
-  const n = Number(v)
-  if (isNaN(n)) return "R$ 0,00"
+  if (v == null) return "R$ 0,00";
+  const n = Number(v);
+  if (isNaN(n)) return "R$ 0,00";
   return n.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
-  })
+  });
 }
 
 function fmtDate(s?: string | Date | null) {
-  if (!s) return EMPTY
-  const d = s instanceof Date ? s : new Date(s)
-  if (isNaN(d.getTime())) return EMPTY
-  return d.toLocaleDateString("pt-BR")
+  if (!s) return EMPTY;
+  const d = s instanceof Date ? s : new Date(s);
+  if (isNaN(d.getTime())) return EMPTY;
+  return d.toLocaleDateString("pt-BR");
 }
 
 function fmtDateTime(s?: string | Date | null) {
-  if (!s) return EMPTY
-  const d = s instanceof Date ? s : new Date(s)
-  if (isNaN(d.getTime())) return EMPTY
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+  if (!s) return EMPTY;
+  const d = s instanceof Date ? s : new Date(s);
+  if (isNaN(d.getTime())) return EMPTY;
+  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 function fmtText(value?: string | number | null) {
-  if (value == null) return EMPTY
-  const s = String(value).trim()
-  return s ? s : EMPTY
+  if (value == null) return EMPTY;
+  const s = String(value).trim();
+  return s ? s : EMPTY;
 }
 
 function joinParts(parts: Array<string | null | undefined>, separator = ", ") {
   return parts
     .map((part) => (part ?? "").toString().trim())
     .filter((part) => part.length > 0)
-    .join(separator)
+    .join(separator);
 }
 
 function fmtDoc(cpfCnpj: unknown) {
-  if (cpfCnpj == null) return EMPTY
-  const s = String(cpfCnpj).replace(/\D/g, "")
-  if (!s) return EMPTY
+  if (cpfCnpj == null) return EMPTY;
+  const s = String(cpfCnpj).replace(/\D/g, "");
+  if (!s) return EMPTY;
   if (s.length === 11) {
-    return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+    return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
   if (s.length === 14) {
-    return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")
+    return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
   }
-  return s
+  return s;
 }
 
 function fmtPhone(value?: string | null) {
-  if (!value) return EMPTY
-  const s = String(value).replace(/\D/g, "")
-  if (s.length === 11) return s.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
-  if (s.length === 10) return s.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3")
-  return value
+  if (!value) return EMPTY;
+  const s = String(value).replace(/\D/g, "");
+  if (s.length === 11) return s.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  if (s.length === 10) return s.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  return value;
 }
 
 function fmtEnum(value?: string | null) {
-  if (!value) return EMPTY
+  if (!value) return EMPTY;
   return String(value)
     .replace(/_/g, " ")
     .toLowerCase()
-    .replace(/\b\w/g, (match) => match.toUpperCase())
+    .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 function safeUrl(base: string, path: string): string {
   try {
-    return new URL(path, base).toString()
+    return new URL(path, base).toString();
   } catch {
-    return ""
+    return "";
   }
 }
 
 async function urlExiste(url: string): Promise<boolean> {
   try {
-    const res = await fetch(url, { method: "HEAD" })
-    return res.ok
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
   } catch {
-    return false
+    return false;
   }
 }
 
 async function fetchEmpresa(empresaId = 1) {
-  const { data, error } = await supabaseAdmin.from("empresa").select("*").eq("id", empresaId).maybeSingle()
+  const { data, error } = await supabaseAdmin
+    .from("empresa")
+    .select("*")
+    .eq("id", empresaId)
+    .maybeSingle();
 
   if (error) {
-    console.error("Erro ao buscar empresa no Supabase:", error)
-    return null
+    console.error("Erro ao buscar empresa no Supabase:", error);
+    return null;
   }
 
-  return data ?? null
+  return data ?? null;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params
-  return { title: `Ordem de Serviço #${id}` }
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  return { title: `Ordem de Serviço #${id}` };
 }
 
 export default async function OSFullPage({ params }: PageProps) {
-  const { id: idStr } = await params
-  const osId = Number(idStr)
+  const { id: idStr } = await params;
+  const osId = Number(idStr);
 
-  if (isNaN(osId)) notFound()
+  if (isNaN(osId)) notFound();
 
   const { data: os, error: osError } = await supabaseAdmin
     .from("ordemservico")
@@ -130,41 +137,58 @@ export default async function OSFullPage({ params }: PageProps) {
       peca:pecaid (*),
       servicos:osservico (*, servico:servicoid (*)),
       produtos:osproduto (*, produto:produtoid (*))
-    `,
+    `
     )
     .eq("id", osId)
-    .maybeSingle()
+    .maybeSingle();
 
   if (osError || !os) {
-    console.error("Erro ao carregar OS:", osError)
-    notFound()
+    console.error("Erro ao carregar OS:", osError);
+    notFound();
   }
 
-  const empresa = await fetchEmpresa(1)
+  const empresa = await fetchEmpresa(1);
 
-  const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const logoSupabase = supabaseBaseUrl
-    ? safeUrl(supabaseBaseUrl, "/storage/v1/object/public/empresa/images/logo/logo.png")
-    : ""
+    ? safeUrl(
+        supabaseBaseUrl,
+        "/storage/v1/object/public/empresa/images/logo/logo.png"
+      )
+    : "";
 
-  const logoOk = logoSupabase ? await urlExiste(logoSupabase) : false
-  const finalLogo = logoOk ? logoSupabase : null
+  const logoOk = logoSupabase ? await urlExiste(logoSupabase) : false;
+  const finalLogo = logoOk ? logoSupabase : null;
 
-  const totalProdutos = os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) || 0
-  const totalServicos = os.servicos?.reduce((acc: number, s: any) => acc + Number(s.subtotal), 0) || 0
-  const totalGeral = totalProdutos + totalServicos
+  const totalProdutos =
+    os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) ||
+    0;
+  const totalServicos =
+    os.servicos?.reduce((acc: number, s: any) => acc + Number(s.subtotal), 0) ||
+    0;
+  const totalGeral = totalProdutos + totalServicos;
 
-  const empresaNome = empresa?.nomefantasia || empresa?.razaosocial || "Oficina Mecânica"
+  const empresaNome =
+    empresa?.nomefantasia || empresa?.razaosocial || "Oficina Mecânica";
   const empresaRazao =
-    empresa?.nomefantasia && empresa?.razaosocial && empresa?.nomefantasia !== empresa?.razaosocial
+    empresa?.nomefantasia &&
+    empresa?.razaosocial &&
+    empresa?.nomefantasia !== empresa?.razaosocial
       ? empresa?.razaosocial
-      : ""
+      : "";
 
   const empresaEndereco = joinParts(
-    [empresa?.endereco, empresa?.numero ? `Nº ${empresa.numero}` : null, empresa?.complemento],
-    ", ",
-  )
-  const empresaLocal = joinParts([empresa?.bairro, empresa?.uf, empresa?.cep ? `CEP ${empresa.cep}` : null], " • ")
+    [
+      empresa?.endereco,
+      empresa?.numero ? `Nº ${empresa.numero}` : null,
+      empresa?.complemento,
+    ],
+    ", "
+  );
+  const empresaLocal = joinParts(
+    [empresa?.bairro, empresa?.uf, empresa?.cep ? `CEP ${empresa.cep}` : null],
+    " • "
+  );
 
   const clienteEndereco = joinParts(
     [
@@ -172,23 +196,28 @@ export default async function OSFullPage({ params }: PageProps) {
       os.cliente?.endereconumero ? `Nº ${os.cliente.endereconumero}` : null,
       os.cliente?.enderecocomplemento,
     ],
-    ", ",
-  )
+    ", "
+  );
   const clienteLocal = joinParts(
-    [os.cliente?.bairro, os.cliente?.cidade, os.cliente?.estado, os.cliente?.cep ? `CEP ${os.cliente.cep}` : null],
-    " • ",
-  )
+    [
+      os.cliente?.bairro,
+      os.cliente?.cidade,
+      os.cliente?.estado,
+      os.cliente?.cep ? `CEP ${os.cliente.cep}` : null,
+    ],
+    " • "
+  );
 
-  const veiculoNome = joinParts([os.veiculo?.marca, os.veiculo?.modelo], " ")
-  const veiculoPlaca = os.veiculo?.placa_formatada || os.veiculo?.placa
-  const alvoTipo = os.alvo_tipo === "PECA" ? "Peça" : "Veículo"
+  const veiculoNome = joinParts([os.veiculo?.marca, os.veiculo?.modelo], " ");
+  const veiculoPlaca = os.veiculo?.placa_formatada || os.veiculo?.placa;
+  const alvoTipo = os.alvo_tipo === "PECA" ? "Peça" : "Veículo";
 
   const itens: Array<{
-    tipo: "SERVIÇO" | "PEÇA"
-    descricao: string
-    qtd: number
-    unitario: number | string | null | undefined
-    subtotal: number | string | null | undefined
+    tipo: "SERVIÇO" | "PEÇA";
+    descricao: string;
+    qtd: number;
+    unitario: number | string | null | undefined;
+    subtotal: number | string | null | undefined;
   }> = [
     ...(os.servicos ?? []).map((s: any) => ({
       tipo: "SERVIÇO" as const,
@@ -204,436 +233,472 @@ export default async function OSFullPage({ params }: PageProps) {
       unitario: p.precounitario,
       subtotal: p.subtotal,
     })),
-  ]
+  ];
 
   const metaOS = [
-    { k: "Status", v: fmtEnum(os.status) },
-    { k: "Aprovação", v: fmtEnum(os.statusaprovacao) },
+    { k: "Status", v: (<Badge className="text-[10px] text-black" variant={"outline"}>{fmtEnum(os.status)}</Badge>) },
+    // { k: "Aprovação", v: fmtEnum(os.statusaprovacao) },
     { k: "Prioridade", v: fmtEnum(os.prioridade) },
+    { k: "Impressão", v: fmtDateTime(new Date(Date.now())) },
     { k: "Entrada", v: fmtDate(os.dataentrada) },
     { k: "Saída", v: fmtDate(os.datasaida) },
     { k: "Alvo", v: alvoTipo },
-  ]
+  ];
 
   return (
     <div className="os-print-root">
       <style>{`
-        :root{
-          --brand-primary:#2563eb;
-          --brand-secondary:#0891b2;
-          --brand-accent:#8b5cf6;
-          
-          --ink:#0f172a;
-          --muted:#64748b;
-          --border:#cbd5e1;
-          --paper:#ffffff;
-          --soft-bg:#f8fafc;
+  :root{
+    --brand-primary:#2563eb;
+    --brand-secondary:#0891b2;
+    --brand-accent:#8b5cf6;
+    
+    --ink:#0f172a;
+    --muted:#64748b;
+    --border:#cbd5e1;
+    --paper:#ffffff;
+    --soft-bg:#f8fafc;
 
-          --primary-soft: color-mix(in srgb, var(--brand-primary) 8%, transparent);
-          --secondary-soft: color-mix(in srgb, var(--brand-secondary) 10%, transparent);
+    --primary-soft: color-mix(in srgb, var(--brand-primary) 8%, transparent);
+    --secondary-soft: color-mix(in srgb, var(--brand-secondary) 10%, transparent);
 
-          --radius: 12px;
-          --print-zoom: 0.92;
-        }
+    --radius: 12px;
+  }
 
-        *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
-        @page{ size:A4; margin: 8mm; }
+  /* ✅ IMPORTANTE: sem margem no @page, e a “margem” vira padding interno da folha */
+  @page{ size:A4; margin: 0; }
 
-        .os-print-root{
-          min-height:100vh;
-          padding:20px 0;
-          background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          color:var(--ink);
-        }
+  .os-print-root{
+    min-height:100vh;
+    padding:20px 0;
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color:var(--ink);
+  }
 
-        .toolbar{
-          width: 210mm;
-          margin: 0 auto 16px;
-          display:flex;
-          align-items:flex-end;
-          justify-content:space-between;
-          padding: 0 8px;
-        }
+  .toolbar{
+    width: 210mm;
+    margin: 0 auto 16px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    padding: 0 8px;
+  }
 
-        .folha{
-          width: 210mm;
-          height: 297mm;
-          margin: 0 auto;
-          background: var(--paper);
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          box-shadow: 0 20px 60px rgba(15,23,42,.15);
-          overflow:hidden;
-          display:flex;
-          flex-direction:column;
-        }
+  .folha{
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(15,23,42,.15);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
 
-        .conteudo{
-          padding: 9mm;
-          height: 100%;
-          display:flex;
-          flex-direction:column;
-          gap: 7px;
-        }
+  .conteudo{
+    padding: 9mm;
+    height: 100%;
+    display:flex;
+    flex-direction:column;
+    gap: 7px;
+  }
 
-        @media print{
-          html, body{ background:#fff !important; margin:0 !important; padding:0 !important; }
-          .no-print{ display:none !important; }
-          .folha{
-            border:none !important;
-            border-radius:0 !important;
-            box-shadow:none !important;
-            width:auto !important;
-            height:auto !important;
-            overflow:visible !important;
-          }
-          body{ zoom: var(--print-zoom); }
-        }
+  /* ✅ PRINT: remove encaixe/zoom/sombra/borda e garante A4 perfeito */
+  @media print{
+    html, body{
+      margin:0 !important;
+      padding:0 !important;
+      background:#fff !important;
+    }
 
-        .t-micro{ font-size:9px; line-height:1.2; }
-        .t-xs{ font-size:10px; line-height:1.3; }
-        .t-sm{ font-size:11px; line-height:1.3; }
-        .t-base{ font-size:12px; line-height:1.3; }
+    .no-print{ display:none !important; }
 
-        .h1{ font-size:20px; line-height:1.1; font-weight:800; letter-spacing:-.01em; }
-        .h2{ font-size:14px; line-height:1.2; font-weight:700; }
+    .os-print-root{
+      padding:0 !important;
+      background:none !important;
+      min-height:auto !important;
+    }
 
-        .muted{ color: var(--muted); }
+    .folha{
+      width: 210mm !important;
+      min-height: 297mm !important;
+      height: auto !important;
+      margin: 0 !important;
 
-        .header-os{
-          background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-          padding: 14px 16px;
-          border-radius: var(--radius) var(--radius) 0 0;
-          color: white;
-          display:grid;
-          grid-template-columns: auto 1fr auto;
-          gap: 16px;
-          align-items: center;
-          box-shadow: 0 4px 12px rgba(37,99,235,.2);
-        }
+      border:0 !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+      overflow:visible !important;
+      background:#fff !important;
+    }
 
-        .logo-container{
-          width: 70px;
-          height: 70px;
-          background: white;
-          border-radius: 10px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          padding: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,.15);
-        }
+    /* “margem” real do documento */
+    .conteudo{
+      padding: 8mm !important;
+      height: auto !important;
+    }
 
-        .logo-img{
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        }
+    /* evita contorno/sombra residual que vira “borda preta” */
+    *{
+      box-shadow:none !important;
+      text-shadow:none !important;
+      outline:0 !important;
+    }
 
-        .logo-placeholder{
-          width: 70px;
-          height: 70px;
-          background: white;
-          border-radius: 10px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          font-weight:900;
-          font-size: 24px;
-          color: var(--brand-primary);
-          box-shadow: 0 4px 12px rgba(0,0,0,.15);
-        }
+    /* não use zoom no print (gera artefato/borda em alguns casos) */
+    body{ zoom: 1 !important; }
+  }
 
-        .empresa-info{
-          flex: 1;
-        }
+  .t-micro{ font-size:9px; line-height:1.2; }
+  .t-xs{ font-size:10px; line-height:1.3; }
+  .t-sm{ font-size:11px; line-height:1.3; }
+  .t-base{ font-size:12px; line-height:1.2; }
 
-        .empresa-nome{ font-size: 18px; font-weight: 900; margin-bottom: 4px; }
-        .empresa-details{ font-size: 9px; opacity: 0.95; line-height: 1.4; }
+  .h1{ font-size:20px; line-height:1.1; font-weight:600; letter-spacing:-.01em; }
+  .h2{ font-size:14px; line-height:1.1; font-weight:500; }
 
-        .os-header-box{
-          background: rgba(255,255,255,.15);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,.3);
-          border-radius: 10px;
-          padding: 10px 14px;
-          text-align: right;
-          min-width: 140px;
-        }
+  .muted{ color: var(--muted); }
 
-        .os-label{
-          font-size: 8px;
-          text-transform: uppercase;
-          letter-spacing: .2em;
-          opacity: 0.9;
-          font-weight: 700;
-        }
+  .header-os{
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+    padding: 14px 16px;
+    color: white;
+    display:grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(37,99,235,.2);
+  }
 
-        .os-numero{
-          font-size: 28px;
-          font-weight: 900;
-          line-height: 1;
-          margin: 4px 0;
-          letter-spacing: -.02em;
-        }
+  .logo-container{
+    width: 70px;
+    height: 70px;
+    background: white;
+    border-radius: 10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  }
 
-        .cartao{
-          border: 1px solid var(--border);
-          border-radius: var(--radius);
-          background: #fff;
-          padding: 10px;
-        }
+  .logo-img{
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 
-        .cartao-destaque{
-          background: linear-gradient(135deg, var(--primary-soft), var(--secondary-soft));
-          border-color: color-mix(in srgb, var(--brand-primary) 30%, var(--border));
-        }
+  .logo-placeholder{
+    width: 70px;
+    height: 70px;
+    background: white;
+    border-radius: 10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size: 24px;
+    color: var(--brand-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  }
 
-        .titulo-secao{
-          display:flex;
-          align-items:center;
-          gap: 8px;
-          padding-bottom: 6px;
-          margin-bottom: 8px;
-          border-bottom: 2px solid var(--border);
-          font-size: 11px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: .08em;
-          color: var(--brand-primary);
-        }
+  .empresa-info{
+    flex: 1;
+  }
 
-        .icone-secao{
-          width: 20px;
-          height: 20px;
-          background: var(--brand-primary);
-          border-radius: 6px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          color: white;
-          font-size: 12px;
-          font-weight: 900;
-        }
+  .empresa-nome{ font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .empresa-details{ font-size: 9px; opacity: 0.95; line-height: 1.4; }
 
-        .grid-info{
-          display:grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-        }
+  .os-header-box{
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: right;
+    min-width: 140px;
+  }
 
-        .kv{
-          display:grid;
-          grid-template-columns: 85px 1fr;
-          gap: 6px;
-          font-size: 10px;
-          line-height:1.3;
-          margin-bottom: 4px;
-        }
-        .kv .k{ color: var(--muted); font-weight:700; }
-        .kv .v{ font-weight:600; }
+  .os-label{
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: .2em;
+    opacity: 0.9;
+    font-weight: 800;
+  }
 
-        .meta-grid{
-          display:grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 6px;
-          margin-top: 8px;
-        }
+  .os-numero{
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+    margin: 4px 0;
+    letter-spacing: -.02em;
+  }
 
-        .meta-badge{
-          background: var(--soft-bg);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 6px 8px;
-          text-align: center;
-        }
-        .meta-badge .label{ 
-          font-size: 8px; 
-          text-transform: uppercase; 
-          letter-spacing: .14em; 
-          color: var(--muted); 
-          font-weight:700; 
-          margin-bottom: 3px;
-        }
-        .meta-badge .valor{ 
-          font-size: 10px; 
-          font-weight:800; 
-          color: var(--ink);
-        }
+  .cartao{
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #fff;
+    padding: 10px;
+  }
 
-        .tabela-container{
-          border: 1px solid var(--border);
-          border-radius: var(--radius);
-          overflow: hidden;
-          background: white;
-        }
+  .cartao-destaque{
+    background: linear-gradient(135deg, var(--primary-soft), var(--secondary-soft));
+    border-color: color-mix(in srgb, var(--brand-primary) 30%, var(--border));
+  }
 
-        table{ 
-          width:100%; 
-          border-collapse:collapse; 
-        }
-        
-        thead th{
-          font-size: 9px;
-          text-transform: uppercase;
-          letter-spacing: .12em;
-          font-weight: 900;
-          color: white;
-          padding: 8px 8px;
-          background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
-          text-align: left;
-        }
-        
-        tbody td{
-          font-size: 10px;
-          padding: 7px 8px;
-          border-bottom: 1px solid #f1f5f9;
-          vertical-align:middle;
-        }
-        
-        tbody tr:hover td{
-          background: var(--soft-bg);
-        }
+  .titulo-secao{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--brand-primary);
+  }
 
-        tbody tr:last-child td{
-          border-bottom: none;
-        }
+  .icone-secao{
+    width: 20px;
+    height: 20px;
+    background: var(--brand-primary);
+    border-radius: 6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color: white;
+    font-size: 12px;
+    font-weight: 900;
+  }
 
-        .col-num{ width:38px; color:var(--muted); font-weight:700; text-align:center; }
-        .col-tipo{ width:70px; font-weight:800; font-size:8px; text-transform:uppercase; letter-spacing:.08em; }
-        .tipo-servico{ 
-          color: white;
-          background: var(--brand-secondary);
-          padding: 3px 8px;
-          border-radius: 6px;
-          display: inline-block;
-        }
-        .tipo-peca{ 
-          color: white;
-          background: var(--brand-accent);
-          padding: 3px 8px;
-          border-radius: 6px;
-          display: inline-block;
-        }
+  .grid-info{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
 
-        .col-qtd{ width:50px; text-align:center; font-weight:700; }
-        .col-unit{ width:90px; text-align:right; font-weight:600; }
-        .col-sub{ width:100px; text-align:right; font-weight:800; color: var(--brand-primary); }
+  .kv{
+    display:grid;
+    grid-template-columns: 85px 1fr;
+    gap: 6px;
+    font-size: 10px;
+    line-height:1.3;
+    margin-bottom: 4px;
+  }
+  .kv .k{ color: var(--muted); font-weight:700; }
+  .kv .v{ font-weight:600; }
 
-        .rodape{
-          margin-top:auto;
-          display:grid;
-          grid-template-columns: 1fr 320px;
-          gap: 10px;
-          padding-top: 8px;
-        }
+  .meta-grid{
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
 
-        .observacoes-box{
-          border: 1px solid var(--border);
-          background: var(--soft-bg);
-          border-radius: var(--radius);
-          padding: 10px;
-        }
+  .meta-badge{
+    background: var(--soft-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  .meta-badge .label{ 
+    font-size: 8px; 
+    text-transform: uppercase; 
+    letter-spacing: .14em; 
+    color: var(--muted); 
+    font-weight:500; 
+    margin-bottom: 3px;
+  }
+  .meta-badge .valor{ 
+    font-size: 10px; 
+    font-weight:700; 
+    color: var(--ink);
+  }
 
-        .obs-titulo{
-          font-size: 10px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: .08em;
-          color: var(--brand-primary);
-          margin-bottom: 6px;
-        }
+  .tabela-container{
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: white;
+  }
 
-        .obs-texto{
-          font-size: 9px;
-          line-height: 1.4;
-          color: var(--muted);
-          max-height: 60px;
-          overflow: hidden;
-        }
+  table{ 
+    width:100%; 
+    border-collapse:collapse; 
+  }
+  
+  thead th{
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 900;
+    color: white;
+    padding: 8px 8px;
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary));
+    text-align: left;
+  }
+  
+  tbody td{
+    font-size: 10px;
+    padding: 7px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align:middle;
+  }
+  
+  tbody tr:hover td{
+    background: var(--soft-bg);
+  }
 
-        .totais-box{
-          border: 2px solid var(--brand-primary);
-          background: linear-gradient(135deg, var(--primary-soft), white);
-          border-radius: var(--radius);
-          padding: 12px;
-        }
+  tbody tr:last-child td{
+    border-bottom: none;
+  }
 
-        .linha-total{
-          display:flex;
-          justify-content:space-between;
-          font-size: 11px;
-          padding: 4px 0;
-          color: var(--muted);
-        }
-        
-        .linha-total .label{ font-weight:600; }
-        .linha-total .valor{ font-weight:700; }
+  .col-num{ width:38px; font-weight:700; text-align:center; }
+  .col-tipo{ width:70px; font-weight:800; font-size:8px; text-transform:uppercase; letter-spacing:.08em; }
+  .tipo-servico{ 
+    color: white;
+    background: var(--brand-secondary);
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+  .tipo-peca{ 
+    color: white;
+    background: var(--brand-accent);
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
 
-        .linha-total-final{
-          margin-top: 8px;
-          padding-top: 10px;
-          border-top: 2px solid var(--brand-primary);
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-        }
+  .col-qtd{ width:50px; text-align:center; font-weight:700; }
+  .col-unit{ width:90px; text-align:right; font-weight:600; }
+  .col-sub{ width:100px; text-align:right; font-weight:700; color: var(--brand-primary); }
 
-        .total-label{
-          font-size: 12px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: .08em;
-          color: var(--brand-primary);
-        }
+  .rodape{
+    margin-top:auto;
+    display:grid;
+    grid-template-columns: 1fr 320px;
+    gap: 10px;
+    padding-top: 8px;
+  }
 
-        .total-valor{
-          font-size: 22px;
-          font-weight: 900;
-          color: var(--brand-primary);
-          letter-spacing: -.02em;
-        }
+  .observacoes-box{
+    border: 1px solid var(--border);
+    background: var(--soft-bg);
+    border-radius: var(--radius);
+    padding: 10px;
+  }
 
-        .assinaturas{
-          margin-top: 8px;
-          display:grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
+  .obs-titulo{
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--brand-primary);
+    margin-bottom: 6px;
+  }
 
-        .assinatura{
-          border-top: 2px solid var(--border);
-          padding-top: 8px;
-          text-align:center;
-        }
+  .obs-texto{
+    font-size: 9px;
+    line-height: 1.4;
+    color: var(--muted);
+    max-height: 60px;
+    overflow: hidden;
+  }
 
-        .assin-label{
-          font-size: 9px;
-          text-transform: uppercase;
-          letter-spacing:.12em;
-          color: var(--muted);
-          font-weight:700;
-        }
+  .totais-box{
+    border: 1px solid var(--brand-primary);
+    background: linear-gradient(135deg, var(--primary-soft), white);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
 
-        .clamp-3{
-          display:-webkit-box;
-          -webkit-line-clamp:3;
-          -webkit-box-orient:vertical;
-          overflow:hidden;
-        }
-      `}</style>
+  .linha-total{
+    display:flex;
+    justify-content:space-between;
+    font-size: 11px;
+    padding: 4px 0;
+    color: var(--muted);
+  }
+  
+  .linha-total .label{ font-weight:600; }
+  .linha-total .valor{ font-weight:700; }
+
+  .linha-total-final{
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--brand-primary);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .total-label{
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--brand-primary);
+  }
+
+  .total-valor{
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--brand-primary);
+    letter-spacing: -.02em;
+  }
+
+  .assinaturas{
+    margin-top: 35px;
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .assinatura{
+    border-top: 2px solid var(--border);
+    padding-top: 8px;
+    text-align:center;
+  }
+
+  .assin-label{
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing:.12em;
+    color: var(--muted);
+    font-weight:700;
+  }
+
+  .clamp-3{
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+`}</style>
+
 
       <div className="toolbar no-print">
         <div>
           <div
             className="t-micro muted"
-            style={{ textTransform: "uppercase", letterSpacing: ".32em", fontWeight: 800 }}
+            style={{
+              textTransform: "uppercase",
+              letterSpacing: ".32em",
+              fontWeight: 800,
+            }}
           >
             Ordem de Serviço
           </div>
-          <div className="t-base" style={{ fontWeight: 900 }}>
+          <div className="t-base" style={{ fontWeight: 700 }}>
             Visualização de Impressão (1 página)
           </div>
         </div>
@@ -663,7 +728,9 @@ export default async function OSFullPage({ params }: PageProps) {
               {empresaEndereco && <div>{empresaEndereco}</div>}
               {empresaLocal && <div>{empresaLocal}</div>}
               <div>
-                {empresa?.telefone && <span>Tel: {fmtPhone(empresa.telefone)}</span>}
+                {empresa?.telefone && (
+                  <span>Tel: {fmtPhone(empresa.telefone)}</span>
+                )}
                 {empresa?.cnpj && <span> • CNPJ: {fmtDoc(empresa.cnpj)}</span>}
               </div>
             </div>
@@ -672,8 +739,11 @@ export default async function OSFullPage({ params }: PageProps) {
           <div className="os-header-box">
             <div className="os-label">Ordem de Serviço</div>
             <div className="os-numero">#{os.id}</div>
-            <div className="t-xs" style={{ opacity: 0.9, fontWeight: 700 }}>
+            <div className="t-xs" style={{ opacity: 1, fontWeight: 700 }}>
+              <Badge className="text-xs" variant={"outline"}>
+
               {fmtEnum(os.status)}
+              </Badge>
             </div>
           </div>
         </div>
@@ -691,7 +761,7 @@ export default async function OSFullPage({ params }: PageProps) {
           <div className="grid-info">
             <div className="cartao cartao-destaque">
               <div className="titulo-secao">
-               <User/>
+                <User className="w-4 h-4"/>
                 Cliente
               </div>
               <div className="h2">{fmtText(os.cliente?.nomerazaosocial)}</div>
@@ -719,17 +789,22 @@ export default async function OSFullPage({ params }: PageProps) {
 
             <div className="cartao cartao-destaque">
               <div className="titulo-secao">
-                <div className="icone-secao">{alvoTipo === "Peça" ? "⚙️" : "🚗"}</div>
+                  {alvoTipo === "Peça" ? <Cog className="w-4 h-4"/>: <Car className="w-4 h-4"/>}
                 {alvoTipo === "Peça" ? "Peça / Componente" : "Veículo"}
               </div>
               {alvoTipo === "Peça" ? (
                 <>
-                  <div className="h2">{fmtText(os.peca?.titulo || os.peca?.descricao)}</div>
-                  {os.peca?.descricao && (
-                    <div className="t-xs muted clamp-3" style={{ marginTop: 6 }}>
+                  <div className="h2">
+                    {fmtText(os.peca?.titulo || os.peca?.descricao)}
+                  </div>
+                  {/* {os.peca?.descricao && (
+                    <div
+                      className="t-xs muted clamp-3"
+                      style={{ marginTop: 6 }}
+                    >
                       {os.peca.descricao}
                     </div>
-                  )}
+                  )} */}
                 </>
               ) : (
                 <>
@@ -754,17 +829,15 @@ export default async function OSFullPage({ params }: PageProps) {
 
             <div className="cartao cartao-destaque">
               <div className="titulo-secao">
-                <div className="icone-secao">📝</div>
+                <ClipboardList className="w-4 h-4"/>
                 Detalhes
               </div>
               <div style={{ marginTop: 8 }}>
-                <div className="kv">
-                  <span className="k">Responsável</span>
-                  <span className="v">{fmtText(os.responsavel)}</span>
-                </div>
-                <div className="kv">
-                  <span className="k">Defeito</span>
-                  <span className="v clamp-3">{fmtText(os.defeitorelatado)}</span>
+                <div className="flex flex-col gap-2 text-[10px]">
+                  <span className="">Descrição:</span>
+                  <span className="whitespace-pre-wrap">
+                    {os.descricao}
+                  </span>
                 </div>
               </div>
             </div>
@@ -780,7 +853,7 @@ export default async function OSFullPage({ params }: PageProps) {
                     <th>Descrição</th>
                     <th className="col-qtd">Qtd</th>
                     <th className="col-unit">Unit.</th>
-                    <th className="col-sub">Subtotal</th>
+                    <th className="col-unit">Subtotal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -788,7 +861,15 @@ export default async function OSFullPage({ params }: PageProps) {
                     <tr key={idx}>
                       <td className="col-num">{idx + 1}</td>
                       <td className="col-tipo">
-                        <span className={item.tipo === "SERVIÇO" ? "tipo-servico" : "tipo-peca"}>{item.tipo}</span>
+                        <span
+                          className={
+                            item.tipo === "SERVIÇO"
+                              ? "tipo-servico"
+                              : "tipo-peca"
+                          }
+                        >
+                          {item.tipo}
+                        </span>
                       </td>
                       <td>{item.descricao}</td>
                       <td className="col-qtd">{item.qtd}</td>
@@ -806,7 +887,9 @@ export default async function OSFullPage({ params }: PageProps) {
               {(os.observacoes || os.defeitorelatado) && (
                 <div className="observacoes-box">
                   <div className="obs-titulo">Observações</div>
-                  <div className="obs-texto clamp-3">{os.observacoes || os.defeitorelatado || EMPTY}</div>
+                  <div className="obs-texto clamp-3">
+                    {os.observacoes || os.defeitorelatado || EMPTY}
+                  </div>
                 </div>
               )}
 
@@ -829,6 +912,7 @@ export default async function OSFullPage({ params }: PageProps) {
                 <span className="label">Serviços</span>
                 <span className="valor">{fmtMoney(totalServicos)}</span>
               </div>
+              
               <div className="linha-total-final">
                 <span className="total-label">Total</span>
                 <span className="total-valor">{fmtMoney(totalGeral)}</span>
@@ -838,5 +922,5 @@ export default async function OSFullPage({ params }: PageProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

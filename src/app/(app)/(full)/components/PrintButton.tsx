@@ -9,7 +9,7 @@ export function PrintButton() {
             variant="outline"
             size="sm"
             onClick={() => window.print()}
-            className="print:hidden"
+            className="print:hidden hover:cursor-pointer hover:text-black"
         >
             <Printer className="w-4 h-4 mr-2" />
             Imprimir
