@@ -27,6 +27,7 @@ import {
   ClipboardList,
   CreditCard,
   Trash2,
+  X,
 } from "lucide-react";
 import { useConfig } from "../../config-context";
 
@@ -118,7 +119,7 @@ export function RowActions<TRow extends RowBase>({
   const isFinalState = st === "CANCELADO" || st === "FINALIZADA" || st === "CONCLUIDO";
 
   // ✅ reset: exceto aguardando_orcamento e orcamento, e exceto finais
-  const showResetOS = !isFinalState && st !== "AGUARDANDO_ORCAMENTO" && st !== "ORCAMENTO";
+  const showResetOS = !isFinalState && st !== "AGUARDANDO_ORCAMENTO" && st !== "ORCAMENTO" && st !== "AGUARDANDO_CHECKLIST";
 
   // ✅ cancelar: exceto finais
   const showCancelarOS = !isFinalState;
@@ -208,12 +209,12 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )}
 
-        {showCancelBudget && (
+        {/* {showCancelBudget && (
           <DropdownMenuItem onClick={() => setStatus(row.id, "ORCAMENTO")}>
             <RotateCcw className="mr-2 h-4 w-4" />
             Cancelar orçamento
           </DropdownMenuItem>
-        )}
+        )} */}
 
         {showLinkAprov && (
           <DropdownMenuItem
@@ -293,7 +294,7 @@ export function RowActions<TRow extends RowBase>({
 
         {showCancelarOS && (
           <DropdownMenuItem onClick={() => onCancelarOS(row)}>
-            <Trash2 className="mr-2 h-4 w-4" />
+            <X className="mr-2 h-4 w-4" />
             Cancelar OS
           </DropdownMenuItem>
         )}
