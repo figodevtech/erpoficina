@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -140,12 +140,26 @@ export default function FinancialTable({
 
   return (
     <Card className="">
-      <CardHeader className="border-b-2 pb-4 flex flex-col">
-        <div className="flex flex-row justify-between w-full">
-          <CardTitle className="text-lg font-medium">
-            Transações <span className="text-muted-foreground text-xs font-mono font-extralight">|LISTA</span>
-          </CardTitle>
-          <div className="flex flex-row gap-4 items-center">
+      <CardHeader className="border-b-2 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg font-medium">Lista de Transações</CardTitle>
+            <CardDescription className="flex flex-col">
+              <button
+                type="button"
+                onClick={() => {
+                  handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
+                  handleGetStatusCounter();
+                }}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+            </CardDescription>
+          </div>
+
+          <div className="flex items-center gap-2">
             <ExportTransactionsButton search={search} tipo={tipo} dateFrom={dateFrom} dateTo={dateTo} />
 
             <TransactionDialog
@@ -154,23 +168,16 @@ export default function FinancialTable({
               selectedTransactionId={selectedTransactionId}
               setSelectedTransactionId={setSelectedTransactionId}
             >
-              <Button className="hover:cursor-pointer" onClick={() => setSelectedTransactionId(undefined)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Transação
+              <Button
+                size="sm"
+                className="hover:cursor-pointer whitespace-nowrap"
+                onClick={() => setSelectedTransactionId(undefined)}
+              >
+                <Plus className="h-4 w-4" />
+                Transação
               </Button>
             </TransactionDialog>
           </div>
-        </div>
-
-        <div
-          onClick={() => {
-            handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
-            handleGetStatusCounter();
-          }}
-          className="flex flex-row space-x-1 items-center hover:cursor-pointer"
-        >
-          <Loader2 className="w-3 h-3" />
-          <span className="text-xs text-muted-foreground"> Recarregar</span>
         </div>
       </CardHeader>
 
@@ -231,9 +238,11 @@ export default function FinancialTable({
 
                   <TableCell className="hidden md:table-cell">{formatDate(t.data)}</TableCell>
                   <TableCell className={`hidden md:table-cell ${t.pendente && "text-primary font-semibold"}`}>
-                    {t.pendente  && t.tipo === Tipo_transacao.DESPESA ? (
+                    {t.pendente && t.tipo === Tipo_transacao.DESPESA ? (
                       <span className=" flex flex-nowrap gap-1 items-center">A PAGAR</span>
-                    ) : t.pendente  && t.tipo === Tipo_transacao.RECEITA ? ( <span className=" flex flex-nowrap gap-1 items-center">A RECEBER</span>) : (
+                    ) : t.pendente && t.tipo === Tipo_transacao.RECEITA ? (
+                      <span className=" flex flex-nowrap gap-1 items-center">A RECEBER</span>
+                    ) : (
                       t.tipo
                     )}
                   </TableCell>
@@ -331,7 +340,7 @@ export default function FinancialTable({
             </Button>
 
             <span className="text-xs font-medium text-nowrap">
-              Página {pagination.page} de {pagination.totalPages || 1}
+              Pg. {pagination.page} de {pagination.totalPages || 1}
             </span>
 
             <Button

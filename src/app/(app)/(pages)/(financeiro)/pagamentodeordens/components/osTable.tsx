@@ -208,7 +208,7 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
             </Button>
 
             <span className="text-xs font-medium text-nowrap">
-              Página {pagination.page} de {pagination.totalPages || 1}
+              Pg. {pagination.page} de {pagination.totalPages || 1}
             </span>
 
             <Button
