@@ -28,6 +28,7 @@ import {
   CreditCard,
   Trash2,
   X,
+  Printer,
 } from "lucide-react";
 import { useConfig } from "../../config-context";
 
@@ -110,6 +111,7 @@ export function RowActions<TRow extends RowBase>({
   setEmissaoId: (id: number) => void;
   setEmissaoOpen: (open: boolean) => void;
 }) {
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL
   const config = useConfig();
   const st = String(row.status ?? "").toUpperCase();
 
@@ -298,6 +300,11 @@ export function RowActions<TRow extends RowBase>({
             Cancelar OS
           </DropdownMenuItem>
         )}
+
+        <DropdownMenuItem onClick={()=>window.open(`${siteUrl}/print/ordemservico/${row.id}`, '_blank')}>
+          <Printer className="mr-2 h-4 w-4"/>
+          Imprimir
+        </DropdownMenuItem>
 
         <DropdownMenuItem
           onClick={() => {
