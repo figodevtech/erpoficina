@@ -21,7 +21,7 @@ const routeTitles: Record<string, string> = {
   "/assistentepagamento": "Assistente de Pagamento",
   "/acompanhamento": "Acompanhamento",
   "/configuracoes/fiscal-pagamentos": "Configurações Fiscais e de Pagamentos",
-  "/checklist": "Gerenciamento de Checklists",
+  "/configuracoeschecklist": "Gerenciamento de Checklists",
 };
 
 function humanize(path: string) {

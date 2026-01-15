@@ -1,40 +1,28 @@
+// src/app/(app)/(pages)/configuracoes/tipos/components/fornecedores-section.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { toast } from "sonner";
 import {
   ChevronsLeft,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ChevronsRight,
-  Loader as LoaderIcon,
   Loader2,
   MoreHorizontal,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 import FornecedorDialog from "./fornecedorDialog";
 
 type Fornecedor = {
@@ -74,7 +62,6 @@ const emptyForm: FornecedorForm = {
   ativo: true,
 };
 
-// 🔹 limite padrão de 10 por página
 const DEFAULT_LIMIT = 10;
 
 export default function FornecedoresSection() {
@@ -87,7 +74,6 @@ export default function FornecedoresSection() {
   const [editing, setEditing] = useState<Fornecedor | null>(null);
   const [form, setForm] = useState<FornecedorForm>(emptyForm);
 
-  // paginação (padrão TabelaUsuarios)
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
 
@@ -100,10 +86,7 @@ export default function FornecedoresSection() {
 
   const start = (page - 1) * limit;
   const end = Math.min(total, start + limit);
-  const pageItems = useMemo(
-    () => fornecedores.slice(start, end),
-    [fornecedores, start, end]
-  );
+  const pageItems = useMemo(() => fornecedores.slice(start, end), [fornecedores, start, end]);
 
   const linhasSkeleton = useMemo(
     () =>
@@ -140,17 +123,23 @@ export default function FornecedoresSection() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Erro ao carregar fornecedores");
 
-      const items: Fornecedor[] = (json.items ?? json.data ?? []).map(
-        (f: Fornecedor) => ({
-          ...f,
-          ativo: f.ativo ?? true,
-        })
-      );
+      const items: Fornecedor[] = (json.items ?? json.data ?? []).map((f: any) => ({
+        id: Number(f.id),
+        cpfcnpj: String(f.cpfcnpj ?? ""),
+        nomerazaosocial: String(f.nomerazaosocial ?? ""),
+        nomefantasia: (f.nomefantasia as string | null) ?? null,
+        endereco: (f.endereco as string | null) ?? null,
+        cidade: (f.cidade as string | null) ?? null,
+        estado: (f.estado as string | null) ?? null,
+        cep: (f.cep as string | null) ?? null,
+        contato: (f.contato as string | null) ?? null,
+        ativo: typeof f.ativo === "boolean" ? (f.ativo as boolean) : true,
+      }));
       setFornecedores(items);
     } catch (err: any) {
-      console.error(err);
-      setErro(err?.message || "Erro ao carregar fornecedores");
-      toast.error(err?.message || "Erro ao carregar fornecedores");
+      const msg = err?.message || "Erro ao carregar fornecedores";
+      setErro(msg);
+      toast.error(msg);
       setFornecedores([]);
     } finally {
       setIsLoading(false);
@@ -208,18 +197,18 @@ export default function FornecedoresSection() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || "Falha ao atualizar fornecedor");
-        toast.success("Fornecedor atualizado");
+        const j = await res.json();
+        if (!res.ok) throw new Error(j?.error || "Falha ao atualizar fornecedor");
+        toast.success("Fornecedor atualizado.");
       } else {
         const res = await fetch("/api/tipos/fornecedores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || "Falha ao cadastrar fornecedor");
-        toast.success("Fornecedor cadastrado");
+        const j = await res.json();
+        if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar fornecedor");
+        toast.success("Fornecedor cadastrado.");
       }
 
       setDialogOpen(false);
@@ -227,7 +216,6 @@ export default function FornecedoresSection() {
       setForm(emptyForm);
       await loadFornecedores();
     } catch (err: any) {
-      console.error(err);
       toast.error(err?.message || "Erro ao salvar fornecedor");
     } finally {
       setIsSaving(false);
@@ -235,43 +223,46 @@ export default function FornecedoresSection() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Cabeçalho no estilo da tabela de usuários, mas sem Card */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Fornecedores</h2>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="text-foreground/60">
-              {total} fornecedor{total === 1 ? "" : "es"}
-            </span>
-            {erro && (
-              <Badge variant="destructive" className="ml-1">
-                {erro}
-              </Badge>
-            )}
-            <button
-              onClick={loadFornecedores}
-              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
-            >
-              <span>Recarregar</span>
-              <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
-            </button>
-          </p>
+    <Card className="min-h-[460px]">
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Fornecedores</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={loadFornecedores}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 text-xs"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+              <span className="text-foreground/60">
+                {total} fornecedor{total === 1 ? "" : "es"}
+              </span>
+              {erro && (
+                <Badge variant="destructive" className="ml-1">
+                  {erro}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
+
+          <FornecedorDialog
+            dialogOpen={dialogOpen}
+            setDialogOpen={setDialogOpen}
+            loadFornecedores={loadFornecedores}
+            fornecedorToEdit={editing}
+            setFornecedorToEdit={setEditing}
+            form={form}
+            setForm={setForm}
+            handleSave={handleSave}
+            isSaving={isSaving}
+            setIsSaving={setIsSaving}
+          />
         </div>
+      </CardHeader>
 
-        {/* Botão Novo fornecedor + Dialog */}
-        <FornecedorDialog
-        dialogOpen={dialogOpen}
-        setDialogOpen={setDialogOpen}
-        loadFornecedores={loadFornecedores}
-        fornecedorToEdit={editing}
-        setFornecedorToEdit={setEditing}
-        />
-      </div>
-
-      {/* Container da tabela (padrão das outras páginas, sem Card) */}
-      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
-        {/* Barrinha de loading no topo, igual usuários */}
+      <CardContent className="min-h-[190px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
           className={`${
             isLoading ? "opacity-100" : ""
@@ -302,7 +293,7 @@ export default function FornecedoresSection() {
             ) : total === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                  Nenhum fornecedor cadastrado. Clique em <b>Novo fornecedor</b> para cadastrar.
+                  Nenhum fornecedor cadastrado. Clique em <b>+ Fornecedor</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
@@ -318,10 +309,10 @@ export default function FornecedoresSection() {
                   </TableCell>
                   <TableCell className="font-mono text-xs">{f.cpfcnpj}</TableCell>
                   <TableCell className="text-sm">
-                    {f.cidade || "—"}
+                    {f.cidade || "-"}
                     {f.estado && ` / ${f.estado}`}
                   </TableCell>
-                  <TableCell className="text-sm">{f.contato || "—"}</TableCell>
+                  <TableCell className="text-sm">{f.contato || "-"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={f.ativo ? "default" : "outline"}
@@ -333,17 +324,12 @@ export default function FornecedoresSection() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-32">
-                        <DropdownMenuItem onClick={() => openEditar(f)}>
-                          Editar
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditar(f)}>Editar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -353,57 +339,57 @@ export default function FornecedoresSection() {
           </TableBody>
         </Table>
 
-        {/* Paginação no rodapé, padrão TabelaUsuarios */}
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
+                <span>{start + 1}</span>
+                {" - "}
+                <span>{end}</span>
                 <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <LoaderIcon
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
-                isLoading ? "opacity-100" : ""
-              }`}
-            />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+          <div className="flex items-center justify-center space-x-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(1)}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -418,7 +404,7 @@ export default function FornecedoresSection() {
                 setPage(1);
               }}
             >
-              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2 w-[80px]">
+              <SelectTrigger className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={DEFAULT_LIMIT} />
               </SelectTrigger>
               <SelectContent>
@@ -438,7 +424,7 @@ export default function FornecedoresSection() {
             </Select>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

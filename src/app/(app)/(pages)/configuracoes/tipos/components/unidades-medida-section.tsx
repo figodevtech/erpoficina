@@ -4,52 +4,29 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  Loader2,
-  Plus,
-  MoreHorizontal,
   ChevronsLeft,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ChevronsRight,
-  Loader as LoaderIcon,
+  Loader2,
+  Plus,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 type UnidadeMedida = {
   id: number;
-  sigla: string; // UN, JGO, KIT, PAR...
+  sigla: string;
   descricao: string | null;
   ativo: boolean | null;
 };
@@ -73,13 +50,11 @@ export default function UnidadesMedidaSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // dialog + form (criar/editar)
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<UnidadeMedida | null>(null);
   const [form, setForm] = useState<UnidadeForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
 
-  // paginação local
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
 
@@ -92,11 +67,7 @@ export default function UnidadesMedidaSection() {
 
   const start = (page - 1) * limit;
   const end = Math.min(total, start + limit);
-
-  const pageItems = useMemo(
-    () => unidades.slice(start, end),
-    [unidades, start, end]
-  );
+  const pageItems = useMemo(() => unidades.slice(start, end), [unidades, start, end]);
 
   const linhasSkeleton = useMemo(
     () =>
@@ -123,26 +94,22 @@ export default function UnidadesMedidaSection() {
     try {
       setIsLoading(true);
       setErro(null);
-      const res = await fetch("/api/tipos/unidades-medida", {
-        cache: "no-store",
-      });
+      const res = await fetch("/api/tipos/unidades-medida", { cache: "no-store" });
       const j = await res.json();
-      if (!res.ok)
-        throw new Error(j?.error || "Falha ao carregar unidades de medida");
+      if (!res.ok) throw new Error(j?.error || "Falha ao carregar unidades de medida");
 
-      const items: UnidadeMedida[] = (j.items ?? j.data ?? []).map(
-        (u: UnidadeMedida) => ({
-          ...u,
-          descricao: u.descricao ?? null,
-          ativo: u.ativo ?? true,
-        })
-      );
+      const items: UnidadeMedida[] = (j.items ?? j.data ?? []).map((u: any) => ({
+        id: Number(u.id),
+        sigla: String(u.sigla ?? ""),
+        descricao: (u.descricao as string | null) ?? null,
+        ativo: typeof u.ativo === "boolean" ? (u.ativo as boolean) : true,
+      }));
 
       setUnidades(items);
     } catch (e: any) {
-      console.error(e);
-      setErro(e?.message || "Erro ao carregar unidades de medida");
-      toast.error(e?.message || "Erro ao carregar unidades de medida");
+      const msg = e?.message || "Erro ao carregar unidades de medida";
+      setErro(msg);
+      toast.error(msg);
       setUnidades([]);
     } finally {
       setIsLoading(false);
@@ -153,10 +120,7 @@ export default function UnidadesMedidaSection() {
     loadUnidades();
   }, []);
 
-  function handleChange<K extends keyof UnidadeForm>(
-    key: K,
-    value: UnidadeForm[K]
-  ) {
+  function handleChange<K extends keyof UnidadeForm>(key: K, value: UnidadeForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -192,30 +156,22 @@ export default function UnidadesMedidaSection() {
       setIsSaving(true);
 
       if (editing) {
-        // update
         const res = await fetch(`/api/tipos/unidades-medida/${editing.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         const j = await res.json();
-        if (!res.ok)
-          throw new Error(
-            j?.error || "Falha ao atualizar unidade de medida"
-          );
+        if (!res.ok) throw new Error(j?.error || "Falha ao atualizar unidade de medida");
         toast.success("Unidade de medida atualizada.");
       } else {
-        // create
         const res = await fetch("/api/tipos/unidades-medida", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         const j = await res.json();
-        if (!res.ok)
-          throw new Error(
-            j?.error || "Falha ao cadastrar unidade de medida"
-          );
+        if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar unidade de medida");
         toast.success("Unidade de medida cadastrada.");
       }
 
@@ -224,7 +180,6 @@ export default function UnidadesMedidaSection() {
       setForm(emptyForm);
       await loadUnidades();
     } catch (e: any) {
-      console.error(e);
       toast.error(e?.message || "Erro ao salvar unidade de medida");
     } finally {
       setIsSaving(false);
@@ -232,144 +187,110 @@ export default function UnidadesMedidaSection() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Header no padrão dos outros tipos */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Unidades de medida
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="text-foreground/60">
-              {total} unidade{total === 1 ? "" : "s"} cadastrada
-              {total === 1 ? "" : "s"}
-            </span>
-            {erro && (
-              <Badge variant="destructive" className="ml-1">
-                {erro}
-              </Badge>
-            )}
-            <button
-              onClick={loadUnidades}
-              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
-            >
-              <span>Recarregar</span>
-              <Loader2
-                width={12}
-                className={isLoading ? "animate-spin" : ""}
-              />
-            </button>
-          </p>
-        </div>
+    <Card className="min-h-[460px]">
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Unidades de medida</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={loadUnidades}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 text-xs"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+              <span className="text-foreground/60">
+                {total} unidade{total === 1 ? "" : "s"} cadastrada{total === 1 ? "" : "s"}
+              </span>
+              {erro && (
+                <Badge variant="destructive" className="ml-1">
+                  {erro}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
 
-        {/* Botão + Dialog Nova/Editar unidade */}
-        <Dialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              setEditing(null);
-              setForm(emptyForm);
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button
-              size="sm"
-              className="hover:cursor-pointer"
-              onClick={openNovo}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Nova unidade
-            </Button>
-          </DialogTrigger>
+          <Dialog
+            open={dialogOpen}
+            onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) {
+                setEditing(null);
+                setForm(emptyForm);
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
+                <Plus className="mr-1 h-4 w-4" />
+                Unidade
+              </Button>
+            </DialogTrigger>
 
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editing
-                  ? "Editar unidade de medida"
-                  : "Nova unidade de medida"}
-              </DialogTitle>
-            </DialogHeader>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar unidade de medida" : "Nova unidade de medida"}</DialogTitle>
+              </DialogHeader>
 
-            <div className="mt-4 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Sigla</label>
-                <Input
-                  value={form.sigla}
-                  onChange={(e) =>
-                    handleChange("sigla", e.target.value)
-                  }
-                  placeholder="UN, JGO, KIT..."
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Descrição</label>
-                <Input
-                  value={form.descricao}
-                  onChange={(e) =>
-                    handleChange("descricao", e.target.value)
-                  }
-                  placeholder="Descrição amigável para relatórios"
-                />
-              </div>
-
-              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-                <div className="space-y-0.5">
-                  <span className="text-sm font-medium">
-                    Status da unidade
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    Defina se esta unidade pode ser utilizada nos
-                    cadastros de produtos.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativo" : "Inativo"}
-                  </span>
-                  <Switch
-                    checked={form.ativo}
-                    onCheckedChange={(val) =>
-                      handleChange("ativo", val)
-                    }
+              <div className="mt-4 space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Sigla</Label>
+                  <Input
+                    value={form.sigla}
+                    onChange={(e) => handleChange("sigla", e.target.value)}
+                    placeholder="UN, JGO, KIT..."
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <Label>Descrição</Label>
+                  <Input
+                    value={form.descricao}
+                    onChange={(e) => handleChange("descricao", e.target.value)}
+                    placeholder="Descrição amigável para relatórios"
+                  />
+                </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-medium">Status da unidade</span>
+                    <p className="text-xs text-muted-foreground">
+                      Defina se esta unidade pode ser utilizada nos cadastros de produtos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {form.ativo ? "Ativo" : "Inativo"}
+                    </span>
+                    <Switch checked={form.ativo} onCheckedChange={(val) => handleChange("ativo", val)} />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setEditing(null);
+                    setForm(emptyForm);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
 
-      {/* Tabela de unidades com paginação padrão */}
-      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
-        {/* Barrinha de loading no topo */}
+      <CardContent className="min-h-[190px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
           className={`${
             isLoading ? "opacity-100" : ""
@@ -396,27 +317,19 @@ export default function UnidadesMedidaSection() {
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  Nenhuma unidade cadastrada. Clique em{" "}
-                  <b>Nova unidade</b> para cadastrar.
+                <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhuma unidade cadastrada. Clique em <b>+ Unidade</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
               pageItems.map((u) => (
                 <TableRow key={u.id} className="hover:cursor-default">
-                  <TableCell className="font-mono">
-                    {u.sigla}
-                  </TableCell>
+                  <TableCell className="font-mono">{u.sigla}</TableCell>
                   <TableCell>{u.descricao || "—"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={u.ativo ? "default" : "outline"}
-                      className={
-                        u.ativo ? "" : "border-destructive bg-destructive"
-                      }
+                      className={u.ativo ? "" : "border-destructive bg-destructive"}
                     >
                       {u.ativo ? "Ativo" : "Inativo"}
                     </Badge>
@@ -424,22 +337,12 @@ export default function UnidadesMedidaSection() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-32"
-                      >
-                        <DropdownMenuItem
-                          onClick={() => openEditar(u)}
-                        >
-                          Editar
-                        </DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="w-32">
+                        <DropdownMenuItem onClick={() => openEditar(u)}>Editar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -449,62 +352,57 @@ export default function UnidadesMedidaSection() {
           </TableBody>
         </Table>
 
-        {/* Paginação no rodapé (padrão dos outros) */}
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;
+                <span>{start + 1}</span>
+                {" - "}
                 <span>{end}</span>
-                <span className="ml-1 hidden sm:block">
-                  de {total}
-                </span>
+                <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <LoaderIcon
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
-                isLoading ? "opacity-100" : ""
-              }`}
-            />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+          <div className="flex items-center justify-center space-x-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(1)}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
             <Button
               variant="outline"
-              size="sm"
-              onClick={() =>
-                setPage((p) => Math.min(totalPages, p + 1))
-              }
+              size="icon"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -519,10 +417,7 @@ export default function UnidadesMedidaSection() {
                 setPage(1);
               }}
             >
-              <SelectTrigger
-                size="sm"
-                className="hover:cursor-pointer ml-2 w-[80px]"
-              >
+              <SelectTrigger className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={DEFAULT_LIMIT} />
               </SelectTrigger>
               <SelectContent>
@@ -542,7 +437,7 @@ export default function UnidadesMedidaSection() {
             </Select>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

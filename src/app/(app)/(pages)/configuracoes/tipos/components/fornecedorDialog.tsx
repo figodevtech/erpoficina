@@ -176,12 +176,13 @@ export default function FornecedorDialog({
       }
       }>
         <DialogTrigger asChild>
-          {children ? children :(
-
-          <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
-            <Plus className="mr-1 h-4 w-4" />
-            Novo fornecedor
-          </Button>
+          {children ? (
+            children
+          ) : (
+            <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
+              <Plus className="mr-1 h-4 w-4" />
+              Fornecedor
+            </Button>
           )}
         </DialogTrigger>
 

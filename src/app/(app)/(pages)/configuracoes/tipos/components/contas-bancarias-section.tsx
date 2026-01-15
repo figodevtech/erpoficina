@@ -2,7 +2,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+  ChevronsLeft,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ChevronsRight,
+  Loader2,
+  Plus,
+  MoreHorizontal,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -10,77 +27,45 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ChevronsLeft,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  ChevronsRight,
-  Loader as LoaderIcon,
-  Loader2,
-  Plus,
-  MoreHorizontal,
-} from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ContaBancaria = {
   id: number;
   titulo: string;
-  valorinicial: number;
+  tipo: string;
   agencia: string | null;
   contanumero: string | null;
-  tipo: string;
   proprietario: string | null;
+  valorinicial: number | null;
   ativo: boolean | null;
 };
 
 type ContaForm = {
   titulo: string;
-  valorinicial: string;
+  tipo: string;
   agencia: string;
   contanumero: string;
-  tipo: string;
   proprietario: string;
+  valorinicial: string;
   ativo: boolean;
 };
 
-const TIPO_OPTIONS = ["CORRENTE", "POUPANCA", "CAIXA"];
-
 const emptyForm: ContaForm = {
   titulo: "",
-  valorinicial: "",
+  tipo: "",
   agencia: "",
   contanumero: "",
-  tipo: "CORRENTE",
   proprietario: "",
+  valorinicial: "",
   ativo: true,
 };
 
-// 🔹 limite padrão de 10 por página
 const DEFAULT_LIMIT = 10;
 
 export default function ContasBancariasSection() {
@@ -93,9 +78,8 @@ export default function ContasBancariasSection() {
   const [editing, setEditing] = useState<ContaBancaria | null>(null);
   const [form, setForm] = useState<ContaForm>(emptyForm);
 
-  // paginação
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(DEFAULT_LIMIT); // 🔹 agora começa em 10
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
 
   const total = contas.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -106,10 +90,7 @@ export default function ContasBancariasSection() {
 
   const start = (page - 1) * limit;
   const end = Math.min(total, start + limit);
-  const pageItems = useMemo(
-    () => contas.slice(start, end),
-    [contas, start, end]
-  );
+  const pageItems = useMemo(() => contas.slice(start, end), [contas, start, end]);
 
   const linhasSkeleton = useMemo(
     () =>
@@ -119,13 +100,13 @@ export default function ContasBancariasSection() {
             <div className="h-3 w-44 bg-muted rounded" />
           </TableCell>
           <TableCell>
-            <div className="h-3 w-20 bg-muted rounded" />
-          </TableCell>
-          <TableCell>
-            <div className="h-3 w-32 bg-muted rounded" />
+            <div className="h-3 w-24 bg-muted rounded" />
           </TableCell>
           <TableCell>
             <div className="h-3 w-28 bg-muted rounded" />
+          </TableCell>
+          <TableCell>
+            <div className="h-3 w-32 bg-muted rounded" />
           </TableCell>
           <TableCell>
             <div className="h-3 w-20 bg-muted rounded" />
@@ -146,21 +127,25 @@ export default function ContasBancariasSection() {
       setIsLoading(true);
       setErro(null);
       const res = await fetch("/api/tipos/bancos", { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok)
-        throw new Error(json?.error || "Erro ao carregar contas bancárias");
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || "Erro ao carregar contas");
 
-      const items: ContaBancaria[] = (json.items ?? json.data ?? []).map(
-        (c: ContaBancaria) => ({
-          ...c,
-          ativo: c.ativo ?? true,
-        })
-      );
+      const items: ContaBancaria[] = (j.items ?? j.data ?? []).map((c: any) => ({
+        id: Number(c.id),
+        titulo: String(c.titulo ?? ""),
+        tipo: String(c.tipo ?? ""),
+        agencia: (c.agencia as string | null) ?? null,
+        contanumero: (c.contanumero as string | null) ?? null,
+        proprietario: (c.proprietario as string | null) ?? null,
+        valorinicial: c.valorinicial != null ? Number(c.valorinicial) : null,
+        ativo: typeof c.ativo === "boolean" ? (c.ativo as boolean) : true,
+      }));
+
       setContas(items);
     } catch (err: any) {
-      console.error(err);
-      setErro(err?.message || "Erro ao carregar contas bancárias");
-      toast.error(err?.message || "Erro ao carregar contas bancárias");
+      const msg = err?.message || "Erro ao carregar contas";
+      setErro(msg);
+      toast.error(msg);
       setContas([]);
     } finally {
       setIsLoading(false);
@@ -185,12 +170,11 @@ export default function ContasBancariasSection() {
     setEditing(c);
     setForm({
       titulo: c.titulo ?? "",
-      valorinicial:
-        c.valorinicial != null ? String(c.valorinicial) : "",
+      tipo: c.tipo ?? "",
       agencia: c.agencia ?? "",
       contanumero: c.contanumero ?? "",
-      tipo: c.tipo ?? "CORRENTE",
       proprietario: c.proprietario ?? "",
+      valorinicial: c.valorinicial != null ? String(c.valorinicial) : "",
       ativo: c.ativo ?? true,
     });
     setDialogOpen(true);
@@ -198,21 +182,17 @@ export default function ContasBancariasSection() {
 
   async function handleSave() {
     if (!form.titulo.trim()) {
-      toast.error("Informe o título da conta.");
-      return;
-    }
-    if (!form.valorinicial.trim() || Number.isNaN(Number(form.valorinicial))) {
-      toast.error("Informe um valor inicial válido.");
+      toast.error("Título é obrigatório.");
       return;
     }
 
     const payload = {
       titulo: form.titulo.trim(),
-      valorinicial: Number(form.valorinicial),
+      tipo: form.tipo.trim(),
       agencia: form.agencia.trim() || null,
       contanumero: form.contanumero.trim() || null,
-      tipo: form.tipo.trim(),
       proprietario: form.proprietario.trim() || null,
+      valorinicial: form.valorinicial ? Number(form.valorinicial) : null,
       ativo: form.ativo,
     };
 
@@ -225,24 +205,18 @@ export default function ContasBancariasSection() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const json = await res.json();
-        if (!res.ok)
-          throw new Error(
-            json?.error || "Erro ao atualizar conta bancária"
-          );
-        toast.success("Conta atualizada com sucesso");
+        const j = await res.json();
+        if (!res.ok) throw new Error(j?.error || "Falha ao atualizar conta");
+        toast.success("Conta atualizada.");
       } else {
         const res = await fetch("/api/tipos/bancos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const json = await res.json();
-        if (!res.ok)
-          throw new Error(
-            json?.error || "Erro ao salvar conta bancária"
-          );
-        toast.success("Conta cadastrada com sucesso");
+        const j = await res.json();
+        if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar conta");
+        toast.success("Conta cadastrada.");
       }
 
       setDialogOpen(false);
@@ -250,184 +224,130 @@ export default function ContasBancariasSection() {
       setForm(emptyForm);
       await loadContas();
     } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || "Erro ao salvar conta bancária");
+      toast.error(err?.message || "Erro ao salvar conta");
     } finally {
       setIsSaving(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Cabeçalho no padrão das outras seções */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Contas bancárias
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="text-foreground/60">
-              {total} conta{total === 1 ? "" : "s"} bancária
-              {total === 1 ? "" : "s"}
-            </span>
-            {erro && (
-              <Badge variant="destructive" className="ml-1">
-                {erro}
-              </Badge>
-            )}
-            <button
-              onClick={loadContas}
-              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
-            >
-              <span>Recarregar</span>
-              <Loader2
-                width={12}
-                className={isLoading ? "animate-spin" : ""}
-              />
-            </button>
-          </p>
-        </div>
+    <Card className="min-h-[460px]">
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Contas bancárias</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={loadContas}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 text-xs"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+              <span className="text-foreground/60">
+                {total} conta{total === 1 ? "" : "s"} cadastrada{total === 1 ? "" : "s"}
+              </span>
+              {erro && (
+                <Badge variant="destructive" className="ml-1">
+                  {erro}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
 
-        {/* Dialog Nova/Editar conta */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              size="sm"
-              onClick={openNovo}
-              className="hover:cursor-pointer"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Nova conta
-            </Button>
-          </DialogTrigger>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
+                <Plus className="mr-1 h-4 w-4" />
+                Conta
+              </Button>
+            </DialogTrigger>
 
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editing ? "Editar conta bancária" : "Nova conta bancária"}
-              </DialogTitle>
-            </DialogHeader>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar conta" : "Nova conta"}</DialogTitle>
+              </DialogHeader>
 
-            <div className="mt-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label>Título da conta</Label>
-                <Input
-                  value={form.titulo}
-                  onChange={(e) => handleChange("titulo", e.target.value)}
-                  placeholder="Ex.: Caixa principal, Banco X - Conta corrente"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <div className="mt-4 space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Título</Label>
+                  <Input value={form.titulo} onChange={(e) => handleChange("titulo", e.target.value)} />
+                </div>
                 <div className="space-y-1.5">
                   <Label>Tipo</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={form.tipo}
-                    onChange={(e) =>
-                      handleChange("tipo", e.target.value)
-                    }
-                  >
-                    {TIPO_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                  <Input value={form.tipo} onChange={(e) => handleChange("tipo", e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Valor inicial (R$)</Label>
+                  <Label>Agência / Conta</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      value={form.agencia}
+                      onChange={(e) => handleChange("agencia", e.target.value)}
+                      placeholder="Agência"
+                    />
+                    <Input
+                      value={form.contanumero}
+                      onChange={(e) => handleChange("contanumero", e.target.value)}
+                      placeholder="Conta"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Proprietário</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    value={form.proprietario}
+                    onChange={(e) => handleChange("proprietario", e.target.value)}
+                    placeholder="Nome do proprietário"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Valor inicial</Label>
+                  <Input
                     value={form.valorinicial}
-                    onChange={(e) =>
-                      handleChange("valorinicial", e.target.value)
-                    }
+                    onChange={(e) => handleChange("valorinicial", e.target.value)}
+                    placeholder="0,00"
                   />
+                </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-medium">Status da conta</span>
+                    <p className="text-xs text-muted-foreground">
+                      Defina se esta conta pode ser usada nos lançamentos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {form.ativo ? "Ativa" : "Inativa"}
+                    </span>
+                    <Switch checked={form.ativo} onCheckedChange={(val) => handleChange("ativo", val)} />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Agência (opcional)</Label>
-                  <Input
-                    value={form.agencia}
-                    onChange={(e) =>
-                      handleChange("agencia", e.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Conta (opcional)</Label>
-                  <Input
-                    value={form.contanumero}
-                    onChange={(e) =>
-                      handleChange("contanumero", e.target.value)
-                    }
-                  />
-                </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setEditing(null);
+                    setForm(emptyForm);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar
+                </Button>
               </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
 
-              <div className="space-y-1.5">
-                <Label>Proprietário (opcional)</Label>
-                <Input
-                  value={form.proprietario}
-                  onChange={(e) =>
-                    handleChange("proprietario", e.target.value)
-                  }
-                  placeholder="Nome de quem aparece na conta"
-                />
-              </div>
-
-              {/* Status dentro do diálogo */}
-              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-                <div className="space-y-0.5">
-                  <Label>Status da conta</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Defina se esta conta está disponível para lançamentos
-                    financeiros.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativa" : "Inativa"}
-                  </span>
-                  <Switch
-                    checked={form.ativo}
-                    onCheckedChange={(val) => handleChange("ativo", val)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
-                {isSaving && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Tabela no padrão das outras páginas (sem Card) */}
-      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
-        {/* Barrinha de loading no topo */}
+      <CardContent className="min-h-[190px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
           className={`${
             isLoading ? "opacity-100" : ""
@@ -457,12 +377,8 @@ export default function ContasBancariasSection() {
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  Nenhuma conta bancária cadastrada. Clique em{" "}
-                  <b>Nova conta</b> para cadastrar.
+                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhuma conta bancária cadastrada. Clique em <b>+ Conta</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
@@ -471,21 +387,17 @@ export default function ContasBancariasSection() {
                   <TableCell className="font-medium">{c.titulo}</TableCell>
                   <TableCell>{c.tipo}</TableCell>
                   <TableCell className="text-sm">
-                    {c.agencia || "—"}
+                    {c.agencia || "-"}
                     {c.contanumero && ` / ${c.contanumero}`}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {c.proprietario || "—"}
-                  </TableCell>
+                  <TableCell className="text-sm">{c.proprietario || "-"}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     R$ {Number(c.valorinicial ?? 0).toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <Badge
                       variant={c.ativo ? "default" : "outline"}
-                      className={
-                        c.ativo ? "" : "border-destructive bg-destructive"
-                      }
+                      className={c.ativo ? "" : "border-destructive bg-destructive"}
                     >
                       {c.ativo ? "Ativa" : "Inativa"}
                     </Badge>
@@ -493,17 +405,12 @@ export default function ContasBancariasSection() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-32">
-                        <DropdownMenuItem onClick={() => openEditar(c)}>
-                          Editar
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditar(c)}>Editar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -513,57 +420,57 @@ export default function ContasBancariasSection() {
           </TableBody>
         </Table>
 
-        {/* Paginação no rodapé */}
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
+                <span>{start + 1}</span>
+                {" - "}
+                <span>{end}</span>
                 <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <LoaderIcon
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
-                isLoading ? "opacity-100" : ""
-              }`}
-            />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+          <div className="flex items-center justify-center space-x-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(1)}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -578,10 +485,7 @@ export default function ContasBancariasSection() {
                 setPage(1);
               }}
             >
-              <SelectTrigger
-                size="sm"
-                className="hover:cursor-pointer ml-2 w-[80px]"
-              >
+              <SelectTrigger className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={DEFAULT_LIMIT} />
               </SelectTrigger>
               <SelectContent>
@@ -601,7 +505,7 @@ export default function ContasBancariasSection() {
             </Select>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

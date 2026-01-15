@@ -1,7 +1,24 @@
+// src/app/(app)/(pages)/configuracoes/tipos/components/cores-veiculos-section.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+  ChevronsLeft,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ChevronsRight,
+  Loader2,
+  Plus,
+  MoreHorizontal,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -9,41 +26,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import {
-  ChevronsLeft,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  ChevronsRight,
-  Loader as LoaderIcon,
-  Loader2,
-  Plus,
-  MoreHorizontal,
-} from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CorVeiculo = {
   id: number;
@@ -92,10 +81,10 @@ export default function CoresVeiculosSection() {
       Array.from({ length: Math.min(5, limit) }).map((_, i) => (
         <TableRow key={`skeleton-${i}`} className="animate-pulse">
           <TableCell className="h-10">
-            <div className="h-3 w-44 bg-muted rounded" />
+            <div className="h-3 w-48 bg-muted rounded" />
           </TableCell>
-          <TableCell className="text-center">
-            <div className="h-5 w-16 bg-muted rounded-full mx-auto" />
+          <TableCell>
+            <div className="h-3 w-20 bg-muted rounded" />
           </TableCell>
           <TableCell className="text-right">
             <div className="h-6 w-10 bg-muted rounded-full ml-auto" />
@@ -112,17 +101,16 @@ export default function CoresVeiculosSection() {
 
       const res = await fetch("/api/tipos/cores-veiculos", { cache: "no-store" });
       const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || "Erro ao carregar cores");
 
-      if (!res.ok) throw new Error(j?.error || "Falha ao carregar cores");
-
-      const items: CorVeiculo[] = (j.items ?? j.data ?? []).map((c: CorVeiculo) => ({
-        ...c,
-        ativo: c.ativo ?? true,
+      const items: CorVeiculo[] = (j.items ?? j.data ?? []).map((c: any) => ({
+        id: Number(c.id),
+        nome: String(c.nome ?? ""),
+        ativo: typeof c.ativo === "boolean" ? (c.ativo as boolean) : true,
       }));
 
       setCores(items);
     } catch (e: any) {
-      console.error(e);
       const msg = e?.message || "Erro ao carregar cores";
       setErro(msg);
       toast.error(msg);
@@ -156,14 +144,13 @@ export default function CoresVeiculosSection() {
   }
 
   async function handleSave() {
-    const nome = form.nome.trim();
-    if (!nome) {
-      toast.error("Nome é obrigatório.");
+    if (!form.nome.trim()) {
+      toast.error("Nome obrigatorio.");
       return;
     }
 
     const payload = {
-      nome,
+      nome: form.nome.trim(),
       ativo: form.ativo,
     };
 
@@ -178,7 +165,7 @@ export default function CoresVeiculosSection() {
         });
         const j = await res.json();
         if (!res.ok) throw new Error(j?.error || "Falha ao atualizar cor");
-        toast.success("Cor atualizada");
+        toast.success("Cor atualizada.");
       } else {
         const res = await fetch("/api/tipos/cores-veiculos", {
           method: "POST",
@@ -187,7 +174,7 @@ export default function CoresVeiculosSection() {
         });
         const j = await res.json();
         if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar cor");
-        toast.success("Cor cadastrada");
+        toast.success("Cor cadastrada.");
       }
 
       setDialogOpen(false);
@@ -195,7 +182,6 @@ export default function CoresVeiculosSection() {
       setForm(emptyForm);
       await loadCores();
     } catch (e: any) {
-      console.error(e);
       toast.error(e?.message || "Erro ao salvar cor");
     } finally {
       setIsSaving(false);
@@ -203,95 +189,99 @@ export default function CoresVeiculosSection() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Cores de veículo</h2>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="text-foreground/60">
-              {total} cor{total === 1 ? "" : "es"}
-            </span>
-            {erro && (
-              <Badge variant="destructive" className="ml-1">
-                {erro}
-              </Badge>
-            )}
-            <button
-              onClick={loadCores}
-              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
-            >
-              <span>Recarregar</span>
-              <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
-            </button>
-          </p>
-        </div>
-
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
-              <Plus className="mr-1 h-4 w-4" />
-              Nova cor
-            </Button>
-          </DialogTrigger>
-
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar cor" : "Nova cor"}</DialogTitle>
-            </DialogHeader>
-
-            <div className="mt-4 space-y-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Nome</label>
-                <Input
-                  value={form.nome}
-                  onChange={(e) => handleChange("nome", e.target.value)}
-                  placeholder="Ex.: PRATA"
-                />
-              </div>
-
-              <div className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-                <div className="space-y-0.5">
-                  <span className="text-sm font-medium">Status</span>
-                  <p className="text-xs text-muted-foreground">
-                    Só cores ativas aparecem no select.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativo" : "Inativo"}
-                  </span>
-                  <Switch checked={form.ativo} onCheckedChange={(val) => handleChange("ativo", val)} />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
+    <Card className="min-h-[360px]">
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Cores de veiculo</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={loadCores}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 text-xs"
               >
-                Cancelar
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+              <span className="text-foreground/60">
+                {total} cor{total === 1 ? "" : "es"}
+              </span>
+              {erro && (
+                <Badge variant="destructive" className="ml-1">
+                  {erro}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
 
-      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
+                <Plus className="mr-1 h-4 w-4" />
+                Cor
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar cor" : "Nova cor"}</DialogTitle>
+              </DialogHeader>
+
+              <div className="mt-4 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Nome</label>
+                  <Input
+                    value={form.nome}
+                    onChange={(e) => handleChange("nome", e.target.value)}
+                    placeholder="Ex.: PRATA"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-medium">Status</span>
+                    <p className="text-xs text-muted-foreground">Somente cores ativas aparecem no select.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {form.ativo ? "Ativo" : "Inativo"}
+                    </span>
+                    <Switch checked={form.ativo} onCheckedChange={(val) => handleChange("ativo", val)} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setEditing(null);
+                    setForm(emptyForm);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+
+      <CardContent className="min-h-[190px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
-          className={`${isLoading ? "opacity-100" : ""} transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${
+            isLoading ? "opacity-100" : ""
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${isLoading ? "animate-slideIn" : ""}`}
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
+              isLoading ? "animate-slideIn" : ""
+            }`}
           />
         </div>
 
@@ -300,23 +290,22 @@ export default function CoresVeiculosSection() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="text-right">Acoes</TableHead>
             </TableRow>
           </TableHeader>
-
           <TableBody>
             {isLoading ? (
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} className="py-10 text-center text-sm text-muted-foreground">
-                  Nenhuma cor cadastrada. Clique em <b>Nova cor</b> para cadastrar.
+                  Nenhuma cor cadastrada. Clique em <b>+ Cor</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
               pageItems.map((c) => (
                 <TableRow key={c.id} className="hover:cursor-default">
-                  <TableCell>{c.nome}</TableCell>
+                  <TableCell className="font-medium">{c.nome || "-"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={c.ativo ? "default" : "outline"}
@@ -344,32 +333,57 @@ export default function CoresVeiculosSection() {
         </Table>
 
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
+                <span>{start + 1}</span>
+                {" - "}
+                <span>{end}</span>
                 <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <LoaderIcon className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${isLoading ? "opacity-100" : ""}`} />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-            <Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page === 1 || total === 0}>
+          <div className="flex items-center justify-center space-x-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage(1)}
+              disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
+            >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1 || total === 0}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
+            >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages || total === 0}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
+            >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page === totalPages || total === 0}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
+            >
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
@@ -378,24 +392,32 @@ export default function CoresVeiculosSection() {
             <Select
               value={String(limit)}
               onValueChange={(v) => {
-                const n = parseInt(v, 10) || DEFAULT_LIMIT;
+                const n = parseInt(v, 10) || 10;
                 setLimit(n);
                 setPage(1);
               }}
             >
-              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2 w-[80px]">
-                <SelectValue placeholder={DEFAULT_LIMIT} />
+              <SelectTrigger className="hover:cursor-pointer ml-2">
+                <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10" className="hover:cursor-pointer">10</SelectItem>
-                <SelectItem value="20" className="hover:cursor-pointer">20</SelectItem>
-                <SelectItem value="50" className="hover:cursor-pointer">50</SelectItem>
-                <SelectItem value="100" className="hover:cursor-pointer">100</SelectItem>
+                <SelectItem value="10" className="hover:cursor-pointer">
+                  10
+                </SelectItem>
+                <SelectItem value="20" className="hover:cursor-pointer">
+                  20
+                </SelectItem>
+                <SelectItem value="50" className="hover:cursor-pointer">
+                  50
+                </SelectItem>
+                <SelectItem value="100" className="hover:cursor-pointer">
+                  100
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

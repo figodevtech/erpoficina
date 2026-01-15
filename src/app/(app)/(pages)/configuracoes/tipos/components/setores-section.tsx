@@ -8,13 +8,13 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ChevronsRight,
-  Loader as LoaderIcon,
   Loader2,
   Plus,
   MoreHorizontal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -80,7 +80,7 @@ export default function SetoresSection() {
   const [editing, setEditing] = useState<Setor | null>(null);
   const [form, setForm] = useState<SetorForm>(emptyForm);
 
-  // paginação padrão: 10 por página
+  // paginação local
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -93,10 +93,7 @@ export default function SetoresSection() {
 
   const start = (page - 1) * limit;
   const end = Math.min(total, start + limit);
-  const pageItems = useMemo(
-    () => setores.slice(start, end),
-    [setores, start, end]
-  );
+  const pageItems = useMemo(() => setores.slice(start, end), [setores, start, end]);
 
   const linhasSkeleton = useMemo(
     () =>
@@ -127,26 +124,20 @@ export default function SetoresSection() {
       setIsLoading(true);
       setErro(null);
 
-      // Cadastro precisa ver TODOS (ativos e inativos)
-      const res = await fetch("/api/tipos/setores?all=1", {
-        cache: "no-store",
-      });
+      const res = await fetch("/api/tipos/setores?all=1", { cache: "no-store" });
       const j = await res.json();
-      if (!res.ok)
-        throw new Error(j?.error || "Falha ao carregar setores");
+      if (!res.ok) throw new Error(j?.error || "Falha ao carregar setores");
 
       const items: Setor[] = (j.items ?? j.data ?? []).map((s: any) => ({
         id: Number(s.id),
         nome: String(s.nome ?? ""),
         descricao: (s.descricao as string | null) ?? null,
         responsavel: (s.responsavel as string | null) ?? null,
-        ativo:
-          typeof s.ativo === "boolean" ? (s.ativo as boolean) : true,
+        ativo: typeof s.ativo === "boolean" ? (s.ativo as boolean) : true,
       }));
 
       setSetores(items);
     } catch (e: any) {
-      console.error(e);
       const msg = e?.message || "Erro ao carregar setores";
       setErro(msg);
       toast.error(msg);
@@ -160,10 +151,7 @@ export default function SetoresSection() {
     loadSetores();
   }, []);
 
-  function handleChange<K extends keyof SetorForm>(
-    key: K,
-    value: SetorForm[K]
-  ) {
+  function handleChange<K extends keyof SetorForm>(key: K, value: SetorForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -207,8 +195,7 @@ export default function SetoresSection() {
           body: JSON.stringify(payload),
         });
         const j = await res.json();
-        if (!res.ok)
-          throw new Error(j?.error || "Falha ao atualizar setor");
+        if (!res.ok) throw new Error(j?.error || "Falha ao atualizar setor");
         toast.success("Setor atualizado.");
       } else {
         const res = await fetch("/api/tipos/setores", {
@@ -217,8 +204,7 @@ export default function SetoresSection() {
           body: JSON.stringify(payload),
         });
         const j = await res.json();
-        if (!res.ok)
-          throw new Error(j?.error || "Falha ao cadastrar setor");
+        if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar setor");
         toast.success("Setor cadastrado.");
       }
 
@@ -227,7 +213,6 @@ export default function SetoresSection() {
       setForm(emptyForm);
       await loadSetores();
     } catch (e: any) {
-      console.error(e);
       toast.error(e?.message || "Erro ao salvar setor");
     } finally {
       setIsSaving(false);
@@ -235,138 +220,110 @@ export default function SetoresSection() {
   }
 
   return (
-    <div className="flex flex-col gap-4 min-h-[460px]">
-      {/* Cabeçalho padrão */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Setores
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="text-foreground/60">
-              {total} setor{total === 1 ? "" : "es"} cadastrados
-            </span>
-            {erro && (
-              <Badge variant="destructive" className="ml-1">
-                {erro}
-              </Badge>
-            )}
-            <button
-              onClick={loadSetores}
-              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
-            >
-              <span>Recarregar</span>
-              <Loader2
-                width={12}
-                className={isLoading ? "animate-spin" : ""}
-              />
-            </button>
-          </p>
-        </div>
+    <Card className="min-h-[460px]">
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Setores</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={loadSetores}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 text-xs"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+              <span className="text-foreground/60">
+                {total} setor{total === 1 ? "" : "es"} cadastrados
+              </span>
+              {erro && (
+                <Badge variant="destructive" className="ml-1">
+                  {erro}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
 
-        {/* Dialog Novo/Editar setor */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              size="sm"
-              onClick={openNovo}
-              className="hover:cursor-pointer"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Novo setor
-            </Button>
-          </DialogTrigger>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" onClick={openNovo} className="hover:cursor-pointer">
+                <Plus className="mr-1 h-4 w-4" />
+                Setor
+              </Button>
+            </DialogTrigger>
 
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editing ? "Editar setor" : "Novo setor"}
-              </DialogTitle>
-            </DialogHeader>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar setor" : "Novo setor"}</DialogTitle>
+              </DialogHeader>
 
-            <div className="mt-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label>Nome do setor</Label>
-                <Input
-                  value={form.nome}
-                  onChange={(e) => handleChange("nome", e.target.value)}
-                  placeholder="Ex.: Mecânica, Elétrica, Funilaria..."
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Responsável (opcional)</Label>
-                <Input
-                  value={form.responsavel}
-                  onChange={(e) =>
-                    handleChange("responsavel", e.target.value)
-                  }
-                  placeholder="Nome do responsável pelo setor"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Descrição (opcional)</Label>
-                <Input
-                  value={form.descricao}
-                  onChange={(e) =>
-                    handleChange("descricao", e.target.value)
-                  }
-                  placeholder="Descrição amigável para relatórios"
-                />
-              </div>
-
-              {/* Status dentro do diálogo */}
-              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-                <div className="space-y-0.5">
-                  <span className="text-sm font-medium">
-                    Status do setor
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    Defina se este setor pode ser selecionado nas
-                    ordens de serviço.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativo" : "Inativo"}
-                  </span>
-                  <Switch
-                    checked={form.ativo}
-                    onCheckedChange={(val) =>
-                      handleChange("ativo", val)
-                    }
+              <div className="mt-4 space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Nome do setor</Label>
+                  <Input
+                    value={form.nome}
+                    onChange={(e) => handleChange("nome", e.target.value)}
+                    placeholder="Ex.: Mecânica, Elétrica, Funilaria..."
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <Label>Responsável (opcional)</Label>
+                  <Input
+                    value={form.responsavel}
+                    onChange={(e) => handleChange("responsavel", e.target.value)}
+                    placeholder="Nome do responsável pelo setor"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Descrição (opcional)</Label>
+                  <Input
+                    value={form.descricao}
+                    onChange={(e) => handleChange("descricao", e.target.value)}
+                    placeholder="Descrição amigável para relatórios"
+                  />
+                </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-medium">Status do setor</span>
+                    <p className="text-xs text-muted-foreground">
+                      Defina se este setor pode ser selecionado nas ordens de serviço.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {form.ativo ? "Ativo" : "Inativo"}
+                    </span>
+                    <Switch checked={form.ativo} onCheckedChange={(val) => handleChange("ativo", val)} />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
-                {isSaving && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setEditing(null);
+                    setForm(emptyForm);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
 
-      {/* Tabela com paginação */}
-      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
-        {/* Barrinha de loading */}
+      <CardContent className="min-h-[190px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
           className={`${
             isLoading ? "opacity-100" : ""
@@ -394,32 +351,20 @@ export default function SetoresSection() {
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  Nenhum setor cadastrado. Clique em{" "}
-                  <b>Novo setor</b> para cadastrar.
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhum setor cadastrado. Clique em <b>+ Setor</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
               pageItems.map((s) => (
                 <TableRow key={s.id} className="hover:cursor-default">
-                  <TableCell className="font-medium">
-                    {s.nome}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {s.responsavel || "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {s.descricao || "—"}
-                  </TableCell>
+                  <TableCell className="font-medium">{s.nome}</TableCell>
+                  <TableCell className="text-sm">{s.responsavel || "-"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{s.descricao || "-"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={s.ativo ? "default" : "outline"}
-                      className={
-                        s.ativo ? "" : "border-destructive bg-destructive"
-                      }
+                      className={s.ativo ? "" : "border-destructive bg-destructive"}
                     >
                       {s.ativo ? "Ativo" : "Inativo"}
                     </Badge>
@@ -427,22 +372,12 @@ export default function SetoresSection() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-32"
-                      >
-                        <DropdownMenuItem
-                          onClick={() => openEditar(s)}
-                        >
-                          Editar
-                        </DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="w-32">
+                        <DropdownMenuItem onClick={() => openEditar(s)}>Editar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -452,63 +387,57 @@ export default function SetoresSection() {
           </TableBody>
         </Table>
 
-        {/* Paginação */}
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
-                <span className="ml-1 hidden sm:block">
-                  de {total}
-                </span>
+                <span>{start + 1}</span>
+                {" - "}
+                <span>{end}</span>
+                <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <LoaderIcon
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
-                isLoading ? "opacity-100" : ""
-              }`}
-            />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+          <div className="flex items-center justify-center space-x-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(1)}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
-              onClick={() =>
-                setPage((p) => Math.max(1, p - 1))
-              }
+              size="icon"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
             <Button
               variant="outline"
-              size="sm"
-              onClick={() =>
-                setPage((p) => Math.min(totalPages, p + 1))
-              }
+              size="icon"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -523,10 +452,7 @@ export default function SetoresSection() {
                 setPage(1);
               }}
             >
-              <SelectTrigger
-                size="sm"
-                className="hover:cursor-pointer ml-2 w-[80px]"
-              >
+              <SelectTrigger className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
@@ -546,7 +472,7 @@ export default function SetoresSection() {
             </Select>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

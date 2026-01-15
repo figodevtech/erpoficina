@@ -121,8 +121,8 @@ export function TabelaUsuarios({
           <div className="flex items-center gap-2">
             {onNew && (
               <Button onClick={onNew} className="hover:cursor-pointer" size="sm">
-                <Plus className="h-4 w-4 mr-1" />
-                Novo usuário
+                <Plus className="h-4 w-4" />
+                Usuário
               </Button>
             )}
           </div>
@@ -206,48 +206,55 @@ export function TabelaUsuarios({
           </TableBody>
         </Table>
 
-        {/* Paginação igual estava — só ajustei colSpan no "nenhum usuário" */}
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
+                <span>{start + 1}</span>
+                {" - "}
+                <span>{end}</span>
                 <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <Loader
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${loading ? "opacity-100" : ""}`}
-            />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
-            <Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page === 1 || total === 0}>
+          <div className="flex items-center justify-center space-x-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="hover:cursor-pointer"
+              onClick={() => setPage(1)}
+              disabled={page === 1 || total === 0}
+            >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
+              className="hover:cursor-pointer"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || total === 0}
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
             <Button
+              className="hover:cursor-pointer"
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || total === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
             <Button
+              className="hover:cursor-pointer"
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages || total === 0}
             >
@@ -264,7 +271,7 @@ export function TabelaUsuarios({
                 setPage(1);
               }}
             >
-              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2 w-[80px]">
+              <SelectTrigger className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
@@ -288,3 +295,4 @@ export function TabelaUsuarios({
     </Card>
   );
 }
+

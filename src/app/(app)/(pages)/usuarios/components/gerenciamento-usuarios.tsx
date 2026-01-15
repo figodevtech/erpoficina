@@ -204,8 +204,8 @@ export default function GerenciamentoUsuarios() {
   return (
     <>
       {/* Barra: busca + filtro de perfil */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative flex-1 min-w-[220px]">
+      <div className="flex items-center gap-2 flex-nowrap mb-4">
+        <div className="relative flex-1 min-w-0">
           <Search className="h-4 w-4 text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2" />
           <Input
             className="pl-8"
@@ -216,7 +216,7 @@ export default function GerenciamentoUsuarios() {
         </div>
 
         <Select value={perfilFiltro} onValueChange={setPerfilFiltro}>
-          <SelectTrigger className="w-[220px]">
+          <SelectTrigger className="w-[140px] sm:w-[220px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

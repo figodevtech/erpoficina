@@ -8,23 +8,16 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ChevronsRight,
-  Loader as LoaderIcon,
   Loader2,
   Plus,
   MoreHorizontal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -39,13 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type GrupoProduto = {
   id: number;
@@ -66,7 +53,6 @@ const emptyForm: GrupoForm = {
   ativo: true,
 };
 
-// 🔹 limite padrão de 10 por página
 const DEFAULT_LIMIT = 10;
 
 export default function GruposProdutoSection() {
@@ -79,7 +65,6 @@ export default function GruposProdutoSection() {
   const [editing, setEditing] = useState<GrupoProduto | null>(null);
   const [form, setForm] = useState<GrupoForm>(emptyForm);
 
-  // paginação
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
 
@@ -92,10 +77,7 @@ export default function GruposProdutoSection() {
 
   const start = (page - 1) * limit;
   const end = Math.min(total, start + limit);
-  const pageItems = useMemo(
-    () => grupos.slice(start, end),
-    [grupos, start, end]
-  );
+  const pageItems = useMemo(() => grupos.slice(start, end), [grupos, start, end]);
 
   const linhasSkeleton = useMemo(
     () =>
@@ -123,25 +105,21 @@ export default function GruposProdutoSection() {
       setIsLoading(true);
       setErro(null);
 
-      const res = await fetch("/api/tipos/grupos-produto", {
-        cache: "no-store",
-      });
+      const res = await fetch("/api/tipos/grupos-produto", { cache: "no-store" });
       const j = await res.json();
-      if (!res.ok)
-        throw new Error(j?.error || "Falha ao carregar grupos de produto");
+      if (!res.ok) throw new Error(j?.error || "Falha ao carregar grupos de produto");
 
-      const items: GrupoProduto[] = (j.items ?? j.data ?? []).map(
-        (g: GrupoProduto) => ({
-          ...g,
-          descricao: g.descricao ?? null,
-          ativo: g.ativo ?? true,
-        })
-      );
+      const items: GrupoProduto[] = (j.items ?? j.data ?? []).map((g: any) => ({
+        id: Number(g.id),
+        nome: String(g.nome ?? ""),
+        descricao: (g.descricao as string | null) ?? null,
+        ativo: typeof g.ativo === "boolean" ? (g.ativo as boolean) : true,
+      }));
       setGrupos(items);
     } catch (e: any) {
-      console.error(e);
-      setErro(e?.message || "Erro ao carregar grupos de produto");
-      toast.error(e?.message || "Erro ao carregar grupos de produto");
+      const msg = e?.message || "Erro ao carregar grupos de produto";
+      setErro(msg);
+      toast.error(msg);
       setGrupos([]);
     } finally {
       setIsLoading(false);
@@ -194,8 +172,7 @@ export default function GruposProdutoSection() {
           body: JSON.stringify(payload),
         });
         const j = await res.json();
-        if (!res.ok)
-          throw new Error(j?.error || "Falha ao atualizar grupo de produto");
+        if (!res.ok) throw new Error(j?.error || "Falha ao atualizar grupo de produto");
         toast.success("Grupo de produto atualizado.");
       } else {
         const res = await fetch("/api/tipos/grupos-produto", {
@@ -204,8 +181,7 @@ export default function GruposProdutoSection() {
           body: JSON.stringify(payload),
         });
         const j = await res.json();
-        if (!res.ok)
-          throw new Error(j?.error || "Falha ao cadastrar grupo de produto");
+        if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar grupo de produto");
         toast.success("Grupo de produto cadastrado.");
       }
 
@@ -214,154 +190,104 @@ export default function GruposProdutoSection() {
       setForm(emptyForm);
       await loadGrupos();
     } catch (e: any) {
-      console.error(e);
       toast.error(e?.message || "Erro ao salvar grupo de produto");
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function handleToggleAtivoLinha(id: number, ativo: boolean) {
-    // se quiser permitir toggle rápido pela linha (continua opcional)
-    try {
-      const res = await fetch(`/api/tipos/grupos-produto/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ativo }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j?.error || "Falha ao atualizar grupo");
-
-      setGrupos((old) =>
-        old.map((g) => (g.id === id ? { ...g, ativo: j.item?.ativo ?? ativo } : g))
-      );
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Erro ao atualizar grupo");
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-4">
-      {/* Cabeçalho padrão */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Grupos de produtos
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="text-foreground/60">
-              {total} grupo{total === 1 ? "" : "s"} de produto
-            </span>
-            {erro && (
-              <Badge variant="destructive" className="ml-1">
-                {erro}
-              </Badge>
-            )}
-            <button
-              onClick={loadGrupos}
-              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
-            >
-              <span>Recarregar</span>
-              <Loader2
-                width={12}
-                className={isLoading ? "animate-spin" : ""}
-              />
-            </button>
-          </p>
-        </div>
+    <Card className="min-h-[420px]">
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Grupos de produtos</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={loadGrupos}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 text-xs"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+              <span className="text-foreground/60">
+                {total} grupo{total === 1 ? "" : "s"} de produto
+              </span>
+              {erro && (
+                <Badge variant="destructive" className="ml-1">
+                  {erro}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
 
-        {/* Dialog Novo/Editar grupo */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              size="sm"
-              onClick={openNovo}
-              className="hover:cursor-pointer"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Novo grupo
-            </Button>
-          </DialogTrigger>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" onClick={openNovo} className="hover:cursor-pointer">
+                <Plus className="mr-1 h-4 w-4" />
+                Grupo
+              </Button>
+            </DialogTrigger>
 
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editing ? "Editar grupo de produto" : "Novo grupo de produto"}
-              </DialogTitle>
-            </DialogHeader>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar grupo de produto" : "Novo grupo de produto"}</DialogTitle>
+              </DialogHeader>
 
-            <div className="mt-4 space-y-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Nome do grupo</label>
-                <Input
-                  value={form.nome}
-                  onChange={(e) => handleChange("nome", e.target.value)}
-                  placeholder="Ex.: MOTOR, FREIOS, SUSPENSÃO..."
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Descrição</label>
-                <Input
-                  value={form.descricao}
-                  onChange={(e) =>
-                    handleChange("descricao", e.target.value)
-                  }
-                  placeholder="Descrição amigável para relatórios (opcional)"
-                />
-              </div>
-
-              {/* Status dentro do diálogo */}
-              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-                <div className="space-y-0.5">
-                  <span className="text-sm font-medium">
-                    Status do grupo
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    Defina se este grupo está disponível para ser usado nos produtos.
-                  </p>
+              <div className="mt-4 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Nome do grupo</label>
+                  <Input value={form.nome} onChange={(e) => handleChange("nome", e.target.value)} placeholder="Ex.: MOTOR, FREIOS..." />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {form.ativo ? "Ativo" : "Inativo"}
-                  </span>
-                  <Switch
-                    checked={form.ativo}
-                    onCheckedChange={(val) =>
-                      handleChange("ativo", val)
-                    }
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Descricao</label>
+                  <Input
+                    value={form.descricao}
+                    onChange={(e) => handleChange("descricao", e.target.value)}
+                    placeholder="Descricao amigavel para relatorios (opcional)"
                   />
                 </div>
+
+                <div className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-medium">Status do grupo</span>
+                    <p className="text-xs text-muted-foreground">
+                      Defina se este grupo pode ser usado nos produtos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {form.ativo ? "Ativo" : "Inativo"}
+                    </span>
+                    <Switch checked={form.ativo} onCheckedChange={(val) => handleChange("ativo", val)} />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
-                {isSaving && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Salvar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setEditing(null);
+                    setForm(emptyForm);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
 
-      {/* Tabela com paginação, sem Card */}
-      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
-        {/* Barrinha de loading */}
+      <CardContent className="min-h-[220px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
           className={`${
             isLoading ? "opacity-100" : ""
@@ -378,9 +304,9 @@ export default function GruposProdutoSection() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Descrição</TableHead>
+              <TableHead>Descricao</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="text-right">Acoes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -388,49 +314,32 @@ export default function GruposProdutoSection() {
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  Nenhum grupo cadastrado. Clique em <b>Novo grupo</b> para
-                  cadastrar.
+                <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhum grupo cadastrado. Clique em <b>+ Grupo</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
               pageItems.map((g) => (
                 <TableRow key={g.id} className="hover:cursor-default">
-                  <TableCell className="font-medium">{g.nome}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {g.descricao || "—"}
-                  </TableCell>
+                  <TableCell className="font-medium">{g.nome || "-"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{g.descricao || "-"}</TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center gap-2">
-                      <Badge
-                        variant={g.ativo ? "default" : "outline"}
-                        className={
-                          g.ativo
-                            ? ""
-                            : "border-destructive bg-destructive"
-                        }
-                      >
-                        {g.ativo ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </span>
+                    <Badge
+                      variant={g.ativo ? "default" : "outline"}
+                      className={g.ativo ? "" : "border-destructive bg-destructive"}
+                    >
+                      {g.ativo ? "Ativo" : "Inativo"}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-32">
-                        <DropdownMenuItem onClick={() => openEditar(g)}>
-                          Editar
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditar(g)}>Editar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -440,57 +349,57 @@ export default function GruposProdutoSection() {
           </TableBody>
         </Table>
 
-        {/* Paginação */}
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
+                <span>{start + 1}</span>
+                {" - "}
+                <span>{end}</span>
                 <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <LoaderIcon
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
-                isLoading ? "opacity-100" : ""
-              }`}
-            />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+          <div className="flex items-center justify-center space-x-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(1)}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -505,11 +414,8 @@ export default function GruposProdutoSection() {
                 setPage(1);
               }}
             >
-              <SelectTrigger
-                size="sm"
-                className="hover:cursor-pointer ml-2 w-[80px]"
-              >
-                <SelectValue placeholder={DEFAULT_LIMIT} />
+              <SelectTrigger className="hover:cursor-pointer ml-2">
+                <SelectValue placeholder={limit} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="10" className="hover:cursor-pointer">
@@ -528,7 +434,7 @@ export default function GruposProdutoSection() {
             </Select>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

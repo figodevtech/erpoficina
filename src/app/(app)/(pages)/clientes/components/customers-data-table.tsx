@@ -20,6 +20,7 @@ import {
   ChevronRightIcon,
   ChevronsRight,
   Loader,
+  Plus,
 } from "lucide-react";
 
 import { Select, SelectValue, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
@@ -123,7 +124,9 @@ export default function CustomersDataTable({
               setIsOpen={setIsOpen}
               setSelectedCustomerId={setSelectedCustomerId}
             >
-              <Button className="hover:cursor-pointer">Novo Cliente</Button>
+              <Button className="hover:cursor-pointer">
+                <Plus className="h-4 w-4" /> Cliente
+              </Button>
             </CustomerDialog>
           </div>
         </div>
@@ -192,7 +195,9 @@ export default function CustomersDataTable({
                   </div>
                 </TableCell>
 
-                <TableCell className="font-mono text-sm">{formatCpfCnpj(customer.cpfcnpj, customer.tipopessoa)}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  {formatCpfCnpj(customer.cpfcnpj, customer.tipopessoa)}
+                </TableCell>
 
                 <TableCell className="text-sm">
                   {customer.cidade}/{customer.estado}

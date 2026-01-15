@@ -2,41 +2,28 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   ChevronsLeft,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ChevronsRight,
-  Loader as LoaderIcon,
   Loader2,
   Plus,
   MoreHorizontal,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 import ServicoDialog from "./servicoDialog/servico-dialog";
 
 type Servico = {
@@ -66,7 +53,6 @@ const emptyForm: ServicoForm = {
   ativo: true,
 };
 
-// 🔹 limite padrão de 10 por página
 const DEFAULT_LIMIT = 10;
 
 export default function ServicosSection() {
@@ -79,7 +65,6 @@ export default function ServicosSection() {
   const [editing, setEditing] = useState<Servico | null>(null);
   const [form, setForm] = useState<ServicoForm>(emptyForm);
 
-  // paginação (padrão TabelaUsuarios / Fornecedores)
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [open, setOpen] = useState<boolean>(false);
@@ -93,10 +78,7 @@ export default function ServicosSection() {
 
   const start = (page - 1) * limit;
   const end = Math.min(total, start + limit);
-  const pageItems = useMemo(
-    () => servicos.slice(start, end),
-    [servicos, start, end]
-  );
+  const pageItems = useMemo(() => servicos.slice(start, end), [servicos, start, end]);
 
   const linhasSkeleton = useMemo(
     () =>
@@ -128,7 +110,7 @@ export default function ServicosSection() {
     [limit]
   );
 
-  async function loadServicos() { 
+  async function loadServicos() {
     try {
       setIsLoading(true);
       setErro(null);
@@ -145,7 +127,6 @@ export default function ServicosSection() {
 
       setServicos(items);
     } catch (e: any) {
-      console.error(e);
       const msg = e?.message || "Erro ao carregar serviços";
       setErro(msg);
       toast.error(msg);
@@ -170,61 +151,61 @@ export default function ServicosSection() {
     setForm({
       codigo: s.codigo ?? "",
       descricao: s.descricao ?? "",
-      precohora:
-        s.precohora !== null && s.precohora !== undefined
-          ? String(s.precohora)
-          : "",
+      precohora: s.precohora != null ? String(s.precohora) : "",
       ativo: s.ativo ?? true,
     });
     setOpen(true);
   }
 
+  async function handleSave(payload: ServicoForm) {
+    // salva via dialog component
+    await loadServicos();
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Cabeçalho no estilo das outras tabelas */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Serviços</h2>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="text-foreground/60">
-              {total} serviço{total === 1 ? "" : "s"}
-            </span>
-            {erro && (
-              <Badge variant="destructive" className="ml-1">
-                {erro}
-              </Badge>
-            )}
-            <button
-              onClick={loadServicos}
-              className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 ml-2 text-xs"
-            >
-              <span>Recarregar</span>
-              <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
-            </button>
-          </p>
+    <Card className="min-h-[460px]">
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>Serviços</CardTitle>
+            <CardDescription className="flex items-center gap-2">
+              <button
+                onClick={loadServicos}
+                className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 text-xs"
+              >
+                <span>Recarregar</span>
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+              </button>
+              <span className="text-foreground/60">
+                {total} serviço{total === 1 ? "" : "s"}
+              </span>
+              {erro && (
+                <Badge variant="destructive" className="ml-1">
+                  {erro}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
+
+          <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
+            <Plus className="mr-1 h-4 w-4" />
+            Serviço
+          </Button>
+          <ServicoDialog
+            form={form}
+            setForm={setForm}
+            openNovo={openNovo}
+            loadServicos={loadServicos}
+            open={open}
+            setOpen={setOpen}
+            editing={editing}
+            setEditing={setEditing}
+            handleSave={handleSave}
+          />
         </div>
+      </CardHeader>
 
-        {/* Botão Novo serviço + Dialog */}
-        <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
-          <Plus className="mr-1 h-4 w-4" />
-          Novo serviço
-        </Button>
-        <ServicoDialog
-        form={form}
-        setForm={setForm}
-        openNovo={openNovo}
-        loadServicos={loadServicos}
-        open={open}
-        setOpen={setOpen}
-        editing={editing}
-        setEditing={setEditing}
-        onRegister={()=>loadServicos()}
-        />
-      </div>
-
-      {/* Tabela de serviços, no padrão das outras páginas (sem Card) */}
-      <div className="rounded-md border bg-background px-4 pb-4 pt-0 relative min-h-[190px]">
-        {/* Barrinha de loading no topo */}
+      <CardContent className="min-h-[190px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
           className={`${
             isLoading ? "opacity-100" : ""
@@ -252,11 +233,8 @@ export default function ServicosSection() {
               linhasSkeleton
             ) : total === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  Nenhum serviço cadastrado. Clique em <b>Novo serviço</b> para cadastrar.
+                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhum serviço cadastrado. Clique em <b>+ Serviço</b> para cadastrar.
                 </TableCell>
               </TableRow>
             ) : (
@@ -264,11 +242,7 @@ export default function ServicosSection() {
                 <TableRow key={s.id} className="hover:cursor-default">
                   <TableCell className="font-mono text-xs">{s.codigo}</TableCell>
                   <TableCell>{s.descricao}</TableCell>
-                  <TableCell>
-                    {s.precohora != null
-                      ? Number(s.precohora).toFixed(2)
-                      : "—"}
-                  </TableCell>
+                  <TableCell>{s.precohora != null ? Number(s.precohora).toFixed(2) : "—"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={s.ativo ? "default" : "outline"}
@@ -280,17 +254,12 @@ export default function ServicosSection() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 hover:cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-32">
-                        <DropdownMenuItem onClick={() => openEditar(s)}>
-                          Editar
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditar(s)}>Editar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -300,57 +269,57 @@ export default function ServicosSection() {
           </TableBody>
         </Table>
 
-        {/* Paginação no rodapé */}
         <div className="flex items-center mt-4 justify-between">
-          <div className="text-xs text-muted-foreground flex flex-nowrap">
+          <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
             {total > 0 ? (
               <>
-                <span>{start + 1}</span>&nbsp;-&nbsp;<span>{end}</span>
+                <span>{start + 1}</span>
+                {" - "}
+                <span>{end}</span>
                 <span className="ml-1 hidden sm:block">de {total}</span>
               </>
             ) : (
               <span>0 de 0</span>
             )}
-            <LoaderIcon
-              className={`w-4 h-full animate-spin transition-all ml-2 opacity-0 ${
-                isLoading ? "opacity-100" : ""
-              }`}
-            />
           </div>
 
-          <div className="flex items-center justify-center space-x-1 sm:space-x-3">
+          <div className="flex items-center justify-center space-x-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(1)}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-[10px] sm:text-xs font-medium text-nowrap">
+            <span className="text-xs font-medium text-nowrap">
               Pg. {Math.min(page, totalPages)} de {totalPages}
             </span>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setPage(totalPages)}
               disabled={page === totalPages || total === 0}
+              className="hover:cursor-pointer"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -365,7 +334,7 @@ export default function ServicosSection() {
                 setPage(1);
               }}
             >
-              <SelectTrigger size="sm" className="hover:cursor-pointer ml-2 w-[80px]">
+              <SelectTrigger className="hover:cursor-pointer ml-2">
                 <SelectValue placeholder={DEFAULT_LIMIT} />
               </SelectTrigger>
               <SelectContent>
@@ -385,7 +354,7 @@ export default function ServicosSection() {
             </Select>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
