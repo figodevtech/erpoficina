@@ -241,7 +241,7 @@ export default async function OSFullPage({ params }: PageProps) {
     { k: "Status", v: (<Badge className="text-[10px] text-black" variant={"outline"}>{fmtEnum(os.status)}</Badge>) },
     // { k: "Aprovação", v: fmtEnum(os.statusaprovacao) },
     { k: "Prioridade", v: fmtEnum(os.prioridade) },
-    { k: "Impressão", v: fmtDateTime(new Date(Date.now())) },
+    { k: "Impressão", v: fmtDateTime(new Date())},
     { k: "Entrada", v: fmtDate(os.dataentrada) },
     { k: "Saída", v: fmtDate(os.datasaida) },
     { k: "Alvo", v: alvoTipo },
