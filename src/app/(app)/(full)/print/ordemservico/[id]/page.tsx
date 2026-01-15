@@ -1,3 +1,5 @@
+"use cliente"
+
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -37,7 +39,7 @@ function fmtDateTime(s?: string | Date | null) {
   if (!s) return EMPTY;
   const d = s instanceof Date ? s : new Date(s);
   if (isNaN(d.getTime())) return EMPTY;
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", });
 }
 
 function fmtText(value?: string | number | null) {
