@@ -200,7 +200,6 @@ export default function ServicosSection() {
             setOpen={setOpen}
             editing={editing}
             setEditing={setEditing}
-            handleSave={handleSave}
           />
         </div>
       </CardHeader>

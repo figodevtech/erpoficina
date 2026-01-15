@@ -253,11 +253,6 @@ export default function FornecedoresSection() {
             loadFornecedores={loadFornecedores}
             fornecedorToEdit={editing}
             setFornecedorToEdit={setEditing}
-            form={form}
-            setForm={setForm}
-            handleSave={handleSave}
-            isSaving={isSaving}
-            setIsSaving={setIsSaving}
           />
         </div>
       </CardHeader>
