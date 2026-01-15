@@ -32,14 +32,14 @@ function fmtDate(s?: string | Date | null) {
   if (!s) return EMPTY;
   const d = s instanceof Date ? s : new Date(s);
   if (isNaN(d.getTime())) return EMPTY;
-  return d.toLocaleDateString("pt-BR");
+  return d.toLocaleDateString("pt-BR", {timeZone: "America/Fortaleza",});
 }
 
 function fmtDateTime(s?: string | Date | null) {
   if (!s) return EMPTY;
   const d = s instanceof Date ? s : new Date(s);
   if (isNaN(d.getTime())) return EMPTY;
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", });
+  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Fortaleza", });
 }
 
 function fmtText(value?: string | number | null) {
