@@ -1,15 +1,15 @@
-"use cliente";
-
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
+import Script from "next/script";
 import { PrintButton } from "../../../components/PrintButton";
 import { Car, ClipboardList, Cog, User, Power } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCep } from "@/app/(app)/(pages)/clientes/components/customerDialogRegister/utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ObservacoesToggle } from "../../../components/ObservacoesToggle";
 
 export const runtime = "nodejs";
 
@@ -66,12 +66,10 @@ function fmtDoc(cpfCnpj: unknown) {
   if (cpfCnpj == null) return EMPTY;
   const s = String(cpfCnpj).replace(/\D/g, "");
   if (!s) return EMPTY;
-  if (s.length === 11) {
+  if (s.length === 11)
     return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-  }
-  if (s.length === 14) {
+  if (s.length === 14)
     return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-  }
   return s;
 }
 
@@ -123,7 +121,9 @@ async function fetchEmpresa(empresaId = 1) {
   return data ?? null;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { id } = await params;
   return { title: `Ordem de Serviço #${id}` };
 }
@@ -158,22 +158,32 @@ export default async function OSFullPage({ params }: PageProps) {
 
   const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const logoSupabase = supabaseBaseUrl
-    ? safeUrl(supabaseBaseUrl, "/storage/v1/object/public/empresa/images/logo/logo.png")
+    ? safeUrl(
+        supabaseBaseUrl,
+        "/storage/v1/object/public/empresa/images/logo/logo.png"
+      )
     : "";
 
   const logoOk = logoSupabase ? await urlExiste(logoSupabase) : false;
   const finalLogo = logoOk ? logoSupabase : null;
 
   const totalProdutos =
-    os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) || 0;
+    os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) ||
+    0;
   const totalServicos =
-    os.servicos?.reduce((acc: number, s: any) => acc + Number(s.subtotal), 0) || 0;
+    os.servicos?.reduce((acc: number, s: any) => acc + Number(s.subtotal), 0) ||
+    0;
   const totalGeral = totalProdutos + totalServicos;
 
-  const empresaNome = empresa?.nomefantasia || empresa?.razaosocial || "Oficina Mecânica";
+  const empresaNome =
+    empresa?.nomefantasia || empresa?.razaosocial || "Oficina Mecânica";
 
   const empresaEndereco = joinParts(
-    [empresa?.endereco, empresa?.numero ? `Nº ${empresa.numero}` : null, empresa?.complemento],
+    [
+      empresa?.endereco,
+      empresa?.numero ? `Nº ${empresa.numero}` : null,
+      empresa?.complemento,
+    ],
     ", "
   );
   const empresaLocal = joinParts(
@@ -244,6 +254,44 @@ export default async function OSFullPage({ params }: PageProps) {
 
   return (
     <div className="os-print-root">
+      {/* ✅ Auto-scale REAL do A4 no SCREEN (sem mexer no PRINT) */}
+      <Script id="os-a4-autoscale" strategy="afterInteractive">{`
+        (function () {
+          function mmParaPx(mm) { return (mm * 96) / 25.4; }
+
+          function lerVarNumericaPx(nomeVar, fallbackPx) {
+            try {
+              var val = getComputedStyle(document.documentElement).getPropertyValue(nomeVar).trim();
+              if (!val) return fallbackPx;
+              if (val.endsWith('px')) return parseFloat(val);
+              if (val.endsWith('mm')) return mmParaPx(parseFloat(val));
+              return fallbackPx;
+            } catch { return fallbackPx; }
+          }
+
+          function aplicarEscala() {
+            // Largura "real" do A4 no SCREEN (definida no CSS como --a4w)
+            var a4w = lerVarNumericaPx('--a4w', 794); // fallback 794px (210mm @ 96dpi)
+            var margem = 16; // mesma ideia do calc(100vw - 16px)
+            var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+            var disponivel = Math.max(320, vw - margem); // evita scale bizarro em vw muito pequeno
+            var scale = Math.min(1, disponivel / a4w);
+
+            // aplica no :root (inline) -> ganha das regras do CSS
+            document.documentElement.style.setProperty('--os-scale', String(scale));
+          }
+
+          aplicarEscala();
+          window.addEventListener('resize', aplicarEscala, { passive: true });
+          window.addEventListener('orientationchange', aplicarEscala);
+
+          window.addEventListener('beforeprint', function () {
+            document.documentElement.style.setProperty('--os-scale', '1');
+          });
+          window.addEventListener('afterprint', aplicarEscala);
+        })();
+      `}</Script>
+
       <style>{`
   :root{
     --brand-primary:#2563eb;
@@ -260,6 +308,25 @@ export default async function OSFullPage({ params }: PageProps) {
     --secondary-soft: color-mix(in srgb, var(--brand-secondary) 10%, transparent);
 
     --radius: 12px;
+
+    /* ✅ Dimensões A4 "lógicas":
+       - SCREEN: px (mais estável no mobile)
+       - PRINT: mm (mantém A4 real)
+    */
+    --a4w: 794px;
+    --a4h: 1123px;
+
+    /* ✅ escala usada no preview */
+    --os-scale: 1;
+  }
+
+  @media print {
+    .os-observacoes { display: block !important; }
+
+    :root{
+      --a4w: 210mm;
+      --a4h: 297mm;
+    }
   }
 
   *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -272,10 +339,14 @@ export default async function OSFullPage({ params }: PageProps) {
     background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color:var(--ink);
+
+    /* ✅ evita “quebrar” a tela no mobile antes da escala aplicar */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .toolbar{
-    width: 210mm;
+    width: min(var(--a4w), calc(100vw - 16px));
     margin: 0 auto 16px;
     display:flex;
     align-items:flex-end;
@@ -283,16 +354,31 @@ export default async function OSFullPage({ params }: PageProps) {
     padding: 0 8px;
   }
 
-  .folha{
-    width: 210mm;
-    height: 297mm;
+  /* ✅ wrapper que reserva exatamente o tamanho VISUAL do A4 escalado */
+  .folha-scaler{
+    position: relative;
+    width: calc(var(--a4w) * var(--os-scale));
+    height: calc(var(--a4h) * var(--os-scale));
     margin: 0 auto;
+  }
+
+  .folha{
+    width: var(--a4w);
+    height: var(--a4h);
     background: var(--paper);
     border: 1px solid var(--border);
     box-shadow: 0 20px 60px rgba(15,23,42,.15);
     overflow:hidden;
     display:flex;
     flex-direction:column;
+
+    /* ✅ fica fora do flow e escala sem causar “layout quebrado” */
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+    transform: scale(var(--os-scale));
+    will-change: transform;
   }
 
   .conteudo{
@@ -316,6 +402,15 @@ export default async function OSFullPage({ params }: PageProps) {
       padding:0 !important;
       background:none !important;
       min-height:auto !important;
+      overflow: visible !important;
+    }
+
+    /* ✅ PRINT: anula o scaler/transform e mantém A4 real */
+    .folha-scaler{
+      position: static !important;
+      width: auto !important;
+      height: auto !important;
+      margin: 0 !important;
     }
 
     .folha{
@@ -329,6 +424,10 @@ export default async function OSFullPage({ params }: PageProps) {
       box-shadow:none !important;
       overflow:visible !important;
       background:#fff !important;
+
+      position: static !important;
+      transform: none !important;
+      inset: auto !important;
     }
 
     .conteudo{
@@ -348,7 +447,6 @@ export default async function OSFullPage({ params }: PageProps) {
   .t-micro{ font-size:9px; line-height:1.2; }
   .t-xs{ font-size:10px; line-height:1.3; }
   .t-sm{ font-size:11px; line-height:1.3; }
-  .t-base{ font-size:12px; line-height:1.2; }
 
   .h1{ font-size:20px; line-height:1.1; font-weight:600; letter-spacing:-.01em; }
   .h2{ font-size:12px; line-height:1.1; font-weight:500; }
@@ -572,30 +670,13 @@ export default async function OSFullPage({ params }: PageProps) {
     padding-top: 8px;
   }
 
-  .observacoes-box{
-    border: 1px solid var(--border);
-    background: var(--soft-bg);
-    border-radius: var(--radius);
-    padding: 10px;
-  }
+  .observacoes-box{ border: 1px solid var(--border); background: var(--soft-bg); border-radius: var(--radius); padding: 10px; }
 
-  .obs-titulo{
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--brand-primary);
-    margin-bottom: 6px;
-  }
+  .os-observacoes { display: none; }
+  html[data-os-observacoes="1"] .os-observacoes { display: block; }
 
-  .obs-texto{
-    font-size: 9px;
-    line-height: 1.4;
-    color: var(--muted);
-    max-height: 60px;
-    overflow: hidden;
-  }
 
+  .obs-titulo{ font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--brand-primary); margin-bottom: 6px; } .obs-texto{ font-size: 9px; line-height: 1.4; color: var(--muted); max-height: 60px; overflow: hidden; }
   .totais-box{
     border: 1px solid var(--brand-primary);
     background: linear-gradient(135deg, var(--primary-soft), white);
@@ -662,71 +743,6 @@ export default async function OSFullPage({ params }: PageProps) {
     -webkit-box-orient:vertical;
     overflow:hidden;
   }
-
-  /* =========================
-     RESPONSIVO (SÓ TELA)
-     Mantém o layout A4, apenas escala no mobile
-  ========================= */
-
-  :root { --os-scale: 1; }
-
-  .toolbar{
-    width: min(210mm, calc(100vw - 16px));
-  }
-
-  .folha-scaler{
-    position: relative;
-    width: 210mm;
-    height: 297mm;
-    margin: 0 auto;
-  }
-
-  .folha{
-    position: absolute;
-    inset: 0;
-    transform-origin: top left;
-    transform: scale(var(--os-scale));
-  }
-
-  @media screen and (max-width: 980px){
-    :root{ --os-scale: 0.72; }
-
-    .folha-scaler{
-      width: calc(210mm * var(--os-scale));
-      height: calc(297mm * var(--os-scale));
-    }
-
-    .toolbar{
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-  }
-
-  @media screen and (max-width: 720px){
-    :root{ --os-scale: 0.58; }
-  }
-
-  @media screen and (max-width: 420px){
-    :root{ --os-scale: 0.45; }
-  }
-
-  /* =========================
-     PRINT: anula o scaler/transform
-  ========================= */
-  @media print{
-    .folha-scaler{
-      position: static !important;
-      width: auto !important;
-      height: auto !important;
-      margin: 0 !important;
-    }
-
-    .folha{
-      position: static !important;
-      transform: none !important;
-      inset: auto !important;
-    }
-  }
 `}</style>
 
       <div className="toolbar no-print">
@@ -741,14 +757,18 @@ export default async function OSFullPage({ params }: PageProps) {
           >
             Ordem de Serviço
           </div>
-          <div className="t-base" style={{ fontWeight: 700 }}>
+          <div className="text-[10px] md:text-xs" style={{ fontWeight: 700 }}>
             Visualização de Impressão (1 página)
           </div>
         </div>
 
         <div className="flex flex-row items-center gap-2">
-          {/* ✅ Botão Sair -> /ordens */}
-          <Button asChild size={"sm"} variant={"outline"} className="hover:cursor-pointer hover:text-black">
+          <Button
+            asChild
+            size={"sm"}
+            variant={"outline"}
+            className="hover:cursor-pointer hover:text-black"
+          >
             <Link href="/ordens">
               <Power className="w-3 h-3" />
               Sair
@@ -756,6 +776,11 @@ export default async function OSFullPage({ params }: PageProps) {
           </Button>
 
           <PrintButton />
+        </div>
+      </div>
+      <div className="toolbar no-print">
+        <div className="flex flex-row items-center gap-1">
+          <ObservacoesToggle />
         </div>
       </div>
 
@@ -783,8 +808,12 @@ export default async function OSFullPage({ params }: PageProps) {
                 {empresaEndereco && <div>{empresaEndereco}</div>}
                 {empresaLocal && <div>{empresaLocal}</div>}
                 <div>
-                  {empresa?.telefone && <span>Tel: {fmtPhone(empresa.telefone)}</span>}
-                  {empresa?.cnpj && <span> • CNPJ: {fmtDoc(empresa.cnpj)}</span>}
+                  {empresa?.telefone && (
+                    <span>Tel: {fmtPhone(empresa.telefone)}</span>
+                  )}
+                  {empresa?.cnpj && (
+                    <span> • CNPJ: {fmtDoc(empresa.cnpj)}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -816,7 +845,9 @@ export default async function OSFullPage({ params }: PageProps) {
                   <User className="w-4 h-4" />
                   Cliente
                 </div>
-                <div className="h2">{fmtText(os.cliente?.nomerazaosocial).toUpperCase()}</div>
+                <div className="h2">
+                  {fmtText(os.cliente?.nomerazaosocial).toUpperCase()}
+                </div>
                 <div style={{ marginTop: 8 }}>
                   <div className="kv">
                     <span className="k">Documento</span>
@@ -828,7 +859,9 @@ export default async function OSFullPage({ params }: PageProps) {
                   </div>
                   <div className="kv text-wrap">
                     <span className="k">E-mail</span>
-                    <span className="v">{fmtText(os.cliente?.email).toUpperCase()}</span>
+                    <span className="v">
+                      {fmtText(os.cliente?.email).toUpperCase()}
+                    </span>
                   </div>
                 </div>
                 {(clienteEndereco || clienteLocal) && (
@@ -841,11 +874,19 @@ export default async function OSFullPage({ params }: PageProps) {
 
               <div className="cartao cartao-destaque col-span-2">
                 <div className="titulo-secao">
-                  {alvoTipo === "Peça" ? <Cog className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                  {alvoTipo === "Peça" ? (
+                    <Cog className="w-4 h-4" />
+                  ) : (
+                    <Car className="w-4 h-4" />
+                  )}
                   {alvoTipo === "Peça" ? "Peça / Componente" : "Veículo"}
                 </div>
                 {alvoTipo === "Peça" ? (
-                  <div className="h2">{fmtText(os.peca?.titulo?.toUpperCase?.() ?? os.peca?.titulo)}</div>
+                  <div className="h2">
+                    {fmtText(
+                      os.peca?.titulo?.toUpperCase?.() ?? os.peca?.titulo
+                    )}
+                  </div>
                 ) : (
                   <>
                     <div className="h2">{fmtText(veiculoNome)}</div>
@@ -900,7 +941,13 @@ export default async function OSFullPage({ params }: PageProps) {
                       <tr key={idx}>
                         <td className="col-num">{idx + 1}</td>
                         <td className="col-tipo">
-                          <span className={item.tipo === "SERVIÇO" ? "tipo-servico" : "tipo-peca"}>
+                          <span
+                            className={
+                              item.tipo === "SERVIÇO"
+                                ? "tipo-servico"
+                                : "tipo-peca"
+                            }
+                          >
                             {item.tipo}
                           </span>
                         </td>
@@ -917,15 +964,15 @@ export default async function OSFullPage({ params }: PageProps) {
 
             <div className="rodape">
               <div>
-                {/* {(os.observacoes || os.defeitorelatado) && (
-                  <div className="observacoes-box">
-                    <div className="obs-titulo">Observações</div>
+                {(os.observacoes || os.defeitorelatado) && (
+                  <div className="observacoes-box os-observacoes">
+                    {" "}
+                    <div className="obs-titulo">Observações</div>{" "}
                     <div className="obs-texto clamp-3">
                       {os.observacoes || os.defeitorelatado || EMPTY}
-                    </div>
+                    </div>{" "}
                   </div>
-                )} */}
-
+                )}
                 <div className="assinaturas">
                   <div className="assinatura">
                     <div className="assin-label">Responsável Técnico</div>
