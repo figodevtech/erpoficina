@@ -917,14 +917,14 @@ export default async function OSFullPage({ params }: PageProps) {
 
             <div className="rodape">
               <div>
-                {(os.observacoes || os.defeitorelatado) && (
+                {/* {(os.observacoes || os.defeitorelatado) && (
                   <div className="observacoes-box">
                     <div className="obs-titulo">Observações</div>
                     <div className="obs-texto clamp-3">
                       {os.observacoes || os.defeitorelatado || EMPTY}
                     </div>
                   </div>
-                )}
+                )} */}
 
                 <div className="assinaturas">
                   <div className="assinatura">
