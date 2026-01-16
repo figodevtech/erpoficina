@@ -47,6 +47,8 @@ export type FormularioNovaOSProps = {
 
 const NONE = "__none__";
 type AlvoTipo = "VEICULO" | "PECA";
+const MAX_PECA_NOME = 60;
+const MAX_PECA_DESC = 120;
 
 export function FormularioNovaOS({
   exposeSubmit,
@@ -511,17 +513,25 @@ export function FormularioNovaOS({
                   <Label>Nome da peça</Label>
                   <Input
                     value={pNome}
-                    onChange={(e) => setPNome(e.target.value)}
+                    maxLength={MAX_PECA_NOME}
+                    onChange={(e) => setPNome(e.target.value.slice(0, MAX_PECA_NOME))}
                     placeholder="Ex.: Bomba d’água"
                   />
+                  <div className="text-right text-xs text-muted-foreground">
+                    {pNome.length}/{MAX_PECA_NOME}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Descrição (opcional)</Label>
                   <Input
                     value={pDesc}
-                    onChange={(e) => setPDesc(e.target.value)}
+                    maxLength={MAX_PECA_DESC}
+                    onChange={(e) => setPDesc(e.target.value.slice(0, MAX_PECA_DESC))}
                     placeholder="Detalhes da peça"
                   />
+                  <div className="text-right text-xs text-muted-foreground">
+                    {pDesc.length}/{MAX_PECA_DESC}
+                  </div>
                 </div>
               </div>
             )}

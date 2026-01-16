@@ -1,16 +1,26 @@
 // ./src/app/(app)/(pages)/ordens/components/ordens-filtros.tsx
 "use client";
 
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { SlidersHorizontal, CalendarIcon } from "lucide-react";
+import { SlidersHorizontal, CalendarIcon, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PrioFiltro } from "./ordens-tabela-helpers";
 import { ptBR } from "date-fns/locale";
 import { Label } from "@/components/ui/label";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 type FilterSheetProps = {
   open: boolean;
@@ -45,6 +55,8 @@ export function OrdensFilterSheet({
   onSetFim,
   onLimpar,
 }: FilterSheetProps) {
+  const [setorOpen, setSetorOpen] = useState(false);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
@@ -78,19 +90,65 @@ export function OrdensFilterSheet({
           {/* Setor */}
           <div className="space-y-2">
             <Label>Setor</Label>
-            <Select value={setorFiltro} onValueChange={(v) => setSetorFiltro(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODOS">Todos</SelectItem>
-                {setores.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label || "-"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={setorOpen} onOpenChange={setSetorOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={setorOpen}
+                  className="w-full justify-between"
+                >
+                  <span className="truncate">
+                    {setorFiltro === "TODOS"
+                      ? "Todos"
+                      : setores.find((s) => s.value === setorFiltro)?.label || "Selecione..."}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-0"
+                align="start"
+                style={{ width: "var(--radix-popover-trigger-width)" }}
+              >
+                <Command>
+                  <CommandInput placeholder="Buscar setor..." className="h-9" />
+                  <CommandList
+                    className="max-h-52 overflow-auto"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    <CommandEmpty>Nenhum setor encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="TODOS"
+                        className="hover:cursor-pointer"
+                        onSelect={() => {
+                          setSetorFiltro("TODOS");
+                          setSetorOpen(false);
+                        }}
+                      >
+                        Todos
+                        <Check className={cn("ml-auto h-4 w-4", setorFiltro === "TODOS" ? "opacity-100" : "opacity-0")} />
+                      </CommandItem>
+                      {setores.map((s) => (
+                        <CommandItem
+                          key={s.value}
+                          value={s.label || s.value}
+                          className="hover:cursor-pointer"
+                          onSelect={() => {
+                            setSetorFiltro(s.value);
+                            setSetorOpen(false);
+                          }}
+                        >
+                          {s.label || "-"}
+                          <Check className={cn("ml-auto h-4 w-4", setorFiltro === s.value ? "opacity-100" : "opacity-0")} />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Alvo */}

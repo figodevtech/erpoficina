@@ -66,6 +66,8 @@ import { OrdensFilterSheet } from "./ordens-filtros";
 import { EmissaoNotaDialog } from "./dialogs/emissao-nota-dialog/emissao-nota-dialog";
 import { Label } from "@/components/ui/label";
 
+const MAX_ALVO_CHARS = 48;
+
 // ------------------ COMPONENTE PRINCIPAL ------------------
 export function OrdensTabela({
   statuses = [],
@@ -96,6 +98,7 @@ export function OrdensTabela({
   const [alvoFiltro, setAlvoFiltro] = useState<"TODOS" | "VEICULO" | "PECA">("TODOS");
   const [dataInicio, setDataInicioState] = useState<Date | undefined>();
   const [dataFim, setDataFimState] = useState<Date | undefined>();
+  const [setoresApiOptions, setSetoresApiOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const reqIdRef = useRef(0);
@@ -226,7 +229,28 @@ export function OrdensTabela({
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
 
-  const setoresOptions = useMemo(() => {
+  useEffect(() => {
+    async function loadSetores() {
+      try {
+        const r = await fetch("/api/tipos/setores?all=1", { cache: "no-store" });
+        const j = await r.json().catch(() => ({} as any));
+        if (!r.ok) return;
+        const items = Array.isArray(j.items ?? j.data) ? j.items ?? j.data : [];
+        const mapped = items
+          .map((s: any) => ({
+            value: s.id != null ? String(s.id) : "",
+            label: s.nome || s.descricao || "Sem setor",
+          }))
+          .filter((s: any) => s.value);
+        if (mapped.length) setSetoresApiOptions(mapped);
+      } catch (e) {
+        // silencioso para nÇõo poluir com toast em caso de falha
+      }
+    }
+    loadSetores();
+  }, []);
+
+  const setoresFromRows = useMemo(() => {
     const map = new Map<string, string>();
     rows.forEach((row) => {
       const id = (row as any).setor?.id ?? (row as any).setorid ?? (row as any).setorId;
@@ -237,6 +261,11 @@ export function OrdensTabela({
     });
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
   }, [rows]);
+
+  const setoresOptions = useMemo(() => {
+    if (setoresApiOptions.length > 0) return setoresApiOptions;
+    return setoresFromRows;
+  }, [setoresApiOptions, setoresFromRows]);
 
   const renderTempo = (r: OrdemComDatas) => {
     const ms = getTempoMs(r, now);
@@ -722,8 +751,12 @@ export function OrdensTabela({
                     const pecaStr = isPeca ? pecaTitulo || pecaDesc || "Peça" : "";
 
                     const alvoStr = isPeca ? pecaStr : veiculoStr;
+                    const alvoFull = alvoStr || "";
+                    const alvoShort =
+                      alvoFull.length > MAX_ALVO_CHARS ? `${alvoFull.slice(0, MAX_ALVO_CHARS - 1)}…` : alvoFull;
+                    const showAlvoTooltip = alvoFull.length > MAX_ALVO_CHARS;
 
-                    const descFull = r.descricao || "—";
+                    const descFull = r.descricao || "-";
                     const policy = buildPolicy(st);
 
                     return (
@@ -732,7 +765,7 @@ export function OrdensTabela({
 
                         <TableCell className="min-w-0">
                           <div className="flex items-center justify-center w-min bg-red-500/20 py-1 px-2 rounded-full">
-                            <span className="text-[8px]">{r.setor?.nome ?? "-"}</span>
+                            <span className="text-[11px]">{r.setor?.nome ?? "-"}</span>
                           </div>
 
                           <Tooltip>
@@ -747,10 +780,19 @@ export function OrdensTabela({
                           </Tooltip>
 
                           {alvoStr && (
-                            <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
-                              {isPeca ? <Package className="h-3 w-3 shrink-0" /> : <Car className="h-3 w-3 shrink-0" />}
-                              <span className="truncate">{alvoStr}</span>
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+                                  {isPeca ? <Package className="h-3 w-3 shrink-0" /> : <Car className="h-3 w-3 shrink-0" />}
+                                  <span className="truncate">{alvoShort}</span>
+                                </div>
+                              </TooltipTrigger>
+                              {showAlvoTooltip && (
+                                <TooltipContent className="max-w-xs">
+                                  <p className="break-words whitespace-pre-wrap">{alvoFull}</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
                           )}
                         </TableCell>
 

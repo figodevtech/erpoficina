@@ -24,12 +24,6 @@ export async function GET(req: Request) {
 const statusParam = searchParams.get("status");
 const statusesParam = searchParams.get("statuses");
 
-console.log("[API /ordens]", {
-  url: req.url,
-  statusParam,
-  statusesParam,
-});
-
 
     const status = (searchParams.get("status") as StatusOS) || "TODAS";
     const statuses = parseStatuses(searchParams.get("statuses"));
@@ -136,17 +130,6 @@ console.log("[API /ordens]", {
 
       query = query.or(topOr.join(","));
     }
-
-    console.log("[API /ordens] filtros", {
-  statusFinal: status,          // depois do default "TODAS"
-  statusesArray: statuses,      // parseStatuses(...)
-  branch:
-    status && status !== "TODAS"
-      ? "eq(status)"
-      : statuses.length > 0
-      ? "in(statuses)"
-      : "nenhum",
-});
 
     const { data, error, count } = await query;
     if (error) throw error;

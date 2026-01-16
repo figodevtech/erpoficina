@@ -109,6 +109,7 @@ type OS = {
   dataentrada?: string | null;
   datasaidaprevista?: string | null;
   datasaida?: string | null;
+  motivocancelamento?: string | null;
   setor?: { id: number; nome: string } | null;
   cliente?: { id: number; nomerazaosocial: string } | null;
   veiculo?: { id: number; placa?: string | null; modelo?: string | null; marca?: string | null } | null;
@@ -447,6 +448,17 @@ export function OSDetalhesDialog({
     return [...new Set(nomes)];
   }, [data?.checklist]);
 
+  const motivoCancelamento = useMemo(() => {
+    const os: any = data?.os;
+    return (
+      os?.motivoCancelamento ??
+      os?.motivo_cancelamento ??
+      os?.motivocancelamento ??
+      os?.motivo ??
+      ""
+    );
+  }, [data?.os]);
+
   async function salvarRealizadores(item: ItemServico, usuarioIds: string[]) {
     if (!data?.os?.id) return;
 
@@ -513,7 +525,7 @@ export function OSDetalhesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="
-          w-[95vw] sm:max-w-4xl
+          w-[95vw] sm:max-w-5xl
           max-h-[85vh] sm:max-h-[85vh] supports-[height:100svh]:max-h-[85svh]
           overflow-y-auto overscroll-contain
           p-0
@@ -609,8 +621,8 @@ export function OSDetalhesDialog({
                 </div>
               </section>
 
-              {/* Descrição / Observações */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Descrição / Observações / Motivo */}
+              <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <FileText className="h-4 w-4 text-primary" />
@@ -624,6 +636,13 @@ export function OSDetalhesDialog({
                     <span className="text-sm font-medium">Observações (Interno)</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{data.os.observacoes || "—"}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <AlertTriangle className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Motivo do cancelamento</span>
+                  </div>
+                  <div className="text-sm whitespace-pre-wrap">{motivoCancelamento || "—"}</div>
                 </div>
               </section>
 
