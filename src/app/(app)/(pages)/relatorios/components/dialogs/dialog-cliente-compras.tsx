@@ -9,27 +9,18 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
-import { FileText, PieChart } from "lucide-react";
-import { ExportTransactionsButton } from "../../../(financeiro)/fluxodecaixa/components/ExportTransactionsButton";
+import { FileText, Search} from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Categoria_transacao, Tipo_transacao } from "../../../(financeiro)/fluxodecaixa/types";
+
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { BotaoExportHistoricoCompras } from "./botao-export-cliente-compra";
+import { Customer } from "../../../clientes/types";
 
 export default function DialogClienteCompras() {
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
-  const [categoria, setCategoria] = useState<Categoria_transacao | "">("");
-  const [selectedCliente, setSelectedCliente] = useState<number  | undefined>(undefined)
+ 
+  const [selectedCliente, setSelectedCliente] = useState<Customer  | undefined>(undefined)
+  const [openCliente, setOpenCliente]= useState(false)
 
   return (
     <Dialog>
@@ -57,20 +48,29 @@ export default function DialogClienteCompras() {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-6 bg-muted/50 p-4 rounded-2xl">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-row gap-2 justify-between items-center">
             <Label>Cliente:</Label>
+            <span className="text-[10px] truncate font-sans max-w-[300px]">
+
+            {selectedCliente && selectedCliente.nomerazaosocial}
+            </span>
             <CustomerSelect
-            OnSelect={(c)=>setSelectedCliente(c.id)}
+            open={openCliente}
+            setOpen={setOpenCliente}
+
+            OnSelect={(c)=>setSelectedCliente(c)}
             />
-                
-              
+                <div onClick={()=>setOpenCliente(true)} className="p-1.5 rounded-full bg-muted hover:cursor-pointer">
+
+                    <Search className="w-3 h-3"/>
+                </div>
           </div>
           
           
         </div>
         <DialogFooter className="flex flex-row items-center">
             <BotaoExportHistoricoCompras
-            
+              clienteId={selectedCliente?.id}
             />
           
           <DialogClose asChild>

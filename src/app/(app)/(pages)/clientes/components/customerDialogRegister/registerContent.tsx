@@ -171,7 +171,21 @@ export default function RegisterContent({
     }
   };
 
+   function validarEmailDigitado(email: string): boolean {
+    if(!email) return false;
+  const valor = email.trim();
+
+  // Mesmo regex usado na constraint (case-insensitive)
+  const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+
+  return regex.test(valor);
+  }
+
   const handleCreateCustomer = async () => {
+    if(!validarEmailDigitado(newCustomer?.email || "")){
+          toast.warning("Insira um email válido")
+          return
+        }
     setIsSubmitting(true);
     try {
       const response = await axios.post("/api/customers", {

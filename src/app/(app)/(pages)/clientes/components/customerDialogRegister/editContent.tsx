@@ -116,6 +116,17 @@ export default function EditContent({ customerId }: EditContentProps) {
   >(undefined);
   const [transferindo, setTransferindo] = useState(false);
 
+  function validarEmailDigitado(email: string): boolean {
+    if(!email) return false;
+  const valor = email.trim();
+
+  // Mesmo regex usado na constraint (case-insensitive)
+  const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+
+  return regex.test(valor);
+  }
+
+
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
       setselectedCustomer({ ...selectedCustomer, [field]: value });
@@ -228,6 +239,11 @@ export default function EditContent({ customerId }: EditContentProps) {
   };
 
   const handleUpdateCustomer = async () => {
+    
+    if(!validarEmailDigitado(selectedCustomer?.email || "")){
+      toast.warning("Insira um email válido")
+      return
+    }
     setIsSubmitting(true);
     try {
       const response = await axios.put(
