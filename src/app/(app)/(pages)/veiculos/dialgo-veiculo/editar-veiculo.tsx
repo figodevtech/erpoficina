@@ -433,13 +433,16 @@ export default function EditContent({
                       </PopoverTrigger>
 
                       <PopoverContent
+                      onWheel={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
                         className="w-[200px] p-0"
                         onWheelCapture={(e) => e.stopPropagation()}
                       >
                         <Command>
                           <CommandInput
                             placeholder="Buscar marca..."
-                            className="h-9"
+                            className="h-9 text-base"
                           />
                           <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
                             <CommandEmpty>
@@ -513,13 +516,16 @@ export default function EditContent({
                       </PopoverTrigger>
 
                       <PopoverContent
+                      onWheel={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
                         className="w-[400px] p-0"
                         onWheelCapture={(e) => e.stopPropagation()}
                       >
                         <Command>
                           <CommandInput
                             placeholder="Buscar modelo..."
-                            className="h-9"
+                            className="h-9 text-base"
                           />
                           <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
                             <CommandEmpty>

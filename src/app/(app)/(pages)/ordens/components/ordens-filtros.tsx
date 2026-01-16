@@ -145,7 +145,7 @@ export function OrdensFilterSheet({
                 onOpenAutoFocus={(e) => e.preventDefault()}
               >
                 <Command>
-                  <CommandInput placeholder="Buscar setor..." className="h-9" />
+                  <CommandInput placeholder="Buscar setor..." className="h-9 text-base" />
                   <CommandList
                     className="max-h-52 overflow-auto"
                     onWheel={(e) => e.stopPropagation()}

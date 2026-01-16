@@ -47,9 +47,13 @@ export function MultiSelectRealizadores({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="start" className="w-[320px] p-0">
+      <PopoverContent
+      onWheel={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+      align="start" className="w-[320px] p-0">
         <Command>
-          <CommandInput placeholder="Buscar usuário..." />
+          <CommandInput className="text-base" placeholder="Buscar usuário..." />
           <CommandList>
             <CommandEmpty>Nenhum usuário encontrado.</CommandEmpty>
             <CommandGroup>

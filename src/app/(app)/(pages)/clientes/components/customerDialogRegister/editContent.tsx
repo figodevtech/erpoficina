@@ -111,7 +111,9 @@ export default function EditContent({ customerId }: EditContentProps) {
   );
   const [isLoadingVeiculos, setIsLoadingVeiculos] = useState(false);
   const [openCustomerSelect, setOpenCustomerSelect] = useState(false);
-  const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
+  const [veiculoTransferId, setVeiculoTransferId] = useState<
+    number | undefined
+  >(undefined);
   const [transferindo, setTransferindo] = useState(false);
 
   const handleInputChange = (field: keyof Customer, value: string) => {
@@ -269,25 +271,33 @@ export default function EditContent({ customerId }: EditContentProps) {
     }
   };
 
-  const handleVehicleTransfer = async ( novoDonoId: number) => {
-
-    toast(<div className="flex felx-row gap-1 items-center"><Loader2 className="w-3 h-3 animate-spin"/><span>Transferindo veículo...</span> </div>);
-    setTransferindo(true)
+  const handleVehicleTransfer = async (novoDonoId: number) => {
+    toast(
+      <div className="flex felx-row gap-1 items-center">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        <span>Transferindo veículo...</span>{" "}
+      </div>
+    );
+    setTransferindo(true);
     try {
-      const response = await axios.post(`/api/veiculos/${veiculoTransferId}/transferencia`, {
+      const response = await axios.post(
+        `/api/veiculos/${veiculoTransferId}/transferencia`,
+        {
           novoDonoId: novoDonoId,
-      });
+        }
+      );
       if (response.status === 200) {
         toast.success("Veículo transferido com sucesso!");
         handleGetClienteVeiculos();
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast.error("Erro ao transferir veículo", { description: error.response?.data.error });
+        toast.error("Erro ao transferir veículo", {
+          description: error.response?.data.error,
+        });
       }
-    }finally{
-          setTransferindo(false)
-
+    } finally {
+      setTransferindo(false);
     }
   };
 
@@ -724,12 +734,14 @@ export default function EditContent({ customerId }: EditContentProps) {
 
                       <PopoverContent
                         className="w-[200px] p-0"
-                        onWheelCapture={(e) => e.stopPropagation()}
+                        onWheel={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
                       >
                         <Command>
                           <CommandInput
                             placeholder="Buscar estado..."
-                            className="h-9"
+                            className="h-9 text-base"
                           />
                           <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
                             <CommandEmpty>
@@ -800,13 +812,16 @@ export default function EditContent({ customerId }: EditContentProps) {
                       </PopoverTrigger>
 
                       <PopoverContent
+                        onWheel={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
                         className="w-[200px] p-0"
                         onWheelCapture={(e) => e.stopPropagation()}
                       >
                         <Command>
                           <CommandInput
                             placeholder="Buscar cidade..."
-                            className="h-9"
+                            className="h-9 text-base" 
                           />
                           <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
                             <CommandEmpty>
@@ -976,7 +991,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                 </span>
                 <div className="w-full flex flex-row justify-end">
                   <Button
-                  disabled={isLoadingVeiculos || transferindo}
+                    disabled={isLoadingVeiculos || transferindo}
                     onClick={() => {
                       setOpenVehicle(true);
                     }}
@@ -1028,7 +1043,10 @@ export default function EditContent({ customerId }: EditContentProps) {
                                   Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => {setOpenCustomerSelect(true); setVeiculoTransferId(vehicle?.id)}}
+                                  onClick={() => {
+                                    setOpenCustomerSelect(true);
+                                    setVeiculoTransferId(vehicle?.id);
+                                  }}
                                   className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
                                 >
                                   <ArrowLeftRight />
@@ -1127,7 +1145,7 @@ export default function EditContent({ customerId }: EditContentProps) {
         <CustomerSelect
           open={openCustomerSelect}
           setOpen={setOpenCustomerSelect}
-          OnSelect={(c)=> handleVehicleTransfer(c.id)}
+          OnSelect={(c) => handleVehicleTransfer(c.id)}
         />
       </DialogContent>
     );
