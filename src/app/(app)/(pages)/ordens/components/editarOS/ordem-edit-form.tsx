@@ -628,7 +628,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
           {/* Observações */}
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">Observações</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Observações (Interno)</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
