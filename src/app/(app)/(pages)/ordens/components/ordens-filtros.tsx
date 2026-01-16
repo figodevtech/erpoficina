@@ -4,11 +4,32 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { SlidersHorizontal, CalendarIcon, ChevronsUpDown, Check } from "lucide-react";
+import {
+  SlidersHorizontal,
+  CalendarIcon,
+  ChevronsUpDown,
+  Check,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PrioFiltro } from "./ordens-tabela-helpers";
 import { ptBR } from "date-fns/locale";
@@ -60,7 +81,11 @@ export function OrdensFilterSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1 hover:cursor-pointer">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 hover:cursor-pointer"
+        >
           <SlidersHorizontal className="h-4 w-4" />
           Filtros
         </Button>
@@ -74,7 +99,10 @@ export function OrdensFilterSheet({
           {/* Prioridade */}
           <div className="space-y-2">
             <Label>Prioridade</Label>
-            <Select value={prioFiltro} onValueChange={(v) => setPrioFiltro(v as PrioFiltro)}>
+            <Select
+              value={prioFiltro}
+              onValueChange={(v) => setPrioFiltro(v as PrioFiltro)}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
@@ -101,7 +129,8 @@ export function OrdensFilterSheet({
                   <span className="truncate">
                     {setorFiltro === "TODOS"
                       ? "Todos"
-                      : setores.find((s) => s.value === setorFiltro)?.label || "Selecione..."}
+                      : setores.find((s) => s.value === setorFiltro)?.label ||
+                        "Selecione..."}
                   </span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -109,7 +138,11 @@ export function OrdensFilterSheet({
               <PopoverContent
                 className="p-0"
                 align="start"
+                 side="bottom"
                 style={{ width: "var(--radix-popover-trigger-width)" }}
+                onWheel={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+                onOpenAutoFocus={(e) => e.preventDefault()}
               >
                 <Command>
                   <CommandInput placeholder="Buscar setor..." className="h-9" />
@@ -128,7 +161,14 @@ export function OrdensFilterSheet({
                         }}
                       >
                         Todos
-                        <Check className={cn("ml-auto h-4 w-4", setorFiltro === "TODOS" ? "opacity-100" : "opacity-0")} />
+                        <Check
+                          className={cn(
+                            "ml-auto h-4 w-4",
+                            setorFiltro === "TODOS"
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
                       </CommandItem>
                       {setores.map((s) => (
                         <CommandItem
@@ -141,7 +181,14 @@ export function OrdensFilterSheet({
                           }}
                         >
                           {s.label || "-"}
-                          <Check className={cn("ml-auto h-4 w-4", setorFiltro === s.value ? "opacity-100" : "opacity-0")} />
+                          <Check
+                            className={cn(
+                              "ml-auto h-4 w-4",
+                              setorFiltro === s.value
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -154,7 +201,12 @@ export function OrdensFilterSheet({
           {/* Alvo */}
           <div className="space-y-2">
             <Label>Alvo</Label>
-            <Select value={alvoFiltro} onValueChange={(v) => setAlvoFiltro(v as "TODOS" | "VEICULO" | "PECA")}>
+            <Select
+              value={alvoFiltro}
+              onValueChange={(v) =>
+                setAlvoFiltro(v as "TODOS" | "VEICULO" | "PECA")
+              }
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
@@ -183,11 +235,19 @@ export function OrdensFilterSheet({
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dataInicio ? dataInicio.toLocaleDateString("pt-BR") : "Selecionar data"}
+                      {dataInicio
+                        ? dataInicio.toLocaleDateString("pt-BR")
+                        : "Selecionar data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dataInicio} onSelect={onSetInicio} initialFocus locale={ptBR} />
+                    <Calendar
+                      mode="single"
+                      selected={dataInicio}
+                      onSelect={onSetInicio}
+                      initialFocus
+                      locale={ptBR}
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -199,24 +259,46 @@ export function OrdensFilterSheet({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className={cn("w-full justify-start text-left font-normal", !dataFim && "text-muted-foreground")}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dataFim && "text-muted-foreground"
+                      )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dataFim ? dataFim.toLocaleDateString("pt-BR") : "Selecionar data"}
+                      {dataFim
+                        ? dataFim.toLocaleDateString("pt-BR")
+                        : "Selecionar data"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dataFim} onSelect={onSetFim} initialFocus locale={ptBR} />
+                    <Calendar
+                      mode="single"
+                      selected={dataFim}
+                      onSelect={onSetFim}
+                      initialFocus
+                      locale={ptBR}
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
             </div>
           </div>
           <div className="mt-2 flex justify-between gap-2">
-            <Button variant="outline" className="w-30" size="default" type="button" onClick={onLimpar}>
+            <Button
+              variant="outline"
+              className="w-30"
+              size="default"
+              type="button"
+              onClick={onLimpar}
+            >
               Limpar
             </Button>
-            <Button size="default" className="w-30" type="button" onClick={() => onOpenChange(false)}>
+            <Button
+              size="default"
+              className="w-30"
+              type="button"
+              onClick={() => onOpenChange(false)}
+            >
               Aplicar
             </Button>
           </div>
