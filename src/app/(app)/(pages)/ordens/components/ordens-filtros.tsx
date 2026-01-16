@@ -9,12 +9,19 @@ import { Calendar } from "@/components/ui/calendar";
 import { SlidersHorizontal, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PrioFiltro } from "./ordens-tabela-helpers";
+import { ptBR } from "date-fns/locale";
+import { Label } from "@/components/ui/label";
 
 type FilterSheetProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   prioFiltro: PrioFiltro;
   setPrioFiltro: (v: PrioFiltro) => void;
+  setorFiltro: string;
+  setSetorFiltro: (v: string) => void;
+  setores: Array<{ value: string; label: string }>;
+  alvoFiltro: "TODOS" | "VEICULO" | "PECA";
+  setAlvoFiltro: (v: "TODOS" | "VEICULO" | "PECA") => void;
   dataInicio?: Date;
   dataFim?: Date;
   onSetInicio: (d?: Date) => void;
@@ -27,6 +34,11 @@ export function OrdensFilterSheet({
   onOpenChange,
   prioFiltro,
   setPrioFiltro,
+  setorFiltro,
+  setSetorFiltro,
+  setores,
+  alvoFiltro,
+  setAlvoFiltro,
   dataInicio,
   dataFim,
   onSetInicio,
@@ -49,9 +61,9 @@ export function OrdensFilterSheet({
         <div className="grid flex-1 auto-rows-min gap-6 px-4">
           {/* Prioridade */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Prioridade</label>
+            <Label>Prioridade</Label>
             <Select value={prioFiltro} onValueChange={(v) => setPrioFiltro(v as PrioFiltro)}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
@@ -59,6 +71,39 @@ export function OrdensFilterSheet({
                 <SelectItem value="ALTA">Alta</SelectItem>
                 <SelectItem value="NORMAL">Normal</SelectItem>
                 <SelectItem value="BAIXA">Baixa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Setor */}
+          <div className="space-y-2">
+            <Label>Setor</Label>
+            <Select value={setorFiltro} onValueChange={(v) => setSetorFiltro(v)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">Todos</SelectItem>
+                {setores.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label || "-"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Alvo */}
+          <div className="space-y-2">
+            <Label>Alvo</Label>
+            <Select value={alvoFiltro} onValueChange={(v) => setAlvoFiltro(v as "TODOS" | "VEICULO" | "PECA")}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">Todos</SelectItem>
+                <SelectItem value="VEICULO">Veículo</SelectItem>
+                <SelectItem value="PECA">Peça</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -84,7 +129,7 @@ export function OrdensFilterSheet({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dataInicio} onSelect={onSetInicio} initialFocus />
+                    <Calendar mode="single" selected={dataInicio} onSelect={onSetInicio} initialFocus locale={ptBR} />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -103,7 +148,7 @@ export function OrdensFilterSheet({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dataFim} onSelect={onSetFim} initialFocus />
+                    <Calendar mode="single" selected={dataFim} onSelect={onSetFim} initialFocus locale={ptBR} />
                   </PopoverContent>
                 </Popover>
               </div>

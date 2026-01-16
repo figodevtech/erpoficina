@@ -92,6 +92,8 @@ export function OrdensTabela({
 
   const [filtroAberto, setFiltroAberto] = useState(false);
   const [prioFiltro, setPrioFiltro] = useState<PrioFiltro>("TODAS");
+  const [setorFiltro, setSetorFiltro] = useState<string>("TODOS");
+  const [alvoFiltro, setAlvoFiltro] = useState<"TODOS" | "VEICULO" | "PECA">("TODOS");
   const [dataInicio, setDataInicioState] = useState<Date | undefined>();
   const [dataFim, setDataFimState] = useState<Date | undefined>();
 
@@ -224,9 +226,21 @@ export function OrdensTabela({
   const start = limit * (page - 1) + (pageCount ? 1 : 0);
   const end = limit * (page - 1) + pageCount;
 
+  const setoresOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    rows.forEach((row) => {
+      const id = (row as any).setor?.id ?? (row as any).setorid ?? (row as any).setorId;
+      const nome =
+        row.setor?.nome ?? (row as any).setor_nome ?? (row as any).setor?.descricao ?? (row as any).setorNome ?? "";
+      const value = id != null ? String(id) : nome || "";
+      if (value) map.set(value, nome || "Sem setor");
+    });
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+  }, [rows]);
+
   const renderTempo = (r: OrdemComDatas) => {
     const ms = getTempoMs(r, now);
-    if (!ms) return "—";
+    if (!ms) return "-";
     return fmtDuration(ms);
   };
 
@@ -451,9 +465,21 @@ export function OrdensTabela({
 
   const handleLimparFiltros = () => {
     setPrioFiltro("TODAS");
+    setSetorFiltro("TODOS");
+    setAlvoFiltro("TODOS");
     setDataInicioState(undefined);
     setDataFimState(undefined);
   };
+
+  const getSetorValue = (row: OrdemComDatas) => {
+    const id = (row as any).setor?.id ?? (row as any).setorid ?? (row as any).setorId;
+    const nome =
+      row.setor?.nome ?? (row as any).setor_nome ?? (row as any).setor?.descricao ?? (row as any).setorNome ?? "";
+    return id != null ? String(id) : nome || "";
+  };
+
+  const isPecaRow = (row: OrdemComDatas) =>
+    (row as any).alvo_tipo === "PECA" || (row as any).alvoTipo === "PECA" || (row as any)?.peca;
 
   const filteredRows = useMemo(() => {
     const inicioDay = normalizeDateDay(dataInicio ?? null);
@@ -464,6 +490,14 @@ export function OrdensTabela({
         const p = String(row.prioridade || "").toUpperCase();
         if (p !== prioFiltro) return false;
       }
+
+      if (setorFiltro !== "TODOS") {
+        if (getSetorValue(row) !== setorFiltro) return false;
+      }
+
+      const isPeca = isPecaRow(row);
+      if (alvoFiltro === "PECA" && !isPeca) return false;
+      if (alvoFiltro === "VEICULO" && isPeca) return false;
 
       const entradaStr = (row as any).dataEntrada ?? (row as any).dataentrada ?? row.dataEntrada;
 
@@ -478,7 +512,7 @@ export function OrdensTabela({
 
       return true;
     });
-  }, [rows, prioFiltro, dataInicio, dataFim]);
+  }, [rows, prioFiltro, setorFiltro, alvoFiltro, dataInicio, dataFim]);
 
   const sortedRows = useMemo(() => {
     if (!sortKey) return filteredRows;
@@ -579,6 +613,11 @@ export function OrdensTabela({
                 onOpenChange={setFiltroAberto}
                 prioFiltro={prioFiltro}
                 setPrioFiltro={setPrioFiltro}
+                setorFiltro={setorFiltro}
+                setSetorFiltro={setSetorFiltro}
+                setores={setoresOptions}
+                alvoFiltro={alvoFiltro}
+                setAlvoFiltro={setAlvoFiltro}
                 dataInicio={dataInicio}
                 dataFim={dataFim}
                 onSetInicio={handleSetDataInicio}
