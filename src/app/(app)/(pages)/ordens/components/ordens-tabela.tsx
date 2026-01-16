@@ -81,7 +81,7 @@ export function OrdensTabela({
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
 
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -104,7 +104,7 @@ export function OrdensTabela({
 
   const statusesKey = useMemo(() => (statuses?.length ? statuses.join("|") : ""), [statuses]);
 
-  const currentParamsRef = useRef({ statuses, search: "", page: 1, limit: 10 });
+  const currentParamsRef = useRef({ statuses, search: "", page: 1, limit: 25 });
   useEffect(() => {
     currentParamsRef.current = { statuses, search: localSearch, page, limit };
   }, [statuses, localSearch, page, limit]);
@@ -872,9 +872,9 @@ export function OrdensTabela({
                   <SelectValue placeholder={limit} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
                   <SelectItem value="25">25</SelectItem>
                   <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
                 </SelectContent>
               </Select>
             </div>
