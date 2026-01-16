@@ -1,12 +1,15 @@
-"use cliente"
+"use cliente";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { PrintButton } from "../../../components/PrintButton";
-import { Car, ClipboardList, Cog, Info, List, User } from "lucide-react";
+import { Car, ClipboardList, Cog, User, Power } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatCep } from "@/app/(app)/(pages)/clientes/components/customerDialogRegister/utils";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export const runtime = "nodejs";
 
@@ -32,14 +35,18 @@ function fmtDate(s?: string | Date | null) {
   if (!s) return EMPTY;
   const d = s instanceof Date ? s : new Date(s);
   if (isNaN(d.getTime())) return EMPTY;
-  return d.toLocaleDateString("pt-BR", {timeZone: "America/Fortaleza",});
+  return d.toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" });
 }
 
 function fmtDateTime(s?: string | Date | null) {
   if (!s) return EMPTY;
   const d = s instanceof Date ? s : new Date(s);
   if (isNaN(d.getTime())) return EMPTY;
-  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Fortaleza", });
+  return d.toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Fortaleza",
+  });
 }
 
 function fmtText(value?: string | number | null) {
@@ -116,9 +123,7 @@ async function fetchEmpresa(empresaId = 1) {
   return data ?? null;
 }
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   return { title: `Ordem de Serviço #${id}` };
 }
@@ -153,38 +158,22 @@ export default async function OSFullPage({ params }: PageProps) {
 
   const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const logoSupabase = supabaseBaseUrl
-    ? safeUrl(
-        supabaseBaseUrl,
-        "/storage/v1/object/public/empresa/images/logo/logo.png"
-      )
+    ? safeUrl(supabaseBaseUrl, "/storage/v1/object/public/empresa/images/logo/logo.png")
     : "";
 
   const logoOk = logoSupabase ? await urlExiste(logoSupabase) : false;
   const finalLogo = logoOk ? logoSupabase : null;
 
   const totalProdutos =
-    os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) ||
-    0;
+    os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) || 0;
   const totalServicos =
-    os.servicos?.reduce((acc: number, s: any) => acc + Number(s.subtotal), 0) ||
-    0;
+    os.servicos?.reduce((acc: number, s: any) => acc + Number(s.subtotal), 0) || 0;
   const totalGeral = totalProdutos + totalServicos;
 
-  const empresaNome =
-    empresa?.nomefantasia || empresa?.razaosocial || "Oficina Mecânica";
-  const empresaRazao =
-    empresa?.nomefantasia &&
-    empresa?.razaosocial &&
-    empresa?.nomefantasia !== empresa?.razaosocial
-      ? empresa?.razaosocial
-      : "";
+  const empresaNome = empresa?.nomefantasia || empresa?.razaosocial || "Oficina Mecânica";
 
   const empresaEndereco = joinParts(
-    [
-      empresa?.endereco,
-      empresa?.numero ? `Nº ${empresa.numero}` : null,
-      empresa?.complemento,
-    ],
+    [empresa?.endereco, empresa?.numero ? `Nº ${empresa.numero}` : null, empresa?.complemento],
     ", "
   );
   const empresaLocal = joinParts(
@@ -205,7 +194,7 @@ export default async function OSFullPage({ params }: PageProps) {
       os.cliente?.bairro,
       os.cliente?.cidade,
       os.cliente?.estado,
-      os.cliente?.cep ? `CEP ${os.cliente.cep}` : null,
+      os.cliente?.cep ? `CEP ${formatCep(os.cliente.cep)}` : null,
     ],
     " • "
   );
@@ -238,10 +227,16 @@ export default async function OSFullPage({ params }: PageProps) {
   ];
 
   const metaOS = [
-    { k: "Status", v: (<Badge className="text-[10px] text-black" variant={"outline"}>{fmtEnum(os.status)}</Badge>) },
-    // { k: "Aprovação", v: fmtEnum(os.statusaprovacao) },
+    {
+      k: "Status",
+      v: (
+        <Badge className="text-[9px] font-bold text-black" variant={"outline"}>
+          {fmtEnum(os.status)}
+        </Badge>
+      ),
+    },
     { k: "Prioridade", v: fmtEnum(os.prioridade) },
-    { k: "Impressão", v: fmtDateTime(new Date())},
+    { k: "Impressão", v: fmtDateTime(new Date()) },
     { k: "Entrada", v: fmtDate(os.dataentrada) },
     { k: "Saída", v: fmtDate(os.datasaida) },
     { k: "Alvo", v: alvoTipo },
@@ -269,7 +264,6 @@ export default async function OSFullPage({ params }: PageProps) {
 
   *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
-  /* ✅ IMPORTANTE: sem margem no @page, e a “margem” vira padding interno da folha */
   @page{ size:A4; margin: 0; }
 
   .os-print-root{
@@ -309,7 +303,6 @@ export default async function OSFullPage({ params }: PageProps) {
     gap: 7px;
   }
 
-  /* ✅ PRINT: remove encaixe/zoom/sombra/borda e garante A4 perfeito */
   @media print{
     html, body{
       margin:0 !important;
@@ -338,20 +331,17 @@ export default async function OSFullPage({ params }: PageProps) {
       background:#fff !important;
     }
 
-    /* “margem” real do documento */
     .conteudo{
       padding: 8mm !important;
       height: auto !important;
     }
 
-    /* evita contorno/sombra residual que vira “borda preta” */
     *{
       box-shadow:none !important;
       text-shadow:none !important;
       outline:0 !important;
     }
 
-    /* não use zoom no print (gera artefato/borda em alguns casos) */
     body{ zoom: 1 !important; }
   }
 
@@ -361,7 +351,7 @@ export default async function OSFullPage({ params }: PageProps) {
   .t-base{ font-size:12px; line-height:1.2; }
 
   .h1{ font-size:20px; line-height:1.1; font-weight:600; letter-spacing:-.01em; }
-  .h2{ font-size:14px; line-height:1.1; font-weight:500; }
+  .h2{ font-size:12px; line-height:1.1; font-weight:500; }
 
   .muted{ color: var(--muted); }
 
@@ -467,22 +457,9 @@ export default async function OSFullPage({ params }: PageProps) {
     color: var(--brand-primary);
   }
 
-  .icone-secao{
-    width: 20px;
-    height: 20px;
-    background: var(--brand-primary);
-    border-radius: 6px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color: white;
-    font-size: 12px;
-    font-weight: 900;
-  }
-
   .grid-info{
     display:grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 8px;
   }
 
@@ -496,6 +473,13 @@ export default async function OSFullPage({ params }: PageProps) {
   }
   .kv .k{ color: var(--muted); font-weight:700; }
   .kv .v{ font-weight:600; }
+
+  /* ✅ wrap do email quando passar da borda */
+  .kv .v{
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
 
   .meta-grid{
     display:grid;
@@ -555,10 +539,6 @@ export default async function OSFullPage({ params }: PageProps) {
     vertical-align:middle;
   }
   
-  tbody tr:hover td{
-    background: var(--soft-bg);
-  }
-
   tbody tr:last-child td{
     border-bottom: none;
   }
@@ -630,9 +610,6 @@ export default async function OSFullPage({ params }: PageProps) {
     padding: 4px 0;
     color: var(--muted);
   }
-  
-  .linha-total .label{ font-weight:600; }
-  .linha-total .valor{ font-weight:700; }
 
   .linha-total-final{
     margin-top: 6px;
@@ -652,7 +629,7 @@ export default async function OSFullPage({ params }: PageProps) {
   }
 
   .total-valor{
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--brand-primary);
     letter-spacing: -.02em;
@@ -685,8 +662,72 @@ export default async function OSFullPage({ params }: PageProps) {
     -webkit-box-orient:vertical;
     overflow:hidden;
   }
-`}</style>
 
+  /* =========================
+     RESPONSIVO (SÓ TELA)
+     Mantém o layout A4, apenas escala no mobile
+  ========================= */
+
+  :root { --os-scale: 1; }
+
+  .toolbar{
+    width: min(210mm, calc(100vw - 16px));
+  }
+
+  .folha-scaler{
+    position: relative;
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto;
+  }
+
+  .folha{
+    position: absolute;
+    inset: 0;
+    transform-origin: top left;
+    transform: scale(var(--os-scale));
+  }
+
+  @media screen and (max-width: 980px){
+    :root{ --os-scale: 0.72; }
+
+    .folha-scaler{
+      width: calc(210mm * var(--os-scale));
+      height: calc(297mm * var(--os-scale));
+    }
+
+    .toolbar{
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  }
+
+  @media screen and (max-width: 720px){
+    :root{ --os-scale: 0.58; }
+  }
+
+  @media screen and (max-width: 420px){
+    :root{ --os-scale: 0.45; }
+  }
+
+  /* =========================
+     PRINT: anula o scaler/transform
+  ========================= */
+  @media print{
+    .folha-scaler{
+      position: static !important;
+      width: auto !important;
+      height: auto !important;
+      margin: 0 !important;
+    }
+
+    .folha{
+      position: static !important;
+      transform: none !important;
+      inset: auto !important;
+    }
+  }
+`}</style>
 
       <div className="toolbar no-print">
         <div>
@@ -704,220 +745,211 @@ export default async function OSFullPage({ params }: PageProps) {
             Visualização de Impressão (1 página)
           </div>
         </div>
-        <PrintButton />
+
+        <div className="flex flex-row items-center gap-2">
+          {/* ✅ Botão Sair -> /ordens */}
+          <Button asChild size={"sm"} variant={"outline"} className="hover:cursor-pointer hover:text-black">
+            <Link href="/ordens">
+              <Power className="w-3 h-3" />
+              Sair
+            </Link>
+          </Button>
+
+          <PrintButton />
+        </div>
       </div>
 
-      <div className="folha">
-        <div className="header-os">
-          {finalLogo ? (
-            <div className="logo-container">
-              <Image
-                src={finalLogo || "/placeholder.svg"}
-                alt="Logo da empresa"
-                width={70}
-                height={70}
-                className="logo-img"
-                priority
-              />
-            </div>
-          ) : (
-            <div className="logo-placeholder">OS</div>
-          )}
+      <div className="folha-scaler">
+        <div className="folha">
+          <div className="header-os">
+            {finalLogo ? (
+              <div className="logo-container">
+                <Image
+                  src={finalLogo || "/placeholder.svg"}
+                  alt="Logo da empresa"
+                  width={70}
+                  height={70}
+                  className="logo-img"
+                  priority
+                />
+              </div>
+            ) : (
+              <div className="logo-placeholder">OS</div>
+            )}
 
-          <div className="empresa-info">
-            <div className="empresa-nome">{empresaNome}</div>
-            <div className="empresa-details">
-              {empresaEndereco && <div>{empresaEndereco}</div>}
-              {empresaLocal && <div>{empresaLocal}</div>}
-              <div>
-                {empresa?.telefone && (
-                  <span>Tel: {fmtPhone(empresa.telefone)}</span>
+            <div className="empresa-info">
+              <div className="empresa-nome">{empresaNome}</div>
+              <div className="empresa-details">
+                {empresaEndereco && <div>{empresaEndereco}</div>}
+                {empresaLocal && <div>{empresaLocal}</div>}
+                <div>
+                  {empresa?.telefone && <span>Tel: {fmtPhone(empresa.telefone)}</span>}
+                  {empresa?.cnpj && <span> • CNPJ: {fmtDoc(empresa.cnpj)}</span>}
+                </div>
+              </div>
+            </div>
+
+            <div className="os-header-box">
+              <div className="os-label">Ordem de Serviço</div>
+              <div className="os-numero">#{os.id}</div>
+              <div className="t-xs" style={{ opacity: 1, fontWeight: 700 }}>
+                <Badge className="text-xs text-white" variant={"outline"}>
+                  {fmtEnum(os.status)}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className="conteudo">
+            <div className="meta-grid">
+              {metaOS.map((m) => (
+                <div key={m.k} className="meta-badge">
+                  <div className="label">{m.k}</div>
+                  <div className="valor">{m.v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid-info">
+              <div className="cartao cartao-destaque col-span-3">
+                <div className="titulo-secao">
+                  <User className="w-4 h-4" />
+                  Cliente
+                </div>
+                <div className="h2">{fmtText(os.cliente?.nomerazaosocial).toUpperCase()}</div>
+                <div style={{ marginTop: 8 }}>
+                  <div className="kv">
+                    <span className="k">Documento</span>
+                    <span className="v">{fmtDoc(os.cliente?.cpfcnpj)}</span>
+                  </div>
+                  <div className="kv">
+                    <span className="k">Telefone</span>
+                    <span className="v">{fmtPhone(os.cliente?.telefone)}</span>
+                  </div>
+                  <div className="kv text-wrap">
+                    <span className="k">E-mail</span>
+                    <span className="v">{fmtText(os.cliente?.email).toUpperCase()}</span>
+                  </div>
+                </div>
+                {(clienteEndereco || clienteLocal) && (
+                  <div className="t-xs muted" style={{ marginTop: 8 }}>
+                    {clienteEndereco && <div>{clienteEndereco}</div>}
+                    {clienteLocal && <div>{clienteLocal}</div>}
+                  </div>
                 )}
-                {empresa?.cnpj && <span> • CNPJ: {fmtDoc(empresa.cnpj)}</span>}
               </div>
-            </div>
-          </div>
 
-          <div className="os-header-box">
-            <div className="os-label">Ordem de Serviço</div>
-            <div className="os-numero">#{os.id}</div>
-            <div className="t-xs" style={{ opacity: 1, fontWeight: 700 }}>
-              <Badge className="text-xs" variant={"outline"}>
-
-              {fmtEnum(os.status)}
-              </Badge>
-            </div>
-          </div>
-        </div>
-
-        <div className="conteudo">
-          <div className="meta-grid">
-            {metaOS.map((m) => (
-              <div key={m.k} className="meta-badge">
-                <div className="label">{m.k}</div>
-                <div className="valor">{m.v}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid-info">
-            <div className="cartao cartao-destaque">
-              <div className="titulo-secao">
-                <User className="w-4 h-4"/>
-                Cliente
-              </div>
-              <div className="h2">{fmtText(os.cliente?.nomerazaosocial)}</div>
-              <div style={{ marginTop: 8 }}>
-                <div className="kv">
-                  <span className="k">Documento</span>
-                  <span className="v">{fmtDoc(os.cliente?.cpfcnpj)}</span>
+              <div className="cartao cartao-destaque col-span-2">
+                <div className="titulo-secao">
+                  {alvoTipo === "Peça" ? <Cog className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                  {alvoTipo === "Peça" ? "Peça / Componente" : "Veículo"}
                 </div>
-                <div className="kv">
-                  <span className="k">Telefone</span>
-                  <span className="v">{fmtPhone(os.cliente?.telefone)}</span>
-                </div>
-                <div className="kv">
-                  <span className="k">E-mail</span>
-                  <span className="v">{fmtText(os.cliente?.email)}</span>
-                </div>
+                {alvoTipo === "Peça" ? (
+                  <div className="h2">{fmtText(os.peca?.titulo?.toUpperCase?.() ?? os.peca?.titulo)}</div>
+                ) : (
+                  <>
+                    <div className="h2">{fmtText(veiculoNome)}</div>
+                    <div style={{ marginTop: 8 }}>
+                      <div className="kv">
+                        <span className="k">Placa</span>
+                        <span className="v">{fmtText(veiculoPlaca)}</span>
+                      </div>
+                      <div className="kv">
+                        <span className="k">Ano</span>
+                        <span className="v">{fmtText(os.veiculo?.ano)}</span>
+                      </div>
+                      <div className="kv">
+                        <span className="k">KM</span>
+                        <span className="v">{fmtText(os.veiculo?.km)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              {(clienteEndereco || clienteLocal) && (
-                <div className="t-xs muted" style={{ marginTop: 8 }}>
-                  {clienteEndereco && <div>{clienteEndereco}</div>}
-                  {clienteLocal && <div>{clienteLocal}</div>}
-                </div>
-              )}
-            </div>
 
-            <div className="cartao cartao-destaque">
-              <div className="titulo-secao">
-                  {alvoTipo === "Peça" ? <Cog className="w-4 h-4"/>: <Car className="w-4 h-4"/>}
-                {alvoTipo === "Peça" ? "Peça / Componente" : "Veículo"}
-              </div>
-              {alvoTipo === "Peça" ? (
-                <>
-                  <div className="h2">
-                    {fmtText(os.peca?.titulo || os.peca?.descricao)}
+              <div className="cartao cartao-destaque col-span-2">
+                <div className="titulo-secao">
+                  <ClipboardList className="w-4 h-4" />
+                  Detalhes
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <div className="flex flex-col gap-2 text-[9px]">
+                    <span className="whitespace-pre-wrap muted">
+                      {String(os.descricao ?? "").toUpperCase()}
+                    </span>
                   </div>
-                  {/* {os.peca?.descricao && (
-                    <div
-                      className="t-xs muted clamp-3"
-                      style={{ marginTop: 6 }}
-                    >
-                      {os.peca.descricao}
-                    </div>
-                  )} */}
-                </>
-              ) : (
-                <>
-                  <div className="h2">{fmtText(veiculoNome)}</div>
-                  <div style={{ marginTop: 8 }}>
-                    <div className="kv">
-                      <span className="k">Placa</span>
-                      <span className="v">{fmtText(veiculoPlaca)}</span>
-                    </div>
-                    <div className="kv">
-                      <span className="k">Ano</span>
-                      <span className="v">{fmtText(os.veiculo?.ano)}</span>
-                    </div>
-                    <div className="kv">
-                      <span className="k">KM</span>
-                      <span className="v">{fmtText(os.veiculo?.km)}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="cartao cartao-destaque">
-              <div className="titulo-secao">
-                <ClipboardList className="w-4 h-4"/>
-                Detalhes
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <div className="flex flex-col gap-2 text-[10px]">
-                  <span className="">Descrição:</span>
-                  <span className="whitespace-pre-wrap">
-                    {os.descricao}
-                  </span>
                 </div>
               </div>
             </div>
-          </div>
 
-          {itens.length > 0 && (
-            <div className="tabela-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th className="col-num">#</th>
-                    <th className="col-tipo">Tipo</th>
-                    <th>Descrição</th>
-                    <th className="col-qtd">Qtd</th>
-                    <th className="col-unit">Unit.</th>
-                    <th className="col-unit">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {itens.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="col-num">{idx + 1}</td>
-                      <td className="col-tipo">
-                        <span
-                          className={
-                            item.tipo === "SERVIÇO"
-                              ? "tipo-servico"
-                              : "tipo-peca"
-                          }
-                        >
-                          {item.tipo}
-                        </span>
-                      </td>
-                      <td>{item.descricao}</td>
-                      <td className="col-qtd">{item.qtd}</td>
-                      <td className="col-unit">{fmtMoney(item.unitario)}</td>
-                      <td className="col-sub">{fmtMoney(item.subtotal)}</td>
+            {itens.length > 0 && (
+              <div className="tabela-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th className="col-num">#</th>
+                      <th className="col-tipo">Tipo</th>
+                      <th>Descrição</th>
+                      <th className="col-qtd">Qtd</th>
+                      <th className="col-unit">Unit.</th>
+                      <th className="col-unit">Subtotal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {itens.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="col-num">{idx + 1}</td>
+                        <td className="col-tipo">
+                          <span className={item.tipo === "SERVIÇO" ? "tipo-servico" : "tipo-peca"}>
+                            {item.tipo}
+                          </span>
+                        </td>
+                        <td>{item.descricao}</td>
+                        <td className="col-qtd">{item.qtd}</td>
+                        <td className="col-unit">{fmtMoney(item.unitario)}</td>
+                        <td className="col-sub">{fmtMoney(item.subtotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          <div className="rodape">
-            <div>
-              {(os.observacoes || os.defeitorelatado) && (
-                <div className="observacoes-box">
-                  <div className="obs-titulo">Observações</div>
-                  <div className="obs-texto clamp-3">
-                    {os.observacoes || os.defeitorelatado || EMPTY}
+            <div className="rodape">
+              <div>
+                {(os.observacoes || os.defeitorelatado) && (
+                  <div className="observacoes-box">
+                    <div className="obs-titulo">Observações</div>
+                    <div className="obs-texto clamp-3">
+                      {os.observacoes || os.defeitorelatado || EMPTY}
+                    </div>
+                  </div>
+                )}
+
+                <div className="assinaturas">
+                  <div className="assinatura">
+                    <div className="assin-label">Responsável Técnico</div>
+                  </div>
+                  <div className="assinatura">
+                    <div className="assin-label">Cliente</div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <div className="assinaturas">
-                <div className="assinatura">
-                  <div className="assin-label">Responsável Técnico</div>
+              <div className="totais-box">
+                <div className="linha-total">
+                  <span className="label">Produtos/Peças</span>
+                  <span className="valor">{fmtMoney(totalProdutos)}</span>
                 </div>
-                <div className="assinatura">
-                  <div className="assin-label">Cliente</div>
+                <div className="linha-total">
+                  <span className="label">Serviços</span>
+                  <span className="valor">{fmtMoney(totalServicos)}</span>
                 </div>
-              </div>
-            </div>
 
-            <div className="totais-box">
-              <div className="linha-total">
-                <span className="label">Produtos/Peças</span>
-                <span className="valor">{fmtMoney(totalProdutos)}</span>
-              </div>
-              <div className="linha-total">
-                <span className="label">Serviços</span>
-                <span className="valor">{fmtMoney(totalServicos)}</span>
-              </div>
-              
-              <div className="linha-total-final">
-                <span className="total-label">Total</span>
-                <span className="total-valor">{fmtMoney(totalGeral)}</span>
+                <div className="linha-total-final">
+                  <span className="total-label">Total</span>
+                  <span className="total-valor">{fmtMoney(totalGeral)}</span>
+                </div>
               </div>
             </div>
           </div>

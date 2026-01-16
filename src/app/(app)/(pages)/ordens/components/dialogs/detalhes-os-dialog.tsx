@@ -621,7 +621,7 @@ export function OSDetalhesDialog({
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <StickyNote className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Observações</span>
+                    <span className="text-sm font-medium">Observações (Interno)</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{data.os.observacoes || "—"}</div>
                 </div>
