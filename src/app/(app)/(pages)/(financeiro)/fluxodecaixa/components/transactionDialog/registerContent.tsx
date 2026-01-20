@@ -66,7 +66,7 @@ export default function RegisterContent({
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const [isChecked, setIsChecked] = useState(false);
- const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
+  const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
 
   const handleChange = (
     field: keyof NewTransaction,
@@ -184,6 +184,25 @@ export default function RegisterContent({
     }
   }, [newTransaction.tipo]);
 
+  useEffect(() => {
+    setNewTransaction({
+      ...newTransaction,
+      data: undefined,
+    });
+  }, [newTransaction.pendente]);
+
+  function toIsoMinuteString(date: Date | undefined) {
+    if (!date) return undefined;
+    const pad = (n: number) => String(n).padStart(2, "0");
+
+    const y = date.getFullYear();
+    const m = pad(date.getMonth() + 1);
+    const d = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mm = pad(date.getMinutes());
+    return `${y}-${m}-${d}T${hh}:${mm}`;
+  }
+
   return (
     <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
@@ -241,7 +260,7 @@ export default function RegisterContent({
                     className="hover:cursor-pointer"
                     disabled={
                       newTransaction.tipo === Tipo_transacao.SAQUE ||
-                      newTransaction.tipo === Tipo_transacao.DEPOSITO
+                        newTransaction.tipo === Tipo_transacao.DEPOSITO
                         ? true
                         : false
                     }
@@ -253,29 +272,27 @@ export default function RegisterContent({
                       })
                     }
                   />
-                  
-                    {newTransaction.tipo === Tipo_transacao.RECEITA && (
-                      <div
-                        className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
-                          newTransaction.pendente ? "opacity-100" : "opacity-50"
+
+                  {newTransaction.tipo === Tipo_transacao.RECEITA && (
+                    <div
+                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${newTransaction.pendente ? "opacity-100" : "opacity-50"
                         }`}
-                      >
-                        <Info className="w-3 h-3" />
-                        <span>LANÇAMENTO A RECEBER</span>
-                      </div>
-                    )}
-                    {newTransaction.tipo === Tipo_transacao.DESPESA && (
-                      <div
-                        className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
-                          newTransaction.pendente ? "opacity-100" : "opacity-50"
+                    >
+                      <Info className="w-3 h-3" />
+                      <span>LANÇAMENTO A RECEBER</span>
+                    </div>
+                  )}
+                  {newTransaction.tipo === Tipo_transacao.DESPESA && (
+                    <div
+                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${newTransaction.pendente ? "opacity-100" : "opacity-50"
                         }`}
-                      >
-                        <Info className="w-3 h-3" />
-                        <span>LANÇAMENTO A PAGAR</span>
-                      </div>
-                    )}
-                  </div>
+                    >
+                      <Info className="w-3 h-3" />
+                      <span>LANÇAMENTO A PAGAR</span>
+                    </div>
+                  )}
                 </div>
+              </div>
 
               <div className="space-y-2 w-full col-span-full">
                 <Label htmlFor="descricao">Descrição*</Label>
@@ -293,29 +310,29 @@ export default function RegisterContent({
                   <Label htmlFor="valor">Valor* </Label>
                   {(newTransaction.tipo === Tipo_transacao.RECEITA ||
                     newTransaction.tipo === Tipo_transacao.SAQUE) && (
-                    <div className="flex flex-row gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        Taxa de recebimento
-                      </span>
-                      <Switch
-                        checked={isChecked}
-                        onCheckedChange={() => {
-                          setIsChecked(!isChecked);
-                          if (!isChecked) {
-                            setNewTransaction({
-                              ...newTransaction,
-                              valorLiquido: newTransaction.valor,
-                            });
-                          } else {
-                            setNewTransaction({
-                              ...newTransaction,
-                              valorLiquido: newTransaction.valor,
-                            });
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
+                      <div className="flex flex-row gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          Taxa de recebimento
+                        </span>
+                        <Switch
+                          checked={isChecked}
+                          onCheckedChange={() => {
+                            setIsChecked(!isChecked);
+                            if (!isChecked) {
+                              setNewTransaction({
+                                ...newTransaction,
+                                valorLiquido: newTransaction.valor,
+                              });
+                            } else {
+                              setNewTransaction({
+                                ...newTransaction,
+                                valorLiquido: newTransaction.valor,
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                 </div>
                 <ValueInput
                   price={newTransaction.valor || 0}
@@ -331,8 +348,8 @@ export default function RegisterContent({
                         Taxa:{" "}
                         {newTransaction.valor && newTransaction.valorLiquido
                           ? formatarEmReal(
-                              newTransaction.valor - newTransaction.valorLiquido
-                            )
+                            newTransaction.valor - newTransaction.valorLiquido
+                          )
                           : 0}
                       </span>
                     </div>
@@ -347,8 +364,32 @@ export default function RegisterContent({
                 <Label htmlFor="data">Data</Label>
                 <Input
                   type="datetime-local"
-                  onChange={(e) => handleChange("data", e.target.value)}
-                ></Input>
+                  value={toIsoMinuteString(newTransaction.data) ?? ""} // converte Date -> string certa
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const selecionada = value ? new Date(value) : undefined;
+
+                    if (!selecionada) {
+                      setNewTransaction({ ...newTransaction, data: undefined });
+                      return;
+                    }
+
+                    const agora = new Date();
+
+                    if (!newTransaction.pendente && selecionada.getTime() > agora.getTime()) {
+                      toast.warning("Ative o pagamento futuro para selecionar uma data futura.");
+                      return;
+                    }
+
+                    if (newTransaction.pendente && selecionada.getTime() < agora.getTime()) {
+                      toast.warning("Desative o pagamento futuro para selecionar uma data passada.");
+                      return;
+                    }
+
+                    setNewTransaction({ ...newTransaction, data: selecionada }); // salva Date
+                  }}
+                />
+
               </div>
               <div className="space-y-2 w-full">
                 <Label htmlFor="banco">Banco</Label>
@@ -420,7 +461,7 @@ export default function RegisterContent({
                 )}
                 {!osId && !vendaId && (
                   <Select
-                  disabled={loadingCategorias || !!errorCategorias}
+                    disabled={loadingCategorias || !!errorCategorias}
                     value={newTransaction.categoria}
                     onValueChange={(v) => handleChange("categoria", v)}
                   >
@@ -429,7 +470,7 @@ export default function RegisterContent({
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.map((c) => (
-                        <SelectItem className="hover:cursor-pointer"  key={c.id} value={c.nome}>
+                        <SelectItem className="hover:cursor-pointer" key={c.id} value={c.nome}>
                           {c.nome}
                         </SelectItem>
                       ))}
