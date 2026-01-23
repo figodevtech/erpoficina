@@ -11,7 +11,8 @@ export type StatusOS =
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
   | "CONCLUIDO"
-  | "CANCELADO";
+  | "CANCELADO"
+  | "AGUARDANDO_CHECKLIST"
 
 export type Cliente = {
   id: number;
@@ -30,6 +31,13 @@ export type Veiculo = {
   clienteid?: number;
 };
 
+export type Peca = {
+  id: number;
+  titulo: string;
+  descricao: string;
+
+}
+
 export type Ordem = {
   id: number;
   numero?: string;
@@ -41,9 +49,13 @@ export type Ordem = {
   observacoes?: string | null;
   cliente?: Cliente | null;
   veiculo?: Veiculo | null;
+  peca?: Peca | null
   checklistTemplateId?: string | null;
   orcamentototal:number;
   transacoes: Transaction[] | null
+  is_deleted?: boolean
+  created_at?: Date
+  alvo_tipo?: "VEICULO" | "PECA" | null
 };
 
 export type OrcamentoTotais = {

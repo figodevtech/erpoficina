@@ -322,11 +322,12 @@ export default function PainelAcompanhamento({
     const sb = createClient(url, anon, { realtime: { params: { eventsPerSecond: 5 } } });
 
     const ch = sb
-      .channel("acompanhamento-public")
-      .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () => {
-        void load();
-      })
-      .subscribe();
+  .channel("acompanhamento-public")
+  .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, (payload) => {
+    console.log("REALTIME:", payload.eventType, payload)
+    void load()
+  })
+  .subscribe((status) => console.log("STATUS:", status))
 
     return () => {
       try {
