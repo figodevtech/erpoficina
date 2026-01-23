@@ -21,9 +21,10 @@ type Props = {
   children: React.ReactNode;
 
   submitLabel: string;
+  submitLabel2?: string;
   submitIcon?: React.ReactNode;
   submitting?: boolean;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (value?: boolean) => void | Promise<void>;
 
   /** ✅ NOVO */
   submitDisabled?: boolean;
@@ -36,6 +37,7 @@ export function ProductDialogLayout({
   tabs,
   children,
   submitLabel,
+  submitLabel2,
   submitting = false,
   onSubmit,
   submitDisabled = false,
@@ -60,7 +62,7 @@ export function ProductDialogLayout({
               type="button"
               disabled={submitting || submitDisabled}
               className="flex-1 hover:cursor-pointer"
-              onClick={onSubmit}
+              onClick={()=>onSubmit()}
             >
               {submitting ? (
                 <>
@@ -71,6 +73,25 @@ export function ProductDialogLayout({
                 <>{submitLabel}</>
               )}
             </Button>
+            {submitLabel2 && (
+
+            <Button
+            variant={"secondary"}
+              type="button"
+              disabled={submitting || submitDisabled}
+              className="flex-1 hover:cursor-pointer"
+              onClick={()=>onSubmit(true)}
+            >
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Salvando...
+                </>
+              ) : (
+                <>{submitLabel2}</>
+              )}
+            </Button>
+            )}
 
             <DialogClose asChild>
               <Button className="hover:cursor-pointer" variant={"outline"}>

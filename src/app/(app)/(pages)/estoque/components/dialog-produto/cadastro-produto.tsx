@@ -4,7 +4,7 @@ import { TabsTrigger } from "@/components/ui/tabs";
 import { Save, Upload } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Grupo_produto, Produto } from "../../types";
+import { Estoque_status, Grupo_produto, Produto } from "../../types";
 import { ProductDialogLayout } from "./tabs/dialog-layout";
 import { TabGeral } from "./tabs/tab-geral";
 import { TabFiscal } from "./tabs/tab-fiscal";
@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { Unidade_medida } from "../../types";
 import { set } from "nprogress";
 import { useGruposProduto } from "./hooks/use-grupo-produtos";
+import { boolean } from "zod";
 
 interface ConteudoCadastroProdutoProps {
   setSelectedProductId?: (value: number | undefined) => void;
@@ -22,6 +23,15 @@ interface ConteudoCadastroProdutoProps {
   setNewProduct: (value: Produto) => void;
   handleSearchFornecedor?: () => void;
 }
+
+const initialNewProduct: Produto = {
+  id: 0,
+  precovenda: 0,
+  status_estoque: Estoque_status.OK,
+  unidade: Unidade_medida.UN,
+  fornecedor: "DESCONHECIDO",
+  grupo_produto_id: 1,
+};
 
 export default function CadastroProduto({
   handleSearchFornecedor,
@@ -62,7 +72,7 @@ export default function CadastroProduto({
     setImagensPreview(files.map((f) => URL.createObjectURL(f)));
   };
 
-  const cadastrarProduto = async () => {
+  const cadastrarProduto = async (registerAgain?: boolean) => {
     setSalvando(true);
 
     const payload = { ...newProduct } as any;
@@ -94,11 +104,22 @@ export default function CadastroProduto({
           }
         }
 
-        setSelectedProductId?.(produtoId);
-        handleSearchFornecedor?.();
-
-        setImagensArquivos([]);
-        setImagensPreview([]);
+        if (registerAgain){
+          setNewProduct(initialNewProduct)
+          setSelectedProductId?.(undefined)
+          
+          handleSearchFornecedor?.();
+  
+          setImagensArquivos([]);
+          setImagensPreview([]);
+        }else{
+          
+          setSelectedProductId?.(produtoId);
+          handleSearchFornecedor?.();
+  
+          setImagensArquivos([]);
+          setImagensPreview([]);
+        }
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -116,7 +137,8 @@ export default function CadastroProduto({
       title="Cadastro de Produtos"
       description="Preencha dados para registrar um novo produto"
       defaultTab="Geral"
-      submitLabel="Cadastrar Produto"
+      submitLabel2="Salvar e Continuar"
+      submitLabel="Salvar"
       submitting={salvando}
       onSubmit={cadastrarProduto}
       tabs={
