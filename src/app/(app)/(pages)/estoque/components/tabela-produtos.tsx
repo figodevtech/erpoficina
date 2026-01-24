@@ -245,6 +245,7 @@ export default function TabelaProdutos({
           productId={selectedProductId}
           isOpen={isOpen}
           setIsOpen={setIsOpen}
+          onAfterSaveProduct={()=>handleGetProducts(pagination.page, pagination.limit, search, status)}
         />
 
         {/* ✅ Entrada Fiscal (1 instância) */}

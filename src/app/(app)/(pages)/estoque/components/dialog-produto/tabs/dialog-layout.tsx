@@ -26,6 +26,8 @@ type Props = {
   submitting?: boolean;
   onSubmit: (value?: boolean) => void | Promise<void>;
 
+  currentTab: string;
+
   /** ✅ NOVO */
   submitDisabled?: boolean;
 };
@@ -34,6 +36,7 @@ export function ProductDialogLayout({
   title,
   description,
   defaultTab,
+  currentTab,
   tabs,
   children,
   submitLabel,
@@ -42,6 +45,7 @@ export function ProductDialogLayout({
   onSubmit,
   submitDisabled = false,
 }: Props) {
+
   return (
     <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
@@ -50,7 +54,7 @@ export function ProductDialogLayout({
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
 
-        <Tabs defaultValue={defaultTab} className="flex-1 min-h-0 overflow-hidden pb-0 mt-4">
+        <Tabs value={currentTab} defaultValue={defaultTab} className="flex-1 min-h-0 overflow-hidden pb-0 mt-4">
           <TabsList className="shrink-0 sticky top-0 z-10 bg-background ml-4">{tabs}</TabsList>
 
           {children}

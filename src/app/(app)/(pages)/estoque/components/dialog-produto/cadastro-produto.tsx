@@ -22,6 +22,7 @@ interface ConteudoCadastroProdutoProps {
   newProduct: Produto;
   setNewProduct: (value: Produto) => void;
   handleSearchFornecedor?: () => void;
+  onAfterSaveProduct?: () => void;
 }
 
 const initialNewProduct: Produto = {
@@ -38,10 +39,12 @@ export default function CadastroProduto({
   setSelectedProductId,
   newProduct,
   setNewProduct,
+  onAfterSaveProduct,
 }: ConteudoCadastroProdutoProps) {
   const [salvando, setSalvando] = useState(false);
   const [imagensArquivos, setImagensArquivos] = useState<File[]>([]);
   const [imagensPreview, setImagensPreview] = useState<string[]>([]);
+  const [currentTab, setCurrentTab] = useState<string>("Geral");
   const { unidades, loadingUnidades, errorUnidades } = useUnidadesMedida();
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
 
@@ -65,8 +68,6 @@ export default function CadastroProduto({
     }
   }, [grupos]);
 
-
-
   const handlePickImages = (files: File[]) => {
     setImagensArquivos(files);
     setImagensPreview(files.map((f) => URL.createObjectURL(f)));
@@ -79,10 +80,15 @@ export default function CadastroProduto({
     if (!payload.tituloMarketplace) payload.tituloMarketplace = payload.titulo;
 
     try {
-      const response = await axios.post("/api/products", { newProduct: payload });
+      const response = await axios.post("/api/products", {
+        newProduct: payload,
+      });
 
       if (response.status === 201) {
-        toast.success("Sucesso!", { description: "Produto cadastrado.", duration: 2000 });
+        toast.success("Sucesso!", {
+          description: "Produto cadastrado.",
+          duration: 2000,
+        });
 
         const produtoId = response.data.data.id as number;
 
@@ -98,34 +104,43 @@ export default function CadastroProduto({
           } catch (err) {
             console.error("Erro ao enviar imagens:", err);
             toast.error("Erro", {
-              description: "Produto criado, mas não foi possível enviar as imagens.",
+              description:
+                "Produto criado, mas não foi possível enviar as imagens.",
               duration: 2500,
             });
           }
         }
 
-        if (registerAgain){
-          setNewProduct(initialNewProduct)
-          setSelectedProductId?.(undefined)
-          
+        if (registerAgain) {
+          setNewProduct(initialNewProduct);
+          setSelectedProductId?.(undefined);
+
           handleSearchFornecedor?.();
-  
+
           setImagensArquivos([]);
           setImagensPreview([]);
-        }else{
-          
+          setCurrentTab("Geral");
+          onAfterSaveProduct?.();
+        } else {
           setSelectedProductId?.(produtoId);
           handleSearchFornecedor?.();
-  
+
           setImagensArquivos([]);
           setImagensPreview([]);
+          onAfterSaveProduct?.();
         }
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast.error("Erro", { description: error.response?.data?.error ?? "Erro ao criar produto", duration: 2000 });
+        toast.error("Erro", {
+          description: error.response?.data?.error ?? "Erro ao criar produto",
+          duration: 2000,
+        });
       } else {
-        toast.error("Erro", { description: "Erro ao criar produto", duration: 2000 });
+        toast.error("Erro", {
+          description: "Erro ao criar produto",
+          duration: 2000,
+        });
       }
     } finally {
       setSalvando(false);
@@ -141,18 +156,35 @@ export default function CadastroProduto({
       submitLabel="Salvar"
       submitting={salvando}
       onSubmit={cadastrarProduto}
+      currentTab={currentTab}
       tabs={
         <>
-          <TabsTrigger value="Geral" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Geral")}
+            value="Geral"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Geral
           </TabsTrigger>
-          <TabsTrigger value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Fiscal")}
+            value="Fiscal"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Fiscal
           </TabsTrigger>
-          <TabsTrigger value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Estoque")}
+            value="Estoque"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Estoque
           </TabsTrigger>
-          <TabsTrigger value="Imagens" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Imagens")}
+            value="Imagens"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Imagens
           </TabsTrigger>
         </>

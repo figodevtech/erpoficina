@@ -30,6 +30,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
   const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [currentTab, setCurrentTab] = useState<string>("Geral")
 
   const reqIdRef = useRef(0);
   const { unidades, loadingUnidades, errorUnidades } = useUnidadesMedida();
@@ -101,28 +102,28 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
 
   const tabs = (
     <>
-      <TabsTrigger value="Geral" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("Geral")} value="Geral" className={"hover:cursor-pointer" + tabTheme}>
         Geral
       </TabsTrigger>
-      <TabsTrigger value="MarketPlace" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("MarketPlace")} value="MarketPlace" className={"hover:cursor-pointer" + tabTheme}>
         MarketPlace
       </TabsTrigger>
-      <TabsTrigger value="Imagens" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("Imagens")} value="Imagens" className={"hover:cursor-pointer" + tabTheme}>
         Imagens
       </TabsTrigger>
-      <TabsTrigger value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("Fiscal")} value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
         Fiscal
       </TabsTrigger>
-      <TabsTrigger value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("Estoque")} value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
         Estoque
       </TabsTrigger>
-      <TabsTrigger value="Vendas" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("Vendas")} value="Vendas" className={"hover:cursor-pointer" + tabTheme}>
         Vendas
       </TabsTrigger>
-      <TabsTrigger value="Ordens" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("Ordens")} value="Ordens" className={"hover:cursor-pointer" + tabTheme}>
         Ordens
       </TabsTrigger>
-      <TabsTrigger value="Fluxo" className={"hover:cursor-pointer" + tabTheme}>
+      <TabsTrigger onClick={()=>setCurrentTab("Fluxo")} value="Fluxo" className={"hover:cursor-pointer" + tabTheme}>
         Entradas
       </TabsTrigger>
     </>
@@ -137,6 +138,8 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
       }
       description="Preencha dados para editar um produto"
       defaultTab="Geral"
+            currentTab={currentTab}
+
       submitLabel="Salvar"
       submitIcon={<Upload className="h-4 w-4" />}
       submitting={isSubmitting}
