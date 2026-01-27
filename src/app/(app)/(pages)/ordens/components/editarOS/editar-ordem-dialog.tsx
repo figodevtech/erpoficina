@@ -57,6 +57,7 @@ export function EditarOSDialog({
         defaultValues={defaultValues}
         exposeSubmit={(fn) => (submitRef.current = fn)}
         onSavingChange={setSaving}
+        onClose={() => onOpenChange(false)}
       />
     </DialogShell>
   );

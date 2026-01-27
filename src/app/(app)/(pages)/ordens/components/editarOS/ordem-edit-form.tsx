@@ -35,6 +35,7 @@ export type OrdemEditFormProps = {
   defaultValues: { id: number } | null;
   exposeSubmit?: (fn: () => void) => void;
   onSavingChange?: (saving: boolean) => void;
+  onClose?: () => void;
 };
 
 const NONE = "__none__";
@@ -48,8 +49,11 @@ function resolvePecaNome(src: any): string {
 function resolvePecaDescricao(src: any): string {
   return src?.descricao ?? src?.peca?.descricao ?? "";
 }
+function resolvePecaLacre(src: any): string {
+  return src?.lacre ?? src?.peca?.lacre ?? "";
+}
 
-export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: OrdemEditFormProps) {
+export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onClose }: OrdemEditFormProps) {
   const osId = defaultValues?.id ?? null;
 
   const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
@@ -83,6 +87,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
 
   const [pNome, setPNome] = useState("");
   const [pDesc, setPDesc] = useState("");
+  const [pLacre, setPLacre] = useState("");
 
   const [initialLoading, setInitialLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -144,7 +149,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
             });
             if (rv.ok) {
               const vj = await rv.json();
-              const arr: Veiculo[] = (Array.isArray(vj) ? vj : vj?.items ?? []).map((v: any) => ({
+              const arr: Veiculo[] = (Array.isArray(vj) ? vj : (vj?.items ?? [])).map((v: any) => ({
                 id: v.id,
                 placa: v.placa,
                 modelo: v.modelo,
@@ -182,6 +187,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
         } else {
           setPNome(resolvePecaNome(j?.peca ?? os?.peca));
           setPDesc(resolvePecaDescricao(j?.peca ?? os?.peca));
+          setPLacre(resolvePecaLacre(j?.peca ?? os?.peca));
           setVeiculoSelecionadoId(null);
         }
       } catch (e: any) {
@@ -203,7 +209,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
         value: String(v.id),
         label: `${v.modelo} • ${v.placa}${v.ano ? ` (${v.ano})` : ""}`,
       })),
-    [veiculosDoCliente]
+    [veiculosDoCliente],
   );
 
   function validar(): string | null {
@@ -270,6 +276,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
         peca: {
           nome: pNome.trim(),
           descricao: pDesc?.trim() || null,
+          lacre: pLacre?.trim() || null,
         },
       };
     }
@@ -296,6 +303,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
 
       toast.success("OS atualizada com sucesso");
       window.dispatchEvent(new CustomEvent("os:refresh"));
+      onClose?.();
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar alterações");
     } finally {
@@ -329,6 +337,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
     vKm,
     pNome,
     pDesc,
+    pLacre,
   ]);
 
   if (!osId) return <div className="text-sm text-red-600">OS inválida para edição.</div>;
@@ -361,8 +370,8 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                           loadingSetores
                             ? "Carregando setores…"
                             : setores.length
-                            ? "Selecione o setor"
-                            : "Nenhum setor disponível"
+                              ? "Selecione o setor"
+                              : "Nenhum setor disponível"
                         }
                       />
                     </SelectTrigger>
@@ -512,8 +521,8 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                               !cliente
                                 ? "Carregando cliente…"
                                 : veiculoOptions.length
-                                ? "Selecione um veículo"
-                                : "Cliente sem veículos"
+                                  ? "Selecione um veículo"
+                                  : "Cliente sem veículos"
                             }
                           />
                         </SelectTrigger>
@@ -529,7 +538,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1.5">
                       <Label>Placa</Label>
                       <Input
@@ -579,27 +588,42 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange }: O
                         disabled={saving}
                       />
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label>Nome da peça</Label>
                     <Input
                       value={pNome}
+                      maxLength={60}
                       onChange={(e) => setPNome(e.target.value)}
                       placeholder="Ex.: Radiador, Bomba d’água…"
                       disabled={saving}
                     />
+                    <div className="text-right text-xs text-muted-foreground">{pNome.length}/60</div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Lacre</Label>
+                    <Input
+                      value={pLacre}
+                      maxLength={30}
+                      onChange={(e) => setPLacre(e.target.value.slice(0, 30))}
+                      placeholder="Identificador do lacre"
+                      disabled={saving}
+                    />
+                    <div className="text-right text-xs text-muted-foreground">{pLacre.length}/30</div>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Descrição (opcional)</Label>
                     <Input
                       value={pDesc}
+                      maxLength={120}
                       onChange={(e) => setPDesc(e.target.value)}
                       placeholder="Detalhes da peça"
                       disabled={saving}
                     />
+                    <div className="text-right text-xs text-muted-foreground">{pDesc.length}/120</div>
                   </div>
                 </div>
               )}

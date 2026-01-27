@@ -458,6 +458,28 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
       if (upd_res.error) throw upd_res.error;
     }
 
+    // Atualiza dados da peça (nome/descrição/lacre) quando alvo é PECA
+    // buscamos a OS atual para recuperar pecaid quando preciso
+    const currentOsRes = await supabase.from("ordemservico").select("pecaid").eq("id", osId).maybeSingle();
+    if (currentOsRes.error) throw currentOsRes.error;
+    const currentOs = currentOsRes.data as { pecaid?: number | null } | null;
+
+    const alvoPeca = body?.alvo?.tipo === "PECA" ? body?.alvo?.peca ?? null : null;
+    if (alvoPeca !== null) {
+      const pecaId = pecaid ?? currentOs?.pecaid ?? null;
+      if (pecaId) {
+        const pecaPatch: Record<string, any> = {};
+        if (alvoPeca.nome !== undefined) pecaPatch.titulo = alvoPeca.nome?.trim() || null;
+        if (alvoPeca.descricao !== undefined) pecaPatch.descricao = alvoPeca.descricao ?? null;
+        if (alvoPeca.lacre !== undefined) pecaPatch.lacre = alvoPeca.lacre ?? null;
+
+        if (Object.keys(pecaPatch).length) {
+          const updPeca = await supabase.from("peca").update(pecaPatch).eq("id", pecaId);
+          if (updPeca.error) throw updPeca.error;
+        }
+      }
+    }
+
     // Substituição do checklist (fluxo legado)
     if (Array.isArray(body.checklist)) {
       const antigos_res = await supabase.from("checklist").select("id").eq("ordemservicoid", osId);
