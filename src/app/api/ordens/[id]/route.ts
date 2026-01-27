@@ -57,6 +57,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           "prioridade",
           "alvo_tipo",
           "pecaid",
+          "motivo_cancelamento",
         ].join(",")
       )
       .eq("id", osId)
@@ -84,6 +85,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       prioridade: Prioridade | null;
       alvo_tipo: AlvoTipo | null;
       pecaid: number | null;
+      motivo_cancelamento?: string | null;
     };
 
     const osRow = os_res.data as OrdemRow | null;
@@ -152,12 +154,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     // Peça (opcional)
-    let peca: { id: number; titulo: string; descricao: string | null } | null = null;
+    let peca: { id: number; titulo: string; descricao: string | null; lacre?: string | null } | null = null;
     if (osRow.pecaid) {
-      const pc_res = await supabase.from("peca").select("id, titulo, descricao").eq("id", osRow.pecaid).maybeSingle();
+      const pc_res = await supabase.from("peca").select("id, titulo, descricao, lacre").eq("id", osRow.pecaid).maybeSingle();
       if (pc_res.error) throw pc_res.error;
       if (pc_res.data) {
-        peca = { id: pc_res.data.id, titulo: pc_res.data.titulo, descricao: pc_res.data.descricao ?? null };
+        peca = {
+          id: pc_res.data.id,
+          titulo: pc_res.data.titulo,
+          descricao: pc_res.data.descricao ?? null,
+          lacre: pc_res.data.lacre ?? null,
+        };
       }
     }
 
@@ -350,6 +357,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       dataentrada: osRow.dataentrada ?? null,
       datasaida: osRow.datasaida ?? null,
       alvo_tipo: (osRow.alvo_tipo ?? "VEICULO") as AlvoTipo,
+      motivocancelamento: (osRow as any).motivo_cancelamento ?? null,
       setor: setor ? { id: setor.id, nome: setor.nome } : null,
       cliente: cliente
         ? {

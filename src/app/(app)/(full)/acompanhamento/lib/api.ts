@@ -43,7 +43,7 @@ export type QuadItem = {
     cor?: string | null;
   } | null;
 
-  peca?: { id: number; titulo: string; descricao?: string | null } | null;
+  peca?: { id: number; titulo: string; descricao?: string | null; lacre?: string | null } | null;
 
   // Itens do orçamento
   produtos?: OsProdutoItem[];
@@ -86,7 +86,7 @@ function mapItem(r: any): QuadItem {
         }
       : null,
 
-    peca: r?.peca ? { id: r.peca.id, titulo: r.peca.titulo, descricao: r.peca.descricao ?? null } : null,
+    peca: r?.peca ? { id: r.peca.id, titulo: r.peca.titulo, descricao: r.peca.descricao ?? null, lacre: r.peca.lacre ?? null } : null,
 
     produtos: Array.isArray(r?.produtos)
       ? r.produtos.map((p: any) => ({

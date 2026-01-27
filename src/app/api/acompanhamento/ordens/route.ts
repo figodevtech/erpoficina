@@ -60,7 +60,7 @@ const BASE_SELECT = `
 
   cliente:clienteid ( id, nomerazaosocial ),
   veiculo:veiculoid ( id, placa, modelo, marca, cor ),
-  peca:pecaid ( id, titulo, descricao ),
+  peca:pecaid ( id, titulo, descricao, lacre ),
   setor:setorid ( id, nome ),
 
   produtos:osproduto (
@@ -94,14 +94,9 @@ export async function GET(req: NextRequest) {
 
     const limit = Math.min(500, Math.max(1, Number(searchParams.get("limit") || "300")));
     const horasRecentes = Math.min(72, Math.max(1, Number(searchParams.get("horasRecentes") || "12")));
-    const finalizadasScope = (searchParams.get("finalizadas") || "recentes") as "hoje" | "recentes";
-
     const setorIdRaw = searchParams.get("setorId");
     const setorId = setorIdRaw ? Number(setorIdRaw) : null;
     const hasSetor = Number.isFinite(setorId as number) && (setorId as number) > 0;
-
-    const cutoffRecentes = isoRecentes(horasRecentes);
-    const inicioHoje = inicioHojeFortalezaISO();
 
     let qAguard = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_AGUARDANDO);
     if (hasSetor) qAguard = qAguard.eq("setorid", setorId as number);
@@ -121,11 +116,6 @@ export async function GET(req: NextRequest) {
     let qFin = supabaseAdmin.from("ordemservico").select(BASE_SELECT).in("status", SET_FINALIZADAS);
     if (hasSetor) qFin = qFin.eq("setorid", setorId as number);
 
-    if (finalizadasScope === "hoje") {
-      qFin = qFin.gte("datasaida", inicioHoje);
-    } else {
-      qFin = qFin.or(`updatedat.gte.${cutoffRecentes},datasaida.gte.${cutoffRecentes}`);
-    }
     qFin = qFin.order("datasaida", { ascending: true }).limit(limit);
 
     const [rAguard, rExec, rFat, rFin] = await Promise.all([qAguard, qExec, qFat, qFin]);
@@ -143,7 +133,7 @@ export async function GET(req: NextRequest) {
         meta: {
           limit,
           horasRecentes,
-          finalizadas: finalizadasScope,
+          finalizadas: "todas",
           setorId: hasSetor ? (setorId as number) : null,
           now: new Date().toISOString(),
         },
