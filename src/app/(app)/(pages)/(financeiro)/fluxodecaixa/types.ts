@@ -24,10 +24,10 @@ export enum Metodo_pagamento {
 
 export enum Banco_tipo {
   CORRENTE = "CORRENTE",
-  POUPANCA = "POUPANCA",
+  POUPANCA = "POUPANÇA",
   DIGITAL = "DIGITAL",
   PAGAMENTO = "PAGAMENTO",
-  SALARIO = "SALARIO",
+  SALARIO = "SALÁRIO",
   EMPRESARIAL = "EMPRESARIAL",
 }
 

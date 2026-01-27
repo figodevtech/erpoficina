@@ -9,7 +9,7 @@ import { Produto } from "../../../types";
 import { formatDate } from "@/utils/formatDate";
 
 export function TabFluxo({ produto }: { produto: Produto }) {
-  const entradas = (produto as any).entradas ?? [];
+  const entradas = (produto as any).entrada ?? [];
   return (
     <TabsContent value="Fluxo" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
@@ -35,7 +35,7 @@ export function TabFluxo({ produto }: { produto: Produto }) {
                 <TableRow key={e.id} className="hover:cursor-pointer text-center">
                   <TableCell>{e.id}</TableCell>
                   <TableCell>{formatDate(e.created_at)}</TableCell>
-                  <TableCell>{e.fornecedor.nomerazaosocial}</TableCell>
+                  <TableCell>{e.entradainfo.fornecedor.nomerazaosocial}</TableCell>
                   <TableCell className="text-green-600 font-bold">+ {e.quantidade}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

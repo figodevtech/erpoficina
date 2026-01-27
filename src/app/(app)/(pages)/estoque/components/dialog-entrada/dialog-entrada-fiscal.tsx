@@ -627,17 +627,17 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                         <div className="pt-2 border-t mt-3 space-y-1">
                           {item.produtoReferencia?.entradas
                             ?.filter((entrada: any) => {
-                              return String(entrada?.notachave ?? "") === String(parsed.chaveAcesso ?? "");
+                              return String(entrada?.entradainfo.notachave ?? "") === String(parsed.chaveAcesso ?? "");
                             })
                             .map((entrada: any) => (
                               <div
-                                key={entrada.id}
+                                key={entrada.entradainfo.id}
                                 className="inline-flex items-center gap-2 px-2 py-1 bg-amber-50 rounded-md border border-amber-200"
                               >
                                 <span className="text-[10px] text-amber-700 flex flex-row flex-nowrap items-center gap-1">
                                   <TriangleAlert className="w-3 h-3" />
                                   Existe entrada de <span className="font-semibold">{entrada.quantidade}</span> un.
-                                  desta mesma NF para este produto em: <span>{formatDate(entrada.created_at)}</span>
+                                  desta mesma NF para este produto em: <span>{formatDate(entrada.entradainfo.created_at)}</span>
                                 </span>
                               </div>
                             ))}

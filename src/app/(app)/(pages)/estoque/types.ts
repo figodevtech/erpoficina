@@ -5,7 +5,7 @@ export enum Estoque_status {
   CRITICO = "CRITICO",
   OK = "OK",
   BAIXO = "BAIXO",
-  SEM_ESTOQUE ="SEM_ESTOQUE",
+  SEM_ESTOQUE = "SEM_ESTOQUE",
   TODOS = "TODOS",
 }
 
@@ -14,8 +14,7 @@ export interface Grupo_produto {
   nome: string;
   descricao: string | null;
   ativo: boolean;
-};
-
+}
 
 export enum Unidade_medida {
   UN = "UN",
@@ -26,14 +25,35 @@ export enum Unidade_medida {
   PCT = "PCT",
 }
 
-export interface Produtoentrada{
+export enum Entrada_tipo {
+  COMPRA_FORNECEDOR = "COMPRA FORNECEDOR",
+  COMPRA_PF = "COMPRA PF",
+  DEVOLUCAO = "DEVOLUÇÃO",
+}
+
+export enum Entrada_status {
+  RASCUNHO,
+  CONFIRMADA,
+  CANCELADA,
+}
+
+export interface EntradaInfo {
   id: number;
-  fornecedorid: number;
-  quantidade: number;
-  created_at: Date;
-  fornecedor: Fornecedor;
+  tipo: Entrada_tipo;
+  status: Entrada_status;
   fiscal: boolean;
+  fornecedorid: number;
+  fornecedor: Fornecedor;
   notachave?: string;
+}
+
+export interface entrada {
+  id: number;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+  entradainfo: EntradaInfo;
+  created_at: Date;
 }
 
 export interface Vendaproduto {
@@ -47,8 +67,7 @@ export interface Vendaproduto {
   valor_desconto: number;
   tipo_desconto: number;
   quantidade: number;
-  venda: VendaComItens
-
+  venda: VendaComItens;
 }
 
 export interface OSProduto {
@@ -57,24 +76,24 @@ export interface OSProduto {
   quantidade: number;
   precounitario: number;
   subtotal: number;
-  ordem: OrdemServico
+  ordem: OrdemServico;
 }
 
 export interface Fornecedor {
-   id: number; 
-  cpfcnpj?: string; 
-  nomerazaosocial: string; 
-  nomefantasia?: string; 
-  endereco ?: string; 
-  cidade?: string; 
-  estado?: string; 
-  cep?: string; 
-  contato?: string; 
-  createdat?: Date
-  updatedat?: Date
-  endereconumero?: string; 
-  enderecocomplemento?: string; 
-  bairro?: string; 
+  id: number;
+  cpfcnpj?: string;
+  nomerazaosocial: string;
+  nomefantasia?: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  contato?: string;
+  createdat?: Date;
+  updatedat?: Date;
+  endereconumero?: string;
+  enderecocomplemento?: string;
+  bairro?: string;
 }
 
 export interface Produto {
@@ -108,7 +127,7 @@ export interface Produto {
   exibirPdv?: boolean;
   tituloMarketplace?: string;
   descricaoMarketplace?: string;
-  entradas?: Produtoentrada[]
+  entradas?: entrada[];
   vendasdoproduto?: Vendaproduto[];
   ordensdoproduto?: OSProduto[];
   fornecedorid?: number;
