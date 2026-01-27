@@ -334,10 +334,10 @@ export function DialogEntradaGeral({
                         <div className="flex flex-row items-center gap-2">
 
                       <div className="px-2 py-1 rounded-xl bg-muted">
-                        <span className="font-medium text-yellow-600">
+                        <span className="font-medium text-muted-foreground">
                           #{fornecedorSelecionado.id}
                         </span>{" "}
-                        <span className="text-primary">{fornecedorSelecionado?.nomerazaosocial}</span>
+                        <span className="text-primary ">{fornecedorSelecionado?.nomerazaosocial}</span>
                       </div>
                         <div
                         onClick={()=>setFornecedorSelecionado(undefined)}
