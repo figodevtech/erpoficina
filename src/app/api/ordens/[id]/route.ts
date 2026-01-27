@@ -78,7 +78,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       datasaida: string | null;
       orcamentototal: number | null;
       observacoes: string | null;
-      motivo_cancelamento?: string | null;
       createdat: string | null;
       updatedat: string | null;
       checklist_modelo_id: number | null;
@@ -357,7 +356,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       dataentrada: osRow.dataentrada ?? null,
       datasaida: osRow.datasaida ?? null,
       alvo_tipo: (osRow.alvo_tipo ?? "VEICULO") as AlvoTipo,
-      motivocancelamento: (osRow as any).motivo_cancelamento ?? null,
       setor: setor ? { id: setor.id, nome: setor.nome } : null,
       cliente: cliente
         ? {
