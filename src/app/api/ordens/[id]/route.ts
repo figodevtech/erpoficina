@@ -57,6 +57,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           "prioridade",
           "alvo_tipo",
           "pecaid",
+          "motivo_cancelamento",
         ].join(",")
       )
       .eq("id", osId)
@@ -77,13 +78,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       datasaida: string | null;
       orcamentototal: number | null;
       observacoes: string | null;
-      motivo_cancelamento?: string | null;
       createdat: string | null;
       updatedat: string | null;
       checklist_modelo_id: number | null;
       prioridade: Prioridade | null;
       alvo_tipo: AlvoTipo | null;
       pecaid: number | null;
+      motivo_cancelamento?: string | null;
     };
 
     const osRow = os_res.data as OrdemRow | null;
@@ -152,12 +153,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     // Peça (opcional)
-    let peca: { id: number; titulo: string; descricao: string | null } | null = null;
+    let peca: { id: number; titulo: string; descricao: string | null; lacre?: string | null } | null = null;
     if (osRow.pecaid) {
-      const pc_res = await supabase.from("peca").select("id, titulo, descricao").eq("id", osRow.pecaid).maybeSingle();
+      const pc_res = await supabase.from("peca").select("id, titulo, descricao, lacre").eq("id", osRow.pecaid).maybeSingle();
       if (pc_res.error) throw pc_res.error;
       if (pc_res.data) {
-        peca = { id: pc_res.data.id, titulo: pc_res.data.titulo, descricao: pc_res.data.descricao ?? null };
+        peca = {
+          id: pc_res.data.id,
+          titulo: pc_res.data.titulo,
+          descricao: pc_res.data.descricao ?? null,
+          lacre: pc_res.data.lacre ?? null,
+        };
       }
     }
 
@@ -450,6 +456,28 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     if (Object.keys(patch).length) {
       const upd_res = await supabase.from("ordemservico").update(patch).eq("id", osId);
       if (upd_res.error) throw upd_res.error;
+    }
+
+    // Atualiza dados da peça (nome/descrição/lacre) quando alvo é PECA
+    // buscamos a OS atual para recuperar pecaid quando preciso
+    const currentOsRes = await supabase.from("ordemservico").select("pecaid").eq("id", osId).maybeSingle();
+    if (currentOsRes.error) throw currentOsRes.error;
+    const currentOs = currentOsRes.data as { pecaid?: number | null } | null;
+
+    const alvoPeca = body?.alvo?.tipo === "PECA" ? body?.alvo?.peca ?? null : null;
+    if (alvoPeca !== null) {
+      const pecaId = pecaid ?? currentOs?.pecaid ?? null;
+      if (pecaId) {
+        const pecaPatch: Record<string, any> = {};
+        if (alvoPeca.nome !== undefined) pecaPatch.titulo = alvoPeca.nome?.trim() || null;
+        if (alvoPeca.descricao !== undefined) pecaPatch.descricao = alvoPeca.descricao ?? null;
+        if (alvoPeca.lacre !== undefined) pecaPatch.lacre = alvoPeca.lacre ?? null;
+
+        if (Object.keys(pecaPatch).length) {
+          const updPeca = await supabase.from("peca").update(pecaPatch).eq("id", pecaId);
+          if (updPeca.error) throw updPeca.error;
+        }
+      }
     }
 
     // Substituição do checklist (fluxo legado)

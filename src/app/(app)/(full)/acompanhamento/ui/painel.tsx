@@ -149,7 +149,7 @@ const BoardColumn = React.memo(function BoardColumn({
   boardHeightClass: string;
 }) {
   return (
-    <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 backdrop-blur`}>
+    <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 backdrop-blur gap-0`}>
       <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
@@ -192,7 +192,6 @@ export default function PainelAcompanhamento({
   const [faturamento, setFaturamento] = useState<QuadItem[]>([]);
 
   const [finalizadasRecentesList, setFinalizadasRecentesList] = useState<QuadItem[]>([]);
-  const [finalizadasHojeList, setFinalizadasHojeList] = useState<QuadItem[]>([]);
 
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
@@ -213,7 +212,6 @@ export default function PainelAcompanhamento({
     emAndamento: QuadItem[];
     aguardandoPagamento: QuadItem[];
     concluidasRecentes: QuadItem[];
-    concluidasHoje: QuadItem[];
   }) => {
     const tiny = (arr: QuadItem[]) => JSON.stringify({ n: arr.length, ids: arr.map((x) => x.id).slice(0, 30) });
     return [
@@ -221,7 +219,6 @@ export default function PainelAcompanhamento({
       tiny(data.emAndamento),
       tiny(data.aguardandoPagamento),
       tiny(data.concluidasRecentes),
-      tiny(data.concluidasHoje),
     ].join("|");
   }, []);
 
@@ -256,17 +253,13 @@ export default function PainelAcompanhamento({
     try {
       const setorId = setorSelecionado === "all" ? undefined : Number(setorSelecionado);
 
-      const [quadro, hoje] = await Promise.all([
-        listarQuadro({ finalizadas, horasRecentes, setorId }),
-        listarQuadro({ finalizadas: "hoje", horasRecentes, setorId }),
-      ]);
+      const quadro = await listarQuadro({ finalizadas, horasRecentes, setorId });
 
       const sig = makeSignature({
         aguardando: quadro.aguardando,
         emAndamento: quadro.emAndamento,
         aguardandoPagamento: quadro.aguardandoPagamento,
         concluidasRecentes: quadro.concluidasRecentes,
-        concluidasHoje: hoje.concluidasRecentes,
       });
 
       const prev = prevSigRef.current;
@@ -277,8 +270,6 @@ export default function PainelAcompanhamento({
       setFaturamento(sortMaisAntigaPrimeiro(quadro.aguardandoPagamento));
 
       setFinalizadasRecentesList(sortMaisAntigaPrimeiro(quadro.concluidasRecentes));
-      setFinalizadasHojeList(sortMaisAntigaPrimeiro(hoje.concluidasRecentes));
-
       setLastUpdated(Date.now());
 
       if (!firstLoadRef.current && prev !== sig) {
@@ -352,7 +343,8 @@ export default function PainelAcompanhamento({
     } catch {}
   }
 
-  const boardHeightClass = "h-[calc(100vh-170px)] md:h-[calc(100vh-190px)]";
+  // Altura dos quadros para ocupar melhor a tela
+  const boardHeightClass = "h-[calc(100vh-130px)] md:h-[calc(100vh-140px)] lg:h-[calc(100vh-150px)]";
 
   return (
     <div className="relative w-full">
@@ -469,7 +461,7 @@ export default function PainelAcompanhamento({
       {/* Conteúdo */}
       {!precisaSelecionar ? (
         modoGeral ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <BoardColumn
               title="Aguardando"
               hint={rawAguardando.some((x) => IS_ORCAMENTO(x.status)) ? "Contém itens em orçamento" : undefined}
@@ -497,15 +489,7 @@ export default function PainelAcompanhamento({
             />
 
             <BoardColumn
-              title="Finalizadas hoje"
-              items={finalizadasHojeList}
-              emptyLabel="Nenhuma OS finalizada hoje."
-              initialLoading={initialLoading}
-              boardHeightClass={boardHeightClass}
-            />
-
-            <BoardColumn
-              title={finalizadas === "hoje" ? "Finalizadas (hoje)" : `Finalizadas recentes (${horasRecentes}h)`}
+              title="Finalizadas"
               items={finalizadasRecentesList}
               emptyLabel="Nenhuma OS finalizada recentemente."
               initialLoading={initialLoading}
@@ -513,7 +497,7 @@ export default function PainelAcompanhamento({
             />
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[2fr_1fr]">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[2fr_1fr] px-0">
             {/* Em andamento (maior) */}
             <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 gap-2`}>
               <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
@@ -542,28 +526,28 @@ export default function PainelAcompanhamento({
               </div>
             </Card>
 
-            {/* Finalizadas hoje (menor) */}
+            {/* Finalizadas (menor) */}
             <Card className={`flex ${boardHeightClass} flex-col overflow-hidden border-border/70 bg-card/95 gap-2`}>
               <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Finalizadas hoje • {textoSetor}
+                    Finalizadas • {textoSetor}
                   </p>
-                  <p className="truncate text-[11px] text-muted-foreground/80">Concluídas/canceladas no dia</p>
+                  <p className="truncate text-[11px] text-muted-foreground/80">Concluídas ou canceladas</p>
                 </div>
 
                 <Badge variant="outline" className="text-[10px]">
-                  {finalizadasHojeList.length}
+                  {finalizadasRecentesList.length}
                 </Badge>
               </div>
 
               <div className="flex-1 space-y-2 overflow-y-auto p-2 no-scroll-anchor">
                 {initialLoading ? (
                   Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[98px] w-full rounded-lg" />)
-                ) : finalizadasHojeList.length ? (
-                  finalizadasHojeList.map((os) => <OsTile key={os.id} os={os} compact />)
+                ) : finalizadasRecentesList.length ? (
+                  finalizadasRecentesList.map((os) => <OsTile key={os.id} os={os} compact />)
                 ) : (
-                  <EmptyColumn label="Nenhuma OS finalizada hoje neste setor." />
+                  <EmptyColumn label="Nenhuma OS finalizada neste setor." />
                 )}
               </div>
             </Card>
