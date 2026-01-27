@@ -21,6 +21,7 @@ import {
   Plus,
   FileText,
   MoreHorizontal,
+  PackagePlus,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -39,8 +40,9 @@ import { useMemo, useState } from "react";
 import { BotaoExportarProdutos } from "./botao-exportar-produtos";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-import EntradaDialog from "./dialog-entrada/dialog-entrada";
+import EntradaDialog from "./dialog-entrada/dialog-entrada-unica";
 import EntradaFiscalDialog from "./dialog-entrada/dialog-entrada-fiscal";
+import { DialogEntradaGeral } from "./dialog-entrada/dialog-entrada-geral";
 
 interface TabelaProdutosProps {
   isLoading: boolean;
@@ -118,6 +120,7 @@ export default function TabelaProdutos({
   } | null>(null);
 
   const [entradaFiscalOpen, setEntradaFiscalOpen] = useState(false);
+  const [entradaGeralOpen,setEntradaGeralOpen] = useState(false)
 
   const abrirNovoProduto = () => {
     setSelectedProductId?.(undefined);
@@ -230,6 +233,10 @@ export default function TabelaProdutos({
                   Novo Produto
                 </DropdownMenuItem>
 
+                <DropdownMenuItem onClick={() => setEntradaGeralOpen(true)} className="cursor-pointer">
+                  <PackagePlus className="mr-2 h-4 w-4" />
+                  Entrada
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setEntradaFiscalOpen(true)} className="cursor-pointer">
                   <FileText className="mr-2 h-4 w-4" />
                   Entrada Fiscal (NF-e)
@@ -254,6 +261,7 @@ export default function TabelaProdutos({
           isOpen={entradaFiscalOpen}
           setIsOpen={setEntradaFiscalOpen}
         />
+        <DialogEntradaGeral  open={entradaGeralOpen} onOpenChange={setEntradaGeralOpen}/>
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
@@ -351,7 +359,7 @@ export default function TabelaProdutos({
                         </DropdownMenuItem>
 
                         <DropdownMenuItem disabled={!canAct} onClick={() => abrirEntrada(p)}>
-                          <Plus className="mr-2 h-4 w-4" />
+                          <PackagePlus className="mr-2 h-4 w-4" />
                           Entrada
                         </DropdownMenuItem>
 
