@@ -114,7 +114,7 @@ type OS = {
   cliente?: { id: number; nomerazaosocial: string } | null;
   veiculo?: { id: number; placa?: string | null; modelo?: string | null; marca?: string | null } | null;
   alvo_tipo?: "VEICULO" | "PECA" | null;
-  peca?: { id: number; titulo: string } | null;
+  peca?: { id: number; titulo: string; lacre?: string | null; descricao?: string | null } | null;
 };
 
 type ItemProduto = {
@@ -606,7 +606,17 @@ export function OSDetalhesDialog({
                     <span className="text-sm font-medium">{data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</span>
                   </div>
                   {data.os.alvo_tipo === "PECA" ? (
-                    <div className="text-sm">{data.os.peca?.titulo ?? "Peça (detalhes não informados)"}</div>
+                    <div className="text-sm space-y-1">
+                      <div>{data.os.peca?.titulo ?? "Peça (detalhes não informados)"}</div>
+                      {data.os.peca?.lacre ? (
+                        <div className="text-xs text-muted-foreground">Lacre: {data.os.peca.lacre}</div>
+                      ) : null}
+                      {data.os.peca?.descricao ? (
+                        <div className="text-xs text-muted-foreground whitespace-pre-wrap">
+                          {data.os.peca.descricao}
+                        </div>
+                      ) : null}
+                    </div>
                   ) : (
                     <div className="text-sm">
                       {data.os.veiculo

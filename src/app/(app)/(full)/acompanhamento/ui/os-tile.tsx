@@ -15,7 +15,8 @@ function statusColors(s?: string | null) {
   const k = (s || "").toUpperCase();
 
   if (k === "ORCAMENTO" || k === "ORCAMENTO_RECUSADO") return "bg-amber-600/15 text-amber-400 border-amber-600/30";
-  if (k === "APROVACAO_ORCAMENTO" || k === "ORCAMENTO_APROVADO") return "bg-yellow-600/15 text-yellow-400 border-yellow-600/30";
+  if (k === "APROVACAO_ORCAMENTO" || k === "ORCAMENTO_APROVADO")
+    return "bg-yellow-600/15 text-yellow-400 border-yellow-600/30";
   if (k === "EM_ANDAMENTO") return "bg-sky-600/15 text-sky-400 border-sky-600/30";
   if (k === "PAGAMENTO") return "bg-fuchsia-600/15 text-fuchsia-400 border-fuchsia-600/30";
   if (k === "CONCLUIDO") return "bg-emerald-600/15 text-emerald-400 border-emerald-600/30";
@@ -64,7 +65,9 @@ export default function OsTile({ os, now, compact = false }: { os: QuadItem; now
     ? os.peca?.titulo || "Peça"
     : [os.veiculo?.marca, os.veiculo?.modelo].filter(Boolean).join(" ");
 
-  const secundaria = isPeca ? os.peca?.descricao || "" : [os.veiculo?.placa, os.veiculo?.cor].filter(Boolean).join(" • ");
+  const secundaria = isPeca ? os.peca?.descricao || "" : [os.veiculo?.cor].filter(Boolean).join(" • ");
+  const placaBadge = !isPeca ? os.veiculo?.placa || "" : "";
+  const lacreBadge = isPeca ? os.peca?.lacre || "" : "";
 
   const statusLabel = (os.status || "—").replace(/_/g, " ");
   const statusKey = (os.status || "").toUpperCase();
@@ -83,44 +86,83 @@ export default function OsTile({ os, now, compact = false }: { os: QuadItem; now
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cx("font-semibold text-muted-foreground", compact ? "text-xs" : "text-sm")}>OS {os.id}</span>
+            <span className={cx("font-semibold text-muted-foreground", compact ? "text-xs" : "text-sm")}>
+              OS {os.id}
+            </span>
 
             <Badge variant="outline" className={cx("border", compact ? "text-xs" : "text-xs", statusColors(os.status))}>
               {statusLabel}
             </Badge>
 
             {os.prioridade ? (
-              <Badge variant="outline" className={cx("border", compact ? "text-xs" : "text-xs", prioridadePill(os.prioridade))}>
+              <Badge
+                variant="outline"
+                className={cx("border", compact ? "text-xs" : "text-xs", prioridadePill(os.prioridade))}
+              >
                 {os.prioridade}
               </Badge>
             ) : null}
           </div>
 
-          <p className={cx("mt-1 truncate font-semibold tracking-tight leading-tight", compact ? "text-base" : "text-base")}>
+          <p
+            className={cx(
+              "mt-1 truncate font-semibold tracking-tight leading-tight",
+              compact ? "text-base" : "text-base",
+            )}
+          >
             {tituloPrincipal || "—"}
           </p>
 
-          {secundaria ? <p className={cx("truncate text-muted-foreground", compact ? "text-sm" : "text-sm")}>{secundaria}</p> : null}
+          {secundaria ? (
+            <p className={cx("truncate text-muted-foreground", compact ? "text-sm" : "text-sm")}>{secundaria}</p>
+          ) : null}
+
+          {(placaBadge && !isPeca) || (lacreBadge && isPeca) ? (
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {placaBadge ? (
+                <Badge
+                  variant="default"
+                  className="text-[11px] font-semibold uppercase tracking-wide bg-primary text-primary-foreground border-primary"
+                >
+                  Placa: {placaBadge}
+                </Badge>
+              ) : null}
+              {lacreBadge ? (
+                <Badge
+                  variant="outline"
+                  className="text-[11px] font-semibold uppercase tracking-wide border-amber-500/60 bg-amber-500/15 text-amber-200"
+                >
+                  Lacre: {lacreBadge}
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="shrink-0 text-right">
           <div className={cx("inline-flex items-center gap-1 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
             <Clock className={cx(compact ? "h-4 w-4" : "h-4 w-4")} />
-            <span className={cx((emAndamento || temExecucaoSalva) && tempo !== "—" ? "font-mono font-semibold text-foreground" : "")}>
+            <span
+              className={cx(
+                (emAndamento || temExecucaoSalva) && tempo !== "—" ? "font-mono font-semibold text-foreground" : "",
+              )}
+            >
               {tempo}
             </span>
           </div>
 
           {emAndamento ? <div className="mt-0.5 text-xs text-muted-foreground">Tempo em execução</div> : null}
-          {!emAndamento && temExecucaoSalva ? <div className="mt-0.5 text-xs text-muted-foreground">Tempo de execução</div> : null}
+          {!emAndamento && temExecucaoSalva ? (
+            <div className="mt-0.5 text-xs text-muted-foreground">Tempo de execução</div>
+          ) : null}
         </div>
       </div>
 
       <div className={cx("mt-2.5 grid grid-cols-1 gap-2 text-muted-foreground", compact ? "text-sm" : "text-sm")}>
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <User2 className="h-4 w-4" />
           <span className="truncate">{os.cliente?.nome ?? "—"}</span>
-        </div>
+        </div> */}
 
         {os.setor?.nome ? (
           <div className="flex items-center gap-2">
