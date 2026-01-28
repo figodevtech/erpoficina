@@ -719,8 +719,20 @@ export function OrdensTabela({
           </div>
         </CardHeader>
 
-        <CardContent className="p-3 sm:p-4">
-          <div className="overflow-x-auto rounded-md border">
+        <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
+          <div
+            className={`${
+              isLoading && " opacity-100"
+            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          >
+            <div
+              className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
+                isLoading && "animate-slideIn "
+              } `}
+            />
+          </div>
+
+          <div className="overflow-x-auto rounded-md border mt-6">
             <Table className="text-xs">
               <TableHeader>
                 <TableRow className="bg-muted/40">
@@ -753,26 +765,7 @@ export function OrdensTabela({
               </TableHeader>
 
               <TableBody>
-                {isLoading && (
-                  <TableSkeleton
-                    rows={8}
-                    columns={[
-                      { cellClass: "min-w-[80px]", barClass: "h-4 w-10" },
-                      { cellClass: "min-w-[240px]", barClass: "h-4 w-56" },
-                      { cellClass: "min-w-[220px]", barClass: "h-4 w-44" },
-                      { cellClass: "min-w-[140px]", barClass: "h-4 w-28" },
-                      { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
-                      { cellClass: "min-w-[130px]", barClass: "h-4 w-28" },
-                      { cellClass: "min-w-[120px]", barClass: "h-4 w-24" },
-                      { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
-                      { cellClass: "min-w-[120px]", barClass: "h-4 w-20" },
-                      { cellClass: "min-w-[80px]", barClass: "h-8 w-6" },
-                    ]}
-                  />
-                )}
-
-                {!isLoading &&
-                  sortedRows.map((r) => {
+                {sortedRows.map((r) => {
                     const st = safeStatus(r.status) as StatusOS;
                     const clienteNome = r.cliente?.nome ?? "—";
 

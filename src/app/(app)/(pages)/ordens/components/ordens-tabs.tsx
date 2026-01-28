@@ -318,7 +318,7 @@ function SummaryGrid({
 
       <MiniCard
         accent="text-emerald-300"
-        title="ConcluÃ­do"
+        title="Concluído "
         value={stats.CONCLUIDO || 0}
         icon={<CheckCircle2 className="h-4 w-4" />}
       />
