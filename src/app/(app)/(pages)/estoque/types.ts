@@ -50,8 +50,7 @@ export interface EntradaInfo {
 export interface entrada {
   id: number;
   quantidade: number;
-  valor_unitario: number;
-  valor_total: number;
+  precovenda: number;
   entradainfo: EntradaInfo;
   created_at: Date;
 }

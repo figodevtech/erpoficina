@@ -6,8 +6,12 @@ interface EntradaItemDTO {
   produtoId: number;
   quantidade: number;
 
-  // opcionais (não quebram o front atual)
+  // AGORA: se vier, sobrescreve o snapshot do precovenda no item.
+  // (mantive o nome antigo valorUnitario pra não quebrar front)
+  // Você pode trocar no front depois.
   valorUnitario?: number | null;
+
+  // não existe mais no schema novo, mas mantemos pra não quebrar
   valorDesconto?: number | null;
 }
 
@@ -36,10 +40,6 @@ interface RegistrarEntradaDTO {
   descricaoTransacao?: string;
   nomePagador: string;
   cpfCnpjPagador: string;
-}
-
-function isPositiveNumber(n: any) {
-  return typeof n === "number" && Number.isFinite(n) && n > 0;
 }
 
 function isNonNegativeNumber(n: any) {
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
         {
           error: "Nome do pagador e CPF/CNPJ do pagador são obrigatórios para registrar a transação.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         {
           error: "Pagamentos futuros exigem pelo menos uma parcela com data de vencimento e valor.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -107,9 +107,7 @@ export async function POST(req: NextRequest) {
         fornecedorid: fornecedorId ?? null,
         fiscal, // boolean
         notachave: notaChave ?? null,
-        // tipo e status ficam no default do banco:
-        // tipo: COMPRA_FORNECEDOR
-        // status: RASCUNHO
+        // tipo e status ficam no default do banco
       })
       .select("id")
       .single();
@@ -118,21 +116,30 @@ export async function POST(req: NextRequest) {
       console.error("Erro ao inserir em entrada:", entradaError);
       return NextResponse.json(
         { error: "Erro ao criar cabeçalho da entrada.", details: entradaError?.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     entradaIdCriada = entradaCriada.id as number;
 
     // ----------------------------------------------------------------
-    // 2) BUSCAR PRODUTOS (BULK) E PREPARAR ITENS
+    // 2) BUSCAR PRODUTOS (BULK) E PREPARAR ITENS (NOVO SCHEMA)
     // ----------------------------------------------------------------
     const produtoIds = Array.from(new Set(itens.map((i) => i.produtoId)));
 
     const { data: produtos, error: produtosError } = await supabaseAdmin
       .from("produto")
       .select(
-        "id, titulo, descricao, estoque, unidade, ncm, csosn, cest, cfop, cst, aliquotaicms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, precovenda"
+        `
+        id, estoque,
+        unidade, precovenda,
+        ncm, cest, csosn, cfop,
+        referencia, titulo,
+        "cClassTrib", "cstIbs", "cstCbs",
+        cst, aliquotaicms,
+        cst_pis, aliquota_pis,
+        cst_cofins, aliquota_cofins
+      `,
       )
       .in("id", produtoIds);
 
@@ -140,7 +147,7 @@ export async function POST(req: NextRequest) {
       console.error("Erro ao buscar produtos:", produtosError);
       return NextResponse.json(
         { error: "Erro ao buscar produtos.", details: produtosError.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -151,7 +158,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // valida itens + monta linhas de entradaitens
+    // monta linhas para entradaitens (NOVO MODELO)
     const entradaItensRows = itens.map((item) => {
       const { produtoId, quantidade } = item;
 
@@ -161,38 +168,46 @@ export async function POST(req: NextRequest) {
 
       const p = produtoMap.get(produtoId);
 
-      // valor_unitario é obrigatório em entradaitens
-      const valorUnitario =
-        isNonNegativeNumber(item.valorUnitario) ? (item.valorUnitario as number) : Number(p.precovenda ?? 0);
+      // No novo schema: precovenda é obrigatório no item.
+      // Mantive compat: se vier "valorUnitario" no body, usa como precovenda do item.
+      const precovenda =
+        isNonNegativeNumber(item.valorUnitario) ? Number(item.valorUnitario) : Number(p.precovenda ?? 0);
 
-      if (!Number.isFinite(valorUnitario)) {
-        throw new Error(`Valor unitário inválido para produtoId=${produtoId}.`);
+      if (!Number.isFinite(precovenda)) {
+        throw new Error(`precovenda inválido para produtoId=${produtoId}.`);
       }
 
-      const valorDesconto = isNonNegativeNumber(item.valorDesconto) ? (item.valorDesconto as number) : 0;
-
-      const valorTotal = Number(quantidade) * Number(valorUnitario) - Number(valorDesconto);
+      // unidade é NOT NULL em entradaitens
+      const unidade = p.unidade ?? "UN";
 
       return {
         entrada_id: entradaIdCriada,
         produto_id: produtoId,
 
         quantidade,
-        valor_unitario: valorUnitario,
-        valor_desconto: valorDesconto,
-        valor_total: valorTotal,
+        precovenda,
 
-        // snapshot (opcional, mas recomendado)
-        descricao: p.titulo ?? p.descricao ?? null,
-        unidade: p.unidade ?? null,
+        unidade,
+
+        // snapshot do produto (espelho)
         ncm: p.ncm ?? null,
-        csosn: p.csosn ?? null,
         cest: p.cest ?? null,
+        csosn: p.csosn ?? null,
         cfop: p.cfop ?? null,
+        referencia: p.referencia ?? null,
+        titulo: p.titulo ?? null,
+
+        // colunas com aspas
+        "cClassTrib": p["cClassTrib"] ?? null,
+        "cstIbs": p["cstIbs"] ?? null,
+        "cstCbs": p["cstCbs"] ?? null,
+
         cst: p.cst ?? null,
         aliquotaicms: p.aliquotaicms ?? null,
+
         cst_pis: p.cst_pis ?? null,
         aliquota_pis: p.aliquota_pis ?? null,
+
         cst_cofins: p.cst_cofins ?? null,
         aliquota_cofins: p.aliquota_cofins ?? null,
       };
@@ -205,11 +220,10 @@ export async function POST(req: NextRequest) {
 
     if (itensInsertError) {
       console.error("Erro ao inserir entradaitens:", itensInsertError);
-      // rollback: apaga a entrada (cascade apaga itens, se tiver inserido parcialmente)
       await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
       return NextResponse.json(
         { error: "Erro ao registrar itens da entrada.", details: itensInsertError.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -239,8 +253,6 @@ export async function POST(req: NextRequest) {
         console.error("Erro ao atualizar estoque do produto:", updateError);
 
         // rollback best-effort:
-        // - apaga entrada (cascade itens)
-        // - tenta reverter estoques que já foram alterados
         await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
 
         for (const upd of estoqueAlterado) {
@@ -259,20 +271,17 @@ export async function POST(req: NextRequest) {
                 .eq("id", upd.produtoId);
             }
           } catch {
-            // sem transação, é best-effort
+            // best-effort
           }
         }
 
         return NextResponse.json(
           { error: "Erro ao atualizar estoque do produto.", details: updateError.message },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
-      // registra para rollback best-effort
       estoqueAlterado.push({ produtoId, quantidade: qtdSomada });
-
-      // atualiza map local
       p.estoque = novoEstoque;
     }
 
@@ -314,8 +323,6 @@ export async function POST(req: NextRequest) {
       if (transacaoError) {
         console.error("Erro ao inserir transações de parcelas:", transacaoError);
 
-        // rollback best-effort: apagar entrada (não reverte estoque aqui pra não complicar)
-        // se você quiser, dá pra reverter também como acima.
         await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
 
         return NextResponse.json(
@@ -323,7 +330,7 @@ export async function POST(req: NextRequest) {
             error: "Erro ao registrar transações de pagamento futuro.",
             details: transacaoError.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -334,12 +341,11 @@ export async function POST(req: NextRequest) {
         message: "Entrada registrada com sucesso.",
         entradaId: entradaIdCriada,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("Erro inesperado ao registrar entrada:", error);
 
-    // rollback best-effort: se criou o cabeçalho, apaga
     if (entradaIdCriada) {
       try {
         await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
@@ -351,7 +357,7 @@ export async function POST(req: NextRequest) {
         error: "Erro inesperado ao registrar entrada.",
         details: error?.message ?? String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

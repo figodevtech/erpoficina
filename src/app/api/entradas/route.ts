@@ -1,4 +1,4 @@
-// src/app/api/entrada/route.ts
+// src/app/api/entradas/route.ts
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -9,12 +9,21 @@ const ENTRADA_FIELDS = `
 `;
 
 const ENTRADA_ITEM_RETURN_FIELDS = `
-  id, entrada_id, produto_id, descricao, unidade, quantidade, valor_unitario, valor_desconto, valor_total
+  id, entrada_id, produto_id,
+  unidade, quantidade, precovenda,
+  ncm, cest, csosn, referencia, titulo,
+  "cClassTrib", "cstIbs", "cstCbs",
+  cst, aliquotaicms, cfop,
+  cst_pis, aliquota_pis,
+  cst_cofins, aliquota_cofins,
+  created_at, updated_at
 `;
 
 const PRODUTO_SUMMARY_FIELDS = `
   id, titulo, estoque, estoqueminimo, status_estoque
 `;
+
+const TIPOS_VALIDOS = new Set(["COMPRA_FORNECEDOR", "COMPRA_PF", "DEVOLUCAO"]);
 
 // ============= Helpers =============
 
@@ -39,13 +48,27 @@ function toNullableText(value: any): string | null {
 type EntradaItemInput = {
   produtoid: number;
   quantidade: number;
-  valor_unitario?: number;
-  valor_desconto?: number;
-  cfop?: string | null;
-  csosn?: string | null;
+
+  // opcional: se vier, sobrescreve o precovenda do produto no snapshot do item
+  precovenda?: number;
+
+  // opcional: se você quiser permitir sobrescrever snapshot manualmente (senão, usa do produto)
+  unidade?: any | null; // unidade_medida
   ncm?: string | null;
   cest?: string | null;
-  unidade?: any | null; // unidade_medida enum
+  csosn?: string | null;
+  referencia?: string | null;
+  titulo?: string | null;
+  cClassTrib?: string | null;
+  cstIbs?: string | null;
+  cstCbs?: string | null;
+  cst?: string | null;
+  aliquotaicms?: number | null;
+  cfop?: string | null;
+  cst_pis?: string | null;
+  aliquota_pis?: number | null;
+  cst_cofins?: string | null;
+  aliquota_cofins?: number | null;
 };
 
 // ============= GET /api/entrada =============
@@ -56,11 +79,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const produtoIdParam = searchParams.get("produtoid");
 
-    // Se filtrar por produto, usamos inner join para conseguir filtrar pela tabela filha
     const selectComItens = (inner: boolean) => `
       id, created_at, fornecedorid, fiscal, notachave, tipo, status,
       entradaitens${inner ? "!inner" : ""}(
-        id, produto_id, descricao, quantidade, valor_unitario, valor_desconto, valor_total
+        id, produto_id,
+        unidade, quantidade, precovenda,
+        ncm, cest, csosn, referencia, titulo,
+        "cClassTrib", "cstIbs", "cstCbs",
+        cst, aliquotaicms, cfop,
+        cst_pis, aliquota_pis,
+        cst_cofins, aliquota_cofins,
+        created_at, updated_at
       )
     `;
 
@@ -71,12 +100,10 @@ export async function GET(req: NextRequest) {
 
     if (produtoIdParam) {
       const produtoid = toPositiveInt(produtoIdParam, "produtoid");
-      // filtro no relacionamento (só funciona com !inner no select)
       query = query.eq("entradaitens.produto_id", produtoid);
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
     return NextResponse.json({ data });
@@ -88,84 +115,100 @@ export async function GET(req: NextRequest) {
 }
 
 // ============= POST /api/entrada =============
-// Cria uma ENTRADA (cabeçalho) e seus ITENS e já atualiza o estoque.
+// Cria ENTRADA + 1 ITEM e atualiza estoque do produto.
 //
-// Suporta 2 formatos de body:
-// 1) (modo antigo do dropdown: 1 item)
-//    { fornecedorid, produtoid, quantidade, valor_unitario?, valor_desconto?, fiscal?, notachave?, tipo? }
-// 2) (modo novo: vários itens)
-//    { fornecedorid, fiscal?, notachave?, tipo?, itens: [{ produtoid, quantidade, valor_unitario?, valor_desconto? }, ...] }
+// Body esperado (1 item):
+// { fornecedorid?, fiscal?, notachave?, tipo?, produtoid, quantidade, precovenda? }
 
 export async function POST(req: NextRequest) {
   let entradaCriada: any | null = null;
-  const produtosAtualizados: Array<{ produtoid: number; quantidade: number }> = [];
+  let estoqueAtualizado = false;
+
+  // para rollback do estoque
+  let produto_id_rb: number | null = null;
+  let quantidade_rb: number = 0;
 
   try {
     const body = await req.json().catch(() => ({} as any));
 
-    // Cabeçalho
     const fornecedorid =
       body.fornecedorid === undefined || body.fornecedorid === null
         ? null
         : toPositiveInt(body.fornecedorid, "fornecedorid");
 
+    // pode deixar o default do banco (false/null), mas mantendo compat com seu body atual
     const fiscal = Boolean(body.fiscal ?? false);
     const notachave = toNullableText(body.notachave);
-    const tipo = body.tipo; // enum_tipos_entrada (se não vier, o default do banco assume)
 
-    // Itens (1 ou N)
-    const itens: EntradaItemInput[] = Array.isArray(body.itens)
-      ? body.itens
-      : [
-          {
-            produtoid: body.produtoid,
-            quantidade: body.quantidade,
-            valor_unitario: body.valor_unitario,
-            valor_desconto: body.valor_desconto,
-          },
-        ];
-
-    if (!itens.length) {
-      return NextResponse.json({ error: "Informe ao menos 1 item." }, { status: 400 });
+    const tipo = body.tipo ?? null;
+    if (tipo && !TIPOS_VALIDOS.has(String(tipo))) {
+      return NextResponse.json(
+        { error: "tipo inválido. Use COMPRA_FORNECEDOR | COMPRA_PF | DEVOLUCAO." },
+        { status: 400 },
+      );
     }
 
-    // Valida itens e coleta IDs
-    const itensNormalizados = itens.map((it, idx) => {
-      const produtoid = toPositiveInt(it.produtoid, `itens[${idx}].produtoid`);
-      const quantidade = toPositiveInt(it.quantidade, `itens[${idx}].quantidade`);
-      const valor_desconto = it.valor_desconto === undefined ? 0 : toNonNegativeNumber(it.valor_desconto, `itens[${idx}].valor_desconto`);
-      const valor_unitario_raw = it.valor_unitario; // pode ser undefined -> fallback
-      return { produtoid, quantidade, valor_unitario_raw, valor_desconto };
-    });
+    // item único
+    const item: EntradaItemInput = {
+      produtoid: body.produtoid,
+      quantidade: body.quantidade,
+      precovenda: body.precovenda,
 
-    const produtoIds = Array.from(new Set(itensNormalizados.map((i) => i.produtoid)));
+      unidade: body.unidade ?? null,
+      ncm: body.ncm ?? null,
+      cest: body.cest ?? null,
+      csosn: body.csosn ?? null,
+      referencia: body.referencia ?? null,
+      titulo: body.titulo ?? null,
+      cClassTrib: body.cClassTrib ?? null,
+      cstIbs: body.cstIbs ?? null,
+      cstCbs: body.cstCbs ?? null,
+      cst: body.cst ?? null,
+      aliquotaicms: body.aliquotaicms ?? null,
+      cfop: body.cfop ?? null,
+      cst_pis: body.cst_pis ?? null,
+      aliquota_pis: body.aliquota_pis ?? null,
+      cst_cofins: body.cst_cofins ?? null,
+      aliquota_cofins: body.aliquota_cofins ?? null,
+    };
 
-    // 1) Busca produtos (pra validar existência e pegar defaults)
-    const { data: produtos, error: produtosError } = await supabaseAdmin
+    const produtoid = toPositiveInt(item.produtoid, "produtoid");
+    // Como produto.estoque é integer, faz sentido manter quantidade inteira.
+    const quantidade = toPositiveInt(item.quantidade, "quantidade");
+
+    // 1) Busca produto (validar + snapshot)
+    const { data: produto, error: produtoError } = await supabaseAdmin
       .from("produto")
       .select(
-        "id, titulo, descricao, estoque, unidade, ncm, csosn, cest, cfop, cst, aliquotaicms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, precovenda"
+        `
+        id, estoque,
+        unidade, precovenda,
+        ncm, cest, csosn, referencia, titulo,
+        "cClassTrib", "cstIbs", "cstCbs",
+        cst, aliquotaicms, cfop,
+        cst_pis, aliquota_pis,
+        cst_cofins, aliquota_cofins
+      `,
       )
-      .in("id", produtoIds);
+      .eq("id", produtoid)
+      .single();
 
-    if (produtosError) throw produtosError;
-
-    const mapProduto = new Map<number, any>((produtos ?? []).map((p: any) => [p.id, p]));
-    for (const pid of produtoIds) {
-      if (!mapProduto.has(pid)) {
-        return NextResponse.json({ error: `Produto ${pid} não encontrado.` }, { status: 404 });
+    if (produtoError) {
+      if ((produtoError as any).code === "PGRST116") {
+        return NextResponse.json({ error: `Produto ${produtoid} não encontrado.` }, { status: 404 });
       }
+      throw produtoError;
     }
 
-    // 2) Cria o cabeçalho da entrada
+    // 2) Cria cabeçalho da entrada
     const { data: entrada, error: entradaError } = await supabaseAdmin
       .from("entrada")
       .insert({
         fornecedorid,
         fiscal,
         notachave,
-        ...(tipo ? { tipo } : {}), // só seta se vier
-        // status: deixa o default do banco (RASCUNHO)
+        ...(tipo ? { tipo } : {}),
+        // status: default do banco
       })
       .select(ENTRADA_FIELDS)
       .single();
@@ -179,105 +222,112 @@ export async function POST(req: NextRequest) {
 
     entradaCriada = entrada;
 
-    // 3) Cria os itens da entrada
-    const itensParaInserir = itensNormalizados.map((it, idx) => {
-      const p = mapProduto.get(it.produtoid);
+    // 3) Monta snapshot do item (prioriza o que veio no body; se não veio, herda do produto)
+    const precovendaSnapshot =
+      item.precovenda === undefined || item.precovenda === null
+        ? Number(produto.precovenda ?? 0)
+        : toNonNegativeNumber(item.precovenda, "precovenda");
 
-      // Fallback: se não vier custo, usa precovenda (ideal é mandar custo no body!)
-      const valor_unitario =
-        it.valor_unitario_raw === undefined || it.valor_unitario_raw === null
-          ? Number(p?.precovenda ?? 0)
-          : toNonNegativeNumber(it.valor_unitario_raw, `itens[${idx}].valor_unitario`);
+    const itemParaInserir = {
+      entrada_id: entrada.id,
+      produto_id: produtoid,
 
-      const valor_total = Number(it.quantidade) * Number(valor_unitario) - Number(it.valor_desconto ?? 0);
+      quantidade,
+      precovenda: precovendaSnapshot,
 
-      return {
-        entrada_id: entrada.id,
-        produto_id: it.produtoid,
-        quantidade: it.quantidade,
-        valor_unitario,
-        valor_desconto: it.valor_desconto ?? 0,
-        valor_total,
+      unidade: item.unidade ?? produto.unidade, // NOT NULL na tabela
+      ncm: toNullableText(item.ncm) ?? produto.ncm ?? null,
+      cest: toNullableText(item.cest) ?? produto.cest ?? null,
+      csosn: toNullableText(item.csosn) ?? produto.csosn ?? null,
+      referencia: toNullableText(item.referencia) ?? produto.referencia ?? null,
+      titulo: toNullableText(item.titulo) ?? produto.titulo ?? null,
 
-        // snapshot do produto (pode ajustar conforme seu fluxo)
-        descricao: p?.titulo ?? p?.descricao ?? null,
-        unidade: p?.unidade ?? null,
-        ncm: p?.ncm ?? null,
-        csosn: p?.csosn ?? null,
-        cest: p?.cest ?? null,
-        cfop: p?.cfop ?? null,
-        cst: p?.cst ?? null,
-        aliquotaicms: p?.aliquotaicms ?? null,
-        cst_pis: p?.cst_pis ?? null,
-        aliquota_pis: p?.aliquota_pis ?? null,
-        cst_cofins: p?.cst_cofins ?? null,
-        aliquota_cofins: p?.aliquota_cofins ?? null,
-      };
-    });
+      // colunas com aspas no banco:
+      "cClassTrib": toNullableText(item.cClassTrib) ?? (produto as any)["cClassTrib"] ?? null,
+      "cstIbs": toNullableText(item.cstIbs) ?? (produto as any)["cstIbs"] ?? null,
+      "cstCbs": toNullableText(item.cstCbs) ?? (produto as any)["cstCbs"] ?? null,
 
-    const { data: itensCriados, error: itensError } = await supabaseAdmin
+      cst: toNullableText(item.cst) ?? produto.cst ?? null,
+      aliquotaicms:
+        item.aliquotaicms === undefined || item.aliquotaicms === null
+          ? produto.aliquotaicms ?? null
+          : toNonNegativeNumber(item.aliquotaicms, "aliquotaicms"),
+      cfop: toNullableText(item.cfop) ?? produto.cfop ?? null,
+
+      cst_pis: toNullableText(item.cst_pis) ?? produto.cst_pis ?? null,
+      aliquota_pis:
+        item.aliquota_pis === undefined || item.aliquota_pis === null
+          ? produto.aliquota_pis ?? null
+          : toNonNegativeNumber(item.aliquota_pis, "aliquota_pis"),
+
+      cst_cofins: toNullableText(item.cst_cofins) ?? produto.cst_cofins ?? null,
+      aliquota_cofins:
+        item.aliquota_cofins === undefined || item.aliquota_cofins === null
+          ? produto.aliquota_cofins ?? null
+          : toNonNegativeNumber(item.aliquota_cofins, "aliquota_cofins"),
+    };
+
+    const { data: itemCriado, error: itemError } = await supabaseAdmin
       .from("entradaitens")
-      .insert(itensParaInserir)
-      .select(ENTRADA_ITEM_RETURN_FIELDS);
+      .insert(itemParaInserir)
+      .select(ENTRADA_ITEM_RETURN_FIELDS)
+      .single();
 
-    if (itensError) throw itensError;
+    if (itemError) throw itemError;
 
-    // 4) Atualiza estoque de cada produto (incrementa)
-    // (Sem transação: fazemos o melhor esforço e tentamos reverter se algo der errado)
-    for (const it of itensNormalizados) {
-      const p = mapProduto.get(it.produtoid);
-      const estoqueAtual = Number(p?.estoque ?? 0);
-      const novoEstoque = estoqueAtual + Number(it.quantidade);
+    // 4) Atualiza estoque do produto (incrementa)
+    const estoqueAtual = Number(produto.estoque ?? 0);
+    const novoEstoque = estoqueAtual + quantidade;
 
-      const { error: updateError } = await supabaseAdmin
-        .from("produto")
-        .update({
-          estoque: novoEstoque,
-          updatedat: new Date().toISOString(),
-        })
-        .eq("id", it.produtoid);
+    const { error: updateError } = await supabaseAdmin
+      .from("produto")
+      .update({
+        estoque: novoEstoque,
+        updatedat: new Date().toISOString(),
+      })
+      .eq("id", produtoid);
 
-      if (updateError) throw updateError;
+    if (updateError) throw updateError;
 
-      produtosAtualizados.push({ produtoid: it.produtoid, quantidade: it.quantidade });
-      // atualiza o map local pra refletir increments acumulados
-      p.estoque = novoEstoque;
-    }
+    estoqueAtualizado = true;
+    produto_id_rb = produtoid;
+    quantidade_rb = quantidade;
 
-    // Retorna também o resumo dos produtos envolvidos (opcional)
-    const { data: produtosResumo, error: resumoError } = await supabaseAdmin
+    // 5) Retorna resumo do produto
+    const { data: produtoResumo, error: resumoError } = await supabaseAdmin
       .from("produto")
       .select(PRODUTO_SUMMARY_FIELDS)
-      .in("id", produtoIds);
+      .eq("id", produtoid)
+      .single();
 
     if (resumoError) throw resumoError;
 
     return NextResponse.json(
       {
         entrada: entradaCriada,
-        itens: itensCriados ?? [],
-        produtos: produtosResumo ?? [],
+        item: itemCriado,
+        produto: produtoResumo,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (e: any) {
-    // Rollback best-effort:
-    // 1) tenta reverter estoques
-    for (const upd of produtosAtualizados) {
+    // rollback best-effort:
+    // 1) reverte estoque (se foi atualizado)
+    if (estoqueAtualizado && produto_id_rb && quantidade_rb > 0) {
       try {
         const { data: p } = await supabaseAdmin
           .from("produto")
           .select("id, estoque")
-          .eq("id", upd.produtoid)
+          .eq("id", produto_id_rb)
           .single();
 
         if (p) {
           const estoqueAtual = Number(p.estoque ?? 0);
-          const revertido = estoqueAtual - Number(upd.quantidade);
-          await supabaseAdmin.from("produto").update({ estoque: revertido }).eq("id", upd.produtoid);
+          const revertido = estoqueAtual - Number(quantidade_rb);
+          await supabaseAdmin.from("produto").update({ estoque: revertido }).eq("id", produto_id_rb);
         }
       } catch {
-        // se falhar, não tem muito o que fazer aqui sem transação
+        // sem transação, não há garantia
       }
     }
 

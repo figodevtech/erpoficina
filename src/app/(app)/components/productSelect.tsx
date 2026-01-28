@@ -37,7 +37,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
 import formatarEmReal from "@/utils/formatarEmReal";
-import { se } from "date-fns/locale";
 import { DialogProduto } from "../(pages)/estoque/components/dialog-produto/dialog-produto";
 
 interface ProductSelectProps {
@@ -74,7 +73,7 @@ export default function ProductSelect({
   ) => {
     setIsLoading(true);
     try {
-      const response = await axios.get("/api/products", {
+      const response = await axios.get("/api/products/select", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
