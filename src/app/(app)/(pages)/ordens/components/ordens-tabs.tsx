@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { JSX, useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,6 +26,7 @@ export type StatusOS =
   | "ORCAMENTO_APROVADO"
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
+  | "SEM_COBRANCA"
   | "CONCLUIDO"
   | "CANCELADO";
 
@@ -47,11 +48,12 @@ const ALL_STATUSES: StatusOS[] = [
   "ORCAMENTO_APROVADO",
   "EM_ANDAMENTO",
   "PAGAMENTO",
+  "SEM_COBRANCA",
   "CONCLUIDO",
   "CANCELADO",
 ];
 
-/** Default com zeros (pra não depender do backend mandar chave com 0) */
+/** Default com zeros (pra nÃ£o depender do backend mandar chave com 0) */
 const DEFAULT_STATS: Record<StatusOS, number> = ALL_STATUSES.reduce((acc, s) => {
   acc[s] = 0;
   return acc;
@@ -128,7 +130,7 @@ const statusTabs: {
     dot: "bg-emerald-600",
     active:
       "data-[state=active]:bg-emerald-600/15 data-[state=active]:text-emerald-200 data-[state=active]:ring-emerald-600/30",
-    statuses: ["CONCLUIDO", "CANCELADO"],
+    statuses: ["CONCLUIDO", "SEM_COBRANCA", "CANCELADO"],
   },
 ];
 
@@ -160,7 +162,7 @@ export function OrdensTabs({
 
       const counters = (j?.counters ?? {}) as Partial<Record<StatusOS, number>>;
 
-      // merge: não perder chaves quando API não manda (useState não faz merge). [web:395][web:394]
+      // merge: nÃ£o perder chaves quando API nÃ£o manda (useState nÃ£o faz merge). [web:395][web:394]
       setStats({ ...DEFAULT_STATS, ...counters });
     } catch {}
   };
@@ -191,7 +193,7 @@ export function OrdensTabs({
 
   return (
     <div className="space-y-4">
-      {/* Botão para mostrar/ocultar resumo no mobile */}
+      {/* BotÃ£o para mostrar/ocultar resumo no mobile */}
       <div className="sm:hidden">
         <Button
           variant="outline"
@@ -215,7 +217,7 @@ export function OrdensTabs({
         )}
       </div>
 
-      {/* Resumo sempre visível em sm+ */}
+      {/* Resumo sempre visÃ­vel em sm+ */}
       <div className="hidden sm:block">
         <SummaryGrid totalAbertas={totalAbertas} stats={stats} />
       </div>
@@ -278,7 +280,7 @@ function SummaryGrid({
   const tabPagamento = statusTabs.find((t) => t.key === "PAGAMENTO")!.statuses;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-2">
       <MiniCard
         accent="text-slate-300"
         title="Total (Abertas)"
@@ -316,11 +318,18 @@ function SummaryGrid({
 
       <MiniCard
         accent="text-emerald-300"
-        title="Concluído"
+        title="Concluído "
         value={stats.CONCLUIDO || 0}
         icon={<CheckCircle2 className="h-4 w-4" />}
       />
 
+
+      <MiniCard
+        accent="text-cyan-300"
+        title="Sem cobrança"
+        value={stats.SEM_COBRANCA || 0}
+        icon={<CheckCircle2 className="h-4 w-4" />}
+      />
       <MiniCard
         accent="text-rose-300"
         title="Cancelado"

@@ -29,6 +29,7 @@ import {
   Trash2,
   X,
   Printer,
+  Gift,
 } from "lucide-react";
 import { useConfig } from "../../config-context";
 
@@ -69,6 +70,7 @@ export function RowActions<TRow extends RowBase>({
   // ✅ novos callbacks
   onCancelarOS,
   onResetOS,
+  onFinalizeNoCharge,
 
   // dialogs
   setLinkRow,
@@ -95,6 +97,7 @@ export function RowActions<TRow extends RowBase>({
 
   onCancelarOS: (row: TRow) => void;
   onResetOS: (row: TRow) => void;
+  onFinalizeNoCharge: (row: TRow) => void;
 
   setLinkRow: (row: TRow | null) => void;
   setLinkDialogOpen: (open: boolean) => void;
@@ -118,7 +121,7 @@ export function RowActions<TRow extends RowBase>({
   const showChecklist = st === "AGUARDANDO_CHECKLIST";
 
   // ✅ finais: sem reset/cancelar
-  const isFinalState = st === "CANCELADO" || st === "FINALIZADA" || st === "CONCLUIDO";
+  const isFinalState = st === "CANCELADO" || st === "FINALIZADA" || st === "CONCLUIDO" || st === "SEM_COBRANCA";
 
   // ✅ reset: exceto aguardando_orcamento e orcamento, e exceto finais
   const showResetOS = !isFinalState && st !== "AGUARDANDO_ORCAMENTO" && st !== "ORCAMENTO" && st !== "AGUARDANDO_CHECKLIST";
@@ -151,6 +154,7 @@ export function RowActions<TRow extends RowBase>({
   const showStart = policy.showStart && st === "ORCAMENTO_APROVADO";
   const showSendToPayment = policy.showSendToPayment && st === "EM_ANDAMENTO";
   const showReceivePayment = policy.showReceivePayment && st === "PAGAMENTO";
+  const showFinishNoCharge = st === "EM_ANDAMENTO";
 
   return (
     <DropdownMenu>
@@ -246,6 +250,17 @@ export function RowActions<TRow extends RowBase>({
           >
             <Send className="mr-2 h-4 w-4" />
             Enviar p/ pagamento
+          </DropdownMenuItem>
+        )}
+
+        {showFinishNoCharge && (
+          <DropdownMenuItem
+            onClick={() => {
+              onFinalizeNoCharge(row);
+            }}
+          >
+            <Gift className="mr-2 h-4 w-4" />
+            Finalizar sem cobrança
           </DropdownMenuItem>
         )}
 

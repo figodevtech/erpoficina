@@ -60,6 +60,7 @@ const statusClasses: Record<string, string> = {
   APROVACAO_ORCAMENTO: "bg-sky-600/15 text-sky-400",
   EM_ANDAMENTO: "bg-amber-600/15 text-amber-400",
   PAGAMENTO: "bg-indigo-600/15 text-indigo-400",
+  SEM_COBRANCA: "bg-cyan-600/15 text-cyan-400",
   CONCLUIDO: "bg-green-600/15 text-green-400",
   CANCELADO: "bg-red-600/15 text-red-400",
 };
@@ -110,6 +111,7 @@ type OS = {
   datasaidaprevista?: string | null;
   datasaida?: string | null;
   motivocancelamento?: string | null;
+  motivosemcobranca?: string | null;
   setor?: { id: number; nome: string } | null;
   cliente?: { id: number; nomerazaosocial: string } | null;
   veiculo?: { id: number; placa?: string | null; modelo?: string | null; marca?: string | null } | null;
@@ -463,6 +465,11 @@ export function OSDetalhesDialog({
     );
   }, [data?.os]);
 
+  const motivoSemCobranca = useMemo(() => {
+    const os: any = data?.os;
+    return os?.motivo_sem_cobranca ?? os?.motivosemcobranca ?? "";
+  }, [data?.os]);
+
   async function salvarRealizadores(item: ItemServico, usuarioIds: string[]) {
     if (!data?.os?.id) return;
 
@@ -636,7 +643,7 @@ export function OSDetalhesDialog({
               </section>
 
               {/* Descrição / Observações / Motivo */}
-              <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <FileText className="h-4 w-4 text-primary" />
@@ -657,6 +664,14 @@ export function OSDetalhesDialog({
                     <span className="text-sm font-medium">Motivo do cancelamento</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{motivoCancelamento || "—"}</div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <AlertTriangle className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Motivo sem cobrança</span>
+                  </div>
+                  <div className="text-sm whitespace-pre-wrap">{motivoSemCobranca || "—"}</div>
                 </div>
               </section>
 

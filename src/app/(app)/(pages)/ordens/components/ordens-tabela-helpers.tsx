@@ -48,7 +48,7 @@ export function getTempoMs(r: OrdemComDatas, now: number) {
 
   const st = safeStatus(r.status);
   const endMs =
-    st === "CONCLUIDO" || st === "CANCELADO"
+    st === "CONCLUIDO" || st === "SEM_COBRANCA" || st === "CANCELADO"
       ? toMs(r.dataSaida) ??
         toMs((r as any).updatedat) ??
         toMs((r as any).updatedAt) ??

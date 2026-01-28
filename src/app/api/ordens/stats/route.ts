@@ -12,6 +12,7 @@ type StatusOS =
   | "ORCAMENTO_APROVADO"
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
+  | "SEM_COBRANCA"
   | "CONCLUIDO"
   | "CANCELADO";
 
@@ -23,6 +24,7 @@ const ALL_STATUSES: StatusOS[] = [
   "ORCAMENTO_APROVADO",
   "EM_ANDAMENTO",
   "PAGAMENTO",
+  "SEM_COBRANCA",
   "CONCLUIDO",
   "CANCELADO",
 ];

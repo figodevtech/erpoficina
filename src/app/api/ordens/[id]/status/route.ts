@@ -9,6 +9,7 @@ type DBStatusOS =
   | "ORCAMENTO_RECUSADO"
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
+  | "SEM_COBRANCA"
   | "CONCLUIDO"
   | "CANCELADO";
 
@@ -16,6 +17,8 @@ type DBAprovacao = "PENDENTE" | "APROVADA" | "REPROVADA";
 
 type Body = {
   status: DBStatusOS;
+  semCobranca?: boolean;
+  motivoSemCobranca?: string | null;
 };
 
 type ParamsId = { id: string };
@@ -31,6 +34,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
 
     const body = (await req.json()) as Body;
     const status = body.status;
+    const semCobranca = Boolean(body.semCobranca);
+    const motivoSemCobranca = (body.motivoSemCobranca ?? "").trim() || null;
 
     if (!status) {
       return NextResponse.json({ error: "Status é obrigatório." }, { status: 400 });
@@ -53,14 +58,29 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
       updateData.statusaprovacao = statusaprovacao;
     }
 
-    // 👉 datasaida: quando a OS é concluída
-    if (status === "CONCLUIDO") {
+    // 👉 datasaida: quando a OS é concluída (com ou sem cobrança)
+    if (status === "CONCLUIDO" || status === "SEM_COBRANCA") {
       updateData.datasaida = new Date().toISOString();
+
+      if (semCobranca || status === "SEM_COBRANCA") {
+        updateData.motivo_sem_cobranca = motivoSemCobranca;
+        updateData.status = "SEM_COBRANCA";
+      }
     }
 
     const upd = await supabaseAdmin.from("ordemservico").update(updateData).eq("id", osId);
 
-    if (upd.error) throw upd.error;
+    if (upd.error) {
+      // fallback caso coluna motivo_sem_cobranca ainda não exista no banco
+      if (semCobranca && upd.error.message?.includes("motivo_sem_cobranca")) {
+        const fallbackData = { ...updateData };
+        delete fallbackData.motivo_sem_cobranca;
+        const upd2 = await supabaseAdmin.from("ordemservico").update(fallbackData).eq("id", osId);
+        if (upd2.error) throw upd2.error;
+      } else {
+        throw upd.error;
+      }
+    }
 
     // opcional: marcar tokens da OS como "usados" quando aprovar/reprovar
     if (status === "ORCAMENTO_APROVADO" || status === "ORCAMENTO_RECUSADO") {
