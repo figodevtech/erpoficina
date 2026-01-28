@@ -15,6 +15,7 @@ type StatusOS =
   | "APROVACAO_ORCAMENTO"
   | "EM_ANDAMENTO"
   | "PAGAMENTO"
+  | "SEM_COBRANCA"
   | "CONCLUIDO"
   | "CANCELADO";
 

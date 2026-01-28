@@ -112,19 +112,25 @@ export function OrdensTabela({
     currentParamsRef.current = { statuses, search: localSearch, page, limit };
   }, [statuses, localSearch, page, limit]);
 
-  async function fetchNow({
-    statuses: sts,
-    search: q,
-    page: pg,
-    limit: lm,
-  }: {
-    statuses: StatusOS[];
-    search: string;
-    page: number;
-    limit: number;
-  }) {
+  const lastRealtimeRef = useRef(0);
+
+  async function fetchNow(
+    {
+      statuses: sts,
+      search: q,
+      page: pg,
+      limit: lm,
+    }: {
+      statuses: StatusOS[];
+      search: string;
+      page: number;
+      limit: number;
+    },
+    opts?: { silent?: boolean }
+  ) {
     const myId = ++reqIdRef.current;
-    setIsLoading(true);
+    const silent = !!opts?.silent;
+    if (!silent) setIsLoading(true);
 
     try {
       const url = new URL("/api/ordens", window.location.origin);
@@ -180,7 +186,7 @@ export function OrdensTabela({
       setTotalPages(1);
       setTotal(0);
     } finally {
-      if (myId === reqIdRef.current) setIsLoading(false);
+      if (!silent && myId === reqIdRef.current) setIsLoading(false);
     }
   }
 
@@ -211,12 +217,15 @@ export function OrdensTabela({
 
     const ch = supabase
       .channel(channelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () =>
-        fetchNow(currentParamsRef.current)
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "ordemservico" }, () => {
+        const nowTs = Date.now();
+        if (nowTs - lastRealtimeRef.current < 700) return;
+        lastRealtimeRef.current = nowTs;
+        fetchNow(currentParamsRef.current, { silent: true });
+      })
       .subscribe();
 
-    const onLocalRefresh = () => fetchNow(currentParamsRef.current);
+    const onLocalRefresh = () => fetchNow(currentParamsRef.current, { silent: true });
     window.addEventListener("os:refresh", onLocalRefresh);
 
     return () => {
@@ -311,6 +320,11 @@ export function OrdensTabela({
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelRow, setCancelRow] = useState<OrdemComDatas | null>(null);
   const [cancelMotivo, setCancelMotivo] = useState("");
+
+  // Finalizar sem cobrança
+  const [noChargeOpen, setNoChargeOpen] = useState(false);
+  const [noChargeRow, setNoChargeRow] = useState<OrdemComDatas | null>(null);
+  const [noChargeMotivo, setNoChargeMotivo] = useState("");
 
   const clearApprovalToast = () => {
     if (approvalToastId != null) {
@@ -477,6 +491,31 @@ export function OrdensTabela({
       window.dispatchEvent(new CustomEvent("os:refresh"));
     } catch (e: any) {
       toast.error(e?.message || "Falha ao cancelar OS", { id: tId, duration: 4000 });
+    }
+  }
+
+  // Finalizar sem cobrança
+  function handleFinishNoCharge(row: OrdemComDatas) {
+    setNoChargeRow(row);
+    setNoChargeMotivo("");
+    setNoChargeOpen(true);
+  }
+
+  async function doFinishNoCharge(id: number, motivo: string) {
+    const tId = toast.loading(`Finalizando OS #${id} sem cobrança...`, { duration: Infinity });
+    try {
+      const r = await fetch(`/api/ordens/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "SEM_COBRANCA", semCobranca: true, motivoSemCobranca: motivo }),
+      });
+      const j = await r.json().catch(() => ({} as any));
+      if (!r.ok) throw new Error(j?.error || "Falha ao finalizar sem cobrança");
+
+      toast.success("OS finalizada sem cobrança", { id: tId, duration: 2500 });
+      window.dispatchEvent(new CustomEvent("os:refresh"));
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao finalizar sem cobrança", { id: tId, duration: 4000 });
     }
   }
 
@@ -834,6 +873,7 @@ export function OrdensTabela({
                             onSendToApproval={handleSendToApproval}
                             onResetOS={handleResetOS}
                             onCancelarOS={handleCancelarOS}
+                            onFinalizeNoCharge={handleFinishNoCharge}
                             setLinkRow={setLinkRow}
                             setLinkDialogOpen={setLinkDialogOpen}
                             setConfirmRow={setConfirmRow}
@@ -1080,6 +1120,55 @@ export function OrdensTabela({
                 }}
               >
                 Confirmar cancelamento
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Finalizar sem cobrança */}
+        <AlertDialog
+          open={noChargeOpen}
+          onOpenChange={(open) => {
+            setNoChargeOpen(open);
+            if (!open) {
+              setNoChargeRow(null);
+              setNoChargeMotivo("");
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Finalizar sem cobrança</AlertDialogTitle>
+              <AlertDialogDescription>
+                Informe o motivo para concluir a OS <b>#{noChargeRow?.id}</b> sem cobrança.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="mt-2 space-y-2">
+              <Label>Motivo</Label>
+              <Input
+                value={noChargeMotivo}
+                onChange={(e) => setNoChargeMotivo(e.target.value)}
+                placeholder="Ex.: Garantia, cortesia, brinde..."
+              />
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Voltar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={noChargeMotivo.trim().length === 0}
+                onClick={async () => {
+                  if (!noChargeRow) return;
+                  const motivo = noChargeMotivo.trim();
+                  if (!motivo) return;
+
+                  await doFinishNoCharge(noChargeRow.id, motivo);
+                  setNoChargeOpen(false);
+                  setNoChargeRow(null);
+                  setNoChargeMotivo("");
+                }}
+              >
+                Finalizar sem cobrança
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

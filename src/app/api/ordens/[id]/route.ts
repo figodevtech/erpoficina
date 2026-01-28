@@ -51,6 +51,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           "orcamentototal",
           "observacoes",
           "motivo_cancelamento",
+          "motivo_sem_cobranca",
           "createdat",
           "updatedat",
           "checklist_modelo_id",
@@ -85,6 +86,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       alvo_tipo: AlvoTipo | null;
       pecaid: number | null;
       motivo_cancelamento?: string | null;
+      motivo_sem_cobranca?: string | null;
     };
 
     const osRow = os_res.data as OrdemRow | null;
@@ -350,6 +352,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       descricao: osRow.descricao ?? null,
       observacoes: osRow.observacoes ?? null,
       motivocancelamento: (osRow as any).motivo_cancelamento ?? null,
+      motivosemcobranca: (osRow as any).motivo_sem_cobranca ?? null,
       status: osRow.status ?? null,
       statusaprovacao: osRow.statusaprovacao ?? null,
       prioridade: (osRow.prioridade ?? "NORMAL") as Prioridade,
