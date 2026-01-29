@@ -12,7 +12,7 @@ const STATUS_SET = new Set<Status>(["OK", "CRITICO", "BAIXO", "SEM_ESTOQUE"]);
 /** Campos a exportar (somente os que existem em public.produto) */
 const EXPORT_FIELDS = `
   id, titulo, descricao, referencia,
-  precovenda, unidade,
+  precovenda, precocompra, unidade,
   estoque, estoqueminimo, status_estoque,
   fabricante, grupo,
   ncm, cfop, csosn, cst, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, cest, aliquotaicms, codigobarras,
@@ -49,6 +49,7 @@ export async function GET(req: Request) {
       "Descrição",
       "Referência",
       "Preço Venda",
+      "Preço Médio de Compra",
       "Unidade",
       "Estoque",
       "Estoque Mín.",
@@ -82,6 +83,7 @@ export async function GET(req: Request) {
       { wch: 50 }, // Descrição
       { wch: 18 }, // Referência
       { wch: 14 }, // Preço Venda
+      { wch: 14 }, // Preço Compra
       { wch: 10 }, // Unidade
       { wch: 10 }, // Estoque
       { wch: 12 }, // Estoque Mín.
@@ -147,6 +149,7 @@ export async function GET(req: Request) {
         p.descricao ?? "",
         p.referencia ?? "",
         p.precovenda ?? null,
+        p.precocompra ?? null,
         p.unidade ?? "",
         p.estoque ?? null,
         p.estoqueminimo ?? null,

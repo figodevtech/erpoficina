@@ -122,8 +122,12 @@ export function TabGeral({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="precovenda">Preço Unitário</Label>
+            <Label htmlFor="precovenda">Valor de Venda (Unitário)</Label>
             <ValueInput price={produto.precovenda} setPrice={(v) => onChange("precovenda", v)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="precocompra">Valor Médio de Compra (Unitário)</Label>
+            <ValueInput price={produto.precocompra} setPrice={(v) => onChange("precocompra", v)} />
           </div>
 
           <div className="space-y-2">
