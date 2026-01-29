@@ -80,6 +80,7 @@ export interface Fornecedor {
 export interface Produto {
   id?: number;
   precovenda?: number;
+  precocompra?: number;
   descricao?: string;
   estoque?: number; // default 0 no banco, mas pode ser null
   estoqueminimo?: number; // default 0 no banco, mas pode ser null
