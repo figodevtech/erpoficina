@@ -170,12 +170,12 @@ export default function ProductSelect({
                 } `}
               ></div>
             </div>
-            <Table className="text-xs mt-6">
+            <Table className="text-[10px] mt-6">
               <TableHeader>
                 <TableRow>
                   <TableCell>ID</TableCell>
                   <TableCell>NOME</TableCell>
-                  <TableCell>FRABRICANTE</TableCell>
+                  <TableCell className="hidden md:table-cell">FRABRICANTE</TableCell>
                   <TableCell>ESTOQUE</TableCell>
                   <TableCell>VALOR</TableCell>
                 </TableRow>
@@ -199,9 +199,16 @@ export default function ProductSelect({
                   >
                     <TableCell>{p.id}</TableCell>
                     <TableCell className="max-w-[120px] truncate">
+                      <div className="flex flex-col md:hidden">
+                        <span>
                       {p.titulo}
+
+                        </span>
+                        <span>{p.fabricante}</span>
+                      </div>
+                      <span className="hidden md:block">{p.titulo}</span>
                     </TableCell>
-                    <TableCell>{p.fabricante || "-"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{p.fabricante || "-"}</TableCell>
                     <TableCell>{p.estoque}</TableCell>
                     <TableCell>{formatarEmReal(p.precovenda || 0)}</TableCell>
                   </TableRow>

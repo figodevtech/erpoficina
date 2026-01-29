@@ -23,12 +23,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Search, X } from "lucide-react";
+import { Trash2, Search, X, Loader2 } from "lucide-react";
 
 import FornecedorSelect from "@/app/(app)/components/fornecedorSelect";
 import ProductSelect from "@/app/(app)/components/productSelect";
 
 import type { Fornecedor, Produto, Unidade_medida } from "../../types";
+import formatarEmReal from "@/utils/formatarEmReal";
+import { set } from "nprogress";
+import { toast } from "sonner";
 
 /** Valores compatíveis com o enum do banco: enum_tipos_entrada */
 export const TIPOS_ENTRADA = [
@@ -194,6 +197,7 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
   const [fornecedorSelecionado, setFornecedorSelecionado] = useState<Fornecedor | undefined>(undefined);
   const [openFornecedor, setOpenFornecedor] = useState(false);
   const [openProduto, setOpenProduto] = useState(false);
+  const [loadingConcluirEntrada, setLoadingConcluirEntrada] = useState(false);
 
   const totalGeral = useMemo(() => {
     return itens.reduce((acc, it) => acc + n(it.quantidade) * n(it.precovenda), 0);
@@ -226,8 +230,12 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
   };
 
   const handleRegistrarEntrada = async () => {
+    if(!fornecedorSelecionado){
+      toast.error("Selecione um fornecedor antes de concluir a entrada.");
+      return;
+    }
     if (itens.length === 0) return;
-
+    setLoadingConcluirEntrada(true);
     const payload: EntradaCreatePayload = {
       fornecedorid: fornecedorSelecionado?.id ?? null,
 
@@ -248,6 +256,8 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
     if (!res.ok) {
       const msg = await res.text();
       console.log("Erro ao registrar entrada:", msg);
+          setLoadingConcluirEntrada(false);
+
       return;
     }
 
@@ -258,6 +268,8 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
     setFornecedorSelecionado(undefined);
     setTipo("COMPRA_FORNECEDOR");
     onOpenChange?.(false);
+    setLoadingConcluirEntrada(false);
+
   };
 
   return (
@@ -382,7 +394,7 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Total</span>
-                  <span className="font-semibold">{totalGeral.toFixed(2)}</span>
+                  <span className="font-semibold">{formatarEmReal(Number(totalGeral.toFixed(2)))}</span>
                 </div>
               </div>
             </div>
@@ -396,8 +408,7 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
                 </div>
               </div>
 
-              <ScrollArea className="h-[48vh] pr-2">
-                <div className="space-y-4">
+                <div className="space-y-4 ">
                   {itens.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
                       Nenhum produto adicionado ainda.
@@ -419,7 +430,7 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
                           <Button
                             type="button"
                             variant="ghost"
-                            className="text-destructive hover:text-destructive gap-2"
+                            className="text-destructive hover:text-destructive gap-2 hover:cursor-pointer"
                             onClick={() => handleRemove(index)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -429,7 +440,6 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
 
                         <Separator />
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="space-y-1.5">
                             <Label>Título</Label>
                             <Input
@@ -437,6 +447,8 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
                               onChange={(e) => updateItem(index, "titulo", e.target.value || null)}
                             />
                           </div>
+                        <Separator />
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
 
                           <div className="space-y-1.5">
                             <Label>Referência</Label>
@@ -562,14 +574,13 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
 
                           <div className="space-y-1.5">
                             <Label>Total do item</Label>
-                            <Input value={(n(item.quantidade) * n(item.precovenda)).toFixed(2)} readOnly />
+                            <Input value={formatarEmReal(Number((n(item.quantidade) * n(item.precovenda)).toFixed(2)))} readOnly />
                           </div>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-              </ScrollArea>
             </div>
           </div>
 
@@ -577,7 +588,7 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between w-full">
               <div className="text-sm">
                 <span className="text-muted-foreground">Total da entrada: </span>
-                <span className="font-semibold">{totalGeral.toFixed(2)}</span>
+                <span className="font-semibold">{formatarEmReal(Number(totalGeral.toFixed(2)))}</span>
               </div>
 
               <div className="flex gap-3 justify-end">
@@ -590,10 +601,10 @@ export function DialogEntradaGeral({ children, open, onOpenChange }: DialogEntra
                 <Button
                   type="button"
                   onClick={handleRegistrarEntrada}
-                  disabled={itens.length === 0}
-                  className="min-w-[170px]"
+                  disabled={itens.length === 0 || loadingConcluirEntrada}
+                  className="min-w-[170px] hover:cursor-pointer"
                 >
-                  Concluir entrada
+                  {loadingConcluirEntrada ? (<div className="flex flex-row items-center gap-1"><Loader2 className=" animate-spin w-3 h-3"/> <span>Registrando...</span></div>) : "Concluir entrada"}
                 </Button>
               </div>
             </div>

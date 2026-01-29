@@ -1022,9 +1022,9 @@ export default function EditContent({ customerId }: EditContentProps) {
                     <TableRow>
                       <TableHead className="text-center">ID</TableHead>
                       <TableHead className="text-center">Descrição</TableHead>
-                      <TableHead className="text-center">Placa</TableHead>
-                      <TableHead className="text-center">Cor</TableHead>
-                      <TableHead className="text-center">Fab/Mod</TableHead>
+                      <TableHead className="text-center hidden md:table-cell">Placa</TableHead>
+                      <TableHead className="text-center hidden md:table-cell">Cor</TableHead>
+                      <TableHead className="text-center hidden md:table-cell">Fab/Mod</TableHead>
                       <TableHead className="text-center">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1037,11 +1037,20 @@ export default function EditContent({ customerId }: EditContentProps) {
                         >
                           <TableCell>{vehicle.id}</TableCell>
                           <TableCell>
+                            <div className="flex flex-col text-left gap-1 md:hidden text-xs">
+                              <span className="font-medium">
+
                             {vehicle.marca}/{vehicle.modelo}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {vehicle.placa} - {vehicle.ano} - {vehicle.cor}
+                              </span>
+                            </div>
+                            <span className="hidden md:block">{vehicle.marca}/{vehicle.modelo}</span>
                           </TableCell>
-                          <TableCell>{vehicle.placa}</TableCell>
-                          <TableCell>{vehicle.cor}</TableCell>
-                          <TableCell>{vehicle.ano}</TableCell>
+                          <TableCell className="hidden md:table-cell">{vehicle.placa}</TableCell>
+                          <TableCell className="hidden md:table-cell">{vehicle.cor}</TableCell>
+                          <TableCell className="hidden md:table-cell">{vehicle.ano}</TableCell>
                           <TableCell className="text-center items-center flex justify-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger className="hover:cursor-pointer">
@@ -1108,7 +1117,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                           <TableCell className="text-center">
                             {ordem.id}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-center max-w-52 truncate">
                             {ordem.descricao}
                           </TableCell>
                           <TableCell className="text-center">

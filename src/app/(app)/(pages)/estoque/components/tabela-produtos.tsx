@@ -261,7 +261,16 @@ export default function TabelaProdutos({
           isOpen={entradaFiscalOpen}
           setIsOpen={setEntradaFiscalOpen}
         />
-        <DialogEntradaGeral  open={entradaGeralOpen} onOpenChange={setEntradaGeralOpen}/>
+        <DialogEntradaGeral  open={entradaGeralOpen} onOpenChange={
+          (open)=>{
+            if(!open){
+              setEntradaGeralOpen(false)
+              handleGetProducts(pagination.page, pagination.limit, search, status)
+            }else{
+              setEntradaGeralOpen(true)
+            }
+          }
+          }/>
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
