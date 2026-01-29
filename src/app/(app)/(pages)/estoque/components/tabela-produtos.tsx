@@ -42,7 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 import EntradaDialog from "./dialog-entrada/dialog-entrada-unica";
 import EntradaFiscalDialog from "./dialog-entrada/dialog-entrada-fiscal";
-import { DialogEntradaGeral } from "./dialog-entrada/dialog-entrada-geral";
+import { DialogEntradaGeral } from "./dialog-entrada-geral/dialog-entrada-geral";
 
 interface TabelaProdutosProps {
   isLoading: boolean;

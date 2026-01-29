@@ -49,6 +49,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
 
       if (response.status === 200) {
         setSelectedProduct(response.data.data);
+        console.log("Produto carregado:", response.data.data);
       } else {
         setLoadError("Não foi possível carregar o produto.");
       }
