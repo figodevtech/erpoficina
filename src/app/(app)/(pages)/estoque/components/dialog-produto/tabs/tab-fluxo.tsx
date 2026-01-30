@@ -10,13 +10,23 @@ import { formatDate } from "@/utils/formatDate";
 import { useState } from "react";
 import { DialogEntradaGeral } from "../../dialog-entrada-geral/dialog-entrada-geral";
 import { set } from "nprogress";
+import { Receipt } from "lucide-react";
+import { EmissaoNotaDialog } from "@/app/(app)/(pages)/ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 
 export function TabFluxo({ produto }: { produto: Produto }) {
   const entradas = (produto as any).entrada ?? [];
   const [selectedEntradaId, setSelectedEntradaId] = useState<number | null>(null);
   const [openDialogEntradaGeral, setOpenDialogEntradaGeral] = useState(false);
+  
+  const [nfeDialogEntradaId, setNfeDialogEntradaId] = useState<number | null>(null);
+  
   return (
     <TabsContent value="Fluxo" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+      <EmissaoNotaDialog 
+        open={!!nfeDialogEntradaId}
+        onOpenChange={(v) => !v && setNfeDialogEntradaId(null)}
+        entradaId={nfeDialogEntradaId}
+      />
       <DialogEntradaGeral
       selectedEntradaId={selectedEntradaId ?? undefined}
       open={openDialogEntradaGeral}
@@ -71,6 +81,12 @@ export function TabFluxo({ produto }: { produto: Produto }) {
                         <Button className="size-full flex justify-start gap-5 bg-red-500/50 hover:bg-red-500 px-0 rounded-sm py-2 hover:cursor-pointer">
                           <Undo2 className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Cancelar Entrada</span>
+                        </Button>
+                        <Button onClick={()=>{
+                          setNfeDialogEntradaId(e.entradainfo.id)
+                        }} variant={"ghost"} className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer">
+                          <Receipt className="-ml-1 -mr-1 h-4 w-4 text-emerald-500" />
+                          <span>Emitir Nota</span>
                         </Button>
                       </DropdownMenuContent>
                     </DropdownMenu>

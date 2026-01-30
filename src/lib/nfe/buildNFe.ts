@@ -45,10 +45,16 @@ function formatDateTimeNFe(date: Date): string {
 /**
  * Cria o bloco <ide> da NF-e, calculando cNF, chave de acesso e cDV.
  */
+export interface IdeOptions {
+  tpNF?: 0 | 1;
+  natOp?: string;
+}
+
 export function criarIdeParaEmpresa(
   empresa: EmpresaRow,
   numeroNota: number,
-  serie: number
+  serie: number,
+  options?: IdeOptions
 ): { ide: NFeIde; cNF: string; chave: string; id: string } {
   const agora = new Date();
   const ano = agora.getFullYear();
@@ -78,12 +84,12 @@ export function criarIdeParaEmpresa(
   const ide: NFeIde = {
     cUF,
     cNF,
-    natOp: 'VENDA DE MERCADORIA',
+    natOp: options?.natOp || 'VENDA DE MERCADORIA',
     mod,
     serie,
     nNF: numeroNota,
     dhEmi: formatDateTimeNFe(agora),
-    tpNF: 1,
+    tpNF: options?.tpNF ?? 1,
     idDest: 1,
     cMunFG: empresa.codigomunicipio,
     tpImp: 1,
@@ -116,12 +122,14 @@ export function buildNFePreviewXml(
   numeroNota: number,
   serie: number,
   itensOverride?: NFeItem[],
-  destinatario?: NFeDestinatario
+  destinatario?: NFeDestinatario,
+  options?: IdeOptions
 ): { xml: string; chave: string; id: string } {
   const { ide, chave, id } = criarIdeParaEmpresa(
     empresa,
     numeroNota,
-    serie
+    serie,
+    options
   );
 
   const emitente = mapEmpresaToEmitente(empresa, 'JOAO PESSOA');
@@ -256,7 +264,11 @@ export function buildNFePreviewXml(
 
   const infAdicXml =
     '<infAdic>' +
-    '<infCpl>NF-e de venda de mercadoria.</infCpl>' +
+    `<infCpl>${
+        options?.natOp 
+            ? `NF-e de ${options.natOp.toLowerCase()}.` 
+            : 'NF-e de venda de mercadoria.'
+    }</infCpl>` +
     '</infAdic>';
 
   const infNFeXml =
