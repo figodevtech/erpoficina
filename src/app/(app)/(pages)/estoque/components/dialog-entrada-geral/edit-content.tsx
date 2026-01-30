@@ -361,6 +361,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
 
       toast.success("Alterações salvas!");
       onSaved?.();
+      handleGetEntrada(selectedEntradaId);
     } finally {
       setSaving(false);
     }
@@ -397,7 +398,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
         <DialogHeader className="shrink-0 px-6 py-4 border-b">
           <DialogTitle>Entrada #{selectedEntradaId}</DialogTitle>
           <DialogDescription>
-            Edite a entrada com fornecedor e itens. Depois, salve.
+            Edite os itens da entrada
           </DialogDescription>
         </DialogHeader>
 
@@ -459,13 +460,13 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                       {fornecedorSelecionado?.nomerazaosocial}
                     </span>
                   </div>
-                  <div
+                  {/* <div
                     onClick={() => setFornecedorSelecionado(undefined)}
                     className="rounded-full p-1.5 bg-muted hover:cursor-pointer"
                     title="Remover fornecedor"
                   >
                     <X className="text-red-500 w-3 h-3" />
-                  </div>
+                  </div> */}
                 </div>
               ) : (
                 <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
@@ -485,7 +486,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
 
             <div className="space-y-2">
               <Label>Produtos</Label>
-
+{/* 
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -514,7 +515,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                 >
                   Limpar lista
                 </Button>
-              </div>
+              </div> */}
             </div>
 
             <Separator />
@@ -567,7 +568,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                         </div>
                       </div>
 
-                      <Button
+                      {/* <Button
                         type="button"
                         variant="ghost"
                         className="text-destructive hover:text-destructive gap-2 hover:cursor-pointer"
@@ -575,7 +576,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                       >
                         <Trash2 className="h-4 w-4" />
                         Remover
-                      </Button>
+                      </Button> */}
                     </div>
 
                     <Separator />
@@ -735,6 +736,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                       <div className="space-y-1.5">
                         <Label>Quantidade</Label>
                         <Input
+                          disabled
                           type="number"
                           min={0}
                           step={1}
@@ -746,6 +748,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                       <div className="space-y-1.5">
                         <Label>Preço venda (snapshot)</Label>
                         <Input
+                        disabled
                           type="number"
                           min={0}
                           step={0.01}
@@ -760,6 +763,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                       <div className="space-y-1.5">
                         <Label>Total do item</Label>
                         <Input
+                        disabled
                           value={formatarEmReal(
                             Number((n(item.quantidade) * n(item.precovenda)).toFixed(2))
                           )}
