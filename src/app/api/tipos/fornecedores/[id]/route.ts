@@ -42,6 +42,9 @@ export async function PUT(
       nomefantasia,
       endereco,
       cidade,
+      endereconumero,
+      bairro,
+      codigomunicipio,
       estado,
       cep,
       contato,
@@ -52,6 +55,9 @@ export async function PUT(
       nomefantasia?: string | null;
       endereco?: string | null;
       cidade?: string | null;
+      endereconumero?: string | null;
+      bairro?: string | null;
+      codigomunicipio?: string | null;
       estado?: string | null;
       cep?: string | null;
       contato?: string | null;
@@ -73,6 +79,9 @@ export async function PUT(
       nomefantasia: nomefantasia?.trim() || null,
       endereco: endereco?.trim() || null,
       cidade: cidade?.trim() || null,
+      endereconumero: endereconumero?.trim() || null,
+      bairro: bairro?.trim() || null,
+      codigomunicipio: codigomunicipio?.trim() || null,
       estado: estado?.trim() || null,
       cep: cep?.trim() || null,
       contato: contato?.trim() || null,
@@ -95,6 +104,9 @@ export async function PUT(
         nomefantasia,
         endereco,
         cidade,
+        endereconumero,
+        bairro,
+        codigomunicipio,
         estado,
         cep,
         contato,
@@ -117,6 +129,9 @@ export async function PUT(
       nomefantasia: (data.nomefantasia as string | null) ?? null,
       endereco: (data.endereco as string | null) ?? null,
       cidade: (data.cidade as string | null) ?? null,
+      endereconumero: (data.endereconumero as string | null) ?? null,
+      bairro: (data.bairro as string | null) ?? null,
+      codigomunicipio: (data.codigomunicipio as string | null) ?? null,
       estado: (data.estado as string | null) ?? null,
       cep: (data.cep as string | null) ?? null,
       contato: (data.contato as string | null) ?? null,
@@ -129,8 +144,8 @@ export async function PUT(
     const msg = String(e?.message ?? "");
     const status =
       /auth|unauth|não autenticado/i.test(msg) ? 401 :
-      /duplicate|unique|fornecedor_cnpj_key/i.test(msg) ? 409 :
-      500;
+        /duplicate|unique|fornecedor_cnpj_key/i.test(msg) ? 409 :
+          500;
 
     return NextResponse.json(
       { error: e?.message ?? "Erro ao atualizar fornecedor" },
@@ -175,6 +190,9 @@ export async function PATCH(
         nomefantasia,
         endereco,
         cidade,
+        endereconumero,
+        bairro,
+        codigomunicipio,
         estado,
         cep,
         contato,
@@ -197,6 +215,9 @@ export async function PATCH(
       nomefantasia: (data.nomefantasia as string | null) ?? null,
       endereco: (data.endereco as string | null) ?? null,
       cidade: (data.cidade as string | null) ?? null,
+      endereconumero: (data.endereconumero as string | null) ?? null,
+      bairro: (data.bairro as string | null) ?? null,
+      codigomunicipio: (data.codigomunicipio as string | null) ?? null,
       estado: (data.estado as string | null) ?? null,
       cep: (data.cep as string | null) ?? null,
       contato: (data.contato as string | null) ?? null,
@@ -234,12 +255,13 @@ export async function GET(
         nomefantasia,
         endereco,
         cidade,
+        codigomunicipio,
+        bairro,
         estado,
         cep,
         contato,
         endereconumero,
         enderecocomplemento,
-        bairro,
         ativo,
         createdat,
         updatedat
@@ -284,12 +306,13 @@ export async function GET(
       nomefantasia: (data.nomefantasia as string | null) ?? null,
       endereco: (data.endereco as string | null) ?? null,
       cidade: (data.cidade as string | null) ?? null,
+      codigomunicipio: (data.codigomunicipio as string | null) ?? null,
+      bairro: (data.bairro as string | null) ?? null,
       estado: (data.estado as string | null) ?? null,
       cep: (data.cep as string | null) ?? null,
       contato: (data.contato as string | null) ?? null,
       endereconumero: (data.endereconumero as string | null) ?? null,
       enderecocomplemento: (data.enderecocomplemento as string | null) ?? null,
-      bairro: (data.bairro as string | null) ?? null,
       ativo: typeof data.ativo === "boolean" ? data.ativo : true,
       createdat: data.createdat ?? null,
       updatedat: data.updatedat ?? null,
