@@ -12,6 +12,7 @@ import { buildDestXml } from './xmlDest';
 import { buildDetXml } from './xmlItem';
 import { gerarCNF, gerarChaveAcesso } from './chaveAcesso';
 import { mapEmpresaToEmitente } from './mapEmpresaToEmitente';
+import { getCodigoUF } from './ufUtils';
 
 /**
  * Formata data/hora para o padrão da NF-e 4.00:
@@ -48,6 +49,7 @@ function formatDateTimeNFe(date: Date): string {
 export interface IdeOptions {
   tpNF?: 0 | 1;
   natOp?: string;
+  indFinal?: 0 | 1;
 }
 
 export function criarIdeParaEmpresa(
@@ -63,7 +65,8 @@ export function criarIdeParaEmpresa(
   const tpAmb: 1 | 2 = empresa.ambiente === 'PRODUCAO' ? 1 : 2;
   const cNF = gerarCNF(numeroNota);
 
-  const cUF = '25'; // PB
+  // PB defaults to 25 if not found, but now we try to read from company
+  const cUF = getCodigoUF(empresa.uf || undefined);
   const mod = '55'; // NF-e
   const tpEmis = 1; // emissão normal
 
@@ -97,7 +100,7 @@ export function criarIdeParaEmpresa(
     cDV: dv,
     tpAmb,
     finNFe: 1,
-    indFinal: 1,
+    indFinal: options?.indFinal ?? (options?.tpNF === 0 ? 0 : 1),
     indPres: 1,
     procEmi: 0,
     verProc: 'ERPOficina 1.0.0',

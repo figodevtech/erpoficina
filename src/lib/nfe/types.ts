@@ -126,6 +126,8 @@ export interface NFeItem {
   valorUnitario: number;
   valorTotal: number;
   codigoBarras?: string | null;
+  cest?: string | null; // Adicionado para Phase 1
+
 
   // ---------- ICMS ----------
   /**
