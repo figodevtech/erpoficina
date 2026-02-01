@@ -79,8 +79,8 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [selectedMetodo, setSelectedMetodo] = useState<Metodo_pagamento | "">("");
   const [selectedCategoria, setSelectedCategoria] = useState<string>("");
-   const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
-  
+  const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
+
 
   const handleGetBanks = async () => {
     setIsLoadingBanks(true);
@@ -185,16 +185,16 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
       isPagamentoFuturo,
       parcelas: isPagamentoFuturo
         ? parcelas
-            .filter((p) => p.valor && p.dataVencimento)
-            .map((p) => ({
-              valor: p.valor!,
-              dataVencimento: p.dataVencimento!.toISOString().slice(0, 10),
-            }))
+          .filter((p) => p.valor && p.dataVencimento)
+          .map((p) => ({
+            valor: p.valor!,
+            dataVencimento: p.dataVencimento!.toISOString().slice(0, 10),
+          }))
         : [],
 
       bancoId: isPagamentoFuturo ? Number(selectedBankId) : 1,
       metodoPagamento: isPagamentoFuturo ? selectedMetodo : Metodo_pagamento.PIX ?? "PIX",
-      categoria: isPagamentoFuturo ? selectedCategoria  : "DESPESAS OPERACIONAIS",
+      categoria: isPagamentoFuturo ? selectedCategoria : "DESPESAS OPERACIONAIS",
       tipo: "DESPESA",
       nomePagador: parsed.fornecedorReferente?.nomerazaosocial ?? parsed.emitente.nome ?? "",
       cpfCnpjPagador: parsed.emitente.cnpj?.toString() ?? "",
@@ -270,10 +270,10 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                   itens: prev.itens.map((it, i) =>
                     i === index
                       ? {
-                          ...it,
-                          produtoReferencia: produto,
-                          produtoReferenciaId: produto.id,
-                        }
+                        ...it,
+                        produtoReferencia: produto,
+                        produtoReferenciaId: produto.id,
+                      }
                       : it
                   ),
                 };
@@ -389,18 +389,16 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                       <div className="flex flex-row items-center gap-2">
                         <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md">
                           <span
-                            className={`text-xs text-muted-foreground max-w-[250px] ${
-                              !parsed.fornecedorReferenteId && "text-red-400"
-                            }`}
+                            className={`text-xs text-muted-foreground max-w-[250px] ${!parsed.fornecedorReferenteId && "text-red-400"
+                              }`}
                           >
                             {isLoadingFornecedor
                               ? "Buscando fornecedor..."
                               : parsed.fornecedorReferenteId
-                              ? `Fornecedor vinculado: ${
-                                  parsed.fornecedorReferente?.nomefantasia ||
-                                  parsed.fornecedorReferente?.nomerazaosocial
+                                ? `Fornecedor vinculado: ${parsed.fornecedorReferente?.nomefantasia ||
+                                parsed.fornecedorReferente?.nomerazaosocial
                                 }`
-                              : "Fornecedor não cadastrado no sistema"}
+                                : "Fornecedor não cadastrado no sistema"}
                           </span>
                         </div>
                         {parsed.fornecedorReferenteId === undefined && !isLoadingFornecedor && (
@@ -412,6 +410,9 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                               cpfcnpj: parsed.emitente.cnpj.toString(),
                               nomefantasia: parsed.emitente.nomeFantasia,
                               ativo: true,
+                              bairro: parsed.emitente.endereco.bairro,
+                              codigomunicipio: String(parsed.emitente.endereco.codigoMunicipio),
+                              endereconumero: String(parsed.emitente.endereco.numero),
                               cep: parsed.emitente.endereco.cep.toString(),
                               endereco: parsed.emitente.endereco.logradouro,
                               cidade: parsed.emitente.endereco.municipio,
@@ -512,15 +513,14 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                         <div className="flex flex-row items-center gap-2">
                           <div className="inline-flex items-center gap-2 px-2 py-1 bg-muted rounded-md relative">
                             <span
-                              className={`text-xs text-muted-foreground max-w-[300px] mr-4 ${
-                                searchingFornecedor ? "text-primary" : !item.produtoReferenciaId && "text-red-400"
-                              } `}
+                              className={`text-xs text-muted-foreground max-w-[300px] mr-4 ${searchingFornecedor ? "text-primary" : !item.produtoReferenciaId && "text-red-400"
+                                } `}
                             >
                               {searchingFornecedor
                                 ? "Buscando produto vinculado..."
                                 : item.produtoReferenciaId
-                                ? `Produto vinculado: ${item.produtoReferencia?.titulo}`
-                                : "Produto não vinculado ao estoque"}
+                                  ? `Produto vinculado: ${item.produtoReferencia?.titulo}`
+                                  : "Produto não vinculado ao estoque"}
                             </span>
                             {item.produtoReferenciaId && (
                               <X
@@ -533,10 +533,10 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                                       itens: prev.itens.map((it, i) =>
                                         i === index
                                           ? {
-                                              ...it,
-                                              produtoReferenciaId: undefined,
-                                              produtoReferencia: undefined,
-                                            }
+                                            ...it,
+                                            produtoReferenciaId: undefined,
+                                            produtoReferencia: undefined,
+                                          }
                                           : it
                                       ),
                                     };
@@ -568,10 +568,10 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                                   itens: prev.itens.map((it, i) =>
                                     i === index
                                       ? {
-                                          ...it,
-                                          produtoReferencia: p,
-                                          produtoReferenciaId: p.id,
-                                        }
+                                        ...it,
+                                        produtoReferencia: p,
+                                        produtoReferenciaId: p.id,
+                                      }
                                       : it
                                   ),
                                 };
@@ -657,9 +657,8 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                 <div className="flex w-full justify-start flex-col gap-4">
                   <div className="flex flex-row items-center gap-2">
                     <span
-                      className={`text-xs ${
-                        isPagamentoFuturo ? "text-accent-foreground" : "text-muted-foreground"
-                      } transition-all`}
+                      className={`text-xs ${isPagamentoFuturo ? "text-accent-foreground" : "text-muted-foreground"
+                        } transition-all`}
                     >
                       Lançar como pagamento futuro
                     </span>
@@ -722,9 +721,9 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                                   prev.map((p, i) =>
                                     i === index
                                       ? {
-                                          ...p,
-                                          dataVencimento: value ? new Date(`${value}T00:00:00`) : undefined,
-                                        }
+                                        ...p,
+                                        dataVencimento: value ? new Date(`${value}T00:00:00`) : undefined,
+                                      }
                                       : p
                                   )
                                 );
@@ -742,9 +741,9 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
                                   prev.map((p, i) =>
                                     i === index
                                       ? {
-                                          ...p,
-                                          valor,
-                                        }
+                                        ...p,
+                                        valor,
+                                      }
                                       : p
                                   )
                                 )

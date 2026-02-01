@@ -34,6 +34,7 @@ export interface Destinatario {
 export interface Endereco {
   logradouro: string;
   numero: number;
+  codigoMunicipio: number;
   bairro: string;
   municipio: string;
   uf: string;

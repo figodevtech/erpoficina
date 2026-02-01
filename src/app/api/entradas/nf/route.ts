@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
         endereco: {
           logradouro: emit.enderEmit?.xLgr || null,
           numero: emit.enderEmit?.nro || null,
+          codigoMunicipio: emit.enderEmit?.cMun || null,
           bairro: emit.enderEmit?.xBairro || null,
           municipio: emit.enderEmit?.xMun || null,
           uf: emit.enderEmit?.UF || null,
