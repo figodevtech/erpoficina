@@ -372,8 +372,8 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
    * - garante o loading imediatamente na abertura
    * - evita 1 frame mostrando conteúdo velho
    */
-  useEffect(()=> {
-    if(selectedEntradaId){
+  useEffect(() => {
+    if (selectedEntradaId) {
       handleGetEntrada(selectedEntradaId)
     }
   }, [])
@@ -486,7 +486,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
 
             <div className="space-y-2">
               <Label>Produtos</Label>
-{/* 
+              {/* 
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -650,7 +650,12 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                         <Input
                           value={item.cfop ?? ""}
                           onChange={(e) => updateItem(index, "cfop", e.target.value || null)}
+                          maxLength={4}
+                          inputMode="numeric"
+                          placeholder="5102"
                         />
+
+
                       </div>
 
                       <div className="space-y-1.5">
@@ -748,7 +753,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                       <div className="space-y-1.5">
                         <Label>Preço venda (snapshot)</Label>
                         <Input
-                        disabled
+                          disabled
                           type="number"
                           min={0}
                           step={0.01}
@@ -763,7 +768,7 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
                       <div className="space-y-1.5">
                         <Label>Total do item</Label>
                         <Input
-                        disabled
+                          disabled
                           value={formatarEmReal(
                             Number((n(item.quantidade) * n(item.precovenda)).toFixed(2))
                           )}

@@ -159,6 +159,17 @@ export function buildNFePreviewXml(
       },
     };
 
+  // REGRA DE HOMOLOGAÇÃO:
+  // Se não for produção, o nome do destinatário deve ser fixo conforme norma.
+  if (empresa.ambiente !== 'PRODUCAO') {
+    // Clonamos para não afetar o objeto original (se passado por referência)
+    // Nota: endereco e outros sub-objetos ainda são referencias, mas razaoSocial é primitivo.
+    // Como dest é const, precisamos garantir que podemos alterar ou redefinir.
+    // Aqui estamos alterando a PROPRIEDADE do objeto referenciado por dest.
+    dest.razaoSocial = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
+  }
+
+
   // Se itensOverride não for passado, usa o item de teste (compatibilidade)
   const itensBase: NFeItem[] =
     itensOverride && itensOverride.length > 0

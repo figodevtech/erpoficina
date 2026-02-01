@@ -550,6 +550,9 @@ export default function RegisterContent({
                           onChange={(e) =>
                             updateItem(index, "cfop", e.target.value || null)
                           }
+                          maxLength={4}
+                          inputMode="numeric"
+                          placeholder="5102"
                         />
                       </div>
 
