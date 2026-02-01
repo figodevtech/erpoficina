@@ -11,7 +11,7 @@ import { buildNFePreviewXml } from "@/lib/nfe/buildNFe";
 import { carregarCertificadoA1 } from "@/lib/nfe/certificado";
 import { assinarNFeXml } from "@/lib/nfe/assinatura";
 import { buildEnviNFeXml } from "@/lib/nfe/enviNFe";
-import type { ClienteRow, EmpresaRow, NFeItem } from "@/lib/nfe/types";
+import type { ClienteRow, EmpresaRow, NFeItem, NFeDestinatario } from "@/lib/nfe/types";
 import { mapClienteToDestinatario } from "@/lib/nfe/mapClienteToDestinatario";
 
 export const runtime = "nodejs";
@@ -213,7 +213,11 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     // -------------------------------------------------------------------
     // 4) Buscar cliente destinatario (cliente da OS vinculado a esta NF-e)
     // -------------------------------------------------------------------
-    if (!nfe.clienteid) {
+    let destinatario: NFeDestinatario | undefined;
+
+
+    if (!nfe.clienteid && !nfe.entradaid) {
+      console.log("[nfe] NF-e sem cliente associado (clienteid nulo)", nfe);
       return NextResponse.json(
         {
           ok: false,
@@ -223,10 +227,11 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       );
     }
 
-    const { data: cliente, error: clienteError } = await supabaseAdmin
-      .from("cliente")
-      .select(
-        `
+    if (nfe.clienteid) {
+      const { data: cliente, error: clienteError } = await supabaseAdmin
+        .from("cliente")
+        .select(
+          `
         id,
         cpfcnpj,
         nomerazaosocial,
@@ -243,30 +248,36 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
         inscricaomunicipal,
         codigomunicipio
       `
-      )
-      .eq("id", nfe.clienteid)
-      .single<ClienteRow>();
+        )
+        .eq("id", nfe.clienteid)
+        .single<ClienteRow>();
 
-    if (clienteError) {
-      console.error("[cliente] erro ao buscar cliente da NF-e:", clienteError);
-      return NextResponse.json(
-        {
-          ok: false,
-          mensagem: "Erro ao buscar cliente da NF-e",
-          detalhe: clienteError.message,
-        },
-        { status: 500 }
-      );
+      if (clienteError) {
+        console.error(
+          "[cliente] erro ao buscar cliente da NF-e:",
+          clienteError
+        );
+        return NextResponse.json(
+          {
+            ok: false,
+            mensagem: "Erro ao buscar cliente da NF-e",
+            detalhe: clienteError.message,
+          },
+          { status: 500 }
+        );
+      }
+
+      if (!cliente && !nfe.entradaid) {
+        return NextResponse.json(
+          { ok: false, mensagem: "Cliente da NF-e nao encontrado" },
+          { status: 404 }
+        );
+      }
+
+      if (cliente) {
+        destinatario = mapClienteToDestinatario(cliente, empresa);
+      }
     }
-
-    if (!cliente) {
-      return NextResponse.json(
-        { ok: false, mensagem: "Cliente da NF-e nao encontrado" },
-        { status: 404 }
-      );
-    }
-
-    const destinatario = mapClienteToDestinatario(cliente, empresa);
 
     // -------------------------------------------------------------------
     // 5) Buscar itens da NF-e em nfe_item
@@ -348,18 +359,18 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     let xmlSemAssinatura = xmlRascunhoSalvo;
 
     // Se nÇœo houver XML salvo, gera um novo com base nos itens atuais
-    if (!xmlSemAssinatura) {
-      const { xml: xmlGerado, chave: chaveGerada, id } = buildNFePreviewXml(
-        empresa,
-        numeroNota,
-        serie,
-        itens,
-        destinatario
-      );
-      xmlSemAssinatura = xmlGerado;
-      if (!chave) chave = chaveGerada;
-      if (!idNFeXml) idNFeXml = id;
-    }
+    // if (!xmlSemAssinatura) {
+    //   const { xml: xmlGerado, chave: chaveGerada, id } = buildNFePreviewXml(
+    //     empresa,
+    //     numeroNota,
+    //     serie,
+    //     itens,
+    //     destinatario
+    //   );
+    //   xmlSemAssinatura = xmlGerado;
+    //   if (!chave) chave = chaveGerada;
+    //   if (!idNFeXml) idNFeXml = id;
+    // }
 
     // -------------------------------------------------------------------
     // 7) Carregar certificado A1 (chave privada + certificado em PEM)

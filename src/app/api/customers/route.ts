@@ -170,11 +170,11 @@ export async function POST(req: Request) {
       telefone: normalizeString(json.telefone ?? null),
       endereco: normalizeString(json.endereco ?? null),
       cidade: normalizeString(json.cidade ?? null),
+      codigomunicipio: normalizeString(json.codigomunicipio ?? null),
       estado: normalizeUF(json.estado ?? null),
       cep: onlyDigits(json.cep ?? null) || null,
       inscricaoestadual: normalizeString(json.inscricaoestadual ?? null),
       inscricaomunicipal: normalizeString(json.inscricaomunicipal ?? null),
-      codigomunicipio: normalizeString(json.codigomunicipio ?? null),
       status: (normalizeString(json.status ?? null) as Status | null) ?? null,
     };
 
@@ -182,20 +182,19 @@ export async function POST(req: Request) {
       .from("cliente")
       .insert(payload)
       .select(
-         `
+        `
         ${CLIENTE_FIELDS},
         veiculos:veiculo ( ${VEICULO_FIELDS} )
         `
-        )
+      )
       .single();
 
     if (error) {
       // Trata violações de unicidade (cpfcnpj/email/telefone/nomerazaosocial)
       if ((error as any).code === "23505") {
         // Tenta extrair o nome da constraint da mensagem/detalhes
-        const raw = `${(error as any).message ?? ""} ${
-          (error as any).details ?? ""
-        }`;
+        const raw = `${(error as any).message ?? ""} ${(error as any).details ?? ""
+          }`;
         const constraint =
           // padrão comum: Duplicate key value violates unique constraint "cliente_email_key"
           raw.match(/unique constraint "([^"]+)"/i)?.[1] ||

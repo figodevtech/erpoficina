@@ -117,13 +117,13 @@ export default function EditContent({ customerId }: EditContentProps) {
   const [transferindo, setTransferindo] = useState(false);
 
   function validarEmailDigitado(email: string): boolean {
-    if(!email) return false;
-  const valor = email.trim();
+    if (!email) return false;
+    const valor = email.trim();
 
-  // Mesmo regex usado na constraint (case-insensitive)
-  const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    // Mesmo regex usado na constraint (case-insensitive)
+    const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 
-  return regex.test(valor);
+    return regex.test(valor);
   }
 
 
@@ -175,6 +175,7 @@ export default function EditContent({ customerId }: EditContentProps) {
             telefone: `${juridica.estabelecimento.ddd1}${juridica.estabelecimento.telefone1}`,
             estado: juridica.estabelecimento.estado.sigla,
             cidade: juridica.estabelecimento.cidade.nome,
+            codigomunicipio: String(juridica.estabelecimento.cidade.codigo_ibge),
             endereco: juridica.estabelecimento.logradouro,
             enderecocomplemento: juridica.estabelecimento.complemento,
             bairro: juridica.estabelecimento.bairro,
@@ -222,6 +223,7 @@ export default function EditContent({ customerId }: EditContentProps) {
             ...selectedCustomer,
             endereco: enderecoResponse.logradouro,
             cidade: enderecoResponse.localidade,
+            codigomunicipio: enderecoResponse.ibge,
             estado: enderecoResponse.uf,
             bairro: enderecoResponse.bairro,
           });
@@ -239,8 +241,8 @@ export default function EditContent({ customerId }: EditContentProps) {
   };
 
   const handleUpdateCustomer = async () => {
-    
-    if(!validarEmailDigitado(selectedCustomer?.email || "")){
+
+    if (!validarEmailDigitado(selectedCustomer?.email || "")) {
       toast.warning("Insira um email válido")
       return
     }
@@ -741,8 +743,8 @@ export default function EditContent({ customerId }: EditContentProps) {
                         >
                           {selectedCustomer.estado
                             ? ESTADOS_BRASIL.find(
-                                (estado) => estado === selectedCustomer.estado
-                              )
+                              (estado) => estado === selectedCustomer.estado
+                            )
                             : "Selecione..."}
                           <ChevronsUpDown className="opacity-50" />
                         </Button>
@@ -815,14 +817,14 @@ export default function EditContent({ customerId }: EditContentProps) {
                         >
                           {selectedCustomer.cidade
                             ? cidades.find(
-                                (cidade) =>
-                                  cidade.nome === selectedCustomer.cidade
-                              )?.nome
+                              (cidade) =>
+                                cidade.nome === selectedCustomer.cidade
+                            )?.nome
                             : loading
-                            ? "Carregando..."
-                            : selectedCustomer.estado
-                            ? "Selecione..."
-                            : "Selecione o estado"}
+                              ? "Carregando..."
+                              : selectedCustomer.estado
+                                ? "Selecione..."
+                                : "Selecione o estado"}
                           <ChevronsUpDown className="opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -837,7 +839,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                         <Command>
                           <CommandInput
                             placeholder="Buscar cidade..."
-                            className="h-9 text-base" 
+                            className="h-9 text-base"
                           />
                           <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
                             <CommandEmpty>
@@ -851,10 +853,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                                   className="hover:cursor-pointer"
                                   key={cidade.id}
                                   value={cidade.nome}
-                                  onSelect={(currentValue) => {
+                                  onSelect={() => {
                                     setselectedCustomer({
                                       ...selectedCustomer,
-                                      cidade: currentValue,
+                                      cidade: cidade.nome,
+                                      codigomunicipio: String(cidade.id),
                                     });
                                     setOpen(false);
                                   }}
@@ -1040,7 +1043,7 @@ export default function EditContent({ customerId }: EditContentProps) {
                             <div className="flex flex-col text-left gap-1 md:hidden text-xs">
                               <span className="font-medium">
 
-                            {vehicle.marca}/{vehicle.modelo}
+                                {vehicle.marca}/{vehicle.modelo}
                               </span>
                               <span className="text-muted-foreground">
                                 {vehicle.placa} - {vehicle.ano} - {vehicle.cor}

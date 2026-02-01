@@ -105,6 +105,7 @@ export default function RegisterContent({
           ...newCustomer,
           endereco: enderecoResponse.logradouro,
           cidade: enderecoResponse.localidade,
+          codigomunicipio: String(enderecoResponse.ibge),
           estado: enderecoResponse.uf,
           bairro: enderecoResponse.bairro,
         });
@@ -123,7 +124,7 @@ export default function RegisterContent({
   const handleGetCNPJ = async () => {
     if (newCustomer.cpfcnpj.length < 14) {
       toast.warning("CPF inválido para consulta de CNPJ");
-      
+
       return;
     }
     setIsLoadingCNPJ(true);
@@ -143,6 +144,7 @@ export default function RegisterContent({
           telefone: `${juridica.estabelecimento.ddd1}${juridica.estabelecimento.telefone1}`,
           estado: juridica.estabelecimento.estado.sigla,
           cidade: juridica.estabelecimento.cidade.nome,
+          codigomunicipio: String(juridica.estabelecimento.cidade.ibge_id),
           endereco: juridica.estabelecimento.logradouro,
           enderecocomplemento: juridica.estabelecimento.complemento,
           bairro: juridica.estabelecimento.bairro,
@@ -171,21 +173,21 @@ export default function RegisterContent({
     }
   };
 
-   function validarEmailDigitado(email: string): boolean {
-    if(!email) return false;
-  const valor = email.trim();
+  function validarEmailDigitado(email: string): boolean {
+    if (!email) return false;
+    const valor = email.trim();
 
-  // Mesmo regex usado na constraint (case-insensitive)
-  const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    // Mesmo regex usado na constraint (case-insensitive)
+    const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 
-  return regex.test(valor);
+    return regex.test(valor);
   }
 
   const handleCreateCustomer = async () => {
-    if(!validarEmailDigitado(newCustomer?.email || "")){
-          toast.warning("Insira um email válido")
-          return
-        }
+    if (!validarEmailDigitado(newCustomer?.email || "")) {
+      toast.warning("Insira um email válido")
+      return
+    }
     setIsSubmitting(true);
     try {
       const response = await axios.post("/api/customers", {
@@ -203,24 +205,24 @@ export default function RegisterContent({
         }
         onRegister?.(response.data.data);
         setNewCustomer({
-            tipopessoa: "FISICA",
-            cpfcnpj: "",
-            nomerazaosocial: "",
-            email: "",
-            bairro:"",
-            telefone: "",
-            endereco: "",
-            enderecocomplemento: "",
-            endereconumero: "",
-            cidade: "",
-            estado: "",
-            cep: "",
-            inscricaoestadual: "",
-            inscricaomunicipal: "",
-            codigomunicipio: "",
-            status: "ATIVO",
-            foto: "",
-          });
+          tipopessoa: "FISICA",
+          cpfcnpj: "",
+          nomerazaosocial: "",
+          email: "",
+          bairro: "",
+          telefone: "",
+          endereco: "",
+          enderecocomplemento: "",
+          endereconumero: "",
+          cidade: "",
+          estado: "",
+          cep: "",
+          inscricaoestadual: "",
+          inscricaomunicipal: "",
+          codigomunicipio: "",
+          status: "ATIVO",
+          foto: "",
+        });
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -250,6 +252,10 @@ export default function RegisterContent({
       handleGetCNPJ();
     }
   }, [newCustomer.cpfcnpj]);
+
+  useEffect(() => {
+    console.log(newCustomer)
+  }, [newCustomer])
   return (
     // <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
     <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
@@ -541,17 +547,17 @@ export default function RegisterContent({
                     >
                       {newCustomer.estado
                         ? ESTADOS_BRASIL.find(
-                            (estado) => estado === newCustomer.estado
-                          )
+                          (estado) => estado === newCustomer.estado
+                        )
                         : "Selecione..."}
                       <ChevronsUpDown className="opacity-50" />
                     </Button>
                   </PopoverTrigger>
 
                   <PopoverContent
-                  onWheel={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        onOpenAutoFocus={(e) => e.preventDefault()}
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
                     className="w-[200px] p-0"
                     onWheelCapture={(e) => e.stopPropagation()}
                   >
@@ -614,21 +620,21 @@ export default function RegisterContent({
                     >
                       {newCustomer.cidade
                         ? cidades.find(
-                            (cidade) => cidade.nome === newCustomer.cidade
-                          )?.nome
+                          (cidade) => cidade.nome === newCustomer.cidade
+                        )?.nome
                         : loading
-                        ? "Carregando..."
-                        : newCustomer.estado
-                        ? "Selecione..."
-                        : "Selecione o estado"}
+                          ? "Carregando..."
+                          : newCustomer.estado
+                            ? "Selecione..."
+                            : "Selecione o estado"}
                       <ChevronsUpDown className="opacity-50" />
                     </Button>
                   </PopoverTrigger>
 
                   <PopoverContent
-                  onWheel={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        onOpenAutoFocus={(e) => e.preventDefault()}
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
                     className="w-[200px] p-0"
                     onWheelCapture={(e) => e.stopPropagation()}
                   >
@@ -644,29 +650,29 @@ export default function RegisterContent({
                         <CommandGroup>
                           {cidades.map((cidade) => (
                             <CommandItem
-                              className="hover:cursor-pointer"
                               key={cidade.id}
-                              value={cidade.nome}
-                              onSelect={(currentValue) => {
+                              value={cidade.nome} // ✅ string (serve pra busca também)
+                              onSelect={() => {
                                 setNewCustomer({
                                   ...newCustomer,
-                                  cidade: currentValue,
+                                  cidade: cidade.nome,
+                                  codigomunicipio: String(cidade.id), // ✅ mantém consistente com seu estado inicial ""
                                 });
                                 setOpen(false);
                               }}
+                              className="hover:cursor-pointer"
                             >
                               {cidade.nome}
                               <Check
                                 className={cn(
                                   "ml-auto",
-                                  newCustomer.cidade === cidade.nome
-                                    ? "opacity-100"
-                                    : "opacity-0"
+                                  newCustomer.cidade === cidade.nome ? "opacity-100" : "opacity-0"
                                 )}
                               />
                             </CommandItem>
                           ))}
                         </CommandGroup>
+
                       </CommandList>
                     </Command>
                   </PopoverContent>

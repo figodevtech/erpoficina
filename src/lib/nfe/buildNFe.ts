@@ -35,7 +35,7 @@ function formatDateTimeNFe(date: Date): string {
 
   const offsetHours = pad(Math.floor(total / 60));
   const offsetMins = pad(total % 60);
-  const sign = offsetMinutes > 0 ? '-' : '+'; 
+  const sign = offsetMinutes > 0 ? '-' : '+';
   // em Fortaleza: offsetMinutes = 180 => sign = '-' => "-03:00"
 
   return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${sign}${offsetHours}:${offsetMins}`;
@@ -161,18 +161,18 @@ export function buildNFePreviewXml(
     itensOverride && itensOverride.length > 0
       ? itensOverride
       : [
-          {
-            numeroItem: 1,
-            codigoProduto: '001',
-            descricao: 'PECA TESTE',
-            ncm: '61091000', // NCM exemplo - AJUSTAR DEPOIS
-            cfop: '5102', // venda dentro do estado
-            unidade: 'UN',
-            quantidade: 1,
-            valorUnitario: 100.0,
-            valorTotal: 100.0,
-          },
-        ];
+        {
+          numeroItem: 1,
+          codigoProduto: '001',
+          descricao: 'PECA TESTE',
+          ncm: '61091000', // NCM exemplo - AJUSTAR DEPOIS
+          cfop: '5102', // venda dentro do estado
+          unidade: 'UN',
+          quantidade: 1,
+          valorUnitario: 100.0,
+          valorTotal: 100.0,
+        },
+      ];
 
   // Garante nº do item em cada item
   const itens: NFeItem[] = itensBase.map((item, index) => ({
@@ -264,12 +264,19 @@ export function buildNFePreviewXml(
 
   const infAdicXml =
     '<infAdic>' +
-    `<infCpl>${
-        options?.natOp 
-            ? `NF-e de ${options.natOp.toLowerCase()}.` 
-            : 'NF-e de venda de mercadoria.'
+    `<infCpl>${options?.natOp
+      ? `NF-e de ${options.natOp.toLowerCase()}.`
+      : 'NF-e de venda de mercadoria.'
     }</infCpl>` +
     '</infAdic>';
+
+  const infRespTec =
+    '<infRespTec>' +
+    '<CNPJ>58598900000162</CNPJ>' +
+    '<xContato>FIGO Softwares</xContato>' +
+    '<email>figo.devtech@gmail.com</email>' +
+    '<fone>83987872668</fone>' +
+    '</infRespTec>';
 
   const infNFeXml =
     `<infNFe Id="${id}" versao="4.00">` +
@@ -281,6 +288,7 @@ export function buildNFePreviewXml(
     transpXml +
     pagXml +
     infAdicXml +
+    infRespTec +
     '</infNFe>';
 
   const nfeXml =
