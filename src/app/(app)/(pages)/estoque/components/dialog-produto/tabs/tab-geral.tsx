@@ -3,7 +3,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +20,7 @@ import { onlyDigits } from "../lib/utils";
 import { ESTOQUE_STATUS_BADGES } from "../lib/options-fiscais";
 import type { UnidadeFromApi } from "../hooks/use-unidades-medida";
 import { GrupoFromApi } from "../hooks/use-grupo-produtos";
+import { TagInput } from "../tag-input";
 
 type Props = {
   mode: "create" | "edit";
@@ -47,12 +54,17 @@ export function TabGeral({
   const qtdReferencia = (produto.referencia ?? "").length;
 
   return (
-    <TabsContent value="Geral" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+    <TabsContent
+      value="Geral"
+      className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+    >
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
         <div className="flex items-center space-x-4">
           <div className="flex flex-nowrap space-x-2">
             <Label htmlFor="status_estoque">Status do Estoque:</Label>
-            {ESTOQUE_STATUS_BADGES.filter((s) => s.value === produto.status_estoque).map((s) => (
+            {ESTOQUE_STATUS_BADGES.filter(
+              (s) => s.value === produto.status_estoque,
+            ).map((s) => (
               <Badge key={s.value} variant={s.badge}>
                 {s.value}
               </Badge>
@@ -61,13 +73,20 @@ export function TabGeral({
 
           <div className="flex flex-nowrap space-x-2">
             <Label>Grupo:</Label>
-            <Select value={produto.grupo_produto_id?.toString() || "OUTROS"} onValueChange={(v) => onChange("grupo_produto_id", v)}>
+            <Select
+              value={produto.grupo_produto_id?.toString() || "OUTROS"}
+              onValueChange={(v) => onChange("grupo_produto_id", v)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
                 {grupos.map((g) => (
-                  <SelectItem className="hover:cursor-pointer" key={g.id} value={g.id.toString()}>
+                  <SelectItem
+                    className="hover:cursor-pointer"
+                    key={g.id}
+                    value={g.id.toString()}
+                  >
                     {g.nome}
                   </SelectItem>
                 ))}
@@ -90,7 +109,9 @@ export function TabGeral({
             id="titulo"
             value={produto.titulo || ""}
             onChange={(e) => onChange("titulo", e.target.value)}
-            placeholder={mode === "edit" ? "Nome comercial / vitrine" : "Título interno"}
+            placeholder={
+              mode === "edit" ? "Nome comercial / vitrine" : "Título interno"
+            }
             maxLength={LIMITE_TITULO}
           />
         </div>
@@ -117,13 +138,13 @@ export function TabGeral({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-            <Label htmlFor="fabricante">Fabricante</Label>
-            <span
-              className={`text-xs ${qtdFabricante >= LIMITE_FABRICANTE ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              {qtdFabricante}/{LIMITE_FABRICANTE}
-            </span>
-          </div>
+              <Label htmlFor="fabricante">Fabricante</Label>
+              <span
+                className={`text-xs ${qtdFabricante >= LIMITE_FABRICANTE ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {qtdFabricante}/{LIMITE_FABRICANTE}
+              </span>
+            </div>
             <Input
               id="fabricante"
               value={(produto as any).fabricante || ""}
@@ -132,15 +153,15 @@ export function TabGeral({
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <div className="flex justify-between items-center">
-            <Label htmlFor="referencia">Referência</Label>
-            <span
-              className={`text-xs ${qtdReferencia >= LIMITE_REFERENCIA ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              {qtdReferencia}/{LIMITE_REFERENCIA}
-            </span>
-          </div>
+              <Label htmlFor="referencia">Referência</Label>
+              <span
+                className={`text-xs ${qtdReferencia >= LIMITE_REFERENCIA ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {qtdReferencia}/{LIMITE_REFERENCIA}
+              </span>
+            </div>
             <Input
               id="referencia"
               value={produto.referencia || ""}
@@ -148,6 +169,41 @@ export function TabGeral({
               placeholder="SKU / Referência interna"
               maxLength={LIMITE_REFERENCIA}
             />
+          </div> */}
+          <div className="space-y-2">
+            <Label htmlFor="unidade">Unidade</Label>
+            <Select
+              value={produto.unidade || undefined}
+              onValueChange={(v) => onChange("unidade", v as Unidade_medida)}
+              disabled={loadingUnidades || !!errorUnidades}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    loadingUnidades
+                      ? "Carregando..."
+                      : errorUnidades
+                        ? "Erro ao carregar"
+                        : "Selecione"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {unidades.map((u) => (
+                  <SelectItem
+                    key={u.id}
+                    value={u.sigla as Unidade_medida}
+                    className="hover:cursor-pointer"
+                  >
+                    {u.sigla}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {errorUnidades && (
+              <p className="mt-1 text-xs text-destructive">{errorUnidades}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -155,7 +211,9 @@ export function TabGeral({
             <Input
               id="codigobarras"
               value={produto.codigobarras || ""}
-              onChange={(e) => onChange("codigobarras", onlyDigits(e.target.value))}
+              onChange={(e) =>
+                onChange("codigobarras", onlyDigits(e.target.value))
+              }
               placeholder="7891234567890"
               inputMode="numeric"
               maxLength={14}
@@ -166,37 +224,31 @@ export function TabGeral({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="precovenda">Valor de Venda (Unitário)</Label>
-            <ValueInput price={produto.precovenda} setPrice={(v) => onChange("precovenda", v)} />
+            <ValueInput
+              price={produto.precovenda}
+              setPrice={(v) => onChange("precovenda", v)}
+            />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="precocompra">Valor Médio de Compra (Unitário)</Label>
-            <ValueInput price={produto.precocompra} setPrice={(v) => onChange("precocompra", v)} />
+            <Label htmlFor="precocompra">
+              Valor Médio de Compra (Unitário)
+            </Label>
+            <ValueInput
+              price={produto.precocompra}
+              setPrice={(v) => onChange("precocompra", v)}
+            />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="unidade">Unidade</Label>
-            <Select
-              value={produto.unidade || undefined}
-              onValueChange={(v) => onChange("unidade", v as Unidade_medida)}
-              disabled={loadingUnidades || !!errorUnidades}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={loadingUnidades ? "Carregando..." : errorUnidades ? "Erro ao carregar" : "Selecione"}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {unidades.map((u) => (
-                  <SelectItem key={u.id} value={u.sigla as Unidade_medida} className="hover:cursor-pointer">
-                    {u.sigla}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {errorUnidades && <p className="mt-1 text-xs text-destructive">{errorUnidades}</p>}
-          </div>
+          
         </div>
+          <div className="space-y-2 sm:col-span-4">
+            <Label htmlFor="referencia">Referência</Label>
+            <TagInput
+              value={produto.referencia?.length && produto.referencia.length > 0 ? produto.referencia.split(" ") : []}
+              onChange={(tags) => onChange("referencia", tags.join(" "))}
+              placeholder="Adicione tags"
+            />
+          </div>
 
         {showDates ? (
           <>
@@ -204,11 +256,15 @@ export function TabGeral({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-nowrap">
               <div className="space-x-1 flex items-center text-muted-foreground text-xs">
                 <Label>Criado em:</Label>
-                <span className="text-muted-foreground">{formatDate((produto as any).createdat)}</span>
+                <span className="text-muted-foreground">
+                  {formatDate((produto as any).createdat)}
+                </span>
               </div>
               <div className="space-x-1 flex items-center text-muted-foreground text-xs">
                 <Label>Última modificação:</Label>
-                <span className="text-muted-foreground">{formatDate((produto as any).updatedat)}</span>
+                <span className="text-muted-foreground">
+                  {formatDate((produto as any).updatedat)}
+                </span>
               </div>
             </div>
           </>
