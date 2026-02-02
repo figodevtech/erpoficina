@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "../entrada-valor";
-import { Grupo_produto, Produto, Unidade_medida } from "../../../types";
+import { Produto, Unidade_medida } from "../../../types";
 import { formatDate } from "@/utils/formatDate";
 import { onlyDigits } from "../lib/utils";
 import { ESTOQUE_STATUS_BADGES } from "../lib/options-fiscais";
@@ -36,6 +36,16 @@ export function TabGeral({
   errorUnidades,
   showDates,
 }: Props) {
+  const LIMITE_TITULO = 100;
+  const LIMITE_DESCRICAO = 300;
+  const LIMITE_FABRICANTE = 50;
+  const LIMITE_REFERENCIA = 30;
+
+  const qtdTitulo = (produto.titulo ?? "").length;
+  const qtdDescricao = (produto.descricao ?? "").length;
+  const qtdFabricante = (produto.fabricante ?? "").length;
+  const qtdReferencia = (produto.referencia ?? "").length;
+
   return (
     <TabsContent value="Geral" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
@@ -67,28 +77,53 @@ export function TabGeral({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="titulo">Título *</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="titulo">Título *</Label>
+            <span
+              className={`text-xs ${qtdTitulo >= LIMITE_TITULO ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {qtdTitulo}/{LIMITE_TITULO}
+            </span>
+          </div>
+
           <Input
             id="titulo"
             value={produto.titulo || ""}
             onChange={(e) => onChange("titulo", e.target.value)}
             placeholder={mode === "edit" ? "Nome comercial / vitrine" : "Título interno"}
+            maxLength={LIMITE_TITULO}
           />
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="descricao">Descrição</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="descricao">Descrição</Label>
+            <span
+              className={`text-xs ${qtdDescricao >= LIMITE_DESCRICAO ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {qtdDescricao}/{LIMITE_DESCRICAO}
+            </span>
+          </div>
+
           <Textarea
             id="descricao"
             value={produto.descricao || ""}
             onChange={(e) => onChange("descricao", e.target.value)}
             placeholder="Descrição do produto"
+            maxLength={LIMITE_DESCRICAO}
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
+            <div className="flex justify-between items-center">
             <Label htmlFor="fabricante">Fabricante</Label>
+            <span
+              className={`text-xs ${qtdFabricante >= LIMITE_FABRICANTE ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {qtdFabricante}/{LIMITE_FABRICANTE}
+            </span>
+          </div>
             <Input
               id="fabricante"
               value={(produto as any).fabricante || ""}
@@ -98,12 +133,20 @@ export function TabGeral({
           </div>
 
           <div className="space-y-2">
+            <div className="flex justify-between items-center">
             <Label htmlFor="referencia">Referência</Label>
+            <span
+              className={`text-xs ${qtdReferencia >= LIMITE_REFERENCIA ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {qtdReferencia}/{LIMITE_REFERENCIA}
+            </span>
+          </div>
             <Input
               id="referencia"
               value={produto.referencia || ""}
               onChange={(e) => onChange("referencia", e.target.value)}
               placeholder="SKU / Referência interna"
+              maxLength={LIMITE_REFERENCIA}
             />
           </div>
 

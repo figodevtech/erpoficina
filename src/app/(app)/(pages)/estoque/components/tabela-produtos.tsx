@@ -328,7 +328,7 @@ export default function TabelaProdutos({
                             </Tooltip>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground max-w-[350px] truncate">
                           {p.unidade || "-"}
                           {p.fabricante ? ` • ${p.fabricante}` : "-"}
                         </p>
@@ -339,8 +339,8 @@ export default function TabelaProdutos({
                     </div>
                   </TableCell>
 
-                  <TableCell className="font-mono text-xs">{p.referencia || "-"}</TableCell>
-                  <TableCell>{p.fabricante || "-"}</TableCell>
+                  <TableCell className="font-mono text-xs max-w-[300px] truncate">{p.referencia || "-"}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{p.fabricante || "-"}</TableCell>
 
                   <TableCell className="font-medium">{p.estoque ?? 0}</TableCell>
                   <TableCell className="text-muted-foreground">{p.estoqueminimo ?? 0}</TableCell>
