@@ -170,6 +170,21 @@ export function TabGeral({
               maxLength={LIMITE_REFERENCIA}
             />
           </div> */}
+          
+
+          <div className="space-y-2">
+            <Label htmlFor="codigobarras">Código de Barras</Label>
+            <Input
+              id="codigobarras"
+              value={produto.codigobarras || ""}
+              onChange={(e) =>
+                onChange("codigobarras", onlyDigits(e.target.value))
+              }
+              placeholder="7891234567890"
+              inputMode="numeric"
+              maxLength={14}
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="unidade">Unidade</Label>
             <Select
@@ -204,20 +219,6 @@ export function TabGeral({
             {errorUnidades && (
               <p className="mt-1 text-xs text-destructive">{errorUnidades}</p>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="codigobarras">Código de Barras</Label>
-            <Input
-              id="codigobarras"
-              value={produto.codigobarras || ""}
-              onChange={(e) =>
-                onChange("codigobarras", onlyDigits(e.target.value))
-              }
-              placeholder="7891234567890"
-              inputMode="numeric"
-              maxLength={14}
-            />
           </div>
         </div>
 
