@@ -20,6 +20,8 @@ export const PERMS = {
   ACOMPANHAMENTO: "ACOMPANHAMENTO_ACESSO",
 
   VENDAS: "VENDAS_ACESSO",
+
+  VEICULOS: "VEICULOS_ACESSO",
 } as const;
 
 export type Permission = (typeof PERMS)[keyof typeof PERMS];
@@ -186,3 +188,11 @@ export async function hasVendasAccess() {
 export async function requireVendasAccess() {
   return requirePerm(PERMS.VENDAS);
 }
+
+export async function hasVeiculosAccess() {
+  return hasPerm(PERMS.VEICULOS);
+}
+export async function requireVeiculosAccess() {
+  return requirePerm(PERMS.VEICULOS);
+}
+
