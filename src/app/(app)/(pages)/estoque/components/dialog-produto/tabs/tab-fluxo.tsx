@@ -7,11 +7,37 @@ import { TabsContent } from "@/components/ui/tabs";
 import { ChevronDown, Edit, Undo2 } from "lucide-react";
 import { Produto } from "../../../types";
 import { formatDate } from "@/utils/formatDate";
+import { useState } from "react";
+import { DialogEntradaGeral } from "../../dialog-entrada-geral/dialog-entrada-geral";
+import { set } from "nprogress";
+import { Receipt } from "lucide-react";
+import { EmissaoNotaDialog } from "@/app/(app)/(pages)/ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 
 export function TabFluxo({ produto }: { produto: Produto }) {
-  const entradas = (produto as any).entradas ?? [];
+  const entradas = (produto as any).entrada ?? [];
+  const [selectedEntradaId, setSelectedEntradaId] = useState<number | null>(null);
+  const [openDialogEntradaGeral, setOpenDialogEntradaGeral] = useState(false);
+  
+  const [nfeDialogEntradaId, setNfeDialogEntradaId] = useState<number | null>(null);
+  
   return (
     <TabsContent value="Fluxo" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+      <EmissaoNotaDialog 
+        open={!!nfeDialogEntradaId}
+        onOpenChange={(v) => !v && setNfeDialogEntradaId(null)}
+        entradaId={nfeDialogEntradaId}
+      />
+      <DialogEntradaGeral
+      selectedEntradaId={selectedEntradaId ?? undefined}
+      open={openDialogEntradaGeral}
+      onOpenChange={(v)=>{
+        if(!v){
+          setSelectedEntradaId(null)
+          setOpenDialogEntradaGeral(false)
+        }else{
+          setOpenDialogEntradaGeral(true)
+        }}}
+      />
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
         <div className="flex flex-row items-center justify-between">
           <span className="text-xs">Movimentações em estoque</span>
@@ -35,7 +61,7 @@ export function TabFluxo({ produto }: { produto: Produto }) {
                 <TableRow key={e.id} className="hover:cursor-pointer text-center">
                   <TableCell>{e.id}</TableCell>
                   <TableCell>{formatDate(e.created_at)}</TableCell>
-                  <TableCell>{e.fornecedor.nomerazaosocial}</TableCell>
+                  <TableCell>{e.entradainfo.fornecedor.nomerazaosocial}</TableCell>
                   <TableCell className="text-green-600 font-bold">+ {e.quantidade}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -45,13 +71,22 @@ export function TabFluxo({ produto }: { produto: Produto }) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
-                        <Button variant={"ghost"} className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer">
+                        <Button onClick={()=>{
+                          setSelectedEntradaId(e.entradainfo.id)
+                          setOpenDialogEntradaGeral(true)
+                        }} variant={"ghost"} className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer">
                           <Edit className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Editar</span>
                         </Button>
                         <Button className="size-full flex justify-start gap-5 bg-red-500/50 hover:bg-red-500 px-0 rounded-sm py-2 hover:cursor-pointer">
                           <Undo2 className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Cancelar Entrada</span>
+                        </Button>
+                        <Button onClick={()=>{
+                          setNfeDialogEntradaId(e.entradainfo.id)
+                        }} variant={"ghost"} className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer">
+                          <Receipt className="-ml-1 -mr-1 h-4 w-4 text-emerald-500" />
+                          <span>Emitir Nota</span>
                         </Button>
                       </DropdownMenuContent>
                     </DropdownMenu>

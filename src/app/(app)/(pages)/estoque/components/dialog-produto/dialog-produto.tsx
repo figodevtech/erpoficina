@@ -73,6 +73,7 @@ export function DialogProduto({
         <EdicaoProduto key={productId} productId={productId} onAfterSaveProduct={onAfterSaveProduct} />
       ) : (
         <CadastroProduto
+        onAfterSaveProduct={onAfterSaveProduct}
           handleSearchFornecedor={handleSearchFornecedor}
           setSelectedProductId={setSelectedProductId}
           newProduct={newProduct}

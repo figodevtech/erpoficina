@@ -37,7 +37,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
 import formatarEmReal from "@/utils/formatarEmReal";
-import { se } from "date-fns/locale";
 import { DialogProduto } from "../(pages)/estoque/components/dialog-produto/dialog-produto";
 
 interface ProductSelectProps {
@@ -74,7 +73,7 @@ export default function ProductSelect({
   ) => {
     setIsLoading(true);
     try {
-      const response = await axios.get("/api/products", {
+      const response = await axios.get("/api/products/select", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
@@ -171,12 +170,12 @@ export default function ProductSelect({
                 } `}
               ></div>
             </div>
-            <Table className="text-xs mt-6">
+            <Table className="text-[10px] mt-6">
               <TableHeader>
                 <TableRow>
                   <TableCell>ID</TableCell>
                   <TableCell>NOME</TableCell>
-                  <TableCell>FRABRICANTE</TableCell>
+                  <TableCell className="hidden md:table-cell">FRABRICANTE</TableCell>
                   <TableCell>ESTOQUE</TableCell>
                   <TableCell>VALOR</TableCell>
                 </TableRow>
@@ -200,9 +199,16 @@ export default function ProductSelect({
                   >
                     <TableCell>{p.id}</TableCell>
                     <TableCell className="max-w-[120px] truncate">
+                      <div className="flex flex-col md:hidden">
+                        <span>
                       {p.titulo}
+
+                        </span>
+                        <span>{p.fabricante}</span>
+                      </div>
+                      <span className="hidden md:block">{p.titulo}</span>
                     </TableCell>
-                    <TableCell>{p.fabricante || "-"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{p.fabricante || "-"}</TableCell>
                     <TableCell>{p.estoque}</TableCell>
                     <TableCell>{formatarEmReal(p.precovenda || 0)}</TableCell>
                   </TableRow>

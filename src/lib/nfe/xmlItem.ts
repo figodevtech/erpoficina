@@ -1,15 +1,6 @@
 // src/lib/nfe/xmlItem.ts
 import type { NFeItem } from './types';
-
-function escapeXml(value: string | number | undefined | null): string {
-  if (value === undefined || value === null) return '';
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+import { escapeXml } from './xmlUtils';
 
 function formatNumber(value: number, decimals: number): string {
   return value.toFixed(decimals);
@@ -43,6 +34,13 @@ export function buildDetXml(item: NFeItem, crt: string): string {
   partes.push(`<cEAN>${cEAN}</cEAN>`);
   partes.push(`<xProd>${escapeXml(item.descricao)}</xProd>`);
   partes.push(`<NCM>${escapeXml(item.ncm)}</NCM>`);
+
+  // CEST
+  if (item.cest && item.cest.trim() !== '') {
+    partes.push(`<CEST>${escapeXml(item.cest.replace(/\D/g, ''))}</CEST>`);
+  }
+
+
   partes.push(`<CFOP>${escapeXml(item.cfop)}</CFOP>`);
   partes.push(`<uCom>${escapeXml(item.unidade)}</uCom>`);
   partes.push(`<qCom>${qCom}</qCom>`);

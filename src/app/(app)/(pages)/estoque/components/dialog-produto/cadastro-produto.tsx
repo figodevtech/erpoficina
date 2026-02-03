@@ -4,7 +4,7 @@ import { TabsTrigger } from "@/components/ui/tabs";
 import { Save, Upload } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Grupo_produto, Produto } from "../../types";
+import { Estoque_status, Grupo_produto, Produto } from "../../types";
 import { ProductDialogLayout } from "./tabs/dialog-layout";
 import { TabGeral } from "./tabs/tab-geral";
 import { TabFiscal } from "./tabs/tab-fiscal";
@@ -13,7 +13,6 @@ import { TabImagensCreate } from "./tabs/tab-imagens-create";
 import { useUnidadesMedida } from "./hooks/use-unidades-medida";
 import { useEffect, useState } from "react";
 import { Unidade_medida } from "../../types";
-import { set } from "nprogress";
 import { useGruposProduto } from "./hooks/use-grupo-produtos";
 
 interface ConteudoCadastroProdutoProps {
@@ -21,17 +20,29 @@ interface ConteudoCadastroProdutoProps {
   newProduct: Produto;
   setNewProduct: (value: Produto) => void;
   handleSearchFornecedor?: () => void;
+  onAfterSaveProduct?: () => void;
 }
+
+const initialNewProduct: Produto = {
+  id: 0,
+  precovenda: 0,
+  status_estoque: Estoque_status.OK,
+  unidade: Unidade_medida.UN,
+  fornecedor: "DESCONHECIDO",
+  grupo_produto_id: 1,
+};
 
 export default function CadastroProduto({
   handleSearchFornecedor,
   setSelectedProductId,
   newProduct,
   setNewProduct,
+  onAfterSaveProduct,
 }: ConteudoCadastroProdutoProps) {
   const [salvando, setSalvando] = useState(false);
   const [imagensArquivos, setImagensArquivos] = useState<File[]>([]);
   const [imagensPreview, setImagensPreview] = useState<string[]>([]);
+  const [currentTab, setCurrentTab] = useState<string>("Geral");
   const { unidades, loadingUnidades, errorUnidades } = useUnidadesMedida();
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
 
@@ -55,24 +66,27 @@ export default function CadastroProduto({
     }
   }, [grupos]);
 
-
-
   const handlePickImages = (files: File[]) => {
     setImagensArquivos(files);
     setImagensPreview(files.map((f) => URL.createObjectURL(f)));
   };
 
-  const cadastrarProduto = async () => {
+  const cadastrarProduto = async (registerAgain?: boolean) => {
     setSalvando(true);
 
     const payload = { ...newProduct } as any;
     if (!payload.tituloMarketplace) payload.tituloMarketplace = payload.titulo;
 
     try {
-      const response = await axios.post("/api/products", { newProduct: payload });
+      const response = await axios.post("/api/products", {
+        newProduct: payload,
+      });
 
       if (response.status === 201) {
-        toast.success("Sucesso!", { description: "Produto cadastrado.", duration: 2000 });
+        toast.success("Sucesso!", {
+          description: "Produto cadastrado.",
+          duration: 2000,
+        });
 
         const produtoId = response.data.data.id as number;
 
@@ -88,23 +102,43 @@ export default function CadastroProduto({
           } catch (err) {
             console.error("Erro ao enviar imagens:", err);
             toast.error("Erro", {
-              description: "Produto criado, mas não foi possível enviar as imagens.",
+              description:
+                "Produto criado, mas não foi possível enviar as imagens.",
               duration: 2500,
             });
           }
         }
 
-        setSelectedProductId?.(produtoId);
-        handleSearchFornecedor?.();
+        if (registerAgain) {
+          setNewProduct(initialNewProduct);
+          setSelectedProductId?.(undefined);
 
-        setImagensArquivos([]);
-        setImagensPreview([]);
+          handleSearchFornecedor?.();
+
+          setImagensArquivos([]);
+          setImagensPreview([]);
+          setCurrentTab("Geral");
+          onAfterSaveProduct?.();
+        } else {
+          setSelectedProductId?.(produtoId);
+          handleSearchFornecedor?.();
+
+          setImagensArquivos([]);
+          setImagensPreview([]);
+          onAfterSaveProduct?.();
+        }
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        toast.error("Erro", { description: error.response?.data?.error ?? "Erro ao criar produto", duration: 2000 });
+        toast.error("Erro", {
+          description: error.response?.data?.error ?? "Erro ao criar produto",
+          duration: 2000,
+        });
       } else {
-        toast.error("Erro", { description: "Erro ao criar produto", duration: 2000 });
+        toast.error("Erro", {
+          description: "Erro ao criar produto",
+          duration: 2000,
+        });
       }
     } finally {
       setSalvando(false);
@@ -116,21 +150,39 @@ export default function CadastroProduto({
       title="Cadastro de Produtos"
       description="Preencha dados para registrar um novo produto"
       defaultTab="Geral"
-      submitLabel="Cadastrar Produto"
+      submitLabel2="Salvar e Continuar"
+      submitLabel="Salvar"
       submitting={salvando}
       onSubmit={cadastrarProduto}
+      currentTab={currentTab}
       tabs={
         <>
-          <TabsTrigger value="Geral" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Geral")}
+            value="Geral"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Geral
           </TabsTrigger>
-          <TabsTrigger value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Fiscal")}
+            value="Fiscal"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Fiscal
           </TabsTrigger>
-          <TabsTrigger value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Estoque")}
+            value="Estoque"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Estoque
           </TabsTrigger>
-          <TabsTrigger value="Imagens" className={"hover:cursor-pointer" + tabTheme}>
+          <TabsTrigger
+            onClick={() => setCurrentTab("Imagens")}
+            value="Imagens"
+            className={"hover:cursor-pointer" + tabTheme}
+          >
             Imagens
           </TabsTrigger>
         </>

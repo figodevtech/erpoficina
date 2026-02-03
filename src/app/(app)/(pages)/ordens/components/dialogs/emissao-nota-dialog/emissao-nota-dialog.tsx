@@ -74,6 +74,13 @@ type ListarNfeResponsePorVenda = {
   nfes: NfeResumo[];
 };
 
+type ListarNfeResponsePorEntrada = {
+  ok: boolean;
+  message?: string;
+  entradaId?: number;
+  nfes: NfeResumo[];
+};
+
 const nfeStatusClasses: Record<string, string> = {
   AUTORIZADA: "bg-emerald-600/15 text-emerald-400",
   REJEITADA: "bg-red-600/15 text-red-400",
@@ -129,6 +136,7 @@ export function EmissaoNotaDialog({
   onOpenChange,
   osId,
   vendaId,
+  entradaId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -138,21 +146,25 @@ export function EmissaoNotaDialog({
 
   /** opcional: uso na tela de venda */
   vendaId?: number | null;
+
+  /** opcional: uso na tela de entrada */
+  entradaId?: number | null;
 }) {
   const [loading, setLoading] = useState(false);
   const [nfes, setNfes] = useState<NfeResumo[] | null>(null);
   const [openGerarNfe, setOpenGerarNfe] = useState(false);
+  const [generatingEntryParams, setGeneratingEntryParams] = useState(false);
 
-  const origem = osId ? "OS" : vendaId ? "VENDA" : null;
-  const origemId = osId ?? vendaId ?? null;
+  const origem = osId ? "OS" : vendaId ? "VENDA" : entradaId ? "ENTRADA" : null;
+  const origemId = osId ?? vendaId ?? entradaId ?? null;
 
   const canFetch = open && !!origem && !!origemId;
 
   const endpointListar = useMemo(() => {
     if (!origem || !origemId) return null;
-    return origem === "OS"
-      ? `/api/nfe/por-os/${origemId}`
-      : `/api/nfe/por-venda/${origemId}`;
+    if (origem === "OS") return `/api/nfe/por-os/${origemId}`;
+    if (origem === "VENDA") return `/api/nfe/por-venda/${origemId}`;
+    return `/api/nfe/por-entrada/${origemId}`;
   }, [origem, origemId]);
 
   /**
@@ -171,6 +183,7 @@ export function EmissaoNotaDialog({
       const json = (await res.json().catch(() => null)) as
         | ListarNfeResponsePorOs
         | ListarNfeResponsePorVenda
+        | ListarNfeResponsePorEntrada
         | null;
 
       if (!res.ok || !json?.ok) {
@@ -211,10 +224,34 @@ export function EmissaoNotaDialog({
 
   const titulo = useMemo(() => {
     if (!origem || !origemId) return "Emissão de Nota Fiscal";
-    return origem === "OS"
-      ? `Emissão de Nota Fiscal - OS #${origemId}`
-      : `Emissão de Nota Fiscal - Venda #${origemId}`;
+    if (origem === "OS") return `Emissão de Nota Fiscal - OS #${origemId}`;
+    if (origem === "VENDA") return `Emissão de Nota Fiscal - Venda #${origemId}`;
+    return `Emissão de Nota Fiscal - Entrada #${origemId}`;
   }, [origem, origemId]);
+
+  const handleGerarNotaEntrada = async () => {
+      if (!entradaId) return;
+      try {
+          setGeneratingEntryParams(true);
+          const res = await fetch(`/api/nfe/de-entrada/${entradaId}/gerar-rascunho`, {
+              method: "POST"
+          });
+          const json = await res.json().catch(() => ({}));
+          
+          if (!res.ok || !json.ok) {
+              toast.error(json.message || "Erro ao gerar nota da entrada");
+              return;
+          }
+          
+          toast.success("Rascunho criado com sucesso!");
+          fetchNfes();
+      } catch (err) {
+          console.error(err);
+          toast.error("Erro ao gerar nota.");
+      } finally {
+          setGeneratingEntryParams(false);
+      }
+  };
 
   return (
     <Dialog
@@ -268,12 +305,19 @@ export function EmissaoNotaDialog({
                 </Button>
 
                 <Button
-                  disabled={loading}
+                  disabled={loading || generatingEntryParams}
                   variant="secondary"
-                  onClick={() => setOpenGerarNfe(true)}
+                  onClick={() => {
+                      if (origem === "ENTRADA") {
+                          handleGerarNotaEntrada();
+                      } else {
+                          setOpenGerarNfe(true);
+                      }
+                  }}
                   className="text-xs hover:cursor-pointer"
                 >
-                  <Plus /> Nova Nota
+                  {generatingEntryParams && <Loader2 className="animate-spin mr-2 h-3 w-3" />}
+                  <Plus className={generatingEntryParams ? "hidden" : ""} /> Nova Nota
                 </Button>
               </div>
             )}

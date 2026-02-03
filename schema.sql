@@ -115,6 +115,15 @@ CREATE TYPE "public"."enum_ambiente_nfe" AS ENUM (
 ALTER TYPE "public"."enum_ambiente_nfe" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."enum_canal_venda" AS ENUM (
+    'PDV',
+    'ONLINE'
+);
+
+
+ALTER TYPE "public"."enum_canal_venda" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."enum_estoque_status_produto" AS ENUM (
     'OK',
     'BAIXO',
@@ -175,6 +184,16 @@ CREATE TYPE "public"."enum_status_cliente" AS ENUM (
 ALTER TYPE "public"."enum_status_cliente" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."enum_status_entrada" AS ENUM (
+    'RASCUNHO',
+    'CONFIRMADA',
+    'CANCELADA'
+);
+
+
+ALTER TYPE "public"."enum_status_entrada" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."enum_status_nfe" AS ENUM (
     'RASCUNHO',
     'ASSINADA',
@@ -199,7 +218,8 @@ CREATE TYPE "public"."enum_status_os" AS ENUM (
     'APROVACAO_ORCAMENTO',
     'ORCAMENTO_APROVADO',
     'ORCAMENTO_RECUSADO',
-    'AGUARDANDO_CHECKLIST'
+    'AGUARDANDO_CHECKLIST',
+    'SEM_COBRANCA'
 );
 
 
@@ -210,7 +230,11 @@ CREATE TYPE "public"."enum_status_venda" AS ENUM (
     'ABERTA',
     'PAGAMENTO',
     'FINALIZADA',
-    'CANCELADA'
+    'CANCELADA',
+    'PENDENTE',
+    'PAGO',
+    'AUTORIZADO',
+    'CANCELADO'
 );
 
 
@@ -266,6 +290,16 @@ CREATE TYPE "public"."enum_tipopessoa" AS ENUM (
 
 
 ALTER TYPE "public"."enum_tipopessoa" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."enum_tipos_entrada" AS ENUM (
+    'COMPRA_FORNECEDOR',
+    'COMPRA_PF',
+    'DEVOLUCAO'
+);
+
+
+ALTER TYPE "public"."enum_tipos_entrada" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."estoque_status" AS ENUM (
@@ -1055,8 +1089,7 @@ ALTER FUNCTION "public"."fn_set_titulo_marketplace_product"() OWNER TO "postgres
 CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
-    AS $$
-begin
+    AS $$begin
   insert into public.usuario (id, email, nome, perfilid, setorid, createdat, updatedat)
   values (
     new.id,
@@ -1075,8 +1108,7 @@ begin
         updatedat = now();
 
   return new;
-end;
-$$;
+end;$$;
 
 
 ALTER FUNCTION "public"."handle_new_auth_user"() OWNER TO "postgres";
@@ -1099,6 +1131,20 @@ $$;
 
 
 ALTER FUNCTION "public"."handle_update_auth_user_email"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_staff"() RETURNS boolean
+    LANGUAGE "sql" STABLE
+    AS $$
+  select exists (
+    select 1 from public.usuario u
+    where u.id = (select auth.uid())
+      and u.ativo = true
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_staff"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."normalize_placa"() RETURNS "trigger"
@@ -1541,15 +1587,13 @@ ALTER FUNCTION "public"."to_mercosul_equivalente"("p" "text") OWNER TO "postgres
 
 CREATE OR REPLACE FUNCTION "public"."trg_os_status_estornar"() RETURNS "trigger"
     LANGUAGE "plpgsql"
-    AS $$
-begin
+    AS $$begin
   -- Quando a OS for recusada, devolve tudo que já foi baixado
-  if new.status = 'ORCAMENTO_RECUSADO' and (old.status is distinct from 'ORCAMENTO_RECUSADO') then
+  if new.status = 'CANCELADO' and (old.status is distinct from 'CANCELADO') then
     perform public.estornar_baixa_estoque_os(new.id);
   end if;
   return new;
-end
-$$;
+end$$;
 
 
 ALTER FUNCTION "public"."trg_os_status_estornar"() OWNER TO "postgres";
@@ -1639,7 +1683,8 @@ CREATE TABLE IF NOT EXISTS "public"."checklist" (
     "item" character varying NOT NULL,
     "status" "public"."enum_status_checklist" DEFAULT 'OK'::"public"."enum_status_checklist" NOT NULL,
     "observacao" character varying,
-    "createdat" timestamp without time zone DEFAULT "now"()
+    "createdat" timestamp without time zone DEFAULT "now"(),
+    "created_by" "uuid"
 );
 
 
@@ -1713,7 +1758,7 @@ CREATE TABLE IF NOT EXISTS "public"."cliente" (
     "cpfcnpj" character varying NOT NULL,
     "nomerazaosocial" character varying NOT NULL,
     "email" character varying NOT NULL,
-    "telefone" character varying NOT NULL,
+    "telefone" character varying,
     "endereco" character varying,
     "cidade" character varying NOT NULL,
     "estado" character varying NOT NULL,
@@ -1734,11 +1779,43 @@ CREATE TABLE IF NOT EXISTS "public"."cliente" (
     "deleted_by" "uuid",
     "rank" "public"."cliente_rank",
     "ranked_by" "uuid",
-    "ranked_at" timestamp with time zone
+    "ranked_at" timestamp with time zone,
+    "user_id" "uuid",
+    CONSTRAINT "cliente_email_formato_chk" CHECK ((("email")::"text" ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'::"text"))
 );
 
 
 ALTER TABLE "public"."cliente" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."cliente_endereco" (
+    "id" bigint NOT NULL,
+    "cliente_id" integer NOT NULL,
+    "nome_identificador" "text",
+    "cep" "text" NOT NULL,
+    "logradouro" "text" NOT NULL,
+    "numero" "text" NOT NULL,
+    "complemento" "text",
+    "bairro" "text",
+    "cidade" "text" NOT NULL,
+    "estado" "text" NOT NULL,
+    "principal" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."cliente_endereco" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."cliente_endereco" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."cliente_endereco_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 
 ALTER TABLE "public"."cliente" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
@@ -1847,6 +1924,83 @@ ALTER TABLE "public"."empresa" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTIT
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."entrada" (
+    "id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "fornecedorid" integer,
+    "fiscal" boolean DEFAULT false NOT NULL,
+    "notachave" "text",
+    "tipo" "public"."enum_tipos_entrada" DEFAULT 'COMPRA_FORNECEDOR'::"public"."enum_tipos_entrada" NOT NULL,
+    "status" "public"."enum_status_entrada" DEFAULT 'RASCUNHO'::"public"."enum_status_entrada" NOT NULL
+);
+
+
+ALTER TABLE "public"."entrada" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."entradaitens" (
+    "id" bigint NOT NULL,
+    "produto_id" integer NOT NULL,
+    "unidade" "public"."unidade_medida" DEFAULT 'UN'::"public"."unidade_medida" NOT NULL,
+    "quantidade" numeric NOT NULL,
+    "precovenda" numeric NOT NULL,
+    "entrada_id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "ncm" "text",
+    "cest" "text",
+    "csosn" "text",
+    "referencia" "text",
+    "titulo" "text",
+    "cClassTrib" "text",
+    "cstIbs" "text",
+    "cstCbs" "text",
+    "cst" "text",
+    "aliquotaicms" numeric,
+    "cfop" "text",
+    "cst_pis" "text",
+    "aliquota_pis" numeric(5,2),
+    "cst_cofins" "text",
+    "aliquota_cofins" numeric(5,2)
+);
+
+
+ALTER TABLE "public"."entradaitens" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."entradaitens" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."entradaitens_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."favorito" (
+    "id" bigint NOT NULL,
+    "cliente_id" integer NOT NULL,
+    "produto_id" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."favorito" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."favorito" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."favorito_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."fornecedor" (
     "id" integer NOT NULL,
     "cpfcnpj" character varying NOT NULL,
@@ -1862,7 +2016,8 @@ CREATE TABLE IF NOT EXISTS "public"."fornecedor" (
     "endereconumero" "text",
     "enderecocomplemento" "text",
     "bairro" "text",
-    "ativo" boolean DEFAULT true NOT NULL
+    "ativo" boolean DEFAULT true NOT NULL,
+    "codigomunicipio" "text"
 );
 
 
@@ -1927,6 +2082,29 @@ ALTER TABLE "public"."imagemvistoria" ALTER COLUMN "id" ADD GENERATED ALWAYS AS 
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."item_pedido" (
+    "id" bigint NOT NULL,
+    "pedido_id" bigint NOT NULL,
+    "produto_id" integer NOT NULL,
+    "quantidade" integer NOT NULL,
+    "preco_unitario" numeric(10,2) NOT NULL
+);
+
+
+ALTER TABLE "public"."item_pedido" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."item_pedido" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."item_pedido_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."nfe" (
     "id" bigint NOT NULL,
     "modelo" "public"."enum_modelo_nfe" DEFAULT 'NFE'::"public"."enum_modelo_nfe" NOT NULL,
@@ -1937,7 +2115,7 @@ CREATE TABLE IF NOT EXISTS "public"."nfe" (
     "status" "public"."enum_status_nfe" DEFAULT 'RASCUNHO'::"public"."enum_status_nfe" NOT NULL,
     "ordemservicoid" integer,
     "vendaid" integer,
-    "clienteid" integer NOT NULL,
+    "clienteid" integer,
     "dataemissao" timestamp with time zone NOT NULL,
     "dataautorizacao" timestamp with time zone,
     "protocolo" "text",
@@ -1956,7 +2134,11 @@ CREATE TABLE IF NOT EXISTS "public"."nfe" (
     "updated_by" "uuid",
     "deleted_by" "uuid",
     "is_deleted" boolean DEFAULT false NOT NULL,
-    "deleted_at" timestamp with time zone
+    "deleted_at" timestamp with time zone,
+    "fornecedorid" integer,
+    "entradaid" bigint,
+    "tpNF" smallint,
+    CONSTRAINT "ck_nfe_destinatario" CHECK (((("clienteid" IS NOT NULL) AND ("fornecedorid" IS NULL)) OR (("clienteid" IS NULL) AND ("fornecedorid" IS NOT NULL))))
 );
 
 
@@ -2134,6 +2316,8 @@ CREATE TABLE IF NOT EXISTS "public"."ordemservico" (
     "deleted_at" timestamp with time zone,
     "deleted_by" "uuid",
     "is_deleted" boolean DEFAULT false NOT NULL,
+    "motivo_cancelamento" "text",
+    "motivo_sem_cobranca" "text",
     CONSTRAINT "ordemservico_alvo_consistente" CHECK (((("alvo_tipo" = 'VEICULO'::"public"."enum_alvo_reparo") AND ("veiculoid" IS NOT NULL) AND ("pecaid" IS NULL)) OR (("alvo_tipo" = 'PECA'::"public"."enum_alvo_reparo") AND ("pecaid" IS NOT NULL) AND ("veiculoid" IS NULL))))
 );
 
@@ -2326,7 +2510,7 @@ CREATE TABLE IF NOT EXISTS "public"."peca" (
     "descricao" "text",
     "fabricante" "text",
     "modelo" "text",
-    "codigo" "text",
+    "lacre" "text",
     "createdat" timestamp without time zone DEFAULT "now"(),
     "updatedat" timestamp without time zone DEFAULT "now"()
 );
@@ -2337,6 +2521,31 @@ ALTER TABLE "public"."peca" OWNER TO "postgres";
 
 ALTER TABLE "public"."peca" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."peca_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."pedido" (
+    "id" bigint NOT NULL,
+    "cliente_id" integer NOT NULL,
+    "status" "text" DEFAULT 'PENDENTE'::"text" NOT NULL,
+    "total" numeric(10,2) NOT NULL,
+    "data_pedido" timestamp with time zone DEFAULT "now"(),
+    "forma_pagamento" "text",
+    "endereco_entrega_snapshot" "jsonb"
+);
+
+
+ALTER TABLE "public"."pedido" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."pedido" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."pedido_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -2438,7 +2647,8 @@ CREATE TABLE IF NOT EXISTS "public"."produto" (
     "deleted_at" timestamp with time zone,
     "deleted_by" "uuid",
     "grupo_produto_id" integer DEFAULT 1 NOT NULL,
-    "tipo_unidade_id" integer DEFAULT 1 NOT NULL
+    "tipo_unidade_id" integer DEFAULT 1 NOT NULL,
+    "precocompra" numeric
 );
 
 
@@ -2480,21 +2690,7 @@ ALTER TABLE "public"."produto_imagem" ALTER COLUMN "id" ADD GENERATED ALWAYS AS 
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."produtoentrada" (
-    "id" bigint NOT NULL,
-    "quantidade" integer NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "produtoid" integer NOT NULL,
-    "fornecedorid" integer,
-    "fiscal" boolean DEFAULT false NOT NULL,
-    "notachave" "text"
-);
-
-
-ALTER TABLE "public"."produtoentrada" OWNER TO "postgres";
-
-
-ALTER TABLE "public"."produtoentrada" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+ALTER TABLE "public"."entrada" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
     SEQUENCE NAME "public"."produtoentrada_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -2704,7 +2900,8 @@ CREATE TABLE IF NOT EXISTS "public"."usuario" (
     "salario" numeric(12,2),
     "comissao_percent" numeric(5,2),
     "data_admissao" "date",
-    "data_demissao" "date"
+    "data_demissao" "date",
+    "is_root" boolean DEFAULT false NOT NULL
 );
 
 
@@ -2753,7 +2950,10 @@ CREATE TABLE IF NOT EXISTS "public"."venda" (
     "created_by" "uuid",
     "desconto_tipo" "public"."enum_tipo_desconto_venda",
     "desconto_valor" numeric,
-    "sub_total" numeric NOT NULL
+    "sub_total" numeric NOT NULL,
+    "canal" "public"."enum_canal_venda" DEFAULT 'PDV'::"public"."enum_canal_venda" NOT NULL,
+    "endereco_entrega_snapshot" "jsonb",
+    "forma_pagamento" "text"
 );
 
 
@@ -2868,6 +3068,11 @@ ALTER TABLE ONLY "public"."cliente"
 
 
 
+ALTER TABLE ONLY "public"."cliente_endereco"
+    ADD CONSTRAINT "cliente_endereco_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."cliente"
     ADD CONSTRAINT "cliente_nomerazaosocial_key" UNIQUE ("nomerazaosocial");
 
@@ -2879,7 +3084,7 @@ ALTER TABLE ONLY "public"."cliente"
 
 
 ALTER TABLE ONLY "public"."cliente"
-    ADD CONSTRAINT "cliente_telefone_key" UNIQUE ("telefone");
+    ADD CONSTRAINT "cliente_user_id_key" UNIQUE ("user_id");
 
 
 
@@ -2908,6 +3113,21 @@ ALTER TABLE ONLY "public"."empresa"
 
 
 
+ALTER TABLE ONLY "public"."entradaitens"
+    ADD CONSTRAINT "entradaitens_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."favorito"
+    ADD CONSTRAINT "favorito_cliente_id_produto_id_key" UNIQUE ("cliente_id", "produto_id");
+
+
+
+ALTER TABLE ONLY "public"."favorito"
+    ADD CONSTRAINT "favorito_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."fornecedor"
     ADD CONSTRAINT "fornecedor_cnpj_key" UNIQUE ("cpfcnpj");
 
@@ -2925,6 +3145,11 @@ ALTER TABLE ONLY "public"."fornecedorprodutos"
 
 ALTER TABLE ONLY "public"."imagemvistoria"
     ADD CONSTRAINT "imagemvistoria_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."item_pedido"
+    ADD CONSTRAINT "item_pedido_pkey" PRIMARY KEY ("id");
 
 
 
@@ -3018,6 +3243,11 @@ ALTER TABLE ONLY "public"."peca"
 
 
 
+ALTER TABLE ONLY "public"."pedido"
+    ADD CONSTRAINT "pedido_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."perfil"
     ADD CONSTRAINT "perfil_nome_key" UNIQUE ("nome");
 
@@ -3053,7 +3283,7 @@ ALTER TABLE ONLY "public"."produto"
 
 
 
-ALTER TABLE ONLY "public"."produtoentrada"
+ALTER TABLE ONLY "public"."entrada"
     ADD CONSTRAINT "produtoentrada_pkey" PRIMARY KEY ("id");
 
 
@@ -3138,6 +3368,10 @@ ALTER TABLE ONLY "public"."vendaproduto"
 
 
 
+CREATE INDEX "cliente_user_id_idx" ON "public"."cliente" USING "btree" ("user_id");
+
+
+
 CREATE INDEX "idx_checklist_modelo_item_modelo" ON "public"."checklist_modelo_item" USING "btree" ("modelo_id");
 
 
@@ -3206,6 +3440,10 @@ CREATE UNIQUE INDEX "produto_imagem_produto_path_uq" ON "public"."produto_imagem
 
 
 
+CREATE UNIQUE INDEX "uniq_checklist_os_item" ON "public"."checklist" USING "btree" ("ordemservicoid", "item");
+
+
+
 CREATE OR REPLACE TRIGGER "ordemservico_status_estorno" AFTER UPDATE OF "status" ON "public"."ordemservico" FOR EACH ROW EXECUTE FUNCTION "public"."trg_os_status_estornar"();
 
 
@@ -3251,6 +3489,11 @@ ALTER TABLE ONLY "public"."bancoconta"
 
 
 
+ALTER TABLE ONLY "public"."checklist"
+    ADD CONSTRAINT "checklist_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."usuario"("id");
+
+
+
 ALTER TABLE ONLY "public"."checklist_modelo_item"
     ADD CONSTRAINT "checklist_modelo_item_modelo_id_fkey" FOREIGN KEY ("modelo_id") REFERENCES "public"."checklist_modelo"("id") ON DELETE CASCADE;
 
@@ -3266,6 +3509,11 @@ ALTER TABLE ONLY "public"."cliente"
 
 
 
+ALTER TABLE ONLY "public"."cliente_endereco"
+    ADD CONSTRAINT "cliente_endereco_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "public"."cliente"("id");
+
+
+
 ALTER TABLE ONLY "public"."cliente"
     ADD CONSTRAINT "cliente_ranked_by_fkey" FOREIGN KEY ("ranked_by") REFERENCES "public"."usuario"("id");
 
@@ -3276,6 +3524,11 @@ ALTER TABLE ONLY "public"."cliente"
 
 
 
+ALTER TABLE ONLY "public"."cliente"
+    ADD CONSTRAINT "cliente_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
+
+
+
 ALTER TABLE ONLY "public"."cores_veiculos"
     ADD CONSTRAINT "cores_veiculos_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
 
@@ -3283,6 +3536,26 @@ ALTER TABLE ONLY "public"."cores_veiculos"
 
 ALTER TABLE ONLY "public"."cores_veiculos"
     ADD CONSTRAINT "cores_veiculos_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."entradaitens"
+    ADD CONSTRAINT "entradaitens_entrada_id_fkey" FOREIGN KEY ("entrada_id") REFERENCES "public"."entrada"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."entradaitens"
+    ADD CONSTRAINT "entradaitens_produto_id_fkey" FOREIGN KEY ("produto_id") REFERENCES "public"."produto"("id");
+
+
+
+ALTER TABLE ONLY "public"."favorito"
+    ADD CONSTRAINT "favorito_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "public"."cliente"("id");
+
+
+
+ALTER TABLE ONLY "public"."favorito"
+    ADD CONSTRAINT "favorito_produto_id_fkey" FOREIGN KEY ("produto_id") REFERENCES "public"."produto"("id");
 
 
 
@@ -3376,6 +3649,16 @@ ALTER TABLE ONLY "public"."fornecedorprodutos"
 
 
 
+ALTER TABLE ONLY "public"."item_pedido"
+    ADD CONSTRAINT "item_pedido_pedido_id_fkey" FOREIGN KEY ("pedido_id") REFERENCES "public"."pedido"("id");
+
+
+
+ALTER TABLE ONLY "public"."item_pedido"
+    ADD CONSTRAINT "item_pedido_produto_id_fkey" FOREIGN KEY ("produto_id") REFERENCES "public"."produto"("id");
+
+
+
 ALTER TABLE ONLY "public"."nfe"
     ADD CONSTRAINT "nfe_clienteid_fkey" FOREIGN KEY ("clienteid") REFERENCES "public"."cliente"("id");
 
@@ -3398,6 +3681,16 @@ ALTER TABLE ONLY "public"."nfe"
 
 ALTER TABLE ONLY "public"."nfe"
     ADD CONSTRAINT "nfe_empresaid_fkey" FOREIGN KEY ("empresaid") REFERENCES "public"."empresa"("id");
+
+
+
+ALTER TABLE ONLY "public"."nfe"
+    ADD CONSTRAINT "nfe_entradaid_fkey" FOREIGN KEY ("entradaid") REFERENCES "public"."entrada"("id");
+
+
+
+ALTER TABLE ONLY "public"."nfe"
+    ADD CONSTRAINT "nfe_fornecedorid_fkey" FOREIGN KEY ("fornecedorid") REFERENCES "public"."fornecedor"("id");
 
 
 
@@ -3511,6 +3804,11 @@ ALTER TABLE ONLY "public"."peca"
 
 
 
+ALTER TABLE ONLY "public"."pedido"
+    ADD CONSTRAINT "pedido_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "public"."cliente"("id");
+
+
+
 ALTER TABLE ONLY "public"."perfilpermissao"
     ADD CONSTRAINT "perfilpermissao_perfil_fkey" FOREIGN KEY ("perfilid") REFERENCES "public"."perfil"("id");
 
@@ -3551,13 +3849,8 @@ ALTER TABLE ONLY "public"."produto"
 
 
 
-ALTER TABLE ONLY "public"."produtoentrada"
+ALTER TABLE ONLY "public"."entrada"
     ADD CONSTRAINT "produtoentrada_fornecedorid_fkey" FOREIGN KEY ("fornecedorid") REFERENCES "public"."fornecedor"("id");
-
-
-
-ALTER TABLE ONLY "public"."produtoentrada"
-    ADD CONSTRAINT "produtoentrada_produtoid_fkey" FOREIGN KEY ("produtoid") REFERENCES "public"."produto"("id");
 
 
 
@@ -3646,10 +3939,101 @@ ALTER TABLE ONLY "public"."vendaproduto"
 
 
 
+CREATE POLICY "Endereços: Atualizar seus próprios" ON "public"."cliente_endereco" FOR UPDATE USING (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Endereços: Deletar seus próprios" ON "public"."cliente_endereco" FOR DELETE USING (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Endereços: Inserir seus próprios" ON "public"."cliente_endereco" FOR INSERT WITH CHECK (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Endereços: Ver seus próprios" ON "public"."cliente_endereco" FOR SELECT USING (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Favoritos: Gerenciar seus próprios" ON "public"."favorito" USING (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Favoritos: Ver seus próprios" ON "public"."favorito" FOR SELECT USING (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Itens Pedido: Inserir ao comprar" ON "public"."item_pedido" FOR INSERT WITH CHECK (("pedido_id" IN ( SELECT "pedido"."id"
+   FROM "public"."pedido"
+  WHERE ("pedido"."cliente_id" IN ( SELECT "cliente"."id"
+           FROM "public"."cliente"
+          WHERE ("cliente"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Itens Pedido: Ver seus próprios" ON "public"."item_pedido" FOR SELECT USING (("pedido_id" IN ( SELECT "pedido"."id"
+   FROM "public"."pedido"
+  WHERE ("pedido"."cliente_id" IN ( SELECT "cliente"."id"
+           FROM "public"."cliente"
+          WHERE ("cliente"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Pedidos: Inserir ao comprar" ON "public"."pedido" FOR INSERT WITH CHECK (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Pedidos: Ver seus próprios" ON "public"."pedido" FOR SELECT USING (("cliente_id" IN ( SELECT "cliente"."id"
+   FROM "public"."cliente"
+  WHERE ("cliente"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Usuários podem atualizar seu próprio perfil" ON "public"."cliente" FOR UPDATE USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Usuários podem criar seu próprio perfil" ON "public"."cliente" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Usuários podem ver seu próprio perfil" ON "public"."cliente" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
+ALTER TABLE "public"."cliente" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."cliente_endereco" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."config_geral" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."favorito" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."fornecedorprodutos" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."item_pedido" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."pedido" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."transferencias_veiculos" ENABLE ROW LEVEL SECURITY;
@@ -3665,6 +4049,10 @@ ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 
 ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."ordemservico";
+
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."pedido";
 
 
 
@@ -3901,6 +4289,12 @@ GRANT ALL ON FUNCTION "public"."handle_update_auth_user_email"() TO "service_rol
 
 
 
+GRANT ALL ON FUNCTION "public"."is_staff"() TO "anon";
+GRANT ALL ON FUNCTION "public"."is_staff"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_staff"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."normalize_placa"() TO "anon";
 GRANT ALL ON FUNCTION "public"."normalize_placa"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."normalize_placa"() TO "service_role";
@@ -4060,6 +4454,18 @@ GRANT ALL ON TABLE "public"."cliente" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."cliente_endereco" TO "anon";
+GRANT ALL ON TABLE "public"."cliente_endereco" TO "authenticated";
+GRANT ALL ON TABLE "public"."cliente_endereco" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."cliente_endereco_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."cliente_endereco_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."cliente_endereco_id_seq" TO "service_role";
+
+
+
 GRANT ALL ON SEQUENCE "public"."cliente_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."cliente_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."cliente_id_seq" TO "service_role";
@@ -4102,6 +4508,36 @@ GRANT ALL ON SEQUENCE "public"."empresa_id_seq" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."entrada" TO "anon";
+GRANT ALL ON TABLE "public"."entrada" TO "authenticated";
+GRANT ALL ON TABLE "public"."entrada" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."entradaitens" TO "anon";
+GRANT ALL ON TABLE "public"."entradaitens" TO "authenticated";
+GRANT ALL ON TABLE "public"."entradaitens" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."entradaitens_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."entradaitens_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."entradaitens_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."favorito" TO "anon";
+GRANT ALL ON TABLE "public"."favorito" TO "authenticated";
+GRANT ALL ON TABLE "public"."favorito" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."favorito_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."favorito_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."favorito_id_seq" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."fornecedor" TO "anon";
 GRANT ALL ON TABLE "public"."fornecedor" TO "authenticated";
 GRANT ALL ON TABLE "public"."fornecedor" TO "service_role";
@@ -4135,6 +4571,18 @@ GRANT ALL ON TABLE "public"."imagemvistoria" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."imagemvistoria_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."imagemvistoria_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."imagemvistoria_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."item_pedido" TO "anon";
+GRANT ALL ON TABLE "public"."item_pedido" TO "authenticated";
+GRANT ALL ON TABLE "public"."item_pedido" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."item_pedido_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."item_pedido_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."item_pedido_id_seq" TO "service_role";
 
 
 
@@ -4282,6 +4730,18 @@ GRANT ALL ON SEQUENCE "public"."peca_id_seq" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."pedido" TO "anon";
+GRANT ALL ON TABLE "public"."pedido" TO "authenticated";
+GRANT ALL ON TABLE "public"."pedido" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."pedido_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."pedido_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."pedido_id_seq" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."perfil" TO "anon";
 GRANT ALL ON TABLE "public"."perfil" TO "authenticated";
 GRANT ALL ON TABLE "public"."perfil" TO "service_role";
@@ -4333,12 +4793,6 @@ GRANT ALL ON TABLE "public"."produto_imagem" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."produto_imagem_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."produto_imagem_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."produto_imagem_id_seq" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."produtoentrada" TO "anon";
-GRANT ALL ON TABLE "public"."produtoentrada" TO "authenticated";
-GRANT ALL ON TABLE "public"."produtoentrada" TO "service_role";
 
 
 
@@ -4532,31 +4986,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-
-
-
-drop extension if exists "pg_net";
-
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
-
-CREATE TRIGGER on_auth_user_updated_email AFTER UPDATE OF email ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_update_auth_user_email();
-
-
-  create policy "vistoria: anon can upload"
-  on "storage"."objects"
-  as permissive
-  for insert
-  to anon
-with check ((bucket_id = 'vistoria'::text));
-
-
-
-  create policy "vistoria: public read"
-  on "storage"."objects"
-  as permissive
-  for select
-  to public
-using ((bucket_id = 'vistoria'::text));
 
 
 

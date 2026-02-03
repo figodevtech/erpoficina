@@ -21,6 +21,7 @@ import {
   Plus,
   FileText,
   MoreHorizontal,
+  PackagePlus,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -39,8 +40,9 @@ import { useMemo, useState } from "react";
 import { BotaoExportarProdutos } from "./botao-exportar-produtos";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-import EntradaDialog from "./dialog-entrada/dialog-entrada";
+import EntradaDialog from "./dialog-entrada/dialog-entrada-unica";
 import EntradaFiscalDialog from "./dialog-entrada/dialog-entrada-fiscal";
+import { DialogEntradaGeral } from "./dialog-entrada-geral/dialog-entrada-geral";
 
 interface TabelaProdutosProps {
   isLoading: boolean;
@@ -118,6 +120,7 @@ export default function TabelaProdutos({
   } | null>(null);
 
   const [entradaFiscalOpen, setEntradaFiscalOpen] = useState(false);
+  const [entradaGeralOpen,setEntradaGeralOpen] = useState(false)
 
   const abrirNovoProduto = () => {
     setSelectedProductId?.(undefined);
@@ -230,6 +233,10 @@ export default function TabelaProdutos({
                   Novo Produto
                 </DropdownMenuItem>
 
+                <DropdownMenuItem onClick={() => setEntradaGeralOpen(true)} className="cursor-pointer">
+                  <PackagePlus className="mr-2 h-4 w-4" />
+                  Entrada
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setEntradaFiscalOpen(true)} className="cursor-pointer">
                   <FileText className="mr-2 h-4 w-4" />
                   Entrada Fiscal (NF-e)
@@ -245,6 +252,7 @@ export default function TabelaProdutos({
           productId={selectedProductId}
           isOpen={isOpen}
           setIsOpen={setIsOpen}
+          onAfterSaveProduct={()=>handleGetProducts(pagination.page, pagination.limit, search, status)}
         />
 
         {/* ✅ Entrada Fiscal (1 instância) */}
@@ -253,6 +261,16 @@ export default function TabelaProdutos({
           isOpen={entradaFiscalOpen}
           setIsOpen={setEntradaFiscalOpen}
         />
+        <DialogEntradaGeral  open={entradaGeralOpen} onOpenChange={
+          (open)=>{
+            if(!open){
+              setEntradaGeralOpen(false)
+              handleGetProducts(pagination.page, pagination.limit, search, status)
+            }else{
+              setEntradaGeralOpen(true)
+            }
+          }
+          }/>
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
@@ -310,7 +328,7 @@ export default function TabelaProdutos({
                             </Tooltip>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground max-w-[350px] truncate">
                           {p.unidade || "-"}
                           {p.fabricante ? ` • ${p.fabricante}` : "-"}
                         </p>
@@ -321,8 +339,8 @@ export default function TabelaProdutos({
                     </div>
                   </TableCell>
 
-                  <TableCell className="font-mono text-xs">{p.referencia || "-"}</TableCell>
-                  <TableCell>{p.fabricante || "-"}</TableCell>
+                  <TableCell className="font-mono text-xs max-w-[300px] truncate">{p.referencia || "-"}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{p.fabricante || "-"}</TableCell>
 
                   <TableCell className="font-medium">{p.estoque ?? 0}</TableCell>
                   <TableCell className="text-muted-foreground">{p.estoqueminimo ?? 0}</TableCell>
@@ -350,7 +368,7 @@ export default function TabelaProdutos({
                         </DropdownMenuItem>
 
                         <DropdownMenuItem disabled={!canAct} onClick={() => abrirEntrada(p)}>
-                          <Plus className="mr-2 h-4 w-4" />
+                          <PackagePlus className="mr-2 h-4 w-4" />
                           Entrada
                         </DropdownMenuItem>
 

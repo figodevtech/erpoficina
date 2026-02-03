@@ -13,6 +13,11 @@ type Props = {
 };
 
 export function TabMarketplace({ produto, onChange }: Props) {
+  const LIMITE_TITULO = 100;
+  const LIMITE_DESCRICAO = 300;
+
+  const tituloQtd = (produto.tituloMarketplace || "").length;
+  const descricaoQtd = (produto.descricaoMarketplace || "").length;
   return (
     <TabsContent value="MarketPlace" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
@@ -22,7 +27,14 @@ export function TabMarketplace({ produto, onChange }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="tituloMarketplace">Título no Marketplace *</Label>
+          <div className="flex justify-between items-center">
+            <Label htmlFor="tituloMarketplace">Título no Marketplace *</Label>
+            <span
+              className={`text-xs ${tituloQtd >= LIMITE_TITULO ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {tituloQtd}/{LIMITE_TITULO}
+            </span>
+          </div>
           <Input
             id="tituloMarketplace"
             value={(produto as any).tituloMarketplace || ""}
@@ -32,7 +44,14 @@ export function TabMarketplace({ produto, onChange }: Props) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="descricaoMarketplace">Descrição no Marketplace</Label>
+          <div className="flex justify-between items-center">
+            <Label htmlFor="descricaoMarketplace">Descrição no Marketplace</Label>
+            <span
+              className={`text-xs ${descricaoQtd >= LIMITE_DESCRICAO ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {descricaoQtd}/{LIMITE_DESCRICAO}
+            </span>
+          </div>
           <Textarea
             id="descricaoMarketplace"
             value={(produto as any).descricaoMarketplace || ""}

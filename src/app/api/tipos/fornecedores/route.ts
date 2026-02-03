@@ -48,7 +48,10 @@ export async function GET(req: Request) {
         nomerazaosocial,
         nomefantasia,
         endereco,
+        endereconumero,
         cidade,
+        bairro,
+        codigomunicipio,
         estado,
         cep,
         contato,
@@ -77,7 +80,10 @@ export async function GET(req: Request) {
       nomerazaosocial: f.nomerazaosocial as string,
       nomefantasia: (f.nomefantasia as string | null) ?? null,
       endereco: (f.endereco as string | null) ?? null,
+      endereconumero: (f.endereconumero as string | null) ?? null,
       cidade: (f.cidade as string | null) ?? null,
+      bairro: (f.bairro as string | null) ?? null,
+      codigomunicipio: (f.codigomunicipio as string | null) ?? null,
       estado: (f.estado as string | null) ?? null,
       cep: (f.cep as string | null) ?? null,
       contato: (f.contato as string | null) ?? null,
@@ -119,7 +125,10 @@ export async function POST(req: Request) {
       nomerazaosocial,
       nomefantasia,
       endereco,
+      endereconumero,
       cidade,
+      bairro,
+      codigomunicipio,
       estado,
       cep,
       contato,
@@ -128,7 +137,10 @@ export async function POST(req: Request) {
       nomerazaosocial?: string;
       nomefantasia?: string | null;
       endereco?: string | null;
+      endereconumero?: string | null;
       cidade?: string | null;
+      bairro?: string | null;
+      codigomunicipio?: string | null;
       estado?: string | null;
       cep?: string | null;
       contato?: string | null;
@@ -148,7 +160,10 @@ export async function POST(req: Request) {
       nomerazaosocial: nomerazaosocial.trim(),
       nomefantasia: nomefantasia?.trim() || null,
       endereco: endereco?.trim() || null,
+      endereconumero: endereconumero?.trim() || null,
       cidade: cidade?.trim() || null,
+      bairro: bairro?.trim() || null,
+      codigomunicipio: codigomunicipio?.trim() || null,
       estado: estado?.trim() || null,
       cep: cep?.trim() || null,
       contato: contato?.trim() || null,
@@ -165,7 +180,10 @@ export async function POST(req: Request) {
         nomerazaosocial,
         nomefantasia,
         endereco,
+        endereconumero,
         cidade,
+        bairro,
+        codigomunicipio,
         estado,
         cep,
         contato,
@@ -182,6 +200,9 @@ export async function POST(req: Request) {
       nomefantasia: (data!.nomefantasia as string | null) ?? null,
       endereco: (data!.endereco as string | null) ?? null,
       cidade: (data!.cidade as string | null) ?? null,
+      endereconumero: (data!.endereconumero as string | null) ?? null,
+      bairro: (data!.bairro as string | null) ?? null,
+      codigomunicipio: (data!.codigomunicipio as string | null) ?? null,
       estado: (data!.estado as string | null) ?? null,
       cep: (data!.cep as string | null) ?? null,
       contato: (data!.contato as string | null) ?? null,
@@ -195,8 +216,8 @@ export async function POST(req: Request) {
     const msg = String(e?.message ?? "");
     const status =
       /auth|unauth|não autenticado/i.test(msg) ? 401 :
-      /duplicate|unique|fornecedor_cnpj_key/i.test(msg) ? 409 :
-      500;
+        /duplicate|unique|fornecedor_cnpj_key/i.test(msg) ? 409 :
+          500;
 
     return NextResponse.json(
       { error: e?.message ?? "Erro ao salvar fornecedor" },

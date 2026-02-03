@@ -12,6 +12,7 @@ import { buildDestXml } from './xmlDest';
 import { buildDetXml } from './xmlItem';
 import { gerarCNF, gerarChaveAcesso } from './chaveAcesso';
 import { mapEmpresaToEmitente } from './mapEmpresaToEmitente';
+import { getCodigoUF } from './ufUtils';
 
 /**
  * Formata data/hora para o padrão da NF-e 4.00:
@@ -35,7 +36,7 @@ function formatDateTimeNFe(date: Date): string {
 
   const offsetHours = pad(Math.floor(total / 60));
   const offsetMins = pad(total % 60);
-  const sign = offsetMinutes > 0 ? '-' : '+'; 
+  const sign = offsetMinutes > 0 ? '-' : '+';
   // em Fortaleza: offsetMinutes = 180 => sign = '-' => "-03:00"
 
   return `${ano}-${mes}-${dia}T${hora}:${minuto}:${segundo}${sign}${offsetHours}:${offsetMins}`;
@@ -45,10 +46,17 @@ function formatDateTimeNFe(date: Date): string {
 /**
  * Cria o bloco <ide> da NF-e, calculando cNF, chave de acesso e cDV.
  */
+export interface IdeOptions {
+  tpNF?: 0 | 1;
+  natOp?: string;
+  indFinal?: 0 | 1;
+}
+
 export function criarIdeParaEmpresa(
   empresa: EmpresaRow,
   numeroNota: number,
-  serie: number
+  serie: number,
+  options?: IdeOptions
 ): { ide: NFeIde; cNF: string; chave: string; id: string } {
   const agora = new Date();
   const ano = agora.getFullYear();
@@ -57,7 +65,8 @@ export function criarIdeParaEmpresa(
   const tpAmb: 1 | 2 = empresa.ambiente === 'PRODUCAO' ? 1 : 2;
   const cNF = gerarCNF(numeroNota);
 
-  const cUF = '25'; // PB
+  // PB defaults to 25 if not found, but now we try to read from company
+  const cUF = getCodigoUF(empresa.uf || undefined);
   const mod = '55'; // NF-e
   const tpEmis = 1; // emissão normal
 
@@ -78,12 +87,12 @@ export function criarIdeParaEmpresa(
   const ide: NFeIde = {
     cUF,
     cNF,
-    natOp: 'VENDA DE MERCADORIA',
+    natOp: options?.natOp || 'VENDA DE MERCADORIA',
     mod,
     serie,
     nNF: numeroNota,
     dhEmi: formatDateTimeNFe(agora),
-    tpNF: 1,
+    tpNF: options?.tpNF ?? 1,
     idDest: 1,
     cMunFG: empresa.codigomunicipio,
     tpImp: 1,
@@ -91,7 +100,7 @@ export function criarIdeParaEmpresa(
     cDV: dv,
     tpAmb,
     finNFe: 1,
-    indFinal: 1,
+    indFinal: options?.indFinal ?? (options?.tpNF === 0 ? 0 : 1),
     indPres: 1,
     procEmi: 0,
     verProc: 'ERPOficina 1.0.0',
@@ -116,12 +125,14 @@ export function buildNFePreviewXml(
   numeroNota: number,
   serie: number,
   itensOverride?: NFeItem[],
-  destinatario?: NFeDestinatario
+  destinatario?: NFeDestinatario,
+  options?: IdeOptions
 ): { xml: string; chave: string; id: string } {
   const { ide, chave, id } = criarIdeParaEmpresa(
     empresa,
     numeroNota,
-    serie
+    serie,
+    options
   );
 
   const emitente = mapEmpresaToEmitente(empresa, 'JOAO PESSOA');
@@ -148,23 +159,34 @@ export function buildNFePreviewXml(
       },
     };
 
+  // REGRA DE HOMOLOGAÇÃO:
+  // Se não for produção, o nome do destinatário deve ser fixo conforme norma.
+  if (empresa.ambiente !== 'PRODUCAO') {
+    // Clonamos para não afetar o objeto original (se passado por referência)
+    // Nota: endereco e outros sub-objetos ainda são referencias, mas razaoSocial é primitivo.
+    // Como dest é const, precisamos garantir que podemos alterar ou redefinir.
+    // Aqui estamos alterando a PROPRIEDADE do objeto referenciado por dest.
+    dest.razaoSocial = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
+  }
+
+
   // Se itensOverride não for passado, usa o item de teste (compatibilidade)
   const itensBase: NFeItem[] =
     itensOverride && itensOverride.length > 0
       ? itensOverride
       : [
-          {
-            numeroItem: 1,
-            codigoProduto: '001',
-            descricao: 'PECA TESTE',
-            ncm: '61091000', // NCM exemplo - AJUSTAR DEPOIS
-            cfop: '5102', // venda dentro do estado
-            unidade: 'UN',
-            quantidade: 1,
-            valorUnitario: 100.0,
-            valorTotal: 100.0,
-          },
-        ];
+        {
+          numeroItem: 1,
+          codigoProduto: '001',
+          descricao: 'PECA TESTE',
+          ncm: '61091000', // NCM exemplo - AJUSTAR DEPOIS
+          cfop: '5102', // venda dentro do estado
+          unidade: 'UN',
+          quantidade: 1,
+          valorUnitario: 100.0,
+          valorTotal: 100.0,
+        },
+      ];
 
   // Garante nº do item em cada item
   const itens: NFeItem[] = itensBase.map((item, index) => ({
@@ -256,8 +278,19 @@ export function buildNFePreviewXml(
 
   const infAdicXml =
     '<infAdic>' +
-    '<infCpl>NF-e de venda de mercadoria.</infCpl>' +
+    `<infCpl>${options?.natOp
+      ? `NF-e de ${options.natOp.toLowerCase()}.`
+      : 'NF-e de venda de mercadoria.'
+    }</infCpl>` +
     '</infAdic>';
+
+  const infRespTec =
+    '<infRespTec>' +
+    '<CNPJ>58598900000162</CNPJ>' +
+    '<xContato>FIGO Softwares</xContato>' +
+    '<email>figo.devtech@gmail.com</email>' +
+    '<fone>83987872668</fone>' +
+    '</infRespTec>';
 
   const infNFeXml =
     `<infNFe Id="${id}" versao="4.00">` +
@@ -269,6 +302,7 @@ export function buildNFePreviewXml(
     transpXml +
     pagXml +
     infAdicXml +
+    infRespTec +
     '</infNFe>';
 
   const nfeXml =

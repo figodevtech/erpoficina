@@ -1,36 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Search,
-  User2,
-  ClipboardList,
-  Building2,
-  Wrench,
-  Plus,
-  X,
-} from "lucide-react";
+import { Search, User2, ClipboardList, Building2, Wrench, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "../../../clientes/types";
@@ -50,18 +30,12 @@ type AlvoTipo = "VEICULO" | "PECA";
 const MAX_PECA_NOME = 60;
 const MAX_PECA_DESC = 120;
 
-export function FormularioNovaOS({
-  exposeSubmit,
-  onDone,
-  onSavingChange,
-}: FormularioNovaOSProps) {
+export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: FormularioNovaOSProps) {
   const [saving, setSaving] = useState(false);
   useEffect(() => onSavingChange?.(saving), [saving, onSavingChange]);
 
   // Setores
-  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>(
-    []
-  );
+  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
   const [loadingSetores, setLoadingSetores] = useState(false);
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
@@ -69,17 +43,13 @@ export function FormularioNovaOS({
   // Cliente (somente cadastrado)
   const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
-  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<
-    number | null
-  >(null);
+  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
   const [openCustomer, setOpenCustomer] = useState(false);
-  const [customerRegisterOpen, setCustomerRegisterOpen] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>(undefined)
+  const [customerRegisterOpen, setCustomerRegisterOpen] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>(undefined);
 
   // OS
-  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">(
-    "NORMAL"
-  );
+  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
@@ -93,6 +63,7 @@ export function FormularioNovaOS({
   const [vKm, setVKm] = useState("");
   const [pNome, setPNome] = useState("");
   const [pDesc, setPDesc] = useState("");
+  const [pLacre, setPLacre] = useState("");
 
   const veiculoVinculado = veiculoSelecionadoId !== null;
 
@@ -120,7 +91,7 @@ export function FormularioNovaOS({
         value: String(v.id),
         label: `${v.modelo} • ${v.placa}${v.ano ? ` (${v.ano})` : ""}`,
       })),
-    [veiculosDoCliente]
+    [veiculosDoCliente],
   );
 
   // expõe submit
@@ -144,6 +115,7 @@ export function FormularioNovaOS({
     vKm,
     pNome,
     pDesc,
+    pLacre,
   ]);
 
   const validateAll = (): string | null => {
@@ -158,8 +130,7 @@ export function FormularioNovaOS({
 
       // evita duplicar placa em veículo novo
       if (!veiculoVinculado && placaNorm && veiculosDoCliente.length > 0) {
-        const normalize = (s: string) =>
-          s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+        const normalize = (s: string) => s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
         const jaExiste = veiculosDoCliente.some((v: any) => {
           const placaCliente = (v.placa || "").toString();
           return normalize(placaCliente) === normalize(placaNorm);
@@ -212,7 +183,7 @@ export function FormularioNovaOS({
                 }
             : {
                 tipo: "PECA",
-                peca: { nome: pNome.trim(), descricao: pDesc?.trim() || null },
+                peca: { nome: pNome.trim(), descricao: pDesc?.trim() || null, lacre: pLacre.trim() || null },
               },
       };
 
@@ -245,13 +216,9 @@ export function FormularioNovaOS({
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <User2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">
-              Dados do Cliente
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
           </div>
-          <CardDescription>
-            Selecione um cliente já cadastrado para abrir a OS.
-          </CardDescription>
+          <CardDescription>Selecione um cliente já cadastrado para abrir a OS.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -266,42 +233,36 @@ export function FormularioNovaOS({
                   setVeiculosDoCliente(c?.veiculos ?? []);
                 }}
               >
-                <Button
-                  variant={"outline"}
-                  className="hover:cursor-pointer w-min text-xs"
-                >
+                <Button variant={"outline"} className="hover:cursor-pointer w-min text-xs">
                   <Search className="h-3 w-3" />
                   Selecionar Cliente
                 </Button>
               </CustomerSelect>
               {cliente && (
-                <div
-                  onClick={() => setCliente(null)}
-                  className="p-1.5 rounded-full hover:cursor-pointer bg-muted"
-                >
+                <div onClick={() => setCliente(null)} className="p-1.5 rounded-full hover:cursor-pointer bg-muted">
                   <X className="w-3 h-3 text-red-500" />
                 </div>
               )}
             </div>
             <CustomerDialog
-            customerId={selectedCustomerId}
-            setSelectedCustomerId={setSelectedCustomerId}
-            isOpen={customerRegisterOpen}
-            setIsOpen={setCustomerRegisterOpen}
+              customerId={selectedCustomerId}
+              setSelectedCustomerId={setSelectedCustomerId}
+              isOpen={customerRegisterOpen}
+              setIsOpen={setCustomerRegisterOpen}
               onRegister={(c) => {
                 setCliente(c ?? null);
                 setVeiculoSelecionadoId(null);
                 setVeiculosDoCliente(c?.veiculos ?? []);
               }}
             />
-              <Button
-              onClick={()=> setCustomerRegisterOpen(true)}
-                variant={"outline"}
-                className="hover:cursor-pointer w-min text-xs"
-              >
-                <Plus className="h-3 w-3" />
-                Novo Cliente
-              </Button>
+            <Button
+              onClick={() => setCustomerRegisterOpen(true)}
+              variant={"outline"}
+              className="hover:cursor-pointer w-min text-xs"
+            >
+              <Plus className="h-3 w-3" />
+              Novo Cliente
+            </Button>
           </div>
           {cliente && <ClienteInfoCard customer={cliente} />}
         </CardContent>
@@ -312,9 +273,7 @@ export function FormularioNovaOS({
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">
-              Definição da OS
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
           </div>
         </CardHeader>
 
@@ -325,9 +284,7 @@ export function FormularioNovaOS({
               <Select
                 value={setor}
                 onValueChange={setSetor}
-                disabled={
-                  loadingSetores || (!!setoresError && setores.length === 0)
-                }
+                disabled={loadingSetores || (!!setoresError && setores.length === 0)}
               >
                 <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                   <SelectValue
@@ -335,8 +292,8 @@ export function FormularioNovaOS({
                       loadingSetores
                         ? "Carregando setores…"
                         : setores.length
-                        ? "Selecione o setor"
-                        : "Nenhum setor disponível"
+                          ? "Selecione o setor"
+                          : "Nenhum setor disponível"
                     }
                   />
                 </SelectTrigger>
@@ -348,17 +305,12 @@ export function FormularioNovaOS({
                   ))}
                 </SelectContent>
               </Select>
-              {setoresError && (
-                <p className="text-xs text-red-500">{setoresError}</p>
-              )}
+              {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
             </div>
 
             <div className="space-y-3">
               <Label>Prioridade</Label>
-              <Select
-                value={prioridade}
-                onValueChange={(v) => setPrioridade(v as any)}
-              >
+              <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)}>
                 <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                   <SelectValue placeholder="Selecione a prioridade" />
                 </SelectTrigger>
@@ -399,20 +351,14 @@ export function FormularioNovaOS({
               <>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>
-                      Vincular a um veículo já cadastrado (opcional)
-                    </Label>
+                    <Label>Vincular a um veículo já cadastrado (opcional)</Label>
                     <Badge variant="outline" className="font-normal">
                       {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
                     </Badge>
                   </div>
 
                   <Select
-                    value={
-                      veiculoSelecionadoId === null
-                        ? NONE
-                        : String(veiculoSelecionadoId)
-                    }
+                    value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
                     onValueChange={(v) => {
                       const id = v === NONE ? null : Number(v);
                       setVeiculoSelecionadoId(id);
@@ -434,8 +380,8 @@ export function FormularioNovaOS({
                           !cliente
                             ? "Selecione um cliente"
                             : veiculoOptions.length
-                            ? "Selecione um veículo"
-                            : "Cliente sem veículos"
+                              ? "Selecione um veículo"
+                              : "Cliente sem veículos"
                         }
                       />
                     </SelectTrigger>
@@ -508,7 +454,7 @@ export function FormularioNovaOS({
                 </div> */}
               </>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Nome da peça</Label>
                   <Input
@@ -520,6 +466,17 @@ export function FormularioNovaOS({
                   <div className="text-right text-xs text-muted-foreground">
                     {pNome.length}/{MAX_PECA_NOME}
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Lacre da Peça</Label>
+                  <Input
+                    value={pLacre}
+                    maxLength={30}
+                    onChange={(e) => setPLacre(e.target.value.slice(0, 30))}
+                    placeholder="Lacre para identificação"
+                  />
+                  <div className="text-right text-xs text-muted-foreground">{pLacre.length}/30</div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Descrição (opcional)</Label>
@@ -544,9 +501,7 @@ export function FormularioNovaOS({
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base sm:text-lg">
-              Descrição do Problema
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">Descrição do Problema</CardTitle>
           </div>
         </CardHeader>
         <CardContent>

@@ -31,7 +31,7 @@ type Payload = {
       cor?: string | null;
       kmatual?: number | null;
     };
-    peca?: { nome: string; descricao?: string | null };
+    peca?: { nome: string; descricao?: string | null; lacre?: string | null };
   };
 
   checklist?: Array<{
@@ -156,6 +156,7 @@ export async function POST(req: NextRequest) {
           veiculoid: veiculoid || null,
           titulo: nome,
           descricao: (alvo.peca?.descricao || null) as any,
+          lacre: (alvo.peca?.lacre || null) as any,
         })
         .select("id")
         .single();

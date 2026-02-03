@@ -5,6 +5,14 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 interface EntradaItemDTO {
   produtoId: number;
   quantidade: number;
+
+  // AGORA: se vier, sobrescreve o snapshot do precovenda no item.
+  // (mantive o nome antigo valorUnitario pra não quebrar front)
+  // Você pode trocar no front depois.
+  valorUnitario?: number | null;
+
+  // não existe mais no schema novo, mas mantemos pra não quebrar
+  valorDesconto?: number | null;
 }
 
 interface ParcelaDTO {
@@ -15,8 +23,8 @@ interface ParcelaDTO {
 interface RegistrarEntradaDTO {
   fornecedorId?: number | null;
   numeroNota?: string | number | null;
-  notaChave?: string | null; // nova
-  fiscal?: boolean; // nova (default true para NF)
+  notaChave?: string | null;
+  fiscal?: boolean; // default true
 
   itens: EntradaItemDTO[];
 
@@ -34,7 +42,14 @@ interface RegistrarEntradaDTO {
   cpfCnpjPagador: string;
 }
 
+function isNonNegativeNumber(n: any) {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0;
+}
+
 export async function POST(req: NextRequest) {
+  let entradaIdCriada: number | null = null;
+  const estoqueAlterado: Array<{ produtoId: number; quantidade: number }> = [];
+
   try {
     const body = (await req.json()) as RegistrarEntradaDTO;
 
@@ -42,7 +57,7 @@ export async function POST(req: NextRequest) {
       fornecedorId,
       numeroNota,
       notaChave,
-      fiscal = true, // se vier de NF, default é true
+      fiscal = true,
       itens,
       isPagamentoFuturo,
       parcelas = [],
@@ -57,19 +72,15 @@ export async function POST(req: NextRequest) {
 
     // --- VALIDAÇÕES BÁSICAS ---
     if (!itens || itens.length === 0) {
-      return NextResponse.json(
-        { error: "Nenhum item de produto enviado." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Nenhum item de produto enviado." }, { status: 400 });
     }
 
     if (!nomePagador || !cpfCnpjPagador) {
       return NextResponse.json(
         {
-          error:
-            "Nome do pagador e CPF/CNPJ do pagador são obrigatórios para registrar a transação.",
+          error: "Nome do pagador e CPF/CNPJ do pagador são obrigatórios para registrar a transação.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -81,72 +92,155 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json(
         {
-          error:
-            "Pagamentos futuros exigem pelo menos uma parcela com data de vencimento e valor.",
+          error: "Pagamentos futuros exigem pelo menos uma parcela com data de vencimento e valor.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // ----------------------------------------------------------------
-    // 1) REGISTRAR ENTRADA POR PRODUTO E ATUALIZAR ESTOQUE
+    // 1) CRIAR ENTRADA (CABEÇALHO)
     // ----------------------------------------------------------------
-    for (const item of itens) {
+    const { data: entradaCriada, error: entradaError } = await supabaseAdmin
+      .from("entrada")
+      .insert({
+        fornecedorid: fornecedorId ?? null,
+        fiscal, // boolean
+        notachave: notaChave ?? null,
+        // tipo e status ficam no default do banco
+      })
+      .select("id")
+      .single();
+
+    if (entradaError || !entradaCriada) {
+      console.error("Erro ao inserir em entrada:", entradaError);
+      return NextResponse.json(
+        { error: "Erro ao criar cabeçalho da entrada.", details: entradaError?.message },
+        { status: 500 },
+      );
+    }
+
+    entradaIdCriada = entradaCriada.id as number;
+
+    // ----------------------------------------------------------------
+    // 2) BUSCAR PRODUTOS (BULK) E PREPARAR ITENS (NOVO SCHEMA)
+    // ----------------------------------------------------------------
+    const produtoIds = Array.from(new Set(itens.map((i) => i.produtoId)));
+
+    const { data: produtos, error: produtosError } = await supabaseAdmin
+      .from("produto")
+      .select(
+        `
+        id, estoque,
+        unidade, precovenda,
+        ncm, cest, csosn, cfop,
+        referencia, titulo,
+        "cClassTrib", "cstIbs", "cstCbs",
+        cst, aliquotaicms,
+        cst_pis, aliquota_pis,
+        cst_cofins, aliquota_cofins
+      `,
+      )
+      .in("id", produtoIds);
+
+    if (produtosError) {
+      console.error("Erro ao buscar produtos:", produtosError);
+      return NextResponse.json(
+        { error: "Erro ao buscar produtos.", details: produtosError.message },
+        { status: 500 },
+      );
+    }
+
+    const produtoMap = new Map<number, any>((produtos ?? []).map((p: any) => [p.id, p]));
+    for (const pid of produtoIds) {
+      if (!produtoMap.has(pid)) {
+        return NextResponse.json({ error: `Produto não encontrado. id=${pid}` }, { status: 404 });
+      }
+    }
+
+    // monta linhas para entradaitens (NOVO MODELO)
+    const entradaItensRows = itens.map((item) => {
       const { produtoId, quantidade } = item;
 
       if (!produtoId || !quantidade || quantidade <= 0) {
-        return NextResponse.json(
-          {
-            error: `Item inválido. produtoId=${produtoId}, quantidade=${quantidade}`,
-          },
-          { status: 400 }
-        );
+        throw new Error(`Item inválido. produtoId=${produtoId}, quantidade=${quantidade}`);
       }
 
-      // 1.1) Insert em produtoentrada (agora com fiscal + notachave)
-      const { error: entradaError } = await supabaseAdmin
-        .from("produtoentrada")
-        .insert({
-          quantidade,
-          produtoid: produtoId,
-          fornecedorid: fornecedorId ?? null,
-          fiscal, // boolean
-          notachave: notaChave ?? null,
-        });
+      const p = produtoMap.get(produtoId);
 
-      if (entradaError) {
-        console.error("Erro ao inserir em produtoentrada:", entradaError);
-        return NextResponse.json(
-          {
-            error: "Erro ao registrar entrada de produto.",
-            details: entradaError.message,
-          },
-          { status: 500 }
-        );
+      // No novo schema: precovenda é obrigatório no item.
+      // Mantive compat: se vier "valorUnitario" no body, usa como precovenda do item.
+      const precovenda =
+        isNonNegativeNumber(item.valorUnitario) ? Number(item.valorUnitario) : Number(p.precovenda ?? 0);
+
+      if (!Number.isFinite(precovenda)) {
+        throw new Error(`precovenda inválido para produtoId=${produtoId}.`);
       }
 
-      // 1.2) Buscar estoque atual do produto
-      const { data: produto, error: produtoError } = await supabaseAdmin
-        .from("produto")
-        .select("estoque")
-        .eq("id", produtoId)
-        .single();
+      // unidade é NOT NULL em entradaitens
+      const unidade = p.unidade ?? "UN";
 
-      if (produtoError || !produto) {
-        console.error("Erro ao buscar produto:", produtoError);
-        return NextResponse.json(
-          {
-            error: "Erro ao buscar produto para atualização de estoque.",
-            details: produtoError?.message,
-          },
-          { status: 500 }
-        );
-      }
+      return {
+        entrada_id: entradaIdCriada,
+        produto_id: produtoId,
 
-      const estoqueAtual = produto.estoque ?? 0;
-      const novoEstoque = estoqueAtual + quantidade;
+        quantidade,
+        precovenda,
 
-      // 1.3) Atualizar estoque
+        unidade,
+
+        // snapshot do produto (espelho)
+        ncm: p.ncm ?? null,
+        cest: p.cest ?? null,
+        csosn: p.csosn ?? null,
+        cfop: p.cfop ?? null,
+        referencia: p.referencia ?? null,
+        titulo: p.titulo ?? null,
+
+        // colunas com aspas
+        "cClassTrib": p["cClassTrib"] ?? null,
+        "cstIbs": p["cstIbs"] ?? null,
+        "cstCbs": p["cstCbs"] ?? null,
+
+        cst: p.cst ?? null,
+        aliquotaicms: p.aliquotaicms ?? null,
+
+        cst_pis: p.cst_pis ?? null,
+        aliquota_pis: p.aliquota_pis ?? null,
+
+        cst_cofins: p.cst_cofins ?? null,
+        aliquota_cofins: p.aliquota_cofins ?? null,
+      };
+    });
+
+    // ----------------------------------------------------------------
+    // 3) INSERIR ITENS DA ENTRADA (BULK)
+    // ----------------------------------------------------------------
+    const { error: itensInsertError } = await supabaseAdmin.from("entradaitens").insert(entradaItensRows);
+
+    if (itensInsertError) {
+      console.error("Erro ao inserir entradaitens:", itensInsertError);
+      await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
+      return NextResponse.json(
+        { error: "Erro ao registrar itens da entrada.", details: itensInsertError.message },
+        { status: 500 },
+      );
+    }
+
+    // ----------------------------------------------------------------
+    // 4) ATUALIZAR ESTOQUE (AGREGANDO POR PRODUTO)
+    // ----------------------------------------------------------------
+    const qtdPorProduto = new Map<number, number>();
+    for (const item of itens) {
+      const atual = qtdPorProduto.get(item.produtoId) ?? 0;
+      qtdPorProduto.set(item.produtoId, atual + item.quantidade);
+    }
+
+    for (const [produtoId, qtdSomada] of qtdPorProduto.entries()) {
+      const p = produtoMap.get(produtoId);
+      const estoqueAtual = Number(p.estoque ?? 0);
+      const novoEstoque = estoqueAtual + Number(qtdSomada);
+
       const { error: updateError } = await supabaseAdmin
         .from("produto")
         .update({
@@ -157,33 +251,51 @@ export async function POST(req: NextRequest) {
 
       if (updateError) {
         console.error("Erro ao atualizar estoque do produto:", updateError);
+
+        // rollback best-effort:
+        await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
+
+        for (const upd of estoqueAlterado) {
+          try {
+            const { data: prodAtual } = await supabaseAdmin
+              .from("produto")
+              .select("id, estoque")
+              .eq("id", upd.produtoId)
+              .single();
+
+            if (prodAtual) {
+              const est = Number(prodAtual.estoque ?? 0);
+              await supabaseAdmin
+                .from("produto")
+                .update({ estoque: est - Number(upd.quantidade) })
+                .eq("id", upd.produtoId);
+            }
+          } catch {
+            // best-effort
+          }
+        }
+
         return NextResponse.json(
-          {
-            error: "Erro ao atualizar estoque do produto.",
-            details: updateError.message,
-          },
-          { status: 500 }
+          { error: "Erro ao atualizar estoque do produto.", details: updateError.message },
+          { status: 500 },
         );
       }
+
+      estoqueAlterado.push({ produtoId, quantidade: qtdSomada });
+      p.estoque = novoEstoque;
     }
 
     // ----------------------------------------------------------------
-    // 2) REGISTRAR TRANSAÇÕES (PARCELAS) SE FOR PAGAMENTO FUTURO
+    // 5) REGISTRAR TRANSAÇÕES (PARCELAS) SE FOR PAGAMENTO FUTURO
     // ----------------------------------------------------------------
     if (isPagamentoFuturo && parcelas.length > 0) {
       const descricaoBase =
         descricaoTransacao ||
-        (numeroNota
-          ? `Compra de mercadorias - NF ${numeroNota}`
-          : "Compra de mercadorias (pagamento futuro)");
+        (numeroNota ? `Compra de mercadorias - NF ${numeroNota}` : "Compra de mercadorias (pagamento futuro)");
 
       const inserts = parcelas.map((parcela, index) => {
-        // Se vier só "YYYY-MM-DD", transformamos em ISO com horário
         const dataVencimentoRaw = parcela.dataVencimento;
-        const data =
-          dataVencimentoRaw.length <= 10
-            ? `${dataVencimentoRaw}T00:00:00`
-            : dataVencimentoRaw;
+        const data = dataVencimentoRaw.length <= 10 ? `${dataVencimentoRaw}T00:00:00` : dataVencimentoRaw;
 
         const descricao =
           parcelas.length > 1
@@ -202,42 +314,50 @@ export async function POST(req: NextRequest) {
           banco_id: bancoId,
           nomepagador: nomePagador,
           cpfcnpjpagador: cpfCnpjPagador,
-          pendente: true, // despesa pendente (pagamento futuro)
+          pendente: true,
         };
       });
 
-      const { error: transacaoError } = await supabaseAdmin
-        .from("transacao")
-        .insert(inserts);
+      const { error: transacaoError } = await supabaseAdmin.from("transacao").insert(inserts);
 
       if (transacaoError) {
         console.error("Erro ao inserir transações de parcelas:", transacaoError);
+
+        await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
+
         return NextResponse.json(
           {
             error: "Erro ao registrar transações de pagamento futuro.",
             details: transacaoError.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
 
-    // Sucesso
     return NextResponse.json(
       {
         success: true,
         message: "Entrada registrada com sucesso.",
+        entradaId: entradaIdCriada,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("Erro inesperado ao registrar entrada:", error);
+
+    if (entradaIdCriada) {
+      try {
+        await supabaseAdmin.from("entrada").delete().eq("id", entradaIdCriada);
+      } catch {}
+    }
+
     return NextResponse.json(
       {
         error: "Erro inesperado ao registrar entrada.",
         details: error?.message ?? String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

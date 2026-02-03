@@ -24,7 +24,7 @@ async function carregarPermissoesPorPerfil(perfilId: number | null): Promise<str
     .map((r: any) =>
       String(r?.permissao?.nome ?? "")
         .trim()
-        .toUpperCase()
+        .toUpperCase(),
     )
     .filter(Boolean);
 }

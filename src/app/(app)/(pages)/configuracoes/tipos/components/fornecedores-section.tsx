@@ -32,6 +32,9 @@ type Fornecedor = {
   nomefantasia: string | null;
   endereco: string | null;
   cidade: string | null;
+  endereconumero: string | null;
+  codigomunicipio: string | null;
+  bairro: string | null;
   estado: string | null;
   cep: string | null;
   contato: string | null;
@@ -43,7 +46,10 @@ type FornecedorForm = {
   nomerazaosocial: string;
   nomefantasia: string;
   endereco: string;
+  endereconumero: string;
   cidade: string;
+  codigomunicipio: string;
+  bairro: string;
   estado: string;
   cep: string;
   contato: string;
@@ -55,7 +61,10 @@ const emptyForm: FornecedorForm = {
   nomerazaosocial: "",
   nomefantasia: "",
   endereco: "",
+  endereconumero: "",
   cidade: "",
+  codigomunicipio: "",
+  bairro: "",
   estado: "",
   cep: "",
   contato: "",
@@ -129,7 +138,10 @@ export default function FornecedoresSection() {
         nomerazaosocial: String(f.nomerazaosocial ?? ""),
         nomefantasia: (f.nomefantasia as string | null) ?? null,
         endereco: (f.endereco as string | null) ?? null,
+        endereconumero: (f.endereconumero as string | null) ?? null,
         cidade: (f.cidade as string | null) ?? null,
+        codigomunicipio: (f.codigomunicipio as string | null) ?? null,
+        bairro: (f.bairro as string | null) ?? null,
         estado: (f.estado as string | null) ?? null,
         cep: (f.cep as string | null) ?? null,
         contato: (f.contato as string | null) ?? null,
@@ -161,7 +173,10 @@ export default function FornecedoresSection() {
       nomerazaosocial: f.nomerazaosocial ?? "",
       nomefantasia: f.nomefantasia ?? "",
       endereco: f.endereco ?? "",
+      endereconumero: f.endereconumero ?? "",
       cidade: f.cidade ?? "",
+      codigomunicipio: f.codigomunicipio ?? "",
+      bairro: f.bairro ?? "",
       estado: f.estado ?? "",
       cep: f.cep ?? "",
       contato: f.contato ?? "",
@@ -259,14 +274,12 @@ export default function FornecedoresSection() {
 
       <CardContent className="min-h-[190px] -mt-[24px] px-4 pb-4 pt-0 sm:px-6 relative">
         <div
-          className={`${
-            isLoading ? "opacity-100" : ""
-          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${isLoading ? "opacity-100" : ""
+            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
-              isLoading ? "animate-slideIn" : ""
-            }`}
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${isLoading ? "animate-slideIn" : ""
+              }`}
           />
         </div>
 

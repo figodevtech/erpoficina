@@ -7,14 +7,14 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 type Params = { id: string };
 
 const PRODUTO_FIELDS = `
-  id, descricao, precovenda, estoque, estoqueminimo, ncm, cfop, unidade,
+  id, descricao, precovenda, precocompra, estoque, estoqueminimo, ncm, cfop, unidade,
   cest, csosn, cst, aliquotaicms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, codigobarras, createdat, updatedat, referencia,
   titulo, status_estoque, fabricante, grupo_produto_id, grupo: produtogrupo(id, nome, descricao, ativo), exibirPdv,
   tituloMarketplace, descricaoMarketplace
 `;
 const GET_PRODUTO_FIELDS = `
   ${PRODUTO_FIELDS},
-  entradas: produtoentrada (id, fornecedorid, quantidade, created_at, fornecedor: fornecedor(id, nomerazaosocial, cpfcnpj)),
+  entrada: entradaitens (id, quantidade, created_at, entradainfo: entrada(id, tipo, status, fiscal, fornecedorid, fornecedor: fornecedor(id, nomerazaosocial, cpfcnpj))),
   vendasdoproduto: vendaproduto (
   id, venda_id, produtoid, sub_total, valor_total, valor_desconto, tipo_desconto, quantidade, venda (id, valortotal, status, valortotal, datavenda, desconto_valor, sub_total)
   ),
@@ -24,6 +24,7 @@ const GET_PRODUTO_FIELDS = `
 const WRITABLE_FIELDS = new Set([
   "descricao",
   "precovenda",
+  "precocompra",
   "estoque",
   "estoqueminimo",
   "ncm",

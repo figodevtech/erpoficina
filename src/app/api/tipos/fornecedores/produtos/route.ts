@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
         precovenda,
         unidade,
         ncm,
-        entradas: produtoentrada (id, fornecedorid, quantidade, created_at, fiscal, notachave)
+        entradas: entradaitens (id,quantidade, entradainfo: entrada (id, notachave, fornecedorid, created_at, fornecedor: fornecedor( id, cpfcnpj, nomerazaosocial)))
 
       )
     `,
