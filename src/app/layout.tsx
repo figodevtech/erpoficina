@@ -37,7 +37,8 @@ const geistMono = Geist_Mono({
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      {/* Some browser extensions inject attributes into <body> before hydration (e.g. cz-shortcut-listen). */}
+      <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <Providers attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <NProgressHandler />
           {children}

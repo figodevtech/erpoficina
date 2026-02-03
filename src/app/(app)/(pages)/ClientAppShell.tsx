@@ -2,14 +2,17 @@
 "use client";
 
 import * as React from "react";
-import { AppSidebar } from "../components/sidebar/sidebar";
+import axios from "axios";
+import { signOut } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
+
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+
+import { AppSidebar } from "../components/sidebar/sidebar";
 import { ModeToggle } from "../components/mode-toggle";
 import DateTimeBadge from "../components/date-time-badge";
-import { usePathname } from "next/navigation";
-import { Config } from "./type";
-import { toast } from "sonner";
 import { useConfig } from "./config-context";
 
 const routeTitles: Record<string, string> = {
@@ -63,11 +66,13 @@ export default function ClientAppShell({
 }) {
   const pathname = usePathname();
   const title = routeTitles[pathname] ?? humanize(pathname);
+  const router = useRouter();
+  const config = useConfig();
 
   const [sideBarOpen, setSidebarOpen] = React.useState(true);
   const [hoverHabilitado, setHoverHabilitado] = React.useState(true);
   const hoverTimerRef = React.useRef<number | null>(null);
-  const config = useConfig();
+  const loggingOutRef = React.useRef(false);
 
   React.useEffect(() => {
     // limpa timer anterior se trocar de rota rápido
@@ -115,6 +120,68 @@ export default function ClientAppShell({
     );
   }, [config?.aviso_pagamento]);
 
+  // Opção 1: "sob demanda".
+  // Quando o usuário tentar fazer algo (API call) e receber INACTIVE_USER,
+  // encerramos a sessão do Auth.js e mandamos para o login.
+  React.useEffect(() => {
+    let alive = true;
+
+    async function doLogout() {
+      if (loggingOutRef.current) return;
+      loggingOutRef.current = true;
+      try {
+        await signOut({ redirect: false });
+      } finally {
+        if (alive) router.replace("/login?reason=inactive");
+      }
+    }
+
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (...args: Parameters<typeof fetch>) => {
+      const res = await originalFetch(...args);
+      try {
+        const url =
+          typeof args[0] === "string" ? args[0] : args[0] instanceof Request ? args[0].url : "";
+
+        // não interferir com endpoints do Auth.js (signOut usa /api/auth/*)
+        if (url.includes("/api/auth")) return res;
+
+        if (
+          (res.status === 401 || res.status === 403) &&
+          (res.headers.get("content-type") || "").includes("application/json")
+        ) {
+          const j = await res.clone().json().catch(() => ({} as any));
+          if (j?.error === "INACTIVE_USER") void doLogout();
+        }
+      } catch {
+        // ignore
+      }
+      return res;
+    };
+
+    const axiosId = axios.interceptors.response.use(
+      (resp) => resp,
+      async (err) => {
+        const url = String(err?.config?.url ?? "");
+        if (!url.includes("/api/auth")) {
+          const status = err?.response?.status;
+          const data = err?.response?.data;
+          if ((status === 401 || status === 403) && data?.error === "INACTIVE_USER") {
+            await doLogout();
+          }
+        }
+        return Promise.reject(err);
+      }
+    );
+
+    return () => {
+      alive = false;
+      window.fetch = originalFetch;
+      axios.interceptors.response.eject(axiosId);
+      loggingOutRef.current = false;
+    };
+  }, [router]);
+
   return (
     <SidebarProvider open={sideBarOpen} onOpenChange={setSidebarOpen}>
       <AppSidebar hoverHabilitado={hoverHabilitado} setOpen={setSidebarOpen} />
@@ -132,19 +199,18 @@ export default function ClientAppShell({
             <ModeToggle />
           </header>
         ) : (
-          // ✅ quando não tem header, mostra um trigger flutuante no mobile
+          // quando não tem header, mostra um trigger flutuante no mobile
           <div className="md:hidden fixed left-3 top-3 z-50">
             <SidebarTrigger className="h-10 w-10 rounded-md border bg-background/90 shadow-sm backdrop-blur" />
           </div>
         )}
 
-        {/* teste */}
-
         <main className="flex-1 min-w-0 bg-blue-600/5 dark:bg-muted-foreground/5">
-          {/* se estiver sem header, adiciona padding-top pra não ficar “por baixo” do trigger flutuante */}
+          {/* se estiver sem header, adiciona padding-top pra não ficar por baixo do trigger flutuante */}
           <div className={`mx-auto w-full px-4 md:px-6 py-4 md:py-6 ${hideHeader ? "pt-14" : ""}`}>{children}</div>
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
+

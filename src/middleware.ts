@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { PERMS, type Permission } from "@/app/api/_authz/perms";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const supabaseAdminEdge =
+  supabaseUrl && serviceKey
+    ? createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
+    : null;
 
 const PUBLIC_PATHS = [
   "/login",
@@ -18,15 +26,11 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/send-recovery",
   // ex: "/api/public",
 
-  "/api/ordens/aprovacao"
+  "/api/ordens/aprovacao",
 ];
 
 function isStaticAsset(pathname: string) {
-  if (
-    pathname.startsWith("/_next/") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/images")
-  ) {
+  if (pathname.startsWith("/_next/") || pathname.startsWith("/favicon") || pathname.startsWith("/images")) {
     return true;
   }
   return /\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map|json|webmanifest)$/.test(pathname);
@@ -67,6 +71,8 @@ const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
   { prefix: "/vendas", perm: PERMS.VENDAS },
 
   { prefix: "/acompanhamento", perm: PERMS.ACOMPANHAMENTO },
+
+  { prefix: "/veiculos", perm: PERMS.VEICULOS },
 ];
 
 function matchRule(pathname: string) {
@@ -90,7 +96,20 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
   const user = session?.user;
 
   const isLoggedIn = !!user;
-  const isInactive = !!user && user.ativo === false;
+  let isInactive = false;
+  const userId = (user as any)?.id as string | undefined;
+  if (userId && supabaseAdminEdge) {
+    try {
+      const { data } = await supabaseAdminEdge.from("usuario").select("ativo").eq("id", userId).maybeSingle();
+      isInactive = data?.ativo === false;
+    } catch {
+      // falha silenciosa: se der erro no admin, não derruba o sistema
+      isInactive = false;
+    }
+  } else {
+    // fallback: usa claim da sessão (pode estar desatualizada)
+    isInactive = !!user && (user as any).ativo === false;
+  }
 
   const isApi = pathname.startsWith("/api");
 
