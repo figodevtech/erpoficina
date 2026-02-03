@@ -221,7 +221,7 @@ export function TabGeral({
 
           
         </div>
-          <div className="space-y-2 sm:col-span-4">
+          <div className="space-y-2 sm:col-span-4 ">
             <div className="w-full flex flex-row items-center gap-2">
 
             <Label htmlFor="referencia">Referência</Label>
