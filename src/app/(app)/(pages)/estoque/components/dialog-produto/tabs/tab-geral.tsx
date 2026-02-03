@@ -21,6 +21,7 @@ import { ESTOQUE_STATUS_BADGES } from "../lib/options-fiscais";
 import type { UnidadeFromApi } from "../hooks/use-unidades-medida";
 import { GrupoFromApi } from "../hooks/use-grupo-produtos";
 import { TagInput } from "../tag-input";
+import { Info } from "lucide-react";
 
 type Props = {
   mode: "create" | "edit";
@@ -46,12 +47,10 @@ export function TabGeral({
   const LIMITE_TITULO = 100;
   const LIMITE_DESCRICAO = 300;
   const LIMITE_FABRICANTE = 50;
-  const LIMITE_REFERENCIA = 30;
 
   const qtdTitulo = (produto.titulo ?? "").length;
   const qtdDescricao = (produto.descricao ?? "").length;
   const qtdFabricante = (produto.fabricante ?? "").length;
-  const qtdReferencia = (produto.referencia ?? "").length;
 
   return (
     <TabsContent
@@ -151,27 +150,7 @@ export function TabGeral({
               onChange={(e) => onChange("fabricante", e.target.value)}
               placeholder="Fabricante"
             />
-          </div>
-
-          {/* <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="referencia">Referência</Label>
-              <span
-                className={`text-xs ${qtdReferencia >= LIMITE_REFERENCIA ? "text-destructive" : "text-muted-foreground"}`}
-              >
-                {qtdReferencia}/{LIMITE_REFERENCIA}
-              </span>
-            </div>
-            <Input
-              id="referencia"
-              value={produto.referencia || ""}
-              onChange={(e) => onChange("referencia", e.target.value)}
-              placeholder="SKU / Referência interna"
-              maxLength={LIMITE_REFERENCIA}
-            />
-          </div> */}
-          
-
+          </div> 
           <div className="space-y-2">
             <Label htmlFor="codigobarras">Código de Barras</Label>
             <Input
@@ -243,11 +222,15 @@ export function TabGeral({
           
         </div>
           <div className="space-y-2 sm:col-span-4">
+            <div className="w-full flex flex-row items-center gap-2">
+
             <Label htmlFor="referencia">Referência</Label>
+            <span className=" italic text-xs text-muted-foreground flex flex-row items-center gap-1"><Info className="size-3" />Insira ou cole tags de busca separadas por espaço.</span>
+            </div>
             <TagInput
               value={produto.referencia?.length && produto.referencia.length > 0 ? produto.referencia.split(" ") : []}
               onChange={(tags) => onChange("referencia", tags.join(" "))}
-              placeholder="Adicione tags"
+              placeholder="Ex: P-001 P-002"
             />
           </div>
 

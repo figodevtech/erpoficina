@@ -13,9 +13,7 @@ import { TabImagensCreate } from "./tabs/tab-imagens-create";
 import { useUnidadesMedida } from "./hooks/use-unidades-medida";
 import { useEffect, useState } from "react";
 import { Unidade_medida } from "../../types";
-import { set } from "nprogress";
 import { useGruposProduto } from "./hooks/use-grupo-produtos";
-import { boolean } from "zod";
 
 interface ConteudoCadastroProdutoProps {
   setSelectedProductId?: (value: number | undefined) => void;
