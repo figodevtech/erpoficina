@@ -37,6 +37,10 @@ const statusConfig: Record<
     label: "Concluída",
     className: "bg-green-500/20 text-success border-success/30",
   },
+  SEM_COBRANCA: {
+    label: "Sem Cobrança",
+    className: "bg-gray-500/20 text-info border-info/30",
+  },
   CANCELADO: {
     label: "Cancelada",
     className: "bg-red-500/20 text-destructive border-destructive/30",

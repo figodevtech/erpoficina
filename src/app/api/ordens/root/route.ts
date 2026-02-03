@@ -46,6 +46,8 @@ const statusesParam = searchParams.get("statuses");
         dataentrada,
         datasaida,
         alvo_tipo,
+        execucao_inicio_em,
+        execucao_fim_em,
 
         cliente:clienteid (
           id,
@@ -139,6 +141,8 @@ const statusesParam = searchParams.get("statuses");
     const items = (data ?? []).map((r: any) => ({
       id: r.id as number,
       descricao: (r.descricao as string) ?? "",
+      execucao_inicio_em: (r.execucao_inicio_em as Date) ?? null,
+      execucao_fim_em: (r.execucao_fim_em as Date) ?? null,
       prioridade: (r.prioridade as Prioridade) ?? null,
       status: r.status as Exclude<StatusOS, "TODAS">,
       dataEntrada: r.dataentrada as string | null,
