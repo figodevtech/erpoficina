@@ -10,6 +10,7 @@ import {
   ChevronsRight,
   Loader2,
   MoreHorizontal,
+  Plus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -268,7 +269,10 @@ export default function FornecedoresSection() {
             loadFornecedores={loadFornecedores}
             fornecedorToEdit={editing}
             setFornecedorToEdit={setEditing}
-          />
+          ><Button size="sm" className="hover:cursor-pointer">
+            <Plus className="mr-1 h-4 w-4" />
+            Fornecedor
+          </Button></FornecedorDialog>
         </div>
       </CardHeader>
 

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -12,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { formatCpfCnpj } from "../../../(financeiro)/fluxodecaixa/utils";
+import { formatCep } from "../../../clientes/components/customerDialogRegister/utils";
 
 type Fornecedor = {
   id: number;
@@ -68,7 +71,6 @@ interface FornecedorDialogProps {
   children?: React.ReactNode;
   dadosNovoFornecedor?: FornecedorForm;
   handleGetFornecedor?: () => Promise<void>;
-
 }
 
 export default function FornecedorDialog({
@@ -80,14 +82,12 @@ export default function FornecedorDialog({
   dadosNovoFornecedor,
   children,
   handleGetFornecedor,
-
 }: FornecedorDialogProps) {
   const [form, setForm] = useState<FornecedorForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
 
   function openNovo() {
     if (setFornecedorToEdit) {
-
       setFornecedorToEdit(null);
     }
 
@@ -97,7 +97,7 @@ export default function FornecedorDialog({
 
   function handleChange<K extends keyof FornecedorForm>(
     key: K,
-    value: FornecedorForm[K]
+    value: FornecedorForm[K],
   ) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -127,13 +127,17 @@ export default function FornecedorDialog({
       setIsSaving(true);
 
       if (fornecedorToEdit) {
-        const res = await fetch(`/api/tipos/fornecedores/${fornecedorToEdit.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const res = await fetch(
+          `/api/tipos/fornecedores/${fornecedorToEdit.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
         const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || "Falha ao atualizar fornecedor");
+        if (!res.ok)
+          throw new Error(json?.error || "Falha ao atualizar fornecedor");
         toast.success("Fornecedor atualizado");
       } else {
         const res = await fetch("/api/tipos/fornecedores", {
@@ -142,13 +146,13 @@ export default function FornecedorDialog({
           body: JSON.stringify(payload),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || "Falha ao cadastrar fornecedor");
+        if (!res.ok)
+          throw new Error(json?.error || "Falha ao cadastrar fornecedor");
         toast.success("Fornecedor cadastrado");
-        handleGetFornecedor?.()
+        handleGetFornecedor?.();
       }
 
       setDialogOpen(false);
-
 
       setFornecedorToEdit?.(null);
 
@@ -179,170 +183,171 @@ export default function FornecedorDialog({
         ativo: fornecedorToEdit.ativo ?? true,
       });
     }
-  }, [fornecedorToEdit])
+  }, [fornecedorToEdit]);
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={(nextOpen) => {
+    <Dialog
+      open={dialogOpen}
+      onOpenChange={(nextOpen) => {
+        setDialogOpen(nextOpen);
+        if (dadosNovoFornecedor && nextOpen) {
+          setForm(dadosNovoFornecedor);
+        }
+      }}
+    >
+      <DialogTrigger asChild>{children}</DialogTrigger>
 
-      setDialogOpen(nextOpen)
-      if (dadosNovoFornecedor && nextOpen) {
-        setForm(dadosNovoFornecedor)
-      }
-    }
-    }>
-      <DialogTrigger asChild>
-        {children ? (
-          children
-        ) : (
-          <Button size="sm" className="hover:cursor-pointer" onClick={openNovo}>
-            <Plus className="mr-1 h-4 w-4" />
-            Fornecedor
-          </Button>
-        )}
-      </DialogTrigger>
+      <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[500px] sm:max-h-[600px] sm:w-[55vw] sm:min-w-0">
+      <div className="flex h-full min-h-0 flex-col">
+        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
+            <DialogTitle>
+              {fornecedorToEdit ? "Editar fornecedor" : "Novo fornecedor"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+            <div className="mt-4 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)]">
+                <div className="space-y-1.5">
+                  <Label>CPF/CNPJ</Label>
+                  <Input
+                    value={formatCpfCnpj(form.cpfcnpj || "")}
+                    onChange={(e) => handleChange("cpfcnpj", e.target.value)}
+                    placeholder="Somente números"
+                    maxLength={18}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Nome/Razão Social</Label>
+                  <Input
+                    value={form.nomerazaosocial || ""}
+                    onChange={(e) =>
+                      handleChange("nomerazaosocial", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
 
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {fornecedorToEdit ? "Editar fornecedor" : "Novo fornecedor"}
-          </DialogTitle>
-        </DialogHeader>
+              <div className="space-y-1.5">
+                <Label>Nome Fantasia (opcional)</Label>
+                <Input
+                  value={form.nomefantasia || ""}
+                  onChange={(e) => handleChange("nomefantasia", e.target.value)}
+                />
+              </div>
 
-        <div className="mt-4 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)]">
-            <div className="space-y-1.5">
-              <Label>CNPJ</Label>
-              <Input
-                value={form.cpfcnpj || ""}
-                onChange={(e) => handleChange("cpfcnpj", e.target.value)}
-                placeholder="Somente números"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Razão Social</Label>
-              <Input
-                value={form.nomerazaosocial || ""}
-                onChange={(e) =>
-                  handleChange("nomerazaosocial", e.target.value)
-                }
-              />
+              <div className="space-y-1.5">
+                <Label>Endereço</Label>
+                <Input
+                  value={form.endereco || ""}
+                  onChange={(e) => handleChange("endereco", e.target.value)}
+                  placeholder="Rua, Avenida, etc."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Número</Label>
+                <Input
+                  value={form.endereconumero || ""}
+                  onChange={(e) =>
+                    handleChange("endereconumero", e.target.value)
+                  }
+                  placeholder="Número"
+                  type="number"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
+                <div className="space-y-1.5">
+                  <Label>Estado</Label>
+                  <Input
+                    value={form.estado || ""}
+                    onChange={(e) => handleChange("estado", e.target.value)}
+                    placeholder="UF"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Cidade</Label>
+                  <Input
+                    value={form.cidade || ""}
+                    onChange={(e) => handleChange("cidade", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-nowrap">Código Município</Label>
+                  <Input
+                    value={form.codigomunicipio || ""}
+                    onChange={(e) =>
+                      handleChange("codigomunicipio", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Bairro</Label>
+                  <Input
+                    value={form.bairro || ""}
+                    onChange={(e) => handleChange("bairro", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>CEP</Label>
+                  <Input
+                    value={formatCep(form.cep || "") || ""}
+                    onChange={(e) => handleChange("cep", e.target.value)}
+                    maxLength={9}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Contato (telefone/email)</Label>
+                <Input
+                  value={form.contato || ""}
+                  onChange={(e) => handleChange("contato", e.target.value)}
+                />
+              </div>
+
+              {/* Status dentro do diálogo */}
+              <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
+                <div className="space-y-0.5">
+                  <Label>Status do fornecedor</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Defina se este fornecedor está ativo para uso nas telas do
+                    sistema.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {form.ativo ? "Ativo" : "Inativo"}
+                  </span>
+                  <Switch
+                    checked={form.ativo}
+                    onCheckedChange={(val) => handleChange("ativo", val)}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-
-          <div className="space-y-1.5">
-            <Label>Nome Fantasia (opcional)</Label>
-            <Input
-              value={form.nomefantasia || ""}
-              onChange={(e) => handleChange("nomefantasia", e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Endereço</Label>
-            <Input
-              value={form.endereco || ""}
-              onChange={(e) => handleChange("endereco", e.target.value)}
-              placeholder="Rua, número, bairro..."
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Número</Label>
-            <Input
-              value={form.endereconumero || ""}
-              onChange={(e) => handleChange("endereconumero", e.target.value)}
-              placeholder="Número"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
-            <div className="space-y-1.5">
-              <Label>Estado</Label>
-              <Input
-                value={form.estado || ""}
-                onChange={(e) => handleChange("estado", e.target.value)}
-                placeholder="UF"
-              />
+          <DialogFooter className="px-6 py-4">
+            <div className="flex sm:flex-row gap-3 sm:gap-4">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  setDialogOpen(false);
+                  if (setFornecedorToEdit) {
+                    setFornecedorToEdit(null);
+                  }
+                  setForm(emptyForm);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button type="button" onClick={handleSave} disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar
+              </Button>
             </div>
-            <div className="space-y-1.5">
-              <Label>Cidade</Label>
-              <Input
-                value={form.cidade || ""}
-                onChange={(e) => handleChange("cidade", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-nowrap">Código Município</Label>
-              <Input
-                value={form.codigomunicipio || ""}
-                onChange={(e) => handleChange("codigomunicipio", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Bairro</Label>
-              <Input
-                value={form.bairro || ""}
-                onChange={(e) => handleChange("bairro", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CEP</Label>
-              <Input
-                value={form.cep || ""}
-                onChange={(e) => handleChange("cep", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Contato (telefone/email)</Label>
-            <Input
-              value={form.contato || ""}
-              onChange={(e) => handleChange("contato", e.target.value)}
-            />
-          </div>
-
-          {/* Status dentro do diálogo */}
-          <div className="mt-4 flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
-            <div className="space-y-0.5">
-              <Label>Status do fornecedor</Label>
-              <p className="text-xs text-muted-foreground">
-                Defina se este fornecedor está ativo para uso nas telas do
-                sistema.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                {form.ativo ? "Ativo" : "Inativo"}
-              </span>
-              <Switch
-                checked={form.ativo}
-                onCheckedChange={(val) => handleChange("ativo", val)}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => {
-              setDialogOpen(false);
-              if (setFornecedorToEdit) {
-
-                setFornecedorToEdit(null);
-              }
-              setForm(emptyForm);
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar
-          </Button>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-

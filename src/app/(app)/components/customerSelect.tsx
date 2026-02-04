@@ -62,7 +62,7 @@ export default function CustomerSelect({
   const handleGetCustomers = async (
     pageNumber?: number,
     limit?: number,
-    search?: string
+    search?: string,
   ) => {
     setIsLoading(true);
     try {
@@ -135,13 +135,12 @@ export default function CustomerSelect({
               </Button>
               <CustomerDialog
                 isOpen={openCustomer}
-                setIsOpen={(open)=>{
-                  if(!open){
+                setIsOpen={(open) => {
+                  if (!open) {
                     handleGetCustomers(1, pagination.limit, search);
                   }
                   setOpenCustomer(open);
                 }}
-                
               />
             </div>
 
@@ -227,7 +226,7 @@ export default function CustomerSelect({
                   handleGetCustomers(
                     pagination.page - 1,
                     pagination.limit,
-                    search
+                    search,
                   )
                 }
                 disabled={pagination.page === 1}
@@ -246,7 +245,7 @@ export default function CustomerSelect({
                   handleGetCustomers(
                     pagination.page + 1,
                     pagination.limit,
-                    search
+                    search,
                   )
                 }
                 disabled={
@@ -264,7 +263,7 @@ export default function CustomerSelect({
                   handleGetCustomers(
                     pagination.totalPages,
                     pagination.limit,
-                    search
+                    search,
                   )
                 }
                 disabled={
