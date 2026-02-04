@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       `,
         { count: "exact" }
       )
-      .order("nomerazaosocial", { ascending: true });
+      .order("id", { ascending: false });
 
     // filtro de busca
     if (search) {
