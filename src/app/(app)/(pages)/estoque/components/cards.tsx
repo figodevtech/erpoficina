@@ -1,7 +1,7 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { Package, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { Package, AlertTriangle, TrendingDown, TrendingUp, CircleOff, Boxes, Box } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,11 +13,11 @@ interface CardsPropos {
 
 export default function Cards({ loadingStatusCounter, totalProducts, statusCounts }: CardsPropos) {
   return (
-    <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total de Itens</CardTitle>
-          <Package className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Total de Items</CardTitle>
+          <Box className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           {loadingStatusCounter ? (
@@ -25,7 +25,21 @@ export default function Cards({ loadingStatusCounter, totalProducts, statusCount
           ) : (
             <div className="text-2xl font-bold">{totalProducts}</div>
           )}
-          <p className="text-xs text-muted-foreground">Produtos listados</p>
+          <p className="text-xs text-muted-foreground">Produtos cadastrados</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Sem estoque</CardTitle>
+          <CircleOff className="h-4 w-4 text-purple-600" />
+        </CardHeader>
+        <CardContent>
+          {loadingStatusCounter ? (
+            <Skeleton className="h-8 w-8"></Skeleton>
+          ) : (
+            <div className="text-2xl font-bold text-purple-600">{statusCounts.SEM_ESTOQUE}</div>
+          )}
+          <p className="text-xs text-muted-foreground">Estoque zerado</p>
         </CardContent>
       </Card>
 
@@ -59,7 +73,7 @@ export default function Cards({ loadingStatusCounter, totalProducts, statusCount
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className=" col-span-2 md:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Estoque Bom</CardTitle>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />

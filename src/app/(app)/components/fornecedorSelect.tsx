@@ -23,6 +23,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Loader,
+  Plus,
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Fornecedor, Pagination } from "../(pages)/estoque/types";
+import FornecedorDialog from "../(pages)/configuracoes/tipos/components/fornecedorDialog";
 
 interface FornecedorSelectProps {
   children?: ReactNode;
@@ -57,11 +59,12 @@ export default function FornecedorSelect({
   });
   const [fornecedorItems, setFornecedorItems] = useState<Fornecedor[] | []>([]);
   const [search, setSearch] = useState("");
+  const [openFornecedor, setOpenFornecedor] = useState(false);
 
   const handleGetFornecedores = async (
     pageNumber?: number,
     limit?: number,
-    searchText?: string
+    searchText?: string,
   ) => {
     setIsLoading(true);
     try {
@@ -77,7 +80,7 @@ export default function FornecedorSelect({
         setPagination(response.data.pagination);
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
     } finally {
       setIsLoading(false);
     }
@@ -96,8 +99,9 @@ export default function FornecedorSelect({
       onOpenChange={(nextOpen) => {
         if (setOpen) {
           setOpen(nextOpen);
+          handleGetFornecedores(1, pagination.limit, "");
         }
-
+        
         if (!nextOpen) {
           setSearch("");
         }
@@ -112,13 +116,34 @@ export default function FornecedorSelect({
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-            <div className="relative w-full mb-2">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por nome, email ou telefone..."
-                className="pl-10"
-              />
+            <div className="flex flex-row items-center gap-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por nome, email ou telefone..."
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                onClick={() => setOpenFornecedor(true)}
+                variant={"outline"}
+                className="text-xs hover:cursor-pointer"
+              >
+                <Plus />
+                Novo
+              </Button>
+              <FornecedorDialog
+                dialogOpen={openFornecedor}
+                setDialogOpen={setOpenFornecedor}
+                loadFornecedores={() =>
+                  handleGetFornecedores(
+                    pagination.page,
+                    pagination.limit,
+                    search,
+                  )
+                }
+              ></FornecedorDialog>
             </div>
 
             <div
@@ -202,7 +227,7 @@ export default function FornecedorSelect({
                   handleGetFornecedores(
                     pagination.page - 1,
                     pagination.limit,
-                    search
+                    search,
                   )
                 }
                 disabled={pagination.page === 1}
@@ -221,7 +246,7 @@ export default function FornecedorSelect({
                   handleGetFornecedores(
                     pagination.page + 1,
                     pagination.limit,
-                    search
+                    search,
                   )
                 }
                 disabled={
@@ -239,7 +264,7 @@ export default function FornecedorSelect({
                   handleGetFornecedores(
                     pagination.totalPages,
                     pagination.limit,
-                    search
+                    search,
                   )
                 }
                 disabled={
