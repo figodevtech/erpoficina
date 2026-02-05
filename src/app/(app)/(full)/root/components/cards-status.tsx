@@ -1,27 +1,60 @@
-import { Ordem } from "@/app/(app)/(pages)/ordens/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClipboardList, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-interface StatsCardsProps {
-  ordens: Ordem[];
-}
+type StatusOS =
+  | "AGUARDANDO_CHECKLIST"
+  | "ORCAMENTO"
+  | "ORCAMENTO_RECUSADO"
+  | "APROVACAO_ORCAMENTO"
+  | "ORCAMENTO_APROVADO"
+  | "EM_ANDAMENTO"
+  | "PAGAMENTO"
+  | "SEM_COBRANCA"
+  | "CONCLUIDO"
+  | "CANCELADO";
 
-export function StatsCards({ ordens }: StatsCardsProps) {
-  const total = ordens.length;
-  const emAndamento = ordens.filter((o) => o.status === "EM_ANDAMENTO").length;
-  const concluidas = ordens.filter((o) => o.status === "CONCLUIDO").length;
-  const pendentes = ordens.filter(
-    (o) => o.status === "ORCAMENTO_APROVADO" || o.status === "ORCAMENTO" || o.status === "APROVACAO_ORCAMENTO" || o.status === "ORCAMENTO_RECUSADO" || o.status === "AGUARDANDO_CHECKLIST"
-  ).length;
+type StatsResponse = {
+  counters: Record<StatusOS, number>;
+};
 
-  const faturamentoTotal = ordens.reduce((acc, o) => acc + o.orcamentototal, 0);
+export function StatsCards() {
+  const [counters, setCounters] = useState<Record<StatusOS, number> | null>(null);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const { data } = await axios.get<StatsResponse>("/api/ordens/stats");
+        setCounters(data.counters);
+      } catch (error) {
+        console.error("Erro ao buscar estatísticas:", error);
+      }
+    }
+    fetchStats();
+  }, []);
+
+  const getCount = (status: StatusOS) => counters?.[status] ?? 0;
+
+  const total = counters
+    ? Object.values(counters).reduce((a, b) => a + b, 0)
+    : 0;
+
+  const emAndamento = getCount("EM_ANDAMENTO");
+  const concluidas = getCount("CONCLUIDO");
+  const pendentes =
+    getCount("ORCAMENTO_APROVADO") +
+    getCount("ORCAMENTO") +
+    getCount("APROVACAO_ORCAMENTO") +
+    getCount("ORCAMENTO_RECUSADO") +
+    getCount("AGUARDANDO_CHECKLIST");
 
   const stats = [
     {
       label: "Total de OS",
       value: total.toString(),
       icon: ClipboardList,
-      description: `R$ ${faturamentoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em orçamentos`,
+      description: "Total de ordens registradas",
       iconColor: "text-primary",
       bgColor: "bg-primary/10",
     },
@@ -52,7 +85,7 @@ export function StatsCards({ ordens }: StatsCardsProps) {
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
         <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur">
           <CardContent className="p-6">

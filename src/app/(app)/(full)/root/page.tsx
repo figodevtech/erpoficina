@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Ordem } from "../../(pages)/ordens/types";
 import { OrdensList } from "./components/ordens-lista";
 import axios from "axios";
+import { Pagination } from "../../(pages)/veiculos/types";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,33 +15,78 @@ const supabase = createClient(
 
 export default function Page() {
   const [ordens, setOrdens] = useState<Ordem[]>([]);
+  const [activeTab, setActiveTab] = useState("abertas");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ 1) Carrega um snapshot inicial (pra UPDATE começar a fazer sentido)
-  useEffect(() => {
-  const controller = new AbortController();
+  const OPEN_STATUSES = [
+    "AGUARDANDO_CHECKLIST",
+    "ORCAMENTO",
+    "ORCAMENTO_RECUSADO",
+    "APROVACAO_ORCAMENTO",
+    "ORCAMENTO_APROVADO",
+    "EM_ANDAMENTO",
+    "PAGAMENTO",
+  ];
 
-  async function carregarInicial() {
+  const FINISHED_STATUSES = ["CONCLUIDO", "SEM_COBRANCA", "CANCELADO"];
+
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    limit: 50,
+    total: 0,
+    pageCount: 0,
+    totalPages: 0,
+  });
+
+  // Função para buscar ordens
+  const fetchOrdens = async (page: number, limit: number, tabOverride?: string) => {
+    setIsLoading(true);
     try {
-      const { data } = await axios.get<{ items: Ordem[] }>("/api/ordens/root", {
-        params: { page: 1, limit: 50 }, // pega 50 (a API default é 10)
-        signal: controller.signal,
+      const currentTab = tabOverride ?? activeTab;
+      const statuses =
+        currentTab === "abertas" ? OPEN_STATUSES : FINISHED_STATUSES;
+
+      const { data } = await axios.get<{ items: Ordem[], total: number, totalPages: number, pageCount: number }>("/api/ordens/root", {
+        params: {
+          page,
+          limit,
+          statuses: statuses.join(","),
+        },
       });
 
       setOrdens(data.items ?? []);
+      setPagination((prev) => ({
+        ...prev,
+        page,
+        limit,
+        total: data.total,
+        totalPages: data.totalPages,
+        pageCount: data.pageCount,
+      }));
     } catch (err: any) {
-      // se o componente desmontar, o abort cai aqui — só ignora
       if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") return;
-
       console.error("Erro ao buscar ordens:", err);
+    } finally {
+      setIsLoading(false);
     }
-  }
-
-  void carregarInicial();
-
-  return () => {
-    controller.abort();
   };
-}, []);
+
+  const handleGetOrdens = (page: number, limit: number) => {
+    void fetchOrdens(page, limit);
+  };
+
+  // ✅ 1) Carrega um snapshot inicial (pra UPDATE começar a fazer sentido)
+  // E recarrega quando muda a TAB (reseta para pagina 1)
+  useEffect(() => {
+    const controller = new AbortController();
+    
+    // Sempre que mudar a tab, reseta pra pagina 1
+    void fetchOrdens(1, 50);
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeTab]);
 
   // ✅ 2) Realtime com UPSERT no state (UPDATE também “entra” se não existir)
   useEffect(() => {
@@ -53,12 +99,25 @@ export default function Page() {
           console.log("[REALTIME]", payload.eventType, payload);
 
           const tipo = payload.eventType;
+          const currentStatuses =
+            activeTab === "abertas" ? OPEN_STATUSES : FINISHED_STATUSES;
 
           if (tipo === "INSERT" || tipo === "UPDATE") {
             const incoming = payload.new as Ordem;
 
             // soft delete
             if ((incoming as any).is_deleted) {
+              setOrdens((atual) => atual.filter((o) => o.id !== incoming.id));
+              return;
+            }
+
+            // Verifica se o status do incoming faz parte da tab atual
+            const isValidForTab = currentStatuses.includes(
+              incoming.status as string,
+            );
+
+            if (!isValidForTab) {
+              // Se não for válido para a tab atual, removemos se existir
               setOrdens((atual) => atual.filter((o) => o.id !== incoming.id));
               return;
             }
@@ -88,7 +147,7 @@ export default function Page() {
     return () => {
       supabase.removeChannel(canalOs);
     };
-  }, []);
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,8 +162,15 @@ export default function Page() {
             Acompanhe suas ordens de serviço em tempo real
           </p>
         </div>
-        <StatsCards ordens={ordens} />
-        <OrdensList ordens={ordens}/>
+        <StatsCards />
+        <OrdensList
+        handleGetOrdens={handleGetOrdens}
+        pagination={pagination}
+          isLoading={isLoading}
+          ordens={ordens}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       </main>
     </div>
   );
