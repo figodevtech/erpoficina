@@ -65,7 +65,18 @@ const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
 
 
+import { useState } from "react";
+import { OrdemDetailsDialog } from "./ordem-details-dialog";
+
 export function OrdensList({ ordens, activeTab, onTabChange, isLoading, pagination, handleGetOrdens }: OrdensListProps) {
+  const [selectedOsId, setSelectedOsId] = useState<number | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const handleRowDoubleClick = (id: number) => {
+    setSelectedOsId(id);
+    setDetailsOpen(true);
+  };
+
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur">
       <CardHeader className="border-b-2 flex flex-col">
@@ -133,6 +144,7 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                 <TableRow
                   key={ordem.id}
                   className="hover:bg-secondary/30 transition-colors cursor-pointer group"
+                  onDoubleClick={() => handleRowDoubleClick(ordem.id)}
                 >
                   <TableCell className="max-w-[300px]f md:max-w-[350px] truncate py-6 md:py-1">
                     <div className="flex items-center gap-3">
@@ -259,7 +271,9 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleRowDoubleClick(ordem.id)}>
+                          Ver detalhes
+                        </DropdownMenuItem>
                         <DropdownMenuItem>Editar</DropdownMenuItem>
                         <DropdownMenuItem>Imprimir</DropdownMenuItem>
                       </DropdownMenuContent>
@@ -340,6 +354,12 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                   </div>
         </div>
       </CardContent>
+
+      <OrdemDetailsDialog 
+        osId={selectedOsId}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
     </Card>
   );
 }
