@@ -95,7 +95,7 @@ export default function Page() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "ordemservico" },
-        (payload) => {
+        async (payload) => {
           console.log("[REALTIME]", payload.eventType, payload);
 
           const tipo = payload.eventType;
@@ -103,33 +103,67 @@ export default function Page() {
             activeTab === "abertas" ? OPEN_STATUSES : FINISHED_STATUSES;
 
           if (tipo === "INSERT" || tipo === "UPDATE") {
-            const incoming = payload.new as Ordem;
+            const partial = payload.new as Ordem;
+            if (!partial.id) return;
 
-            // soft delete
-            if ((incoming as any).is_deleted) {
-              setOrdens((atual) => atual.filter((o) => o.id !== incoming.id));
-              return;
+            // Busca os dados completos da API para ter os joins (cliente, veiculo, etc)
+            try {
+              const { data } = await axios.get<{ items: Ordem[] }>(
+                "/api/ordens/root",
+                {
+                  params: {
+                    q: String(partial.id),
+                    limit: 1,
+                    // Se quiser garantir que venha mesmo se status mudou, 
+                    // talvez não devêssemos passar 'statuses' aqui. 
+                    // O endpoint root filtra por statuses se passar params.
+                    // Se não passar, vem "TODAS" se não mandar nada?
+                    // O endpoint diz: const status = ... || "TODAS".
+                    // Então sem params, busca em "TODAS".
+                  },
+                },
+              );
+              
+              const incoming = data.items.find((o) => o.id === partial.id);
+
+              // Se não achou na API (ex: soft deleted e a API filtra, ou algum erro), aborta
+              if (!incoming) {
+                 // Se foi soft delete no bando, pode ser que a API não retorne.
+                 // Mas vamos checar is_deleted do payload primeiro.
+                 if ((partial as any).is_deleted) {
+                    setOrdens((atual) => atual.filter((o) => o.id !== partial.id));
+                 }
+                 return;
+              }
+
+              // soft delete check (caso venha no objeto completo também)
+              if ((incoming as any).is_deleted) {
+                setOrdens((atual) => atual.filter((o) => o.id !== incoming.id));
+                return;
+              }
+
+              // Verifica se o status do incoming faz parte da tab atual
+              const isValidForTab = currentStatuses.includes(
+                incoming.status as string,
+              );
+
+              if (!isValidForTab) {
+                // Se não for válido para a tab atual, removemos se existir
+                setOrdens((atual) => atual.filter((o) => o.id !== incoming.id));
+                return;
+              }
+
+              setOrdens((atual) => {
+                const idx = atual.findIndex((o) => o.id === incoming.id);
+                if (idx === -1) return [incoming, ...atual]; // ✅ entra no array
+                const copia = [...atual];
+                copia[idx] = incoming;
+                return copia;
+              });
+
+            } catch (err) {
+              console.error("Erro ao buscar ordem atualizada via realtime:", err);
             }
-
-            // Verifica se o status do incoming faz parte da tab atual
-            const isValidForTab = currentStatuses.includes(
-              incoming.status as string,
-            );
-
-            if (!isValidForTab) {
-              // Se não for válido para a tab atual, removemos se existir
-              setOrdens((atual) => atual.filter((o) => o.id !== incoming.id));
-              return;
-            }
-
-            setOrdens((atual) => {
-              const idx = atual.findIndex((o) => o.id === incoming.id);
-              if (idx === -1) return [incoming, ...atual]; // ✅ entra no array
-              const copia = [...atual];
-              copia[idx] = incoming;
-              return copia;
-            });
-
             return;
           }
 

@@ -19,15 +19,15 @@ const statusConfig: Record<
   },
   APROVACAO_ORCAMENTO: {
     label: "Aprovação Orçamento",
-    className: "bg-purple-500/20 text-warning border-warning/30",
+    className: "text-primary bg-blue-500/20 border-warning/30",
   },
   ORCAMENTO_APROVADO: {
     label: "Orçamento Aprovado",
-    className: "bg-blue-500/20 text-warning border-warning/30",
+    className: "bg-purple-500/20 text-green-500 border-warning/30",
   },
   ORCAMENTO_RECUSADO: {
     label: "Orçamento Recusado",
-    className: "bg-red-500/20 text-warning border-warning/30",
+    className: "bg-purple-500/20 text-red-500 border-warning/30",
   },
   PAGAMENTO: {
     label: "Pagamento",

@@ -48,6 +48,7 @@ const statusesParam = searchParams.get("statuses");
         alvo_tipo,
         execucao_inicio_em,
         execucao_fim_em,
+        createdat,
 
         cliente:clienteid (
           id,
@@ -148,6 +149,7 @@ const statusesParam = searchParams.get("statuses");
       dataEntrada: r.dataentrada as string | null,
       orcamentototal: r.orcamentototal as number | null,
       dataSaida: r.datasaida as string | null,
+      createdAt: r.createdat as string | null,
 
       alvo_tipo: (r.alvo_tipo as AlvoTipo) ?? null,
 

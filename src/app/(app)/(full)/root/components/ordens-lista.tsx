@@ -120,7 +120,7 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                   OS / Cliente
                 </TableHead>
                 <TableHead className="hidden md:table-cell px-6 py-3 text-left font-medium text-muted-foreground uppercase tracking-wider">
-                  Veículo
+                  Veículo / Peça
                 </TableHead>
                 <TableHead className="hidden md:table-cell px-6 py-3 text-left font-medium text-muted-foreground uppercase tracking-wider">
                   Setor / Responsável
@@ -132,7 +132,7 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                   Valor
                 </TableHead>
                 <TableHead className="hidden md:table-cell px-6 py-3 text-right font-medium text-muted-foreground uppercase tracking-wider">
-                  Data
+                  Cadastro
                 </TableHead>
                 <TableHead className="hidden md:table-cell px-6 py-3 text-right font-medium text-muted-foreground uppercase tracking-wider">
                   <span className="sr-only">Ações</span>
@@ -255,7 +255,7 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                   </TableCell>
                   <TableCell className="hidden md:table-cell px-6 py-4 text-right">
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(ordem.execucao_inicio_em || undefined) || ""}
+                      {formatDate(ordem.createdAt || undefined) || ""}
                     </p>
                   </TableCell>
                   <TableCell className="hidden md:table-cell px-6 py-4 text-right">

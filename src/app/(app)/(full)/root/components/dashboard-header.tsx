@@ -12,8 +12,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bell, Search, Plus, Settings, LogOut, User } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export function DashboardHeader() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+      try {
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        await signOut({ redirect: false });
+        router.push("/login");
+      } catch {
+        router.push("/login");
+      }
+    };
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center justify-between px-6">
@@ -93,7 +109,9 @@ export function DashboardHeader() {
                 Configurações
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
               </DropdownMenuItem>

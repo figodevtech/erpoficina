@@ -55,7 +55,7 @@ export type OrdemRoot = {
   orcamentototal:number;
   transacoes: Transaction[] | null
   is_deleted?: boolean
-  created_at?: Date
+  createdAt?: Date
   alvo_tipo?: "VEICULO" | "PECA" | null
   execucao_inicio_em?: Date | null
   execucao_fim_em?: Date | null

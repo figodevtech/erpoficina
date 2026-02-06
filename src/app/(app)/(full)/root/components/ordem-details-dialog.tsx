@@ -71,6 +71,7 @@ type ProdutoItem = {
     id: number;
     codigo: string | null;
     descricao: string;
+    titulo: string;
     precounitario: number | null;
     unidade: string | null;
   } | null;
@@ -524,7 +525,7 @@ export function OrdemDetailsDialog({
                     </Card>
 
                     {data.os.observacoes && (
-                      <Card className="overflow-hidden border-amber-500/30 bg-amber-500/5">
+                      <Card className="p-0 overflow-hidden border-amber-500/30 bg-amber-500/5">
                         <CardHeader className="p-0 m-0">
                         <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
                           <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -546,8 +547,8 @@ export function OrdemDetailsDialog({
                 {/* Tab: Serviços */}
                 <TabsContent value="servicos" className="mt-0 space-y-4 m-0">
                   {data.itensServico.length === 0 ? (
-                    <Card className="border-dashed">
-                      <CardContent className="py-12 flex flex-col items-center justify-center gap-3">
+                    <Card className="p-0 border-dashed">
+                      <CardContent className="p-0 py-12 flex flex-col items-center justify-center gap-3">
                         <div className="p-3 rounded-full bg-muted">
                           <Wrench className="w-6 h-6 text-muted-foreground" />
                         </div>
@@ -560,7 +561,7 @@ export function OrdemDetailsDialog({
                     <>
                       {/* Desktop Table View */}
                       <div className="hidden md:block">
-                        <Card className="overflow-hidden">
+                        <Card className="p-0 overflow-hidden">
                           <div className="bg-muted/50 px-4 py-3 border-b">
                             <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                               <div className="col-span-5">Serviço</div>
@@ -699,7 +700,7 @@ export function OrdemDetailsDialog({
                 {/* Tab: Produtos */}
                 <TabsContent value="produtos" className="mt-0 space-y-4 m-0">
                   {data.itensProduto.length === 0 ? (
-                    <Card className="border-dashed">
+                    <Card className="p-0 border-dashed">
                       <CardContent className="py-12 flex flex-col items-center justify-center gap-3">
                         <div className="p-3 rounded-full bg-muted">
                           <Package className="w-6 h-6 text-muted-foreground" />
@@ -713,7 +714,7 @@ export function OrdemDetailsDialog({
                     <>
                       {/* Desktop Table View */}
                       <div className="hidden md:block">
-                        <Card className="overflow-hidden">
+                        <Card className="p-0 overflow-hidden">
                           <div className="bg-muted/50 px-4 py-3 border-b">
                             <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                               <div className="col-span-5">Produto</div>
@@ -730,7 +731,7 @@ export function OrdemDetailsDialog({
                               >
                                 <div className="col-span-5 space-y-1">
                                   <p className="font-medium text-foreground">
-                                    {item.produto?.descricao ||
+                                    {item.produto?.titulo ||
                                       "Produto sem nome"}
                                   </p>
                                   {item.produto?.codigo && (
@@ -772,12 +773,12 @@ export function OrdemDetailsDialog({
                       {/* Mobile Card View */}
                       <div className="md:hidden space-y-3">
                         {data.itensProduto.map((item, idx) => (
-                          <Card key={idx} className="overflow-hidden">
+                          <Card key={idx} className="p-0 overflow-hidden">
                             <CardContent className="p-4 space-y-3">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="space-y-1 min-w-0">
-                                  <p className="font-semibold text-foreground truncate">
-                                    {item.produto?.descricao ||
+                                  <p className="font-semibold text-foreground">
+                                    {item.produto?.titulo ||
                                       "Produto sem nome"}
                                   </p>
                                   {item.produto?.codigo && (

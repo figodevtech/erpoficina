@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import axios from 'axios'
 import type { Ordem } from '../../(pages)/ordens/types'
 
 const supabase = createClient(
@@ -12,6 +13,7 @@ const supabase = createClient(
 export function OrdemServicoRealtime() {
   const [ordens, setOrdens] = useState<Ordem[]>([])
 
+  
   // ✅ 1) Carrega um snapshot inicial (pra UPDATE começar a fazer sentido)
   useEffect(() => {
     let cancelado = false
@@ -44,27 +46,50 @@ export function OrdemServicoRealtime() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'ordemservico' },
-        (payload) => {
+        async (payload) => {
           console.log('[REALTIME]', payload.eventType, payload)
 
           const tipo = payload.eventType
 
           if (tipo === 'INSERT' || tipo === 'UPDATE') {
-            const incoming = payload.new as Ordem
+            const partial = payload.new as Ordem
+            if (!partial.id) return
+            
+            // Fix: busca dados completos para ter joins
+            try {
+               const { data } = await axios.get<{ items: Ordem[] }>('/api/ordens/root', {
+                 params: {
+                   q: String(partial.id),
+                   limit: 1
+                 }
+               })
+               
+               const incoming = data.items.find(o => o.id === partial.id)
+               if (!incoming) {
+                  // check soft delete in partial
+                  if ((partial as any).is_deleted) {
+                    setOrdens((atual) => atual.filter(o => o.id !== partial.id))
+                  }
+                  return
+               }
 
-            // soft delete
-            if ((incoming as any).is_deleted) {
-              setOrdens((atual) => atual.filter((o) => o.id !== incoming.id))
-              return
+               // soft delete
+               if ((incoming as any).is_deleted) {
+                 setOrdens((atual) => atual.filter((o) => o.id !== incoming.id))
+                 return
+               }
+   
+               setOrdens((atual) => {
+                 const idx = atual.findIndex((o) => o.id === incoming.id)
+                 if (idx === -1) return [incoming, ...atual] // ✅ entra no array
+                 const copia = [...atual]
+                 copia[idx] = incoming
+                 return copia
+               })
+
+            } catch(e) {
+               console.error('Erro fetch realtime OrdemRealTime', e)
             }
-
-            setOrdens((atual) => {
-              const idx = atual.findIndex((o) => o.id === incoming.id)
-              if (idx === -1) return [incoming, ...atual] // ✅ entra no array
-              const copia = [...atual]
-              copia[idx] = incoming
-              return copia
-            })
 
             return
           }

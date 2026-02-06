@@ -266,7 +266,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         ? {
             id: Number(r.produto.id),
             codigo: String(r.produto.referencia ?? r.produto.codigobarras ?? "") || null,
-            descricao: String(r.produto.descricao ?? r.produto.titulo ?? ""),
+            titulo: String(r.produto.titulo ?? ""),
+            descricao: String(r.produto.descricao ?? ""),
             precounitario: r.produto.precovenda ?? null,
             unidade: r.produto.unidade ?? null,
           }
