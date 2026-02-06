@@ -110,6 +110,7 @@ type APIResponse = {
     orcamentototal: number | null;
     observacoes: string | null;
     updatedat: string | null;
+    execucao_inicio_em: Date | null;
     setor: { id: number; nome: string } | null;
     cliente: { id: number; nomerazaosocial: string } | null;
     veiculo: {
@@ -191,18 +192,72 @@ export function OrdemDetailsDialog({
   const totalProdutos =
     data?.itensProduto.reduce((acc, p) => acc + p.subtotal, 0) ?? 0;
 
+type DiferencaFormatada = {
+  dias: number;
+  horas: number;
+  minutos: number;
+  texto: string;
+};
+
+function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date | string | number | null): DiferencaFormatada {
+ if(!dataA || !dataB) {
+
+   return { dias: 0, horas: 0, minutos: 0, texto: "0m" };
+ }
+
+
+  const a = new Date(dataA).getTime();
+  const b = new Date(dataB).getTime();
+
+  if (Number.isNaN(a) || Number.isNaN(b)) {
+    throw new Error("Data inválida. Passe Date, ISO string ou timestamp.");
+  }
+
+  let diffMs = Math.abs(b - a);
+
+  const msPorMinuto = 60_000;
+  const msPorHora = 60 * msPorMinuto;
+  const msPorDia = 24 * msPorHora;
+
+  const dias = Math.floor(diffMs / msPorDia);
+  diffMs -= dias * msPorDia;
+
+  const horas = Math.floor(diffMs / msPorHora);
+  diffMs -= horas * msPorHora;
+
+  const minutos = Math.floor(diffMs / msPorMinuto);
+
+  const partes: string[] = [];
+
+  if (dias > 0) partes.push(`${dias}d`);
+  if (horas > 0 || dias > 0) partes.push(`${horas}h`); // se tem dia, mostra hora mesmo que 0
+  partes.push(`${minutos}m`); // sempre mostra minutos
+
+  const texto =
+    partes.length === 1
+      ? partes[0]
+      : partes.length === 2
+        ? `${partes[0]} e ${partes[1]}`
+        : `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`;
+
+  return { dias, horas, minutos, texto };
+}
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[95vw] h-dvh md:h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-0 shadow-2xl">
         {/* Header */}
         <DialogHeader className="px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b flex-shrink-0">
-          <DialogTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <DialogTitle className="flex flex-row sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-primary/10 ring-1 ring-primary/20">
                 <Wrench className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                <h2 className="sm:hidden text-md sm:text-xl font-bold text-foreground">
+                  OS
+                </h2>
+                <h2 className="hidden sm:block text-md sm:text-xl font-bold text-foreground">
                   Ordem de Serviço
                 </h2>
                 <p className="text-sm text-muted-foreground font-medium">
@@ -210,7 +265,15 @@ export function OrdemDetailsDialog({
                 </p>
               </div>
             </div>
-            {data && <StatusBadge className="mr-5" status={data.os.status} />}
+            <div className="flex flex-col items-center gap-2 mr-4">
+
+            {data && <StatusBadge className="mr-5 text-nowrap" status={data.os.status} />}
+            {data && data.os.status === "EM_ANDAMENTO" && data.os.dataentrada && (
+              <div className="text-sm text-muted-foreground mr-3">
+                Há {diferencaEntreDatas(data.os.execucao_inicio_em, new Date()).texto}
+              </div>
+            )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -254,28 +317,28 @@ export function OrdemDetailsDialog({
               <TabsList className="bg-transparent justify-center itens-center p-0 h-auto gap-1 sm:gap-2 w-full sm:w-full flex">
                 <TabsTrigger
                   value="geral"
-                  className="flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
+                  className="hover:cursor-pointer flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
                 >
                   <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden xs:inline">Visão</span> Geral
+                  Geral
                 </TabsTrigger>
                 <TabsTrigger
                   value="servicos"
-                  className="flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
+                  className="hover:cursor-pointer flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
                 >
                   <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Serviços
                 </TabsTrigger>
                 <TabsTrigger
                   value="produtos"
-                  className="flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
+                  className="hover:cursor-pointer flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
                 >
                   <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Produtos
                 </TabsTrigger>
                 <TabsTrigger
                   value="checklist"
-                  className="flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
+                  className="hover:cursor-pointer flex items-center gap-1 sm:gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-medium transition-all"
                 >
                   <ClipboardCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Checklist

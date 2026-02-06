@@ -59,6 +59,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           "alvo_tipo",
           "pecaid",
           "motivo_cancelamento",
+          "execucao_inicio_em"
         ].join(",")
       )
       .eq("id", osId)
@@ -75,6 +76,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       status: string | null;
       statusaprovacao: string | null;
       descricao: string | null;
+      execucao_inicio_em: string | null;
       dataentrada: string | null;
       datasaida: string | null;
       orcamentototal: number | null;
@@ -357,6 +359,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       status: osRow.status ?? null,
       statusaprovacao: osRow.statusaprovacao ?? null,
       prioridade: (osRow.prioridade ?? "NORMAL") as Prioridade,
+      execucao_inicio_em: osRow.execucao_inicio_em ?? null,
       dataentrada: osRow.dataentrada ?? null,
       datasaida: osRow.datasaida ?? null,
       alvo_tipo: (osRow.alvo_tipo ?? "VEICULO") as AlvoTipo,

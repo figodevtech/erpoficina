@@ -44,35 +44,32 @@ export function DashboardHeader() {
           </div>
           
           <nav className="hidden md:flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="text-foreground">
-              Dashboard
-            </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
               Ordens
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
               Clientes
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
               Relatórios
             </Button>
           </nav>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative hidden md:block">
+          {/* <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Buscar OS, cliente..."
               className="w-64 pl-9 bg-secondary/50 border-border/50 focus:bg-secondary"
             />
-          </div>
+          </div> */}
 
-          <Button size="sm" className="gap-2">
+          {/* <Button size="sm" className="gap-2">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Nova OS</span>
-          </Button>
+          </Button> */}
 
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
