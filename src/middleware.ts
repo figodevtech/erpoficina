@@ -100,8 +100,12 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
   const userId = (user as any)?.id as string | undefined;
   if (userId && supabaseAdminEdge) {
     try {
-      const { data } = await supabaseAdminEdge.from("usuario").select("ativo").eq("id", userId).maybeSingle();
+      const { data } = await supabaseAdminEdge.from("usuario").select("ativo, is_root").eq("id", userId).maybeSingle();
       isInactive = data?.ativo === false;
+      // Sobrescreve is_root com o dado fresco do banco
+      if (data) {
+        (user as any).is_root = data.is_root === true;
+      }
     } catch {
       // falha silenciosa: se der erro no admin, não derruba o sistema
       isInactive = false;
@@ -110,6 +114,8 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     // fallback: usa claim da sessão (pode estar desatualizada)
     isInactive = !!user && (user as any).ativo === false;
   }
+  
+  const isRoot = (user as any)?.is_root === true;
 
   const isApi = pathname.startsWith("/api");
 
@@ -143,6 +149,29 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     const url = new URL("/login", nextUrl);
     url.searchParams.set("reason", "inactive");
     return NextResponse.redirect(url);
+  }
+
+  // ✅ Lógica de Usuário ROOT
+  if (isRoot) {
+    // Se for API, deixa passar (para não quebrar fetches do front)
+    // Se quiser ser restrito, poderia filtrar apenas /api/ordens/root, mas
+    // geralmente APIs retornam 403 se não tiver permissão, o que é melhor que redirect HTML.
+    if (isApi) {
+        return NextResponse.next();
+    }
+
+    if (!pathname.startsWith("/root")) {
+       // Se tentar acessar qualquer coisa fora do /root (ex: /dashboard, /clientes), joga para /root
+       return NextResponse.redirect(new URL("/root", nextUrl));
+    }
+    // Se for /root, deixa passar (ainda vai cair no return next() lá embaixo)
+    return NextResponse.next();
+  } else {
+    // ❌ Não é root
+    if (pathname.startsWith("/root")) {
+      // Se tentar acessar /root sendo comum, joga para /dashboard
+      return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    }
   }
 
   // ✅ autorização por permissão (rotas)

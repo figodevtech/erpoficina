@@ -59,11 +59,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           let setorid: number | null = null;
           let nome = user.user_metadata?.nome ?? user.email ?? "Usuário";
           let ativo = true;
+          let is_root = false;
 
           // tenta por id
           const { data: row } = await supabaseAdmin
             .from("usuario")
-            .select("id, email, nome, perfilid, setorid, ativo")
+            .select("id, email, nome, perfilid, setorid, ativo, is_root")
             .eq("id", user.id)
             .maybeSingle();
 
@@ -72,11 +73,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             perfilid = (row.perfilid as number | null) ?? null;
             setorid = (row.setorid as number | null) ?? null;
             ativo = row.ativo !== false;
+            is_root = row.is_root === true;
           } else {
             // fallback por email
             const { data: byEmail } = await supabaseAdmin
               .from("usuario")
-              .select("id, email, nome, perfilid, setorid, ativo")
+              .select("id, email, nome, perfilid, setorid, ativo, is_root")
               .eq("email", user.email)
               .maybeSingle();
 
@@ -85,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               perfilid = (byEmail.perfilid as number | null) ?? null;
               setorid = (byEmail.setorid as number | null) ?? null;
               ativo = byEmail.ativo !== false;
+              is_root = byEmail.is_root === true;
             }
           }
 
@@ -102,6 +105,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             setorId: setorid,
             ativo,
             permissoes,
+            is_root,
           } as any;
         } catch (e: any) {
           if (
@@ -139,6 +143,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (token as any).setorId = (user as any).setorId ?? null;
 
         (token as any).ativo = (user as any).ativo ?? true;
+        (token as any).is_root = (user as any).is_root ?? false;
         (token as any).permissoes = Array.isArray((user as any).permissoes) ? (user as any).permissoes : [];
 
         return token;
@@ -158,6 +163,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as any).setorId = (token as any).setorId ?? null;
 
         (session.user as any).ativo = (token as any).ativo ?? true;
+        (session.user as any).is_root = (token as any).is_root ?? false;
         (session.user as any).permissoes = (token as any).permissoes ?? [];
       }
 
