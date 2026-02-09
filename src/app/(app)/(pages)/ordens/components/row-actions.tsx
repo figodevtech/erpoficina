@@ -118,10 +118,11 @@ export function RowActions<TRow extends RowBase>({
   const config = useConfig();
   const st = String(row.status ?? "").toUpperCase();
 
-  const showChecklist = st === "AGUARDANDO_CHECKLIST";
-
   // ✅ finais: sem reset/cancelar
   const isFinalState = st === "CANCELADO" || st === "FINALIZADA" || st === "CONCLUIDO" || st === "SEM_COBRANCA";
+
+  // Checklist editável até EM_ANDAMENTO. A partir de PAGAMENTO não aparece.
+  const showChecklist = !isFinalState && st !== "PAGAMENTO";
 
   // ✅ reset: exceto aguardando_orcamento e orcamento, e exceto finais
   const showResetOS = !isFinalState && st !== "AGUARDANDO_ORCAMENTO" && st !== "ORCAMENTO" && st !== "AGUARDANDO_CHECKLIST";

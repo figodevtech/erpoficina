@@ -28,6 +28,7 @@ type ByStatusObject = {
   abertas?: StatusMetrics;
   finalizadas?: StatusMetrics;
   canceladas?: StatusMetrics;
+  pagamento?: StatusMetrics;
   [key: string]: StatusMetrics | undefined; // fallback p/ outros status
 };
 
@@ -71,11 +72,17 @@ function getMonthRange(monthParam: string | null) {
 // Mapeia o enum do banco para a chave “bonita” que você quer usar no front
 function mapStatusKey(status: string): string {
   switch (status) {
+    case "PAGAMENTO":
+    case "PENDENTE":
+    case "AUTORIZADO":
+      return "pagamento";
+    case "PAGO":
     case "FINALIZADA":
       return "finalizadas";
     case "ABERTA":
       return "abertas";
     case "CANCELADA":
+    case "CANCELADO":
       return "canceladas";
     default:
       return status.toLowerCase();

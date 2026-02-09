@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import {
   ChevronsLeft,
   Loader2,
   Loader,
-  DollarSign,
   Check,
   EyeIcon,
   CreditCard,
+  AlertCircle,
+  Package,
   MoreHorizontal,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,13 +28,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { Pagination, VendaComItens, vendaStatus } from "../types";
+import { Pagination, VendaCanal, VendaComItens, vendaStatus } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
 import DeleteAlert from "./deleteAlert";
 import { GerarNotaDeOsDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/gerarNotaDeOsDialog/gerarNotaDeOsDialog";
 import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 import { VendaDetailsDialog } from "./venda-detail-dialog";
+import { PedidoOnlineDialog } from "./pedido-online-dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useConfig } from "../../../config-context";
@@ -47,7 +49,7 @@ interface VendasDataTableProps {
   fetchStatusCounts: () => void;
   status: vendaStatus | "TODOS";
 
-  // ✅ para edição via duplo clique (controlado no pai)
+  // âœ… para ediÃ§Ã£o via duplo clique (controlado no pai)
   selectedVendaId?: number | undefined;
   setSelectedVendaId?: (value: number | undefined) => void;
   isOpen: boolean;
@@ -63,14 +65,25 @@ const getStatusBadge = (status: vendaStatus) => {
       </Badge>
     );
   }
-  if (status === "PAGAMENTO") {
+
+  if (status === "PAGAMENTO" || status === "PENDENTE" || status === "AUTORIZADO") {
     return (
       <Badge variant="secondary" className="text-xs bg-yellow-600 not-dark:text-white">
-        <DollarSign className="h-3 w-3 mr-1" />
-        PAGAMENTO
+        <CreditCard className="h-3 w-3 mr-1" />
+        {status}
       </Badge>
     );
   }
+
+  if (status === "PAGO") {
+    return (
+      <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
+        <Check className="h-3 w-3 mr-1" />
+        PAGO
+      </Badge>
+    );
+  }
+
   if (status === "FINALIZADA") {
     return (
       <Badge variant="secondary" className="text-xs bg-gray-800 not-dark:text-white">
@@ -79,9 +92,80 @@ const getStatusBadge = (status: vendaStatus) => {
       </Badge>
     );
   }
+
+  if (status === "CANCELADA" || status === "CANCELADO") {
+    return (
+      <Badge variant="secondary" className="text-xs bg-red-600 not-dark:text-white">
+        <AlertCircle className="h-3 w-3 mr-1" />
+        {status}
+      </Badge>
+    );
+  }
   return (
     <Badge variant="outline" className="text-xs">
       OK
+    </Badge>
+  );
+};
+
+const getCanalBadge = (canal: VendaCanal | string | null | undefined) => {
+  const c = String(canal || "").toUpperCase();
+  if (c === "ONLINE") {
+    return (
+      <Badge variant="secondary" className="text-xs bg-sky-600 not-dark:text-white">
+        ONLINE
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
+      PDV
+    </Badge>
+  );
+};
+
+const getEntregaBadge = (canal: VendaCanal | string | null | undefined, statusEntrega?: string | null) => {
+  const c = String(canal || "").toUpperCase();
+  if (c !== "ONLINE") {
+    return <span className="text-xs text-muted-foreground">-</span>;
+  }
+
+  const s = String(statusEntrega || "").toUpperCase();
+  if (!s) {
+    return (
+      <Badge variant="outline" className="text-xs">
+        NAO INICIADA
+      </Badge>
+    );
+  }
+
+  if (s === "SEPARACAO") {
+    return (
+      <Badge variant="secondary" className="text-xs bg-sky-600 not-dark:text-white">
+        SEPARACAO
+      </Badge>
+    );
+  }
+
+  if (s === "ENVIO") {
+    return (
+      <Badge variant="secondary" className="text-xs bg-indigo-600 not-dark:text-white">
+        ENVIO
+      </Badge>
+    );
+  }
+
+  if (s === "ENTREGUE") {
+    return (
+      <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
+        ENTREGUE
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className="text-xs">
+      {s}
     </Badge>
   );
 };
@@ -101,6 +185,8 @@ export default function VendasDataTable({
   const [emissaoId, setEmissaoId] = useState<number | null>(null);
   const [selectedVendaId, setSelectedVendaId] = useState<number | null>(null);
   const [openDetails, setOpenDetails] = useState(false);
+  const [openOnline, setOpenOnline] = useState(false);
+  const [onlineVendaId, setOnlineVendaId] = useState<number | null>(null);
   const config = useConfig();
 
   const handleDeleteVenda = async (id: number) => {
@@ -178,8 +264,10 @@ export default function VendasDataTable({
               <TableHead>ID</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Data</TableHead>
+              <TableHead className="text-center">Canal</TableHead>
               <TableHead>Valor Total</TableHead>
-              <TableHead className="text-center">Status</TableHead>
+              <TableHead className="text-center">Pagamento</TableHead>
+              <TableHead className="text-center">Entrega</TableHead>
 
               <TableHead>Ações</TableHead>
             </TableRow>
@@ -193,8 +281,12 @@ export default function VendasDataTable({
                   <TableCell>{p.cliente.nomerazaosocial}</TableCell>
 
                   <TableCell className="font-mono text-xs">{formatDate(p.datavenda)}</TableCell>
+                  <TableCell className="text-center">{getCanalBadge((p as any).canal)}</TableCell>
                   <TableCell>{formatarEmReal(p.valortotal)}</TableCell>
                   <TableCell className="text-center">{getStatusBadge(p.status)}</TableCell>
+                  <TableCell className="text-center">
+                    {getEntregaBadge((p as any).canal, (p as any).status_entrega)}
+                  </TableCell>
 
                   <TableCell>
                     <DropdownMenu>
@@ -224,6 +316,18 @@ export default function VendasDataTable({
                           <EyeIcon className="h-4 w-4" />
                           Visualizar
                         </DropdownMenuItem>
+
+                        {String((p as any).canal ?? "").toUpperCase() === "ONLINE" && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setOnlineVendaId(p.id);
+                              setOpenOnline(true);
+                            }}
+                          >
+                            <Package className="h-4 w-4" />
+                            Pedido online
+                          </DropdownMenuItem>
+                        )}
 
                         <DeleteAlert
                           onDelete={() => handleDeleteVenda(p.id)}
@@ -312,6 +416,16 @@ export default function VendasDataTable({
         <EmissaoNotaDialog onOpenChange={setOpenEmissao} open={openEmissao} vendaId={emissaoId} />
       </CardContent>
       <VendaDetailsDialog vendaId={selectedVendaId} onOpenChange={setOpenDetails} open={openDetails} />
+      <PedidoOnlineDialog
+        vendaId={onlineVendaId}
+        open={openOnline}
+        onOpenChange={setOpenOnline}
+        onSaved={() => {
+          handleGetVendas(pagination.page, pagination.limit, search, status);
+          fetchStatusCounts();
+        }}
+      />
     </Card>
   );
 }
+

@@ -6,12 +6,24 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-type Status = "ABERTA" | "PAGAMENTO" | "FINALIZADA" | "CANCELADA";
+type Status =
+  | "ABERTA"
+  | "PAGAMENTO"
+  | "PENDENTE"
+  | "PAGO"
+  | "AUTORIZADO"
+  | "FINALIZADA"
+  | "CANCELADA"
+  | "CANCELADO";
 const STATUS_SET = new Set<Status>([
   "ABERTA",
   "PAGAMENTO",
+  "PENDENTE",
+  "PAGO",
+  "AUTORIZADO",
   "FINALIZADA",
   "CANCELADA",
+  "CANCELADO",
 ]);
 
 /**
@@ -28,6 +40,17 @@ const VENDA_SELECT = `
     nomerazaosocial
   ),
   status,
+  canal,
+  status_entrega,
+  codigo_rastreio,
+  transportadora_rastreio,
+  ultimo_evento_rastreio,
+  ultimo_evento_rastreio_em,
+  status_rastreio,
+  eventos_rastreio,
+  rastreio_atualizado_em,
+  nfe_chave_acesso,
+  danfe_url,
   valortotal,
   datavenda,
   createdat,
@@ -72,6 +95,11 @@ const VENDA_SELECT = `
 type VendaPatchBody = {
   clienteId?: number;
   status?: string;
+  statusEntrega?: string | null; // enum_status_entrega (SEPARACAO|ENVIO|ENTREGUE)
+  codigoRastreio?: string | null;
+  transportadoraRastreio?: string | null;
+  nfeChaveAcesso?: string | null;
+  danfeUrl?: string | null;
   descontoTipo?: string | null;
   descontoValor?: number | null;
   subTotal?: number;
@@ -175,6 +203,11 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     const {
       clienteId,
       status,
+      statusEntrega,
+      codigoRastreio,
+      transportadoraRastreio,
+      nfeChaveAcesso,
+      danfeUrl,
       descontoTipo,
       descontoValor,
       subTotal,
@@ -185,6 +218,11 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     if (
       clienteId === undefined &&
       status === undefined &&
+      statusEntrega === undefined &&
+      codigoRastreio === undefined &&
+      transportadoraRastreio === undefined &&
+      nfeChaveAcesso === undefined &&
+      danfeUrl === undefined &&
       descontoTipo === undefined &&
       descontoValor === undefined &&
       subTotal === undefined &&
@@ -201,6 +239,82 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     }
 
     const updatePayload: any = {};
+
+    const wantsDeliveryFields =
+      statusEntrega !== undefined ||
+      codigoRastreio !== undefined ||
+      transportadoraRastreio !== undefined ||
+      nfeChaveAcesso !== undefined ||
+      danfeUrl !== undefined;
+
+    // Regras do pedido ONLINE (server-side) para evitar inconsistencias.
+    if (wantsDeliveryFields) {
+      const { data: vendaBase, error: vendaBaseErr } = await supabaseAdmin
+        .from("venda")
+        .select("id, canal, status")
+        .eq("id", vendaId)
+        .single();
+
+      if (vendaBaseErr) {
+        console.error("Erro ao buscar venda (base) para validacao:", vendaBaseErr);
+        return NextResponse.json({ error: "Erro ao validar venda." }, { status: 500 });
+      }
+
+      if (!vendaBase) {
+        return NextResponse.json({ error: "Venda nao encontrada." }, { status: 404 });
+      }
+
+      const canalUpper = String((vendaBase as any).canal ?? "").toUpperCase();
+      const statusAtual = String((vendaBase as any).status ?? "").toUpperCase();
+
+      if (canalUpper !== "ONLINE") {
+        return NextResponse.json(
+          { error: "Campos de entrega/rastreio sao permitidos apenas para vendas ONLINE." },
+          { status: 400 }
+        );
+      }
+
+      const normalizedEntrega = statusEntrega == null ? null : String(statusEntrega).toUpperCase();
+      if (
+        normalizedEntrega !== null &&
+        normalizedEntrega !== "SEPARACAO" &&
+        normalizedEntrega !== "ENVIO" &&
+        normalizedEntrega !== "ENTREGUE"
+      ) {
+        return NextResponse.json(
+          { error: 'statusEntrega invalido. Use: \"SEPARACAO\", \"ENVIO\" ou \"ENTREGUE\".' },
+          { status: 400 }
+        );
+      }
+
+      // So pode iniciar/alterar entrega depois de pago (ou finalizada).
+      if (normalizedEntrega !== null) {
+        if (statusAtual !== "PAGO" && statusAtual !== "FINALIZADA") {
+          return NextResponse.json(
+            { error: "So e possivel iniciar/alterar a entrega apos a venda estar PAGA." },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Ao marcar ENVIO, exige codigo de rastreio.
+      if (normalizedEntrega === "ENVIO") {
+        const code = (codigoRastreio ?? "").toString().trim();
+        if (!code) {
+          return NextResponse.json(
+            { error: "Para marcar como ENVIO, informe o codigo de rastreio." },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (statusEntrega !== undefined) updatePayload.status_entrega = normalizedEntrega;
+      if (codigoRastreio !== undefined) updatePayload.codigo_rastreio = codigoRastreio?.trim() || null;
+      if (transportadoraRastreio !== undefined)
+        updatePayload.transportadora_rastreio = transportadoraRastreio?.trim() || null;
+      if (nfeChaveAcesso !== undefined) updatePayload.nfe_chave_acesso = nfeChaveAcesso?.trim() || null;
+      if (danfeUrl !== undefined) updatePayload.danfe_url = danfeUrl?.trim() || null;
+    }
 
     if (clienteId !== undefined) {
       if (clienteId === null || Number.isNaN(Number(clienteId))) {

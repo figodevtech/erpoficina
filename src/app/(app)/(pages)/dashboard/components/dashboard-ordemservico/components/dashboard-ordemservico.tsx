@@ -55,6 +55,78 @@ function useMediaQuery(query: string) {
   return matches;
 }
 
+function abreviarSegundoNome(nome: string) {
+  const parts = String(nome ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length <= 1) return parts.join(" ");
+
+  const connectors = new Set(["de", "da", "do", "dos", "das", "e"]);
+  let idx = 1;
+  while (idx < parts.length && connectors.has(parts[idx].toLowerCase())) idx++;
+  if (idx >= parts.length) return parts.join(" ");
+
+  const p = parts[idx];
+  parts[idx] = p ? `${p[0]}.` : p;
+  return parts.join(" ");
+}
+
+function encurtarStatusOS(raw: string) {
+  const base = String(raw ?? "")
+    .trim()
+    .replace(/_/g, " ")
+    .toUpperCase();
+
+  if (!base) return "";
+
+  const tokenMap: Record<string, string> = {
+    AGUARDANDO: "Aguard.",
+    CHECKLIST: "Check.",
+    APROVACAO: "Aprov.",
+    ORCAMENTO: "Orc.",
+    EM: "Em",
+    ANDAMENTO: "and.",
+    CONCLUIDO: "Concl.",
+    CANCELADO: "Canc.",
+    SEM: "Sem",
+    COBRANCA: "cobr.",
+  };
+
+  const out = base
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => tokenMap[t] ?? (t.length > 12 ? `${t.slice(0, 12)}.` : t))
+    .join(" ");
+
+  return out.length > 18 ? `${out.slice(0, 18)}...` : out;
+}
+
+function StatusValueLabelRight(props: any) {
+  const { x, y, width, height, value } = props ?? {};
+  if (value === undefined || value === null) return null;
+  const cx = Number(x ?? 0) + Number(width ?? 0) + 8;
+  const cy = Number(y ?? 0) + Number(height ?? 0) / 2 + 4;
+  return (
+    <text x={cx} y={cy} textAnchor="start" fill="#fff" fontSize={12} fontWeight={400}>
+      {value}
+    </text>
+  );
+}
+
+function StatusValueLabelTop(props: any) {
+  const { x, y, width, value } = props ?? {};
+  if (value === undefined || value === null) return null;
+  const cx = Number(x ?? 0) + Number(width ?? 0) / 2;
+  const cy = Number(y ?? 0) - 6;
+  return (
+    <text x={cx} y={cy} textAnchor="middle" fill="#fff" fontSize={12} fontWeight={400}>
+      {value}
+    </text>
+  );
+}
+
 export default function ServiceOrdersDashboard({
   className,
   insightsEndpoint = "/api/ordens/insights",
@@ -79,7 +151,9 @@ export default function ServiceOrdersDashboard({
   const { data, loading, error, refetch } = useInsights(endpointComFiltro, autoRefreshMs);
 
   const textoPeriodo =
-    dataInicio && dataFim ? `${formatarDataCompleta(dataInicio)} - ${formatarDataCompleta(dataFim)}` : "Período não definido";
+    dataInicio && dataFim
+      ? `${formatarDataCompleta(dataInicio)} - ${formatarDataCompleta(dataFim)}`
+      : "Período não definido";
 
   function tratarDataInicio(date?: Date) {
     if (!date) return setDataInicio(null);
@@ -142,6 +216,16 @@ export default function ServiceOrdersDashboard({
   }));
 
   const servicesByUser = data?.servicesByUser ?? [];
+  const servicesByUserSorted = React.useMemo(() => {
+    return [...servicesByUser].sort((a, b) => b.totalServicos - a.totalServicos);
+  }, [servicesByUser]);
+
+  // Altura dinamica para permitir scroll quando ha muitos usuarios.
+  const servicesByUserChartHeight = React.useMemo(() => {
+    const rowH = 38; // altura aproximada por usuario na barra horizontal
+    const n = servicesByUserSorted.length || 1;
+    return Math.max(220, n * rowH);
+  }, [servicesByUserSorted.length]);
 
   const total = data?.totalOrders ?? 0;
   const open = data?.ordersOpen ?? 0;
@@ -166,7 +250,9 @@ export default function ServiceOrdersDashboard({
             Dashboard de Ordens de Serviço
           </CardTitle>
 
-          <CardDescription className="text-xs sm:text-sm">Visão executiva de produtividade, prazos e receita.</CardDescription>
+          <CardDescription className="text-xs sm:text-sm">
+            Visão executiva de produtividade, prazos e receita.
+          </CardDescription>
 
           <Badge variant="default" className="text-[10px] sm:text-xs">
             Período: {textoPeriodo}
@@ -297,45 +383,63 @@ export default function ServiceOrdersDashboard({
             badge="Ranking"
             className="md:col-span-2 xl:col-span-1"
           >
-            <ChartContainer
-              config={{
-                totalServicos: { label: "Serviços", color: "hsl(var(--chart-3))" },
-              }}
-              className="h-60 w-full sm:h-80"
-            >
-              <BarChart data={servicesByUser} margin={{ top: 20, right: -20, left: -20, bottom: 10 }} barSize={32}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="usuarioNome"
-                  axisLine={false}
-                  tickLine={false}
-                  fontSize={11}
-                  tickMargin={10}
-                  interval={0}
-                  angle={0}
-                  textAnchor="middle"
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis
-                  allowDecimals={false}
-                  axisLine={false}
-                  tickLine={false}
-                  fontSize={12}
-                  tickMargin={8}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar
-                  dataKey="totalServicos"
-                  radius={[6, 6, 0, 0]}
-                  fill="rgba(43, 127, 255, 0.4)"
-                  stroke="rgb(43, 127, 255)"
-                  strokeWidth={2}
+            <div className="max-h-60 overflow-y-auto pr-1 sm:max-h-80">
+              <ChartContainer
+                config={{
+                  // ChartContainer injeta `--color-${key}`; usamos isso no `fill` do Bar.
+                  totalServicos: { label: "Serviços", color: "hsl(var(--chart-3))" },
+                }}
+                className="w-full"
+                style={{ height: servicesByUserChartHeight }}
+              >
+                <BarChart
+                  accessibilityLayer
+                  data={servicesByUserSorted}
+                  layout="vertical"
+                  margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+                  barSize={18}
                 >
-                  <LabelList dataKey="totalServicos" position="top" className="fill-foreground" fontSize={11} />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+                  <CartesianGrid horizontal={false} stroke="hsl(var(--border))" />
+
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                    fontSize={12}
+                    tickMargin={8}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+
+                  <YAxis
+                    type="category"
+                    dataKey="usuarioNome"
+                    axisLine={false}
+                    tickLine={false}
+                    fontSize={12}
+                    width={90}
+                    tickFormatter={(v) => {
+                      const s = abreviarSegundoNome(String(v ?? ""));
+                      const max = isMobile ? 14 : 18;
+                      return s.length > max ? `${s.slice(0, max)}...` : s;
+                    }}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+
+                  <Bar
+                    dataKey="totalServicos"
+                    radius={[0, 4, 4, 0]}
+                    fill="rgba(43, 127, 255, 0.4)"
+                    stroke="rgb(43, 127, 255)"
+                    strokeWidth={2}
+                  >
+                    <LabelList dataKey="totalServicos" position="right" className="fill-foreground" fontSize={12} />
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </div>
           </ChartCard>
 
           {/* OS por status (muda orientação só no mobile) */}
@@ -348,7 +452,12 @@ export default function ServiceOrdersDashboard({
                 className="h-full w-full"
               >
                 {isMobile ? (
-                  <BarChart data={statusItems} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                  <BarChart
+                    data={statusItems}
+                    layout="vertical"
+                    margin={{ top: 8, right: 28, left: 6, bottom: 8 }}
+                    barSize={14}
+                  >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
 
                     <XAxis
@@ -368,6 +477,7 @@ export default function ServiceOrdersDashboard({
                       tickLine={false}
                       fontSize={12}
                       width={120}
+                      tickFormatter={encurtarStatusOS}
                       stroke="hsl(var(--muted-foreground))"
                     />
 
@@ -375,20 +485,15 @@ export default function ServiceOrdersDashboard({
 
                     <Bar dataKey="value" radius={[0, 6, 6, 0]}>
                       {statusItems.map((s) => (
-                        <Cell
-                          key={s.name}
-                          fill="rgba(43, 127, 255, 0.3)"
-                          stroke="rgb(43, 127, 255)"
-                          strokeWidth={2}
-                        />
+                        <Cell key={s.name} fill="rgba(43, 127, 255, 0.3)" stroke="rgb(43, 127, 255)" strokeWidth={2} />
                       ))}
-                      <LabelList dataKey="value" position="right" className="fill-foreground" fontSize={12} />
+                      <LabelList dataKey="value" position="right" content={<StatusValueLabelRight />} />
                     </Bar>
 
                     <ChartLegend content={<ChartLegendContent />} />
                   </BarChart>
                 ) : (
-                  <BarChart data={statusItems} margin={{ top: 20, right: 12, left: 12, bottom: 12 }}>
+                  <BarChart data={statusItems} margin={{ top: 20, right: 20, left: 0, bottom: 0 }} barSize={50}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
 
                     <XAxis
@@ -397,6 +502,7 @@ export default function ServiceOrdersDashboard({
                       tickLine={false}
                       fontSize={12}
                       tickMargin={8}
+                      tickFormatter={encurtarStatusOS}
                       stroke="hsl(var(--muted-foreground))"
                     />
 
@@ -413,14 +519,9 @@ export default function ServiceOrdersDashboard({
 
                     <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                       {statusItems.map((s) => (
-                        <Cell
-                          key={s.name}
-                          fill="rgba(43, 127, 255, 0.3)"
-                          stroke="rgb(43, 127, 255)"
-                          strokeWidth={2}
-                        />
+                        <Cell key={s.name} fill="rgba(43, 127, 255, 0.3)" stroke="rgb(43, 127, 255)" strokeWidth={2} />
                       ))}
-                      <LabelList dataKey="value" position="top" className="fill-foreground" fontSize={12} />
+                      <LabelList dataKey="value" position="top" content={<StatusValueLabelTop />} />
                     </Bar>
 
                     <ChartLegend content={<ChartLegendContent />} />
@@ -453,12 +554,7 @@ export default function ServiceOrdersDashboard({
                   strokeWidth={2}
                 >
                   {prioItems.map((p) => (
-                    <Cell
-                      key={p.key}
-                      fill="rgba(43, 127, 255, 0.3)"
-                      stroke="rgb(43, 127, 255)"
-                      strokeWidth={2}
-                    />
+                    <Cell key={p.key} fill="rgba(43, 127, 255, 0.3)" stroke="rgb(43, 127, 255)" strokeWidth={2} />
                   ))}
                   <LabelList
                     dataKey="value"

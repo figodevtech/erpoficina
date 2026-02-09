@@ -6,8 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Calendar, User, Package, Hash, ShoppingCart, Loader2, AlertCircle } from "lucide-react"
 import { useEffect, useState } from "react"
-
-type EnumStatusVenda = "ABERTA" | "PAGAMENTO" | "FINALIZADA" | "CANCELADA"
+import type { VendaCanal, VendaStatusEntrega, vendaStatus } from "../types"
 
 interface Produto {
   id: number
@@ -52,7 +51,15 @@ interface Venda {
   id: number
   clienteid: number
   cliente: Cliente
-  status: EnumStatusVenda
+  status: vendaStatus
+  canal: VendaCanal
+  status_entrega?: VendaStatusEntrega | null
+  codigo_rastreio?: string | null
+  transportadora_rastreio?: string | null
+  ultimo_evento_rastreio?: string | null
+  ultimo_evento_rastreio_em?: string | null
+  nfe_chave_acesso?: string | null
+  danfe_url?: string | null
   valortotal: number
   datavenda: string | null
   createdat: string | null
@@ -70,18 +77,26 @@ interface VendaDetailsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const statusColors: Record<EnumStatusVenda, string> = {
+const statusColors: Record<vendaStatus, string> = {
   ABERTA: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
   PAGAMENTO: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  PENDENTE: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  AUTORIZADO: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  PAGO: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
   FINALIZADA: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
   CANCELADA: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
+  CANCELADO: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
 }
 
-const statusLabels: Record<EnumStatusVenda, string> = {
+const statusLabels: Record<vendaStatus, string> = {
   ABERTA: "Aberta",
   PAGAMENTO: "Pagamento",
+  PENDENTE: "Pendente",
+  AUTORIZADO: "Autorizado",
+  PAGO: "Pago",
   FINALIZADA: "Finalizada",
   CANCELADA: "Cancelada",
+  CANCELADO: "Cancelada",
 }
 
 export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetailsDialogProps) {
@@ -214,6 +229,76 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                 </div>
 
                 <Separator />
+
+                {venda.canal === "ONLINE" && (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                        <div className="rounded-full bg-primary/10 p-2">
+                          <Package className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">Entrega</p>
+                          <p className="text-sm font-semibold">
+                            {venda.status_entrega ?? "Nao iniciada"}
+                          </p>
+                          {venda.ultimo_evento_rastreio && (
+                            <p className="text-xs text-muted-foreground">
+                              Rastreio: {venda.ultimo_evento_rastreio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                        <div className="rounded-full bg-primary/10 p-2">
+                          <Hash className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">Codigo de rastreio</p>
+                          <p className="text-sm font-semibold leading-tight">
+                            {venda.codigo_rastreio ?? "Nao informado"}
+                          </p>
+                          {venda.transportadora_rastreio && (
+                            <p className="text-xs text-muted-foreground">
+                              Transportadora: {venda.transportadora_rastreio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {(venda.nfe_chave_acesso || venda.danfe_url) && (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                          <div className="rounded-full bg-primary/10 p-2">
+                            <Hash className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">Chave NF-e</p>
+                            <p className="text-sm font-semibold break-all">
+                              {venda.nfe_chave_acesso ?? "Nao informado"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                          <div className="rounded-full bg-primary/10 p-2">
+                            <Package className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">DANFE</p>
+                            <p className="text-sm font-semibold break-all">
+                              {venda.danfe_url ?? "Nao informado"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+                  </>
+                )}
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
