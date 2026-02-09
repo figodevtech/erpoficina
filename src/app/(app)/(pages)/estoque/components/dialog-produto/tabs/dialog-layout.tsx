@@ -47,15 +47,30 @@ export function ProductDialogLayout({
 }: Props) {
 
   return (
-    <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
-      <div className="flex h-full min-h-0 flex-col">
+    <DialogContent 
+className="
+        h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
+        sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
+      "    >
+      <div className="flex h-full min-h-0 min-w-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-sm sm:text-lg pr-4">{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
 
-        <Tabs value={currentTab} defaultValue={defaultTab} className="flex-1 min-h-0 overflow-hidden pb-0 mt-4">
-          <TabsList className="shrink-0 sticky top-0 z-10 bg-background ml-4">{tabs}</TabsList>
+        <Tabs value={currentTab} defaultValue={defaultTab} 
+          className="flex-1 min-h-0 min-w-0 overflow-hidden mt-4"
+        >
+           <div className="shrink-0 sticky top-0 z-10">
+            <div
+              className="
+                overflow-x-auto overflow-y-hidden px-6 pb-2
+                [-ms-overflow-style:none] [scrollbar-width:none] 
+              "
+            >
+              <TabsList className="w-max justify-start bg-transparent">{tabs}</TabsList>
+            </div>
+          </div>
 
           {children}
         </Tabs>
