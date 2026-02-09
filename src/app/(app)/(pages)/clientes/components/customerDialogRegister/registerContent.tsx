@@ -63,12 +63,14 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Customer } from "../../types";
 import { set } from "nprogress";
+import { DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 interface RegisterContentProps {
   newCustomer: NewCustomer;
   setNewCustomer: (value: NewCustomer) => void;
   setSelectedCustomerId?: (value: number | undefined) => void;
   onRegister?: (c: Customer) => void;
+  isDesktop?: boolean;
 }
 
 export default function RegisterContent({
@@ -76,6 +78,7 @@ export default function RegisterContent({
   setNewCustomer,
   setSelectedCustomerId,
   onRegister,
+  isDesktop = true,
 }: RegisterContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { cidades, loading } = useGetCidades(newCustomer?.estado);
@@ -256,16 +259,24 @@ export default function RegisterContent({
   useEffect(() => {
     console.log(newCustomer)
   }, [newCustomer])
+
+   const Content = isDesktop ? DialogContent : DrawerContent;
+  const Header = isDesktop ? DialogHeader : DrawerHeader;
+  const Footer = isDesktop ? DialogFooter : DrawerFooter;
+  const Title = isDesktop ? DialogTitle : DrawerTitle;
+  const Description = isDesktop ? DialogDescription : DrawerDescription;
+  const Close = isDesktop ? DialogClose : DrawerClose;
+ 
   return (
     // <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
-    <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <Content className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
-        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          <DialogTitle>Cadastro de Cliente</DialogTitle>
-          <DialogDescription>
+        <Header className="shrink-0 px-6 py-4 border-b-1">
+          <Title>Cadastro de Cliente</Title>
+          <Description>
             Preencha dados para registrar um novo cliente
-          </DialogDescription>
-        </DialogHeader>
+          </Description>
+        </Header>
 
         {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
 
@@ -780,7 +791,7 @@ export default function RegisterContent({
 
           {/* Botões */}
         </div>
-        <DialogFooter className="px-6 py-4">
+        <Footer className="px-6 py-4">
           <div className="flex sm:flex-row gap-3 sm:gap-4">
             <Button
               type="submit"
@@ -801,14 +812,14 @@ export default function RegisterContent({
                 </>
               )}
             </Button>
-            <DialogClose asChild>
+            <Close asChild>
               <Button className="hover:cursor-pointer" variant={"outline"}>
                 Cancelar
               </Button>
-            </DialogClose>
+            </Close>
           </div>
-        </DialogFooter>
+        </Footer>
       </div>
-    </DialogContent>
+    </Content>
   );
 }

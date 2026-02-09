@@ -90,11 +90,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 interface EditContentProps {
   customerId: number;
+  isDesktop?: boolean;
 }
-export default function EditContent({ customerId }: EditContentProps) {
+export default function EditContent({ customerId, isDesktop=true }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const [selectedCustomer, setselectedCustomer] = useState<
@@ -329,23 +331,44 @@ export default function EditContent({ customerId }: EditContentProps) {
     console.log(selectedCustomer);
   }, [selectedCustomer]);
 
+  const Content = isDesktop ? DialogContent : DrawerContent;
+  const Header = isDesktop ? DialogHeader : DrawerHeader;
+  const Footer = isDesktop ? DialogFooter : DrawerFooter;
+  const Title = isDesktop ? DialogTitle : DrawerTitle;
+  const Description = isDesktop ? DialogDescription : DrawerDescription;
+  const Close = isDesktop ? DialogClose : DrawerClose;
+
   if (isLoading) {
     return (
-      <DialogContent className="h-dvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
-        <DialogHeader className="hidden">
-          <DialogTitle></DialogTitle>
-        </DialogHeader>
+      <Content className={
+        isDesktop
+          ? `
+        h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
+        sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
+      `
+          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+      }>
+        <Header className="hidden">
+          <Title></Title>
+        </Header>
         <div className="flex h-full min-h-0 flex-col justify-center items-center">
           <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
           <span className="text-primary">Carregando</span>
         </div>
-      </DialogContent>
+      </Content>
     );
   }
 
   if (selectedCustomer) {
-    return (
-      <DialogContent className="h-svh min-w-screen p-0  overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+          return (
+            <Content className={
+        isDesktop
+          ? `
+        h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
+        sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
+      `
+          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+      }>
         <VeiculoDialog
           setSelectedVeiculoId={setSelectedVeiculoId}
           isOpen={openVehicle}
@@ -355,8 +378,8 @@ export default function EditContent({ customerId }: EditContentProps) {
           onRegister={() => handleGetClienteVeiculos()}
         />
         <div className="flex h-full min-h-0 flex-col">
-          <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle className="flex flex-row items-center gap-5">
+          <Header className="shrink-0 px-6 py-4 border-b-1">
+            <Title className="flex flex-row items-center gap-5">
               Cliente #{selectedCustomer.id}
               <Select
                 value={selectedCustomer.rank || ""}
@@ -382,11 +405,11 @@ export default function EditContent({ customerId }: EditContentProps) {
                   ))}
                 </SelectContent>
               </Select>
-            </DialogTitle>
-            <DialogDescription>
+            </Title>
+            <Description>
               Modifique dados para atualizar o cliente
-            </DialogDescription>
-          </DialogHeader>
+            </Description>
+          </Header>
 
           {/* Área principal com abas */}
           <Tabs
@@ -1175,7 +1198,7 @@ export default function EditContent({ customerId }: EditContentProps) {
           setOpen={setOpenCustomerSelect}
           OnSelect={(c) => handleVehicleTransfer(c.id)}
         />
-      </DialogContent>
+      </Content>
     );
   }
 }

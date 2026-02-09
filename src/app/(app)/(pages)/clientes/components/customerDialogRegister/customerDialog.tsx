@@ -8,6 +8,8 @@ import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
 import { Customer } from "../../types";
 import { NewCustomer } from "./types";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
 
 interface CustomerDialogProps {
   customerId?: number;
@@ -78,56 +80,114 @@ export function CustomerDialog({
     }
   }, [open, customerId]);
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        // sempre sincroniza o estado (controlado ou interno)
-        setOpen(nextOpen);
+    const isDesktop = useMediaQuery("(min-width: 768px)");
+    if(isDesktop){
 
-        if (!nextOpen) {
-          setSelectedCustomerId?.(undefined);
-          setSelectedCustomer(undefined);
-          setNewCustomer({
-            tipopessoa: "FISICA",
-            cpfcnpj: "",
-            nomerazaosocial: "",
-            email: "",
-            bairro:"",
-            telefone: "",
-            endereco: "",
-            enderecocomplemento: "",
-            endereconumero: "",
-            cidade: "",
-            estado: "",
-            cep: "",
-            inscricaoestadual: "",
-            inscricaomunicipal: "",
-            codigomunicipio: "",
-            status: "ATIVO",
-            foto: "",
-          });
-        }
-      }}
-    >
-      <DialogTrigger autoFocus={false} asChild>
-        {children}
-      </DialogTrigger>
+      return (
+        <Dialog
+          open={open}
+          onOpenChange={(nextOpen) => {
+            // sempre sincroniza o estado (controlado ou interno)
+            setOpen(nextOpen);
+    
+            if (!nextOpen) {
+              setSelectedCustomerId?.(undefined);
+              setSelectedCustomer(undefined);
+              setNewCustomer({
+                tipopessoa: "FISICA",
+                cpfcnpj: "",
+                nomerazaosocial: "",
+                email: "",
+                bairro:"",
+                telefone: "",
+                endereco: "",
+                enderecocomplemento: "",
+                endereconumero: "",
+                cidade: "",
+                estado: "",
+                cep: "",
+                inscricaoestadual: "",
+                inscricaomunicipal: "",
+                codigomunicipio: "",
+                status: "ATIVO",
+                foto: "",
+              });
+            }
+          }}
+        >
+          <DialogTrigger autoFocus={false} asChild>
+            {children}
+          </DialogTrigger>
+    
+          {customerId ? (
+            <EditContent
+            
+              customerId={customerId}
+            />
+          ) : (
+            <RegisterContent
+              setSelectedCustomerId={setSelectedCustomerId}
+              newCustomer={newCustomer}
+              setNewCustomer={setNewCustomer}
+              onRegister={onRegister} 
+    
+            />
+          )}
+        </Dialog>
+      );
+    }
 
-      {customerId ? (
-        <EditContent
-        
-          customerId={customerId}
-        />
-      ) : (
-        <RegisterContent
-          setSelectedCustomerId={setSelectedCustomerId}
-          newCustomer={newCustomer}
-          setNewCustomer={setNewCustomer}
-          onRegister={onRegister} 
-
-        />
-      )}
-    </Dialog>
-  );
+    return (
+        <Drawer
+          open={open}
+          onOpenChange={(nextOpen) => {
+            // sempre sincroniza o estado (controlado ou interno)
+            setOpen(nextOpen);
+    
+            if (!nextOpen) {
+              setSelectedCustomerId?.(undefined);
+              setSelectedCustomer(undefined);
+              setNewCustomer({
+                tipopessoa: "FISICA",
+                cpfcnpj: "",
+                nomerazaosocial: "",
+                email: "",
+                bairro:"",
+                telefone: "",
+                endereco: "",
+                enderecocomplemento: "",
+                endereconumero: "",
+                cidade: "",
+                estado: "",
+                cep: "",
+                inscricaoestadual: "",
+                inscricaomunicipal: "",
+                codigomunicipio: "",
+                status: "ATIVO",
+                foto: "",
+              });
+            }
+          }}
+        >
+          <DrawerTrigger autoFocus={false} asChild>
+            {children}
+          </DrawerTrigger>
+    
+          {customerId ? (
+            <EditContent
+              isDesktop={isDesktop}
+              customerId={customerId}
+            />
+          ) : (
+            <RegisterContent
+            isDesktop={isDesktop}
+              setSelectedCustomerId={setSelectedCustomerId}
+              newCustomer={newCustomer}
+              setNewCustomer={setNewCustomer}
+              onRegister={onRegister} 
+    
+            />
+          )}
+        </Drawer>
+      );
 }
