@@ -296,7 +296,7 @@ export default function VendasDataTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
-                        {config?.habilitar_emissao_nfe && p.status === "FINALIZADA" && (
+                        {config?.habilitar_emissao_nfe && (p.status === "FINALIZADA" || p.status === "PAGO") && (
                           <DropdownMenuItem
                             onClick={() => {
                               setEmissaoId(p.id);
