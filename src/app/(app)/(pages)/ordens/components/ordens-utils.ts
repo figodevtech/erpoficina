@@ -37,21 +37,31 @@ export function fmtDate(s?: string | null) {
 
 export function toMs(s?: string | null): number | null {
   if (!s) return null;
-  const t = new Date(s).getTime();
+  let v = String(s).trim();
+
+  // Supabase/PostgREST pode devolver timestamp sem timezone (ex.: 2026-02-06T12:34:56.789).
+  // Como o Postgres normalmente roda em UTC, interpretamos esses valores como UTC para evitar duracao negativa
+  // (ex.: mostrar 0m por horas em clientes com fuso -03:00).
+  if (/^\d{4}-\d{2}-\d{2}\s/.test(v)) v = v.replace(" ", "T");
+  const hasTz = /([zZ]|[+-]\d{2}:?\d{2})$/.test(v);
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && !hasTz) v = `${v}Z`;
+
+  const t = new Date(v).getTime();
   return isNaN(t) ? null : t;
 }
 
 export function fmtDuration(ms: number) {
   if (ms < 0) ms = 0;
   const m = Math.floor(ms / 60000);
-  if (m <= 0) return "agora";
+  if (m <= 0) return "0m";
   const d = Math.floor(m / 1440);
   const h = Math.floor((m % 1440) / 60);
   const min = m % 60;
   const parts: string[] = [];
   if (d) parts.push(`${d}d`);
   if (h) parts.push(`${h}h`);
-  parts.push(`${min}m`);
+  // Sempre mostra minutagem, exceto quando for zero e ja houver dia/hora (ex.: "1h 0m").
+  if (!(min === 0 && (d > 0 || h > 0))) parts.push(`${min}m`);
   return parts.join(" ");
 }
 

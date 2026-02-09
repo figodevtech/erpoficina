@@ -32,7 +32,7 @@ export function DialogShell({
             <div className="space-y-1">
               <DialogTitle className="text-lg sm:text-xl lg:text-2xl">{title}</DialogTitle>
               {description ? (
-                <DialogDescription className="text-sm sm:text-base">{description}</DialogDescription>
+                <DialogDescription className="text-sm">{description}</DialogDescription>
               ) : null}
             </div>
           </div>

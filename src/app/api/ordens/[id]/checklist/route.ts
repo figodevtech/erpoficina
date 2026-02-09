@@ -55,11 +55,14 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
     }
 
     // garante que a OS existe
-    const osRes = await supabaseAdmin.from("ordemservico").select("id").eq("id", osId).maybeSingle();
+    const osRes = await supabaseAdmin.from("ordemservico").select("id, status").eq("id", osId).maybeSingle();
     if (osRes.error) throw osRes.error;
     if (!osRes.data) {
       return NextResponse.json({ error: "OS não encontrada." }, { status: 404 });
     }
+    const osStatusUpper = String((osRes.data as any)?.status ?? "")
+      .trim()
+      .toUpperCase();
 
     // garante que o usuário logado existe em public.usuario (necessário se você colocou FK created_by -> public.usuario)
     const uRes = await supabaseAdmin.from("usuario").select("id").eq("id", userId).maybeSingle();
@@ -115,13 +118,26 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<Params> }) {
       if (upd.error) throw upd.error;
     }
 
+    // Fluxo: ao salvar checklist pela primeira vez, avançar a OS para ORCAMENTO.
+    // Fazemos isso no backend para evitar inconsistências de UI/latência.
+    let statusAdvanced = false;
+    if (osStatusUpper === "AGUARDANDO_CHECKLIST") {
+      const adv = await supabaseAdmin
+        .from("ordemservico")
+        .update({ status: "ORCAMENTO", statusaprovacao: "PENDENTE" })
+        .eq("id", osId)
+        .eq("status", "AGUARDANDO_CHECKLIST");
+      if (adv.error) throw adv.error;
+      statusAdvanced = true;
+    }
+
     const checklistCreated = (up.data ?? []).map((r: any) => ({
       id: Number(r.id),
       item: String(r.item),
       created_by: String(r.created_by ?? ""),
     }));
 
-    return NextResponse.json({ id: osId, checklistCreated }, { status: 200 });
+    return NextResponse.json({ id: osId, checklistCreated, statusAdvanced }, { status: 200 });
   } catch (err: any) {
     console.error("PUT /api/ordens/[id]/checklist", err);
     return NextResponse.json({ error: err?.message || "Erro ao salvar checklist" }, { status: 500 });

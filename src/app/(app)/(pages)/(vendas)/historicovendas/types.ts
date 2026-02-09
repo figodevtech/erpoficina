@@ -39,9 +39,18 @@ export interface VendaProdutoItem {
 export enum vendaStatus {
   ABERTA = "ABERTA",
   PAGAMENTO = "PAGAMENTO",
+  PENDENTE = "PENDENTE",
+  AUTORIZADO = "AUTORIZADO",
+  PAGO = "PAGO",
   FINALIZADA = "FINALIZADA",
+  // Mantemos os dois por compatibilidade com o enum do banco (existem projetos com os 2 valores)
   CANCELADA = "CANCELADA",
+  CANCELADO = "CANCELADO",
 }
+
+export type VendaCanal = "PDV" | "ONLINE";
+
+export type VendaStatusEntrega = "SEPARACAO" | "ENVIO" | "ENTREGUE";
 
 export interface VendaComItens {
   id: number;
@@ -49,6 +58,17 @@ export interface VendaComItens {
   valortotal: number;
   cliente: Customer
   status: vendaStatus;
+  canal: VendaCanal;
+  status_entrega?: VendaStatusEntrega | null;
+  codigo_rastreio?: string | null;
+  transportadora_rastreio?: string | null;
+  ultimo_evento_rastreio?: string | null;
+  ultimo_evento_rastreio_em?: string | null;
+  status_rastreio?: string | null;
+  eventos_rastreio?: any | null;
+  rastreio_atualizado_em?: string | null;
+  nfe_chave_acesso?: string | null;
+  danfe_url?: string | null;
   datavenda: string;
   createdat: string | null;
   updatedat: string | null;

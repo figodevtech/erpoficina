@@ -79,7 +79,7 @@ export async function GET(req: Request) {
 
     // filtros
     const q = normalizeQ(searchParams.get("search") ?? searchParams.get("q") ?? "");
-    const status = (searchParams.get("status") ?? "").trim(); // enum_status_venda
+    const status = (searchParams.get("status") ?? "").trim().toUpperCase(); // enum_status_venda
     const clienteId = toIntFilter(searchParams.get("clienteId"));
     const dateFrom = searchParams.get("dateFrom"); // YYYY-MM-DD
     const dateTo = searchParams.get("dateTo");     // YYYY-MM-DD

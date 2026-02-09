@@ -6,12 +6,24 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { auth } from "@/lib/auth";
 
-type Status = "ABERTA" | "PAGAMENTO" | "FINALIZADA" | "CANCELADA";
+type Status =
+  | "ABERTA"
+  | "PAGAMENTO"
+  | "PENDENTE"
+  | "PAGO"
+  | "AUTORIZADO"
+  | "FINALIZADA"
+  | "CANCELADA"
+  | "CANCELADO";
 const STATUS_SET = new Set<Status>([
   "ABERTA",
   "PAGAMENTO",
+  "PENDENTE",
+  "PAGO",
+  "AUTORIZADO",
   "FINALIZADA",
   "CANCELADA",
+  "CANCELADO",
 ]);
 
 type VendaItemInput = {
@@ -46,6 +58,17 @@ const VENDA_SELECT = `
   createdat,
   updatedat,
   created_by,
+  canal,
+  status_entrega,
+  codigo_rastreio,
+  transportadora_rastreio,
+  ultimo_evento_rastreio,
+  ultimo_evento_rastreio_em,
+  status_rastreio,
+  eventos_rastreio,
+  rastreio_atualizado_em,
+  nfe_chave_acesso,
+  danfe_url,
   desconto_tipo,
   desconto_valor,
   sub_total,

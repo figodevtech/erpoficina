@@ -13,8 +13,8 @@ import { toast } from "sonner";
 import { uploadChecklistImages } from "../../lib/upload-checklist-images";
 import { listarChecklistModelos, type ChecklistTemplateModel } from "../../lib/api";
 
-// Dialog "original": usado para salvar checklist pela primeira vez (AGUARDANDO_CHECKLIST).
-// Nao carrega checklist existente; depois de salvar, a OS avanca para ORCAMENTO no backend.
+// Dialog de edicao: carrega checklist/modelo existente e permite editar ate EM_ANDAMENTO.
+// Nao tenta avancar status automaticamente (isso fica para o fluxo "primeira vez").
 
 const CHECK_OPTIONS = ["OK", "ALERTA", "FALHA"] as const;
 type Marcacao = (typeof CHECK_OPTIONS)[number] | "";
@@ -28,8 +28,16 @@ type Props = {
   osId: number;
 };
 
-export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
+type ExistingImage = {
+  id: number;
+  url: string;
+  descricao?: string | null;
+};
+
+export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
   const [saving, setSaving] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const [existingError, setExistingError] = useState<string | null>(null);
 
   // modelos
   const [templates, setTemplates] = useState<ChecklistTemplateModel[]>([]);
@@ -44,18 +52,53 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
   const [obsByItem, setObsByItem] = useState<Record<string, string>>({});
   const [imagesByItem, setImagesByItem] = useState<Record<string, File[]>>({});
+  const [existingImagesByItem, setExistingImagesByItem] = useState<Record<string, ExistingImage[]>>({});
 
-  const submitDoneRef = useRef(false);
+  const initialSnapshotRef = useRef<string>("");
+  const checklistIdByItemRef = useRef<Record<string, number>>({});
+  const pendingApplyRef = useRef<null | {
+    templateId: string;
+    statusByItem: Record<string, Marcacao>;
+    obsByItem: Record<string, string>;
+  }>(null);
+
+  const [pendingApply, setPendingApply] = useState(false);
 
   const titulo = useMemo(
     () => (
       <span className="inline-flex items-center gap-2">
         <CarFront className="h-4 w-4 text-primary" />
-        Checklist da OS #{osId || "-"}
+        Editar checklist da OS #{osId || "-"}
       </span>
     ),
     [osId]
   );
+
+  const computeSnapshot = useCallback(
+    (next?: {
+      templateId?: string;
+      templateItems?: ChecklistTemplateModel["itens"];
+      checklist?: Record<string, Marcacao>;
+      obsByItem?: Record<string, string>;
+    }) => {
+      const tId = next?.templateId ?? templateId;
+      const items = next?.templateItems ?? templateItems;
+      const chk = next?.checklist ?? checklist;
+      const obs = next?.obsByItem ?? obsByItem;
+
+      const keys = (items ?? []).map((it) => it?.titulo ?? "").filter(Boolean);
+      return JSON.stringify({
+        templateId: tId || null,
+        keys,
+        checklist: Object.fromEntries(keys.map((k) => [k, chk[k] ?? ""])),
+        obs: Object.fromEntries(keys.map((k) => [k, (obs[k] ?? "").trim()])),
+      });
+    },
+    [checklist, obsByItem, templateId, templateItems]
+  );
+
+  const hasAnyNewImage = useMemo(() => Object.values(imagesByItem).some((arr) => (arr?.length ?? 0) > 0), [imagesByItem]);
+  const isDirty = useMemo(() => computeSnapshot() !== initialSnapshotRef.current, [computeSnapshot]);
 
   const resetForm = useCallback(() => {
     setSaving(false);
@@ -65,7 +108,12 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
     setChecklist({});
     setObsByItem({});
     setImagesByItem({});
-    submitDoneRef.current = false;
+    setExistingImagesByItem({});
+    setExistingError(null);
+    setPendingApply(false);
+    pendingApplyRef.current = null;
+    checklistIdByItemRef.current = {};
+    initialSnapshotRef.current = "";
   }, []);
 
   const handleOpenChange = useCallback(
@@ -84,6 +132,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
       try {
         setLoadingTemplates(true);
         setTemplatesError(null);
+
         const list = await listarChecklistModelos(true);
         setTemplates(list);
       } catch (e: any) {
@@ -103,7 +152,13 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
   }, [osId]);
 
   const applyTemplate = useCallback(
-    (id: string) => {
+    (
+      id: string,
+      opts?: {
+        statusByItem?: Record<string, Marcacao>;
+        obsByItem?: Record<string, string>;
+      }
+    ) => {
       setTemplateId(id);
 
       const itens = (templates.find((t) => t.id === id)?.itens ?? []).filter(Boolean);
@@ -115,30 +170,149 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
 
       itens.forEach((it) => {
         if (!it.titulo) return;
-        novoChecklist[it.titulo] = "";
-        novoObs[it.titulo] = "";
+        novoChecklist[it.titulo] = opts?.statusByItem?.[it.titulo] ?? "";
+        novoObs[it.titulo] = opts?.obsByItem?.[it.titulo] ?? "";
         novoImgs[it.titulo] = [];
       });
 
       setChecklist(novoChecklist);
       setObsByItem(novoObs);
       setImagesByItem(novoImgs);
+
+      initialSnapshotRef.current = computeSnapshot({
+        templateId: id,
+        templateItems: itens,
+        checklist: novoChecklist,
+        obsByItem: novoObs,
+      });
     },
-    [templates]
+    [templates, computeSnapshot]
   );
+
+  // Carrega checklist existente (se houver) para abrir para edicao
+  useEffect(() => {
+    if (!open || !osId) return;
+
+    (async () => {
+      try {
+        setLoadingExisting(true);
+        setExistingError(null);
+
+        const r = await fetch(`/api/ordens/${osId}`, { cache: "no-store" });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error((j as any)?.error || "Falha ao carregar dados da OS");
+
+        const osObj = (j as any)?.os ?? j;
+        const existingChecklist: Array<any> = Array.isArray((j as any)?.checklist) ? (j as any).checklist : [];
+        const modelId =
+          (osObj as any)?.checklist_modelo_id ??
+          (osObj as any)?.checklistModeloId ??
+          (osObj as any)?.checklistTemplateId ??
+          (osObj as any)?.checklist_template_id ??
+          null;
+        const templateFromOs = modelId ? String(modelId) : "";
+
+        const statusByItem: Record<string, Marcacao> = {};
+        const obsMap: Record<string, string> = {};
+        const imgsByItem: Record<string, ExistingImage[]> = {};
+        const ckIdByItem: Record<string, number> = {};
+        for (const row of existingChecklist) {
+          const item = String(row?.item ?? "").trim();
+          if (!item) continue;
+          const s = String(row?.status ?? "").toUpperCase();
+          statusByItem[item] = (s === "OK" || s === "ALERTA" || s === "FALHA" ? (s as any) : "") as Marcacao;
+          obsMap[item] = String(row?.observacao ?? row?.obs ?? "").trim();
+
+          const ckId = Number(row?.id);
+          if (Number.isFinite(ckId) && ckId > 0) ckIdByItem[item] = ckId;
+
+          const imgs: any[] = Array.isArray(row?.imagens) ? row.imagens : [];
+          imgsByItem[item] = imgs
+            .map((im) => ({
+              id: Number(im?.id),
+              url: String(im?.url ?? ""),
+              descricao: (im?.descricao ?? null) as string | null,
+            }))
+            .filter((im) => Number.isFinite(im.id) && im.id > 0 && !!im.url);
+        }
+
+        checklistIdByItemRef.current = ckIdByItem;
+        setExistingImagesByItem(imgsByItem);
+
+        if (templateFromOs) {
+          setTemplateId(templateFromOs);
+          initialSnapshotRef.current = computeSnapshot({
+            templateId: templateFromOs,
+            templateItems: [],
+            checklist: {},
+            obsByItem: {},
+          });
+
+          if (templates.length) {
+            applyTemplate(templateFromOs, { statusByItem, obsByItem: obsMap });
+          } else {
+            pendingApplyRef.current = { templateId: templateFromOs, statusByItem, obsByItem: obsMap };
+            setPendingApply(true);
+          }
+          return;
+        }
+
+        // Sem modelo vinculado: se existir checklist, mostra os itens existentes como "template" editavel.
+        if (existingChecklist.length) {
+          const itens = existingChecklist
+            .map((r: any) => ({ titulo: String(r?.item ?? "").trim(), descricao: null, obrigatorio: false }))
+            .filter((x: any) => x.titulo);
+
+          setTemplateId("");
+          setTemplateItems(itens as any);
+          setChecklist(statusByItem);
+          setObsByItem(obsMap);
+          setImagesByItem(Object.fromEntries(itens.map((it: any) => [it.titulo, []])));
+          setExistingImagesByItem(imgsByItem);
+          checklistIdByItemRef.current = ckIdByItem;
+
+          initialSnapshotRef.current = computeSnapshot({
+            templateId: "",
+            templateItems: itens as any,
+            checklist: statusByItem,
+            obsByItem: obsMap,
+          });
+        }
+      } catch (e: any) {
+        setExistingError(e?.message ?? "Nao foi possivel carregar o checklist existente.");
+      } finally {
+        setLoadingExisting(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, osId]);
+
+  // Se carregamos os templates depois, aplica o prefill pendente (se existir)
+  useEffect(() => {
+    if (!open) return;
+    const p = pendingApplyRef.current;
+    if (!p) return;
+    if (!templates.length) return;
+
+    pendingApplyRef.current = null;
+    applyTemplate(p.templateId, { statusByItem: p.statusByItem, obsByItem: p.obsByItem });
+    setPendingApply(false);
+  }, [open, templates.length, applyTemplate]);
 
   const validateAll = (): string | null => {
     if (!osId) return "OS invalida.";
-    if (!templateId) return "Selecione um modelo de checklist.";
-    if (!templateItems.length) return "Este modelo nao possui itens.";
+    if (!templateId && templateItems.length === 0) return "Selecione um modelo de checklist.";
 
-    const faltando = templateItems.filter((it) => it.obrigatorio).filter((it) => !checklist[it.titulo]);
-    if (faltando.length) {
-      const nomes = faltando
-        .slice(0, 3)
-        .map((f) => f.titulo)
-        .join(", ");
-      return `Marque todos os itens obrigatorios do checklist. Ex.: ${nomes}${faltando.length > 3 ? "..." : ""}`;
+    // valida obrigatorios apenas quando temos modelo (itens com `obrigatorio`)
+    if (templateId && templateItems?.length) {
+      const faltando = templateItems.filter((it) => it.obrigatorio).filter((it) => !checklist[it.titulo]);
+      if (faltando.length) {
+        const nomes = faltando
+          .slice(0, 3)
+          .map((f) => f.titulo)
+          .join(", ");
+        return `Marque todos os itens obrigatorios do checklist. Ex.: ${nomes}${faltando.length > 3 ? "..." : ""}`;
+      }
     }
 
     const semStatusComImagem = Object.keys(imagesByItem).filter(
@@ -169,12 +343,42 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
     });
   };
 
+  const removeExistingImage = async (itemTitle: string, imageId: number) => {
+    const checklistId = checklistIdByItemRef.current[itemTitle];
+    if (!checklistId) {
+      toast.error("Nao foi possivel identificar o checklist deste item.");
+      return;
+    }
+
+    // otimista
+    setExistingImagesByItem((prev) => ({
+      ...prev,
+      [itemTitle]: (prev[itemTitle] ?? []).filter((im) => im.id !== imageId),
+    }));
+
+    try {
+      const r = await fetch(`/api/checklists/${checklistId}/images/${imageId}`, { method: "DELETE" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error((j as any)?.error || "Falha ao excluir imagem");
+      toast.success("Imagem removida.");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao excluir imagem");
+      // reverter: recarrega do backend na proxima abertura; aqui evitamos duplicar chamada.
+    }
+  };
+
   const salvar = async () => {
-    if (saving || submitDoneRef.current) return;
+    if (saving) return;
 
     const err = validateAll();
     if (err) {
       toast.error(err);
+      return;
+    }
+
+    const shouldSaveChecklist = isDirty || hasAnyNewImage;
+    if (!shouldSaveChecklist) {
+      toast.message("Nenhuma alteracao para salvar.");
       return;
     }
 
@@ -202,22 +406,22 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
         checklist: checklistArray,
       };
 
-      // 1) Salva checklist (backend avanca status se estiver em AGUARDANDO_CHECKLIST)
+      // 1) Salva checklist
       const r1 = await fetch(`/api/ordens/${osId}/checklist`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const j1 = await r1.json().catch(() => ({}));
-      if (!r1.ok) throw new Error(j1?.error || "Falha ao salvar checklist");
+      if (!r1.ok) throw new Error((j1 as any)?.error || "Falha ao salvar checklist");
 
-      const created: Array<{ id: number; item: string }> = j1?.checklistCreated ?? [];
+      const created: Array<{ id: number; item: string }> = (j1 as any)?.checklistCreated ?? [];
       const mapItemToChecklistId: Record<string, number> = {};
       for (const row of created) {
         if (row?.item && row?.id) mapItemToChecklistId[row.item] = row.id;
       }
 
-      // 2) Upload de imagens (se houver)
+      // 2) Upload de imagens
       const hasAnyImage = Object.values(imagesByItem).some((arr) => (arr?.length ?? 0) > 0);
       if (hasAnyImage) {
         await uploadChecklistImages(osId, imagesByItem, mapItemToChecklistId, {
@@ -232,9 +436,10 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
         });
       }
 
-      submitDoneRef.current = true;
-      toast.success("Checklist salvo com sucesso.");
+      toast.success("Checklist atualizado com sucesso.");
       window.dispatchEvent(new CustomEvent("os:refresh"));
+
+      initialSnapshotRef.current = computeSnapshot();
 
       resetForm();
       onOpenChange(false);
@@ -250,28 +455,44 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
       open={open}
       onOpenChange={handleOpenChange}
       title={titulo}
-      description="Preencha o checklist de inspecao antes de seguir para orcamento."
+      description="Edite o checklist salvo desta OS."
       maxW="lg:max-w-5xl xl:max-w-6xl"
       footer={
         <>
           <Button variant="outline" className="bg-transparent" onClick={() => handleOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={salvar} disabled={saving || !osId || !templateId || loadingTemplates}>
+          <Button
+            onClick={salvar}
+            disabled={
+              saving ||
+              !osId ||
+              (templateItems.length === 0 && !templateId) ||
+              (!isDirty && !hasAnyNewImage) ||
+              loadingExisting ||
+              pendingApply
+            }
+          >
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Salvando...
               </>
             ) : (
-              "Salvar checklist"
+              "Salvar alteracoes"
             )}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
-        {templatesError ? <p className="text-sm text-red-500">{templatesError}</p> : null}
+        {existingError ? <p className="text-sm text-red-500">{existingError}</p> : null}
+        {(loadingExisting || pendingApply) ? (
+          <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Carregando checklist...
+          </div>
+        ) : null}
 
         {/* MODELO DE CHECKLIST */}
         <div className="space-y-3">
@@ -281,18 +502,18 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-            <Select value={templateId} onValueChange={(id) => applyTemplate(id)} disabled={loadingTemplates || saving}>
+            <Select
+              value={templateId}
+              onValueChange={(id) => applyTemplate(id)}
+              disabled={loadingTemplates || (!!templatesError && templates.length === 0) || saving || loadingExisting || pendingApply}
+            >
               <SelectTrigger className="h-10 w-full sm:w-[380px] min-w-[220px] truncate relative pr-9">
                 <SelectValue
                   placeholder={
-                    loadingTemplates
-                      ? "Carregando..."
-                      : templates.length
-                      ? "Selecione um modelo"
-                      : "Nenhum modelo disponivel"
+                    loadingTemplates ? "Carregando..." : templates.length ? "Selecione um modelo" : "Nenhum modelo disponivel"
                   }
                 />
-                {loadingTemplates && (
+                {(loadingTemplates || loadingExisting || pendingApply) && (
                   <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 opacity-70" />
                 )}
               </SelectTrigger>
@@ -305,11 +526,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
               </SelectContent>
             </Select>
 
-            {templateId && (
-              <Button variant="outline" className="w-full sm:w-auto" onClick={resetForm} disabled={saving}>
-                Limpar
-              </Button>
-            )}
+            {templatesError && <p className="text-sm text-red-500">{templatesError}</p>}
           </div>
         </div>
 
@@ -320,6 +537,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
               const key = it.titulo ?? "";
               const marcado = checklist[key] ?? "";
               const files = imagesByItem[key] ?? [];
+              const existingImgs = existingImagesByItem[key] ?? [];
               const obs = obsByItem[key] ?? "";
 
               return (
@@ -381,6 +599,30 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                   <div className="mt-3 space-y-2">
                     <Label className="text-xs text-muted-foreground">Imagens do item (opcional)</Label>
 
+                    {existingImgs.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {existingImgs.map((im) => (
+                          <div key={im.id} className="relative h-16 w-16">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={im.url}
+                              alt={im.descricao ?? "Imagem"}
+                              className="h-16 w-16 rounded-md border object-cover"
+                            />
+                            <button
+                              type="button"
+                              className="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-muted"
+                              onClick={() => removeExistingImage(key, im.id)}
+                              title="Remover imagem"
+                              disabled={saving}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer hover:bg-muted">
                         <UploadCloud className="h-4 w-4" />
@@ -435,4 +677,3 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
     </DialogShell>
   );
 }
-

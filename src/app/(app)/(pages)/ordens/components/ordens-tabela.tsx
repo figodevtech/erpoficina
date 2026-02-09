@@ -42,6 +42,7 @@ import type { StatusOS } from "./ordens-tabs";
 import { LinkAprovacaoDialog } from "./dialogs/link-aprovacao-dialog";
 import { OSDetalhesDialog } from "./dialogs/detalhes-os-dialog";
 import { ChecklistDialog } from "./dialogs/checklist-dialog";
+import { ChecklistEditDialog } from "./dialogs/checklist-edit-dialog";
 import { RealizadoresOSDialog } from "./dialogs/realizadores-os-dialog";
 import { statusClasses, prioClasses, fmtDate, fmtDuration, useNowTick, safeStatus } from "./ordens-utils";
 import { RowActions } from "./row-actions";
@@ -756,7 +757,7 @@ export function OrdensTabela({
                   </TableHead>
 
                   <TableHead className="min-w-[70px]">
-                    <SortableHeader label="Tempo" columnKey="tempo" sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
+                    <SortableHeader label="Tempo Duração" columnKey="tempo" sortKey={sortKey} sortDir={sortDir} onChange={handleSortChange} />
                   </TableHead>
 
                   <TableHead className="min-w-[70px] text-center">Ações</TableHead>
@@ -1206,14 +1207,27 @@ export function OrdensTabela({
           osId={realizadoresOsId}
         />
 
-        <ChecklistDialog
-          open={checklistOpen}
-          onOpenChange={(v) => {
-            setChecklistOpen(v);
-            if (!v) setChecklistRow(null);
-          }}
-          osId={checklistRow?.id ?? 0}
-        />
+        {String(checklistRow?.status ?? "")
+          .trim()
+          .toUpperCase() === "AGUARDANDO_CHECKLIST" ? (
+          <ChecklistDialog
+            open={checklistOpen}
+            onOpenChange={(v) => {
+              setChecklistOpen(v);
+              if (!v) setChecklistRow(null);
+            }}
+            osId={checklistRow?.id ?? 0}
+          />
+        ) : (
+          <ChecklistEditDialog
+            open={checklistOpen}
+            onOpenChange={(v) => {
+              setChecklistOpen(v);
+              if (!v) setChecklistRow(null);
+            }}
+            osId={checklistRow?.id ?? 0}
+          />
+        )}
       </Card>
     </TooltipProvider>
   );
