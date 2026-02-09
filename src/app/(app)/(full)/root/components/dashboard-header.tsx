@@ -13,12 +13,14 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bell, Search, Plus, Settings, LogOut, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export function DashboardHeader() {
   const router = useRouter();
-
+  const { data: session } = useSession();
+  const user = session?.user as any;
+     
   const handleLogout = async () => {
       try {
         try {
@@ -43,16 +45,16 @@ export function DashboardHeader() {
             </span>
           </div>
           
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
               Ordens
             </Button>
-            <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
+            {/* <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
               Clientes
             </Button>
             <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
               Relatórios
-            </Button>
+            </Button> */}
           </nav>
         </div>
 
@@ -90,21 +92,21 @@ export function DashboardHeader() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Admin</p>
+                    <p className="text-sm font-medium">{user?.nome}</p>
                   <p className="text-xs text-muted-foreground">
-                    admin@empresa.com
+                    {user?.email}
                   </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              {/* <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" />
                 Perfil
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 Configurações
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem
               onClick={handleLogout}

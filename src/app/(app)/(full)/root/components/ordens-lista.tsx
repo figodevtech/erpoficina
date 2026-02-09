@@ -181,7 +181,7 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                           </span>
                           <p className=" md:hidden whitespace-pre-wrap break-words text-xs text-muted-foreground flex flex-row items-center gap-1">
                             {ordem.veiculo ? (
-                              <>{ordem.veiculo.placa}</>
+                              <>{ordem.veiculo.modelo}</>
                             ) : ordem.peca ? (
                               <>{ordem.peca.titulo.toUpperCase()}</>
                             ) : (
@@ -189,6 +189,19 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                             )}
                           </p>
                         </div>
+                        {ordem.peca?.descricao && (
+                          <div className="md:hidden flex flex-row items-center gap-1 mt-1">
+                            
+                            <div className="p-3 bg-muted-foreground/10 rounded-lg">
+
+                            <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground flex flex-row items-center gap-1">
+                              {ordem.peca?.descricao}
+                            </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {}
                         <div className="md:hidden flex flex-row items-center gap-4 mt-1">
                             <div className="flex flex-row items-center gap-1"><Clock className="w-3 h-3 text-yellow-500"/><span className="">{formatDate(ordem.execucao_inicio_em || undefined)}</span></div>
                             <div className="flex flex-row items-center gap-1"><Clock className="w-3 h-3 text-green-500"/><span className="">{formatDate(ordem.execucao_fim_em || undefined)}</span></div>
@@ -200,7 +213,7 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:flex min-w-70 flex-row items-center gap-2">
+                  <TableCell className="hidden md:flex max-w-70 flex-row items-center gap-2">
                     <div>
                       {ordem.alvo_tipo === "PECA" ? (
                         <Box className="w-4 h-4" />

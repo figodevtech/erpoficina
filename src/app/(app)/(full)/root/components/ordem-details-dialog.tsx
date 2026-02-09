@@ -28,6 +28,7 @@ import {
   Hash,
   CalendarClock,
   ClipboardCheck,
+  Box,
 } from "lucide-react";
 import { StatusBadge } from "./badge-status";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -121,6 +122,11 @@ type APIResponse = {
       ano: number | null;
       cor: string | null;
       kmatual: number | null;
+    } | null;
+    peca: {
+      id: number;
+      descricao: string;
+      titulo: string;
     } | null;
   };
   itensProduto: ProdutoItem[];
@@ -448,13 +454,19 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                     <Card className="overflow-hidden p-0">
                       <CardHeader className="p-0 m-0">
                       <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
-                        <Car className="w-4 h-4 text-primary" />
-                        <h3 className="font-semibold text-sm">
-                          Dados do Veículo
-                        </h3>
+                      {data.os.veiculo ? <Car className="w-4 h-4 text-primary" /> : <Box className="w-4 h-4 text-primary" />}
+                        {data.os.veiculo ? (
+                          <h3 className="font-semibold text-sm">
+                            Dados do Veículo
+                          </h3>
+                        ) : (
+                          <h3 className="font-semibold text-sm">
+                            Dados do Produto
+                          </h3>
+                        )}
                       </div>
                       </CardHeader>
-                      <CardContent className="p-4">
+                      <CardContent className="pb-4">
                         {data.os.veiculo ? (
                           <div className="space-y-3">
                             <div className="flex items-center gap-3">
@@ -462,7 +474,7 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                                 <Car className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                               </div>
                               <div className="min-w-0">
-                                <p className="font-semibold text-foreground truncate">
+                                <p className="font-semibold text-foreground">
                                   {data.os.veiculo.modelo || "Modelo N/A"}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
@@ -509,9 +521,26 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                             </div>
                           </div>
                         ) : (
-                          <p className="text-muted-foreground italic text-sm">
-                            Veículo não informado
-                          </p>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <Box className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-foreground">
+                                  {data.os.peca?.titulo || "Produto N/A"}
+                                </p>
+                              </div>
+                            </div>
+                            {data.os.peca?.descricao &&(
+                              <div className="w-full p-4 bg-muted-foreground/10 rounded-lg">
+
+                                  <p className="text-xs font-medium">
+                                    {data.os.peca.descricao}
+                                  </p>
+                              </div>
+                                )}
+                          </div>
                         )}
                       </CardContent>
                     </Card>
