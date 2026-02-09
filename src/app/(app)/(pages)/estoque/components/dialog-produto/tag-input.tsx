@@ -122,13 +122,12 @@ export function TagInput({
       ))}
       <input
         ref={inputRef}
-        type="text"
         value={inputValue}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-[120px]"
+        className="text-lg flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-[120px]"
       />
     </div>
   )

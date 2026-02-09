@@ -19,7 +19,7 @@ export function TabMarketplace({ produto, onChange }: Props) {
   const tituloQtd = (produto.tituloMarketplace || "").length;
   const descricaoQtd = (produto.descricaoMarketplace || "").length;
   return (
-    <TabsContent value="MarketPlace" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+    <TabsContent value="MarketPlace" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-10 space-y-2">
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
         <div className="flex flex-row gap-2">
           <Label htmlFor="exibirPdv">Exibir no Marketplace:</Label>

@@ -55,7 +55,7 @@ export function TabGeral({
   return (
     <TabsContent
       value="Geral"
-      className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2"
+      className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-10  space-y-2"
     >
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
         <div className="flex items-center space-x-4">
@@ -223,9 +223,11 @@ export function TabGeral({
         </div>
           <div className="space-y-2 sm:col-span-4 ">
             <div className="w-full flex flex-row items-center gap-2">
+            <div className="flex flex-col md:flex-row md:gap-2">
 
             <Label htmlFor="referencia">Referência</Label>
             <span className=" italic text-xs text-muted-foreground flex flex-row items-center gap-1"><Info className="size-3" />Insira ou cole tags de busca separadas por espaço.</span>
+            </div>
             </div>
             <TagInput
               value={produto.referencia?.length && produto.referencia.length > 0 ? produto.referencia.split(" ") : []}

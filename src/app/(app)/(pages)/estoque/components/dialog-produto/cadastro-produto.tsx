@@ -21,6 +21,7 @@ interface ConteudoCadastroProdutoProps {
   setNewProduct: (value: Produto) => void;
   handleSearchFornecedor?: () => void;
   onAfterSaveProduct?: () => void;
+  isDesktop?: boolean;
 }
 
 const initialNewProduct: Produto = {
@@ -38,6 +39,7 @@ export default function CadastroProduto({
   newProduct,
   setNewProduct,
   onAfterSaveProduct,
+  isDesktop = true,
 }: ConteudoCadastroProdutoProps) {
   const [salvando, setSalvando] = useState(false);
   const [imagensArquivos, setImagensArquivos] = useState<File[]>([]);
@@ -147,6 +149,7 @@ export default function CadastroProduto({
 
   return (
     <ProductDialogLayout
+      isDesktop={isDesktop}
       title="Cadastro de Produtos"
       description="Preencha dados para registrar um novo produto"
       defaultTab="Geral"
@@ -200,6 +203,7 @@ export default function CadastroProduto({
 
       <TabFiscal produto={newProduct} onChange={handleChange} />
       <TabEstoque mode="create" produto={newProduct} onChange={handleChange} />
+      <TabImagensCreate previews={imagensPreview} onPick={handlePickImages} />
       <TabImagensCreate previews={imagensPreview} onPick={handlePickImages} />
     </ProductDialogLayout>
   );
