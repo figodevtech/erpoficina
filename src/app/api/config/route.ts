@@ -27,7 +27,7 @@ function booleanValido(v: any) {
 async function buscarConfigAtual() {
   const { data, error } = await supabase
     .from("config_geral")
-    .select("id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, created_at")
+    .select("id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, created_at, habilitar_drawers")
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -43,7 +43,7 @@ async function criarConfigPadraoSeNaoExistir() {
   const { data, error } = await supabase
     .from("config_geral")
     .insert({}) // usa defaults do banco
-    .select("id, aviso_pagamento, checklist_obrigatorio, created_at")
+    .select("id, aviso_pagamento, checklist_obrigatorio, created_at, habilitar_drawers")
     .single();
 
   if (error) throw error;

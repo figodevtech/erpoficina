@@ -9,6 +9,7 @@ import CadastroProduto from "./cadastro-produto";
 import EdicaoProduto from "./edicao-produto";
 import { ReactNode, useState } from "react";
 import { Estoque_status, Produto, Unidade_medida } from "../../types";
+import { useConfig } from "../../../config-context";
 
 
 interface DialogProdutoProps {
@@ -49,8 +50,9 @@ export function DialogProduto({
   const [newProduct, setNewProduct] = useState<Produto>(initialNewProduct);
 
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const config = useConfig();
 
-  if (isDesktop) {
+  if (isDesktop || !config?.habilitar_drawers) {
     return (
       <Dialog
         open={open}
@@ -94,6 +96,7 @@ export function DialogProduto({
       </Dialog>
     );
   }
+
 
   return (
     <Drawer

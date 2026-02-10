@@ -63,16 +63,14 @@ export function ProductDialogLayout({
   const Close = isDesktop ? DialogClose : DrawerClose;
 
   return (
-    <Content
-      className={
+    <Content className={
         isDesktop
           ? `
         h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
         sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
       `
           : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
-      }
-    >
+      }>
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         <Header className={isDesktop ? "shrink-0 px-6 py-4 border-b-1" : "shrink-0 px-4 py-2"}>
           <Title className={isDesktop ? "text-sm sm:text-lg pr-4" : ""}>{title}</Title>

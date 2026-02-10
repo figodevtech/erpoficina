@@ -10,6 +10,7 @@ import { Customer } from "../../types";
 import { NewCustomer } from "./types";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
+import { useConfig } from "../../../config-context";
 
 interface CustomerDialogProps {
   customerId?: number;
@@ -17,7 +18,7 @@ interface CustomerDialogProps {
   isOpen?: boolean;
   setIsOpen?: (value: boolean) => void;
   setSelectedCustomerId?: (value: number | undefined) => void;
-  onRegister?:(c: Customer)=> void;
+  onRegister?: (c: Customer) => void;
 }
 
 export function CustomerDialog({
@@ -33,20 +34,18 @@ export function CustomerDialog({
   const open = isOpen ?? internalOpen;
   const setOpen = setIsOpen ?? setInternalOpen;
 
-  const [, setSelectedCustomer] = useState<
-    Customer | undefined
-  >(undefined);
+  const [, setSelectedCustomer] = useState<Customer | undefined>(undefined);
   const [, setIsLoading] = useState(false);
   const [newCustomer, setNewCustomer] = useState<NewCustomer>({
     tipopessoa: "FISICA",
-    bairro:"",
+    bairro: "",
     cpfcnpj: "",
     nomerazaosocial: "",
     email: "",
     telefone: "",
     endereco: "",
     enderecocomplemento: "",
-    endereconumero:"",
+    endereconumero: "",
     cidade: "",
     estado: "",
     cep: "",
@@ -80,114 +79,107 @@ export function CustomerDialog({
     }
   }, [open, customerId]);
 
-    const isDesktop = useMediaQuery("(min-width: 768px)");
-    if(isDesktop){
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const config = useConfig();
 
-      return (
-        <Dialog
-          open={open}
-          onOpenChange={(nextOpen) => {
-            // sempre sincroniza o estado (controlado ou interno)
-            setOpen(nextOpen);
-    
-            if (!nextOpen) {
-              setSelectedCustomerId?.(undefined);
-              setSelectedCustomer(undefined);
-              setNewCustomer({
-                tipopessoa: "FISICA",
-                cpfcnpj: "",
-                nomerazaosocial: "",
-                email: "",
-                bairro:"",
-                telefone: "",
-                endereco: "",
-                enderecocomplemento: "",
-                endereconumero: "",
-                cidade: "",
-                estado: "",
-                cep: "",
-                inscricaoestadual: "",
-                inscricaomunicipal: "",
-                codigomunicipio: "",
-                status: "ATIVO",
-                foto: "",
-              });
-            }
-          }}
-        >
-          <DialogTrigger autoFocus={false} asChild>
-            {children}
-          </DialogTrigger>
-    
-          {customerId ? (
-            <EditContent
-            
-              customerId={customerId}
-            />
-          ) : (
-            <RegisterContent
-              setSelectedCustomerId={setSelectedCustomerId}
-              newCustomer={newCustomer}
-              setNewCustomer={setNewCustomer}
-              onRegister={onRegister} 
-    
-            />
-          )}
-        </Dialog>
-      );
-    }
-
+  if (isDesktop || !config?.habilitar_drawers) {
     return (
-        <Drawer
-          open={open}
-          onOpenChange={(nextOpen) => {
-            // sempre sincroniza o estado (controlado ou interno)
-            setOpen(nextOpen);
-    
-            if (!nextOpen) {
-              setSelectedCustomerId?.(undefined);
-              setSelectedCustomer(undefined);
-              setNewCustomer({
-                tipopessoa: "FISICA",
-                cpfcnpj: "",
-                nomerazaosocial: "",
-                email: "",
-                bairro:"",
-                telefone: "",
-                endereco: "",
-                enderecocomplemento: "",
-                endereconumero: "",
-                cidade: "",
-                estado: "",
-                cep: "",
-                inscricaoestadual: "",
-                inscricaomunicipal: "",
-                codigomunicipio: "",
-                status: "ATIVO",
-                foto: "",
-              });
-            }
-          }}
-        >
-          <DrawerTrigger autoFocus={false} asChild>
-            {children}
-          </DrawerTrigger>
-    
-          {customerId ? (
-            <EditContent
-              isDesktop={isDesktop}
-              customerId={customerId}
-            />
-          ) : (
-            <RegisterContent
-            isDesktop={isDesktop}
-              setSelectedCustomerId={setSelectedCustomerId}
-              newCustomer={newCustomer}
-              setNewCustomer={setNewCustomer}
-              onRegister={onRegister} 
-    
-            />
-          )}
-        </Drawer>
-      );
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          // sempre sincroniza o estado (controlado ou interno)
+          setOpen(nextOpen);
+
+          if (!nextOpen) {
+            setSelectedCustomerId?.(undefined);
+            setSelectedCustomer(undefined);
+            setNewCustomer({
+              tipopessoa: "FISICA",
+              cpfcnpj: "",
+              nomerazaosocial: "",
+              email: "",
+              bairro: "",
+              telefone: "",
+              endereco: "",
+              enderecocomplemento: "",
+              endereconumero: "",
+              cidade: "",
+              estado: "",
+              cep: "",
+              inscricaoestadual: "",
+              inscricaomunicipal: "",
+              codigomunicipio: "",
+              status: "ATIVO",
+              foto: "",
+            });
+          }
+        }}
+      >
+        <DialogTrigger autoFocus={false} asChild>
+          {children}
+        </DialogTrigger>
+
+        {customerId ? (
+          <EditContent customerId={customerId} />
+        ) : (
+          <RegisterContent
+            setSelectedCustomerId={setSelectedCustomerId}
+            newCustomer={newCustomer}
+            setNewCustomer={setNewCustomer}
+            onRegister={onRegister}
+          />
+        )}
+      </Dialog>
+    );
+  }
+
+  return (
+    <Drawer
+      open={open}
+      onOpenChange={(nextOpen) => {
+        // sempre sincroniza o estado (controlado ou interno)
+        setOpen(nextOpen);
+
+        if (!nextOpen) {
+          setSelectedCustomerId?.(undefined);
+          setSelectedCustomer(undefined);
+          setNewCustomer({
+            tipopessoa: "FISICA",
+            cpfcnpj: "",
+            nomerazaosocial: "",
+            email: "",
+            bairro: "",
+            telefone: "",
+            endereco: "",
+            enderecocomplemento: "",
+            endereconumero: "",
+            cidade: "",
+            estado: "",
+            cep: "",
+            inscricaoestadual: "",
+            inscricaomunicipal: "",
+            codigomunicipio: "",
+            status: "ATIVO",
+            foto: "",
+          });
+        }
+      }}
+    >
+      <DrawerTrigger autoFocus={false} asChild>
+        {children}
+      </DrawerTrigger>
+
+      {customerId ? (
+        <EditContent isDesktop={isDesktop} customerId={customerId} />
+      ) : (
+        <RegisterContent
+          isDesktop={isDesktop}
+          setSelectedCustomerId={setSelectedCustomerId}
+          newCustomer={newCustomer}
+          setNewCustomer={setNewCustomer}
+          onRegister={onRegister}
+        />
+      )}
+    </Drawer>
+  );
 }

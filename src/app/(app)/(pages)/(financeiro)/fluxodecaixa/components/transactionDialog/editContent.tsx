@@ -35,11 +35,21 @@ import { Switch } from "@/components/ui/switch";
 import { Info } from "lucide-react";
 import { useCategoriasTransacao } from "../../hooks/use-categoria-transacao";
 import { toast } from "sonner";
+import {
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface EditContentProps {
   selectedTransactionId: number | undefined;
   selectedCustomer: TransactionCustomer | undefined;
   setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
+
+  isDesktop: boolean;
 }
 
 /**
@@ -85,8 +95,7 @@ function toDateFromApi(value: unknown): Date | undefined {
 
   if (typeof value === "string") {
     // se vier com timezone (Z ou +hh:mm), pode usar Date direto
-    const temTimezone =
-      value.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(value);
+    const temTimezone = value.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(value);
 
     if (temTimezone) return new Date(value);
 
@@ -107,6 +116,7 @@ export default function EditContent({
   selectedTransactionId,
   selectedCustomer,
   setSelectedCustomer,
+  isDesktop,
 }: EditContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<
@@ -121,10 +131,10 @@ export default function EditContent({
 
   const handleChange = (
     field: keyof TransactionForm,
-    value: string | number
+    value: string | number,
   ) => {
     setSelectedTransaction((prev) =>
-      prev ? { ...prev, [field]: value } : prev
+      prev ? { ...prev, [field]: value } : prev,
     );
   };
 
@@ -182,12 +192,12 @@ export default function EditContent({
     setSelectedTransaction((prev) =>
       prev
         ? {
-          ...prev,
-          cliente_id: selectedCustomer.id,
-          nomepagador: selectedCustomer.nome,
-          cpfcnpjpagador: selectedCustomer.cpfcnpj,
-        }
-        : prev
+            ...prev,
+            cliente_id: selectedCustomer.id,
+            nomepagador: selectedCustomer.nome,
+            cpfcnpjpagador: selectedCustomer.cpfcnpj,
+          }
+        : prev,
     );
   }, [selectedCustomer]);
 
@@ -210,53 +220,87 @@ export default function EditContent({
 
   // mesma regra do RegisterContent: ao trocar pendente, limpa a data
   useEffect(() => {
-    setSelectedTransaction((prev) => (prev ? { ...prev, data: undefined } : prev));
+    setSelectedTransaction((prev) =>
+      prev ? { ...prev, data: undefined } : prev,
+    );
   }, [selectedTransaction?.pendente]);
+
+  const Content = isDesktop ? DialogContent : DrawerContent;
+  const Header = isDesktop ? DialogHeader : DrawerHeader;
+  const Footer = isDesktop ? DialogFooter : DrawerFooter;
+  const Title = isDesktop ? DialogTitle : DrawerTitle;
+  const Description = isDesktop ? DialogDescription : DrawerDescription;
+  const Close = isDesktop ? DialogClose : DrawerClose;
 
   if (isLoading) {
     return (
-      <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
-        <DialogHeader className="hidden">
-          <DialogTitle></DialogTitle>
-        </DialogHeader>
+      <Content
+        className={
+          isDesktop
+            ? `
+        h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
+        sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
+      `
+            : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+        }
+      >
+        <Header className="hidden">
+          <Title></Title>
+        </Header>
         <div className="flex h-full min-h-0 flex-col justify-center items-center">
           <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
           <span className="text-primary">Carregando</span>
         </div>
-      </DialogContent>
+      </Content>
     );
   }
 
   if (!selectedTransaction) {
     return (
-      <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
-        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          <DialogTitle>Editar transação</DialogTitle>
-          <DialogDescription>Nenhuma transação selecionada.</DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="px-6 py-4">
-          <DialogClose asChild>
+      <Content
+        className={
+          isDesktop
+            ? `
+        h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
+        sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
+      `
+            : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+        }
+      >
+        <Header className="shrink-0 px-6 py-4 border-b-1">
+          <Title>Editar transação</Title>
+          <Description>Nenhuma transação selecionada.</Description>
+        </Header>
+        <Footer className="px-6 py-4">
+          <Close asChild>
             <Button className="hover:cursor-pointer" variant={"outline"}>
               Fechar
             </Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
+          </Close>
+        </Footer>
+      </Content>
     );
   }
 
   return (
-    <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <Content
+      className={
+        isDesktop
+          ? `
+        h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
+        sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
+      `
+          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+      }
+    >
       <div className="flex h-full min-h-0 flex-col">
-        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          <DialogTitle>Transação #{selectedTransaction.id}</DialogTitle>
-          <DialogDescription>
-            Preencha dados para editar a transação
-          </DialogDescription>
-        </DialogHeader>
+        <Header className="shrink-0 px-6 py-4 border-b-1">
+          <Title>Transação #{selectedTransaction.id}</Title>
+          <Description>Preencha dados para editar a transação</Description>
+        </Header>
 
-        <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-          <div className="h-full flex flex-col min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+        <div className="h-full min-h-0 overflow-hidden p-0 b">
+          <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
             {/* dados da transação */}
             <div className="space-y-4 grid sm:grid-cols-3 gap-4">
               <div className="space-y-2 w-full">
@@ -298,10 +342,11 @@ export default function EditContent({
 
                   {selectedTransaction.tipo === Tipo_transacao.RECEITA && (
                     <div
-                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${selectedTransaction.pendente
+                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                        selectedTransaction.pendente
                           ? "opacity-100"
                           : "opacity-50"
-                        }`}
+                      }`}
                     >
                       <Info className="w-3 h-3" />
                       <span>LANÇAMENTO A RECEBER</span>
@@ -310,10 +355,11 @@ export default function EditContent({
 
                   {selectedTransaction.tipo === Tipo_transacao.DESPESA && (
                     <div
-                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${selectedTransaction.pendente
+                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                        selectedTransaction.pendente
                           ? "opacity-100"
                           : "opacity-50"
-                        }`}
+                      }`}
                     >
                       <Info className="w-3 h-3" />
                       <span>LANÇAMENTO A PAGAR</span>
@@ -344,10 +390,15 @@ export default function EditContent({
               <div className="space-y-2 w-full">
                 <Label htmlFor="data">Data</Label>
                 <Input
+                  className="w-min"
                   type="datetime-local"
-                  value={toIsoMinuteString(selectedTransaction.data)}
-                  min={selectedTransaction.pendente ? nowIsoMinute() : undefined}
-                  max={!selectedTransaction.pendente ? nowIsoMinute() : undefined}
+                  value={toIsoMinuteString(selectedTransaction.data) ?? ""}
+                  min={
+                    selectedTransaction.pendente ? nowIsoMinute() : undefined
+                  }
+                  max={
+                    !selectedTransaction.pendente ? nowIsoMinute() : undefined
+                  }
                   onChange={(e) => {
                     const value = e.target.value;
                     const selecionada = value
@@ -369,7 +420,7 @@ export default function EditContent({
                       selecionada.getTime() > agora.getTime()
                     ) {
                       toast.warning(
-                        "Ative o pagamento futuro para selecionar uma data futura."
+                        "Ative o pagamento futuro para selecionar uma data futura.",
                       );
                       return;
                     }
@@ -379,7 +430,7 @@ export default function EditContent({
                       selecionada.getTime() < agora.getTime()
                     ) {
                       toast.warning(
-                        "Desative o pagamento futuro para selecionar uma data passada."
+                        "Desative o pagamento futuro para selecionar uma data passada.",
                       );
                       return;
                     }
@@ -403,11 +454,13 @@ export default function EditContent({
                     setSelectedTransaction((prev) =>
                       prev
                         ? {
-                          ...prev,
-                          banco_id: bancoId,
-                          banco: b ? { ...(prev as any).banco, ...b } : (prev as any).banco,
-                        }
-                        : prev
+                            ...prev,
+                            banco_id: bancoId,
+                            banco: b
+                              ? { ...(prev as any).banco, ...b }
+                              : (prev as any).banco,
+                          }
+                        : prev,
                     );
                   }}
                 >
@@ -548,7 +601,8 @@ export default function EditContent({
                   id="cpfcnpjpagador"
                   maxLength={14}
                   value={
-                    formatCpfCnpj(selectedTransaction.cpfcnpjpagador || "") || ""
+                    formatCpfCnpj(selectedTransaction.cpfcnpjpagador || "") ||
+                    ""
                   }
                   onChange={(e) =>
                     handleChange("cpfcnpjpagador", e.target.value)
@@ -561,16 +615,16 @@ export default function EditContent({
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4">
+        <Footer className="px-6 py-4">
           <div className="flex sm:flex-row gap-3 sm:gap-4">
-            <DialogClose asChild>
+            <Close asChild>
               <Button className="hover:cursor-pointer" variant={"outline"}>
                 Cancelar
               </Button>
-            </DialogClose>
+            </Close>
           </div>
-        </DialogFooter>
+        </Footer>
       </div>
-    </DialogContent>
+    </Content>
   );
 }

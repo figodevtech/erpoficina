@@ -1,20 +1,27 @@
 "use client";
-import { Dialog,  DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { ReactNode, useState } from "react";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
-import { NewTransaction, Tipo_transacao, TransactionCustomer } from "../../types";
+import {
+  NewTransaction,
+  Tipo_transacao,
+  TransactionCustomer,
+} from "../../types";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { useConfig } from "@/app/(app)/(pages)/config-context";
+import { Drawer } from "@/components/ui/drawer";
 
 interface TransactionDialogProps {
   children?: ReactNode;
-  osId?: number
-  vendaId?: number
+  osId?: number;
+  vendaId?: number;
   transactionId?: number;
   setSelectedTransactionId?: (value: number | undefined) => void;
   open?: boolean;
   setOpen?: (value: boolean) => void;
   selectedTransactionId?: number | undefined;
-  handleGetTransactions?: (pageNumber?: number) => void
+  handleGetTransactions?: (pageNumber?: number) => void;
 }
 export default function TransactionDialog({
   children,
@@ -31,48 +38,120 @@ export default function TransactionDialog({
     TransactionCustomer | undefined
   >(undefined);
 
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const config = useConfig();
+
+  if (isDesktop || !config?.habilitar_drawers) {
+    return (
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (setOpen) setOpen(nextOpen);
+
+          if (nextOpen) {
+            if (osId) {
+              setNewTransaction({
+                ordemservicoid: osId,
+                tipo: Tipo_transacao.RECEITA,
+                categoria: "ORDEM DE SERVIÇO",
+                descricao: `Pagamento da OS #${osId}`,
+                valor: 0,
+                valorLiquido: 0,
+              });
+            }
+
+            if (vendaId) {
+              setNewTransaction({
+                vendaid: vendaId,
+                tipo: Tipo_transacao.RECEITA,
+                categoria: "VENDA",
+                descricao: `Pagamento da Venda #${vendaId}`,
+                valor: 0,
+                valorLiquido: 0,
+              });
+            }
+
+            if (!osId && !vendaId) {
+              setNewTransaction({});
+            }
+
+            return;
+          }
+
+          // ao fechar, limpa estados
+          if (setSelectedTransactionId) setSelectedTransactionId(undefined);
+          setNewTransaction({});
+          setSelectedCustomer(undefined);
+        }}
+      >
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        {selectedTransactionId ? (
+          <EditContent
+            selectedTransactionId={selectedTransactionId}
+            selectedCustomer={selectedCustomer}
+            setSelectedCustomer={setSelectedCustomer}
+            isDesktop={true}
+          />
+        ) : (
+          <RegisterContent
+            vendaId={vendaId}
+            osId={osId}
+            handleGetTransactions={handleGetTransactions}
+            selectedCustomer={selectedCustomer}
+            setSelectedCustomer={setSelectedCustomer}
+            dialogOpen={open}
+            newTransaction={newTransaction}
+            setNewTransaction={setNewTransaction}
+            setSelectedTransactionId={setSelectedTransactionId}
+            setOpen={setOpen}
+            isDesktop={true}
+          />
+        )}
+      </Dialog>
+    );
+  }
 
   return (
-    <Dialog
+    <Drawer
       open={open}
-  onOpenChange={(nextOpen) => {
-    if (setOpen) setOpen(nextOpen);
+      onOpenChange={(nextOpen) => {
+        if (setOpen) setOpen(nextOpen);
 
-    if (nextOpen) {
-      if (osId) {
-        setNewTransaction({
-          ordemservicoid: osId,
-          tipo: Tipo_transacao.RECEITA,
-          categoria: "ORDEM DE SERVIÇO",
-          descricao: `Pagamento da OS #${osId}`,
-          valor: 0,
-          valorLiquido: 0
-        });
-      }
+        if (nextOpen) {
+          if (osId) {
+            setNewTransaction({
+              ordemservicoid: osId,
+              tipo: Tipo_transacao.RECEITA,
+              categoria: "ORDEM DE SERVIÇO",
+              descricao: `Pagamento da OS #${osId}`,
+              valor: 0,
+              valorLiquido: 0,
+            });
+          }
 
-      if(vendaId){
-        setNewTransaction({
-          vendaid: vendaId,
-          tipo: Tipo_transacao.RECEITA,
-          categoria: "VENDA",
-          descricao: `Pagamento da Venda #${vendaId}`,
-          valor: 0,
-          valorLiquido: 0
-        });
-      }
-      
-      if(!osId && !vendaId) {
+          if (vendaId) {
+            setNewTransaction({
+              vendaid: vendaId,
+              tipo: Tipo_transacao.RECEITA,
+              categoria: "VENDA",
+              descricao: `Pagamento da Venda #${vendaId}`,
+              valor: 0,
+              valorLiquido: 0,
+            });
+          }
+
+          if (!osId && !vendaId) {
+            setNewTransaction({});
+          }
+
+          return;
+        }
+
+        // ao fechar, limpa estados
+        if (setSelectedTransactionId) setSelectedTransactionId(undefined);
         setNewTransaction({});
-      }
-
-      return;
-    }
-
-    // ao fechar, limpa estados
-    if (setSelectedTransactionId) setSelectedTransactionId(undefined);
-    setNewTransaction({});
-    setSelectedCustomer(undefined);
-  }}
+        setSelectedCustomer(undefined);
+      }}
     >
       <DialogTrigger asChild>{children}</DialogTrigger>
       {selectedTransactionId ? (
@@ -80,12 +159,13 @@ export default function TransactionDialog({
           selectedTransactionId={selectedTransactionId}
           selectedCustomer={selectedCustomer}
           setSelectedCustomer={setSelectedCustomer}
+          isDesktop={false}
         />
       ) : (
         <RegisterContent
-        vendaId={vendaId}
-        osId={osId}
-        handleGetTransactions={handleGetTransactions}
+          vendaId={vendaId}
+          osId={osId}
+          handleGetTransactions={handleGetTransactions}
           selectedCustomer={selectedCustomer}
           setSelectedCustomer={setSelectedCustomer}
           dialogOpen={open}
@@ -93,8 +173,9 @@ export default function TransactionDialog({
           setNewTransaction={setNewTransaction}
           setSelectedTransactionId={setSelectedTransactionId}
           setOpen={setOpen}
+          isDesktop={false}
         />
       )}
-    </Dialog>
+    </Drawer>
   );
 }
