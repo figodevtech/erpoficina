@@ -322,7 +322,7 @@ export default function ServiceOrdersDashboard({
               }}
               className="h-48 w-full xs:h-56 sm:h-64 md:h-72 lg:h-80"
             >
-              <AreaChart data={seriesNewDone} margin={{ top: 12, right: 12, left: 12, bottom: 0 }}>
+              <AreaChart data={seriesNewDone} margin={{ top: 12, right: 12, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="areaNew" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="rgb(43, 127, 255)" stopOpacity={0.25} />
@@ -455,7 +455,7 @@ export default function ServiceOrdersDashboard({
                   <BarChart
                     data={statusItems}
                     layout="vertical"
-                    margin={{ top: 8, right: 28, left: 6, bottom: 8 }}
+                    margin={{ top: 8, right: 16, left: -20, bottom: 8 }}
                     barSize={14}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
