@@ -9,7 +9,14 @@ const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const supabaseAdminEdge =
   supabaseUrl && serviceKey
-    ? createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
+    ? createClient(supabaseUrl, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          fetch: (url, options) => {
+            return fetch(url, { ...options, cache: "no-store" });
+          },
+        },
+      })
     : null;
 
 const PUBLIC_PATHS = [
@@ -30,21 +37,31 @@ const PUBLIC_API_PREFIXES = [
 ];
 
 function isStaticAsset(pathname: string) {
-  if (pathname.startsWith("/_next/") || pathname.startsWith("/favicon") || pathname.startsWith("/images")) {
+  if (
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/images")
+  ) {
     return true;
   }
-  return /\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map|json|webmanifest)$/.test(pathname);
+  return /\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|map|json|webmanifest)$/.test(
+    pathname,
+  );
 }
 
 function isPublicPath(pathname: string) {
   if (isStaticAsset(pathname)) return true;
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
 }
 
 function isPublicApi(pathname: string) {
   if (!pathname.startsWith("/api")) return false;
   if (pathname.startsWith("/api/auth")) return true; // NextAuth sempre público
-  return PUBLIC_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return PUBLIC_API_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
 }
 
 /**
@@ -76,11 +93,15 @@ const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
 ];
 
 function matchRule(pathname: string) {
-  return ROUTE_PERMS.find((r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/"));
+  return ROUTE_PERMS.find(
+    (r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/"),
+  );
 }
 
 function hasPermFromSession(user: any, perm: string) {
-  const perms: string[] = Array.isArray(user?.permissoes) ? user.permissoes : [];
+  const perms: string[] = Array.isArray(user?.permissoes)
+    ? user.permissoes
+    : [];
   const normalized = perms.map((p) => String(p).trim().toUpperCase());
   return normalized.includes(String(perm).trim().toUpperCase());
 }
@@ -96,26 +117,40 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
   const user = session?.user;
 
   const isLoggedIn = !!user;
+
+  // Variáveis locais para decisão (evita mutar o objeto user da sessão original se possível)
   let isInactive = false;
+  let isRoot = false;
+
+  // Se tiver usuário, pega o ID e consulta dados frescos
   const userId = (user as any)?.id as string | undefined;
+
+  // Inicializa com o que veio do token (fallback)
+  if (isLoggedIn) {
+    isInactive = (user as any).ativo === false;
+    isRoot = (user as any).is_root === true;
+  }
+
   if (userId && supabaseAdminEdge) {
     try {
-      const { data } = await supabaseAdminEdge.from("usuario").select("ativo, is_root").eq("id", userId).maybeSingle();
-      isInactive = data?.ativo === false;
-      // Sobrescreve is_root com o dado fresco do banco
+      // Força busca sem cache (garantido pelo client configurado acima com no-store)
+      const { data } = await supabaseAdminEdge
+        .from("usuario")
+        .select("ativo, is_root")
+        .eq("id", userId)
+        .maybeSingle();
+
       if (data) {
-        (user as any).is_root = data.is_root === true;
+        // Atualiza as variáveis locais com a verdade do banco
+        isInactive = data.ativo === false;
+        isRoot = data.is_root === true;
       }
     } catch {
-      // falha silenciosa: se der erro no admin, não derruba o sistema
-      isInactive = false;
+      // em caso de erro no banco, mantemos o fallback do token (ou assume false para evitar bloqueio indevido se for erro transiente?)
+      // Por segurança, se não conseguiu verificar, confia no token ou falha seguro.
+      // Manteremos o valor do token/sessão como fallback.
     }
-  } else {
-    // fallback: usa claim da sessão (pode estar desatualizada)
-    isInactive = !!user && (user as any).ativo === false;
   }
-  
-  const isRoot = (user as any)?.is_root === true;
 
   const isApi = pathname.startsWith("/api");
 
@@ -157,12 +192,12 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     // Se quiser ser restrito, poderia filtrar apenas /api/ordens/root, mas
     // geralmente APIs retornam 403 se não tiver permissão, o que é melhor que redirect HTML.
     if (isApi) {
-        return NextResponse.next();
+      return NextResponse.next();
     }
 
     if (!pathname.startsWith("/root")) {
-       // Se tentar acessar qualquer coisa fora do /root (ex: /dashboard, /clientes), joga para /root
-       return NextResponse.redirect(new URL("/root", nextUrl));
+      // Se tentar acessar qualquer coisa fora do /root (ex: /dashboard, /clientes), joga para /root
+      return NextResponse.redirect(new URL("/root", nextUrl));
     }
     // Se for /root, deixa passar (ainda vai cair no return next() lá embaixo)
     return NextResponse.next();
