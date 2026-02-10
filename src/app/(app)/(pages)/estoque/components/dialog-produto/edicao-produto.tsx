@@ -23,9 +23,10 @@ import { useGruposProduto } from "./hooks/use-grupo-produtos";
 interface EdicaoProdutoProps {
   productId: number;
   onAfterSaveProduct?: () => void;
+  isDesktop?: boolean;
 }
 
-export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoProdutoProps) {
+export default function EdicaoProduto({ productId, onAfterSaveProduct, isDesktop = true }: EdicaoProdutoProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Produto | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,6 +139,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct }: EdicaoP
           : `Produto #${productId}`
       }
       description="Preencha dados para editar um produto"
+      isDesktop={isDesktop}
       defaultTab="Geral"
             currentTab={currentTab}
 

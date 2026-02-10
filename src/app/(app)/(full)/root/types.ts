@@ -1,4 +1,4 @@
-import { Transaction } from "../(financeiro)/fluxodecaixa/types";
+import { Transaction } from "../../(pages)/(financeiro)/fluxodecaixa/types";
 
 export type ID = number | string;
 
@@ -39,7 +39,7 @@ export type Peca = {
 
 }
 
-export type Ordem = {
+export type OrdemRoot = {
   id: number;
   numero?: string;
   status?: StatusOS | null;
@@ -55,8 +55,10 @@ export type Ordem = {
   orcamentototal:number;
   transacoes: Transaction[] | null
   is_deleted?: boolean
-  created_at?: Date
+  createdAt?: Date
   alvo_tipo?: "VEICULO" | "PECA" | null
+  execucao_inicio_em?: Date | null
+  execucao_fim_em?: Date | null
 };
 
 export type OrcamentoTotais = {

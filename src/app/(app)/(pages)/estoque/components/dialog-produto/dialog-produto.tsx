@@ -3,10 +3,13 @@
 
 import type React from "react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import CadastroProduto from "./cadastro-produto";
 import EdicaoProduto from "./edicao-produto";
 import { ReactNode, useState } from "react";
 import { Estoque_status, Produto, Unidade_medida } from "../../types";
+import { useConfig } from "../../../config-context";
 
 
 interface DialogProdutoProps {
@@ -46,8 +49,57 @@ export function DialogProduto({
   const [, setSelectedProduct] = useState<Produto | undefined>(undefined);
   const [newProduct, setNewProduct] = useState<Produto>(initialNewProduct);
 
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const config = useConfig();
+
+  if (isDesktop || !config?.habilitar_drawers) {
+    return (
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+
+          if (newProductData && nextOpen) {
+            setNewProduct({ ...newProductData });
+          }
+
+          if (!nextOpen) {
+            setSelectedProductId?.(undefined);
+            setSelectedProduct(undefined);
+            setNewProduct(initialNewProduct);
+          }
+        }}
+      >
+        {children ? (
+          <DialogTrigger autoFocus={false} asChild>
+            {children}
+          </DialogTrigger>
+        ) : null}
+
+        {productId ? (
+          <EdicaoProduto
+            key={productId}
+            productId={productId}
+            onAfterSaveProduct={onAfterSaveProduct}
+            isDesktop={true}
+          />
+        ) : (
+          <CadastroProduto
+            onAfterSaveProduct={onAfterSaveProduct}
+            handleSearchFornecedor={handleSearchFornecedor}
+            setSelectedProductId={setSelectedProductId}
+            newProduct={newProduct}
+            setNewProduct={setNewProduct}
+            isDesktop={true}
+          />
+        )}
+      </Dialog>
+    );
+  }
+
+
   return (
-    <Dialog
+    <Drawer
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
@@ -64,22 +116,28 @@ export function DialogProduto({
       }}
     >
       {children ? (
-        <DialogTrigger autoFocus={false} asChild>
+        <DrawerTrigger autoFocus={false} asChild>
           {children}
-        </DialogTrigger>
+        </DrawerTrigger>
       ) : null}
 
       {productId ? (
-        <EdicaoProduto key={productId} productId={productId} onAfterSaveProduct={onAfterSaveProduct} />
+        <EdicaoProduto
+          key={productId}
+          productId={productId}
+          onAfterSaveProduct={onAfterSaveProduct}
+          isDesktop={false}
+        />
       ) : (
         <CadastroProduto
-        onAfterSaveProduct={onAfterSaveProduct}
+          onAfterSaveProduct={onAfterSaveProduct}
           handleSearchFornecedor={handleSearchFornecedor}
           setSelectedProductId={setSelectedProductId}
           newProduct={newProduct}
           setNewProduct={setNewProduct}
+          isDesktop={false}
         />
       )}
-    </Dialog>
+    </Drawer>
   );
 }

@@ -21,7 +21,7 @@ export function TabFluxo({ produto }: { produto: Produto }) {
   const [nfeDialogEntradaId, setNfeDialogEntradaId] = useState<number | null>(null);
   
   return (
-    <TabsContent value="Fluxo" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+    <TabsContent value="Fluxo" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-10 space-y-2">
       <EmissaoNotaDialog 
         open={!!nfeDialogEntradaId}
         onOpenChange={(v) => !v && setNfeDialogEntradaId(null)}

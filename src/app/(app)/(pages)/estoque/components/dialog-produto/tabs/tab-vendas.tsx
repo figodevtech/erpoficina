@@ -12,7 +12,7 @@ import formatarEmReal from "@/utils/formatarEmReal";
 export function TabVendas({ produto }: { produto: Produto }) {
   const vendas = (produto as any).vendasdoproduto ?? [];
   return (
-    <TabsContent value="Vendas" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+    <TabsContent value="Vendas" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-10 space-y-2">
       <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
         <div className="flex flex-row items-center justify-between">
           <span className="text-xs">Participações em vendas</span>

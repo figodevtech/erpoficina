@@ -36,6 +36,14 @@ import { Switch } from "@/components/ui/switch";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { set } from "nprogress";
 import { useCategoriasTransacao } from "../../hooks/use-categoria-transacao";
+import {
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface RegisterContentProps {
   osId?: number | undefined;
@@ -48,6 +56,7 @@ interface RegisterContentProps {
   setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
   handleGetTransactions?: (pageNumber?: number) => void;
   setOpen?: (value: boolean) => void;
+  isDesktop?: boolean;
 }
 
 export default function RegisterContent({
@@ -60,17 +69,19 @@ export default function RegisterContent({
   setSelectedCustomer,
   handleGetTransactions,
   setOpen,
+  isDesktop,
 }: RegisterContentProps) {
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const [isChecked, setIsChecked] = useState(false);
-  const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
+  const { categorias, loadingCategorias, errorCategorias } =
+    useCategoriasTransacao();
 
   const handleChange = (
     field: keyof NewTransaction,
-    value: string | number
+    value: string | number,
   ) => {
     setNewTransaction({ ...newTransaction, [field]: value });
   };
@@ -203,21 +214,33 @@ export default function RegisterContent({
     return `${y}-${m}-${d}T${hh}:${mm}`;
   }
 
+  const Content = isDesktop ? DialogContent : DrawerContent;
+  const Header = isDesktop ? DialogHeader : DrawerHeader;
+  const Footer = isDesktop ? DialogFooter : DrawerFooter;
+  const Title = isDesktop ? DialogTitle : DrawerTitle;
+  const Description = isDesktop ? DialogDescription : DrawerDescription;
+  const Close = isDesktop ? DialogClose : DrawerClose;
+
   return (
-    <DialogContent className="h-lvh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <Content
+      className={
+        isDesktop
+          ? `
+        h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
+        sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
+      `
+          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+      }
+    >
       <div className="flex h-full min-h-0 flex-col">
-        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          {osId && <DialogTitle>Nova Transação OS #{osId}</DialogTitle>}
-          {vendaId && (
-            <DialogTitle>Nova Transação Venda #{vendaId}</DialogTitle>
-          )}
-          {!osId && !vendaId && <DialogTitle>Nova Transação</DialogTitle>}
-          <DialogDescription>
-            Preencha dados para registrar uma transação
-          </DialogDescription>
-        </DialogHeader>
-        <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-          <div className="h-full flex flex-col min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
+        <Header className="shrink-0 px-6 py-4 border-b-1">
+          {osId && <Title>Nova Transação OS #{osId}</Title>}
+          {vendaId && <Title>Nova Transação Venda #{vendaId}</Title>}
+          {!osId && !vendaId && <Title>Nova Transação</Title>}
+          <Description>Preencha dados para registrar uma transação</Description>
+        </Header>
+        <div className="h-full min-h-0 overflow-hidden p-0 b">
+          <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
             {/* dados da transação */}
             <div className="space-y-4 grid sm:grid-cols-3 gap-4">
               <div className="space-y-2 w-full">
@@ -260,7 +283,7 @@ export default function RegisterContent({
                     className="hover:cursor-pointer"
                     disabled={
                       newTransaction.tipo === Tipo_transacao.SAQUE ||
-                        newTransaction.tipo === Tipo_transacao.DEPOSITO
+                      newTransaction.tipo === Tipo_transacao.DEPOSITO
                         ? true
                         : false
                     }
@@ -275,8 +298,9 @@ export default function RegisterContent({
 
                   {newTransaction.tipo === Tipo_transacao.RECEITA && (
                     <div
-                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${newTransaction.pendente ? "opacity-100" : "opacity-50"
-                        }`}
+                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                        newTransaction.pendente ? "opacity-100" : "opacity-50"
+                      }`}
                     >
                       <Info className="w-3 h-3" />
                       <span>LANÇAMENTO A RECEBER</span>
@@ -284,8 +308,9 @@ export default function RegisterContent({
                   )}
                   {newTransaction.tipo === Tipo_transacao.DESPESA && (
                     <div
-                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${newTransaction.pendente ? "opacity-100" : "opacity-50"
-                        }`}
+                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                        newTransaction.pendente ? "opacity-100" : "opacity-50"
+                      }`}
                     >
                       <Info className="w-3 h-3" />
                       <span>LANÇAMENTO A PAGAR</span>
@@ -310,29 +335,29 @@ export default function RegisterContent({
                   <Label htmlFor="valor">Valor* </Label>
                   {(newTransaction.tipo === Tipo_transacao.RECEITA ||
                     newTransaction.tipo === Tipo_transacao.SAQUE) && (
-                      <div className="flex flex-row gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          Taxa de recebimento
-                        </span>
-                        <Switch
-                          checked={isChecked}
-                          onCheckedChange={() => {
-                            setIsChecked(!isChecked);
-                            if (!isChecked) {
-                              setNewTransaction({
-                                ...newTransaction,
-                                valorLiquido: newTransaction.valor,
-                              });
-                            } else {
-                              setNewTransaction({
-                                ...newTransaction,
-                                valorLiquido: newTransaction.valor,
-                              });
-                            }
-                          }}
-                        />
-                      </div>
-                    )}
+                    <div className="flex flex-row gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Taxa de recebimento
+                      </span>
+                      <Switch
+                        checked={isChecked}
+                        onCheckedChange={() => {
+                          setIsChecked(!isChecked);
+                          if (!isChecked) {
+                            setNewTransaction({
+                              ...newTransaction,
+                              valorLiquido: newTransaction.valor,
+                            });
+                          } else {
+                            setNewTransaction({
+                              ...newTransaction,
+                              valorLiquido: newTransaction.valor,
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <ValueInput
                   price={newTransaction.valor || 0}
@@ -348,8 +373,9 @@ export default function RegisterContent({
                         Taxa:{" "}
                         {newTransaction.valor && newTransaction.valorLiquido
                           ? formatarEmReal(
-                            newTransaction.valor - newTransaction.valorLiquido
-                          )
+                              newTransaction.valor -
+                                newTransaction.valorLiquido,
+                            )
                           : 0}
                       </span>
                     </div>
@@ -363,6 +389,7 @@ export default function RegisterContent({
               <div className="space-y-2 w-full">
                 <Label htmlFor="data">Data</Label>
                 <Input
+                  className="w-full"
                   type="datetime-local"
                   value={toIsoMinuteString(newTransaction.data) ?? ""} // converte Date -> string certa
                   onChange={(e) => {
@@ -376,20 +403,29 @@ export default function RegisterContent({
 
                     const agora = new Date();
 
-                    if (!newTransaction.pendente && selecionada.getTime() > agora.getTime()) {
-                      toast.warning("Ative o pagamento futuro para selecionar uma data futura.");
+                    if (
+                      !newTransaction.pendente &&
+                      selecionada.getTime() > agora.getTime()
+                    ) {
+                      toast.warning(
+                        "Ative o pagamento futuro para selecionar uma data futura.",
+                      );
                       return;
                     }
 
-                    if (newTransaction.pendente && selecionada.getTime() < agora.getTime()) {
-                      toast.warning("Desative o pagamento futuro para selecionar uma data passada.");
+                    if (
+                      newTransaction.pendente &&
+                      selecionada.getTime() < agora.getTime()
+                    ) {
+                      toast.warning(
+                        "Desative o pagamento futuro para selecionar uma data passada.",
+                      );
                       return;
                     }
 
                     setNewTransaction({ ...newTransaction, data: selecionada }); // salva Date
                   }}
                 />
-
               </div>
               <div className="space-y-2 w-full">
                 <Label htmlFor="banco">Banco</Label>
@@ -466,11 +502,23 @@ export default function RegisterContent({
                     onValueChange={(v) => handleChange("categoria", v)}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder={loadingCategorias ? "Carregando..." : errorCategorias ? "Erro ao carregar" : "Selecione"} />
+                      <SelectValue
+                        placeholder={
+                          loadingCategorias
+                            ? "Carregando..."
+                            : errorCategorias
+                              ? "Erro ao carregar"
+                              : "Selecione"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.map((c) => (
-                        <SelectItem className="hover:cursor-pointer" key={c.id} value={c.nome}>
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          key={c.id}
+                          value={c.nome}
+                        >
                           {c.nome}
                         </SelectItem>
                       ))}
@@ -562,7 +610,7 @@ export default function RegisterContent({
             </div>
           </div>
         </div>
-        <DialogFooter className="px-6 py-4">
+        <Footer className="px-6 py-4">
           <div className="flex sm:flex-row gap-3 sm:gap-4">
             <Button
               type="submit"
@@ -583,14 +631,14 @@ export default function RegisterContent({
                 </>
               )}
             </Button>
-            <DialogClose asChild>
+            <Close asChild>
               <Button className="hover:cursor-pointer" variant={"outline"}>
                 Cancelar
               </Button>
-            </DialogClose>
+            </Close>
           </div>
-        </DialogFooter>
+        </Footer>
       </div>
-    </DialogContent>
+    </Content>
   );
 }
