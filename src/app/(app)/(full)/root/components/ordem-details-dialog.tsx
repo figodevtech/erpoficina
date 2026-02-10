@@ -198,60 +198,61 @@ export function OrdemDetailsDialog({
   const totalProdutos =
     data?.itensProduto.reduce((acc, p) => acc + p.subtotal, 0) ?? 0;
 
-type DiferencaFormatada = {
-  dias: number;
-  horas: number;
-  minutos: number;
-  texto: string;
-};
+  type DiferencaFormatada = {
+    dias: number;
+    horas: number;
+    minutos: number;
+    texto: string;
+  };
 
-function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date | string | number | null): DiferencaFormatada {
- if(!dataA || !dataB) {
+  function diferencaEntreDatas(
+    dataA: Date | string | number | null,
+    dataB: Date | string | number | null,
+  ): DiferencaFormatada {
+    if (!dataA || !dataB) {
+      return { dias: 0, horas: 0, minutos: 0, texto: "0m" };
+    }
 
-   return { dias: 0, horas: 0, minutos: 0, texto: "0m" };
- }
+    const a = new Date(dataA).getTime();
+    const b = new Date(dataB).getTime();
 
+    if (Number.isNaN(a) || Number.isNaN(b)) {
+      throw new Error("Data inválida. Passe Date, ISO string ou timestamp.");
+    }
 
-  const a = new Date(dataA).getTime();
-  const b = new Date(dataB).getTime();
+    let diffMs = Math.abs(b - a);
 
-  if (Number.isNaN(a) || Number.isNaN(b)) {
-    throw new Error("Data inválida. Passe Date, ISO string ou timestamp.");
+    const msPorMinuto = 60_000;
+    const msPorHora = 60 * msPorMinuto;
+    const msPorDia = 24 * msPorHora;
+
+    const dias = Math.floor(diffMs / msPorDia);
+    diffMs -= dias * msPorDia;
+
+    const horas = Math.floor(diffMs / msPorHora);
+    diffMs -= horas * msPorHora;
+
+    const minutos = Math.floor(diffMs / msPorMinuto);
+
+    const partes: string[] = [];
+
+    if (dias > 0) partes.push(`${dias}d`);
+    if (horas > 0 || dias > 0) partes.push(`${horas}h`); // se tem dia, mostra hora mesmo que 0
+    partes.push(`${minutos}m`); // sempre mostra minutos
+
+    const texto =
+      partes.length === 1
+        ? partes[0]
+        : partes.length === 2
+          ? `${partes[0]} e ${partes[1]}`
+          : `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`;
+
+    return { dias, horas, minutos, texto };
   }
-
-  let diffMs = Math.abs(b - a);
-
-  const msPorMinuto = 60_000;
-  const msPorHora = 60 * msPorMinuto;
-  const msPorDia = 24 * msPorHora;
-
-  const dias = Math.floor(diffMs / msPorDia);
-  diffMs -= dias * msPorDia;
-
-  const horas = Math.floor(diffMs / msPorHora);
-  diffMs -= horas * msPorHora;
-
-  const minutos = Math.floor(diffMs / msPorMinuto);
-
-  const partes: string[] = [];
-
-  if (dias > 0) partes.push(`${dias}d`);
-  if (horas > 0 || dias > 0) partes.push(`${horas}h`); // se tem dia, mostra hora mesmo que 0
-  partes.push(`${minutos}m`); // sempre mostra minutos
-
-  const texto =
-    partes.length === 1
-      ? partes[0]
-      : partes.length === 2
-        ? `${partes[0]} e ${partes[1]}`
-        : `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`;
-
-  return { dias, horas, minutos, texto };
-}
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] h-dvh md:h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-0 shadow-2xl">
+      <DialogContent className="max-w-5xl w-[95vw] h-dvh md:h-[90vh] flex flex-col p-0 pb-6 gap-0 overflow-hidden border-0 shadow-2xl">
         {/* Header */}
         <DialogHeader className="px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b flex-shrink-0">
           <DialogTitle className="flex flex-row sm:flex-row sm:items-center justify-between gap-3">
@@ -272,13 +273,25 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
               </div>
             </div>
             <div className="flex flex-col items-center gap-2 mr-4">
-
-            {data && <StatusBadge className="mr-5 text-nowrap" status={data.os.status} />}
-            {data && data.os.status === "EM_ANDAMENTO" && data.os.dataentrada && (
-              <div className="text-sm text-muted-foreground mr-3">
-                Há {diferencaEntreDatas(data.os.execucao_inicio_em, new Date()).texto}
-              </div>
-            )}
+              {data && (
+                <StatusBadge
+                  className="mr-5 text-nowrap"
+                  status={data.os.status}
+                />
+              )}
+              {data &&
+                data.os.status === "EM_ANDAMENTO" &&
+                data.os.dataentrada && (
+                  <div className="text-sm text-muted-foreground mr-3">
+                    Há{" "}
+                    {
+                      diferencaEntreDatas(
+                        data.os.execucao_inicio_em,
+                        new Date(),
+                      ).texto
+                    }
+                  </div>
+                )}
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -419,13 +432,12 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                     {/* Client Card */}
                     <Card className="overflow-hidden p-0">
                       <CardHeader className="p-0 m-0">
-                        
-                      <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
-                        <User className="w-4 h-4 text-primary" />
-                        <h3 className="font-semibold text-sm">
-                          Dados do Cliente
-                        </h3>
-                      </div>
+                        <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
+                          <User className="w-4 h-4 text-primary" />
+                          <h3 className="font-semibold text-sm">
+                            Dados do Cliente
+                          </h3>
+                        </div>
                       </CardHeader>
                       <CardContent className="pb-3">
                         {data.os.cliente ? (
@@ -453,18 +465,22 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                     {/* Vehicle Card */}
                     <Card className="overflow-hidden p-0">
                       <CardHeader className="p-0 m-0">
-                      <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
-                      {data.os.veiculo ? <Car className="w-4 h-4 text-primary" /> : <Box className="w-4 h-4 text-primary" />}
-                        {data.os.veiculo ? (
-                          <h3 className="font-semibold text-sm">
-                            Dados do Veículo
-                          </h3>
-                        ) : (
-                          <h3 className="font-semibold text-sm">
-                            Dados do Produto
-                          </h3>
-                        )}
-                      </div>
+                        <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
+                          {data.os.veiculo ? (
+                            <Car className="w-4 h-4 text-primary" />
+                          ) : (
+                            <Box className="w-4 h-4 text-primary" />
+                          )}
+                          {data.os.veiculo ? (
+                            <h3 className="font-semibold text-sm">
+                              Dados do Veículo
+                            </h3>
+                          ) : (
+                            <h3 className="font-semibold text-sm">
+                              Dados do Produto
+                            </h3>
+                          )}
+                        </div>
                       </CardHeader>
                       <CardContent className="pb-4">
                         {data.os.veiculo ? (
@@ -514,7 +530,7 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                                 </p>
                                 <p className="text-xs font-medium">
                                   {data.os.veiculo.kmatual?.toLocaleString(
-                                    "pt-BR"
+                                    "pt-BR",
                                   ) || "N/A"}
                                 </p>
                               </div>
@@ -532,14 +548,13 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                                 </p>
                               </div>
                             </div>
-                            {data.os.peca?.descricao &&(
+                            {data.os.peca?.descricao && (
                               <div className="w-full p-4 bg-muted-foreground/10 rounded-lg">
-
-                                  <p className="text-xs font-medium">
-                                    {data.os.peca.descricao}
-                                  </p>
+                                <p className="text-xs font-medium">
+                                  {data.os.peca.descricao}
+                                </p>
                               </div>
-                                )}
+                            )}
                           </div>
                         )}
                       </CardContent>
@@ -549,12 +564,12 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                   {/* Timeline Info */}
                   <Card className="overflow-hidden p-0">
                     <CardHeader className="p-0 m-0">
-                    <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
-                      <CalendarClock className="w-4 h-4 text-primary" />
-                      <h3 className="font-semibold text-sm">
-                        Informações da OS
-                      </h3>
-                    </div>
+                      <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
+                        <CalendarClock className="w-4 h-4 text-primary" />
+                        <h3 className="font-semibold text-sm">
+                          Informações da OS
+                        </h3>
+                      </div>
                     </CardHeader>
                     <CardContent className="p-4">
                       <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
@@ -604,13 +619,15 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                   <div className="space-y-4">
                     <Card className="overflow-hidden p-0">
                       <CardHeader className="p-0 m-0">
-                      <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-primary" />
-                        <h3 className="font-semibold break-words whitespace-break-spaces text-sm">Descrição</h3>
-                      </div>
+                        <div className="px-4 py-3 bg-muted/50 border-b flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-primary" />
+                          <h3 className="font-semibold break-words whitespace-break-spaces text-sm">
+                            Descrição
+                          </h3>
+                        </div>
                       </CardHeader>
                       <CardContent className="pb-4">
-                        <p className="text-sm leading-relaxed text-muted-foreground">
+                        <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
                           {data.os.descricao || "Nenhuma descrição informada."}
                         </p>
                       </CardContent>
@@ -619,12 +636,12 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                     {data.os.observacoes && (
                       <Card className="p-0 overflow-hidden border-amber-500/30 bg-amber-500/5">
                         <CardHeader className="p-0 m-0">
-                        <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                          <h3 className="font-semibold text-sm text-amber-700 dark:text-amber-300">
-                            Observações
-                          </h3>
-                        </div>
+                          <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <h3 className="font-semibold text-sm text-amber-700 dark:text-amber-300">
+                              Observações
+                            </h3>
+                          </div>
                         </CardHeader>
                         <CardContent className="p-4">
                           <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-300">
@@ -823,8 +840,7 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                               >
                                 <div className="col-span-5 space-y-1">
                                   <p className="font-medium text-foreground">
-                                    {item.produto?.titulo ||
-                                      "Produto sem nome"}
+                                    {item.produto?.titulo || "Produto sem nome"}
                                   </p>
                                   {item.produto?.codigo && (
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -870,8 +886,7 @@ function diferencaEntreDatas(dataA: Date | string | number | null, dataB: Date |
                               <div className="flex items-start justify-between gap-2">
                                 <div className="space-y-1 min-w-0">
                                   <p className="font-semibold text-foreground">
-                                    {item.produto?.titulo ||
-                                      "Produto sem nome"}
+                                    {item.produto?.titulo || "Produto sem nome"}
                                   </p>
                                   {item.produto?.codigo && (
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
