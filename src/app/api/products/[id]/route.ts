@@ -10,7 +10,7 @@ const PRODUTO_FIELDS = `
   id, descricao, precovenda, precocompra, estoque, estoqueminimo, ncm, cfop, unidade,
   cest, csosn, cst, aliquotaicms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, codigobarras, createdat, updatedat, referencia,
   titulo, status_estoque, fabricante, grupo_produto_id, grupo: produtogrupo(id, nome, descricao, ativo), exibirPdv,
-  tituloMarketplace, descricaoMarketplace
+  tituloMarketplace, descricaoMarketplace, conservacao
 `;
 const GET_PRODUTO_FIELDS = `
   ${PRODUTO_FIELDS},
@@ -46,6 +46,7 @@ const WRITABLE_FIELDS = new Set([
   "exibirPdv",
   "tituloMarketplace",
   "descricaoMarketplace",
+  "conservacao",
 ]);
 
 function toNullIfEmpty(v: unknown) {

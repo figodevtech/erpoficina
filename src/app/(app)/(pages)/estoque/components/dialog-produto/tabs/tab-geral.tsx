@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import ValueInput from "../entrada-valor";
-import { Produto, Unidade_medida } from "../../../types";
+import { Conservacao_produto, Produto, Unidade_medida } from "../../../types";
 import { formatDate } from "@/utils/formatDate";
 import { onlyDigits } from "../lib/utils";
 import { ESTOQUE_STATUS_BADGES } from "../lib/options-fiscais";
@@ -89,6 +89,44 @@ export function TabGeral({
                     {g.nome}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-nowrap space-x-2">
+            <Label>Conservação:</Label>
+            <Select
+              value={produto.conservacao || ""}
+              onValueChange={
+                (v) => {
+                  if(v === "Selecione") {
+                    onChange("conservacao", null);
+                  } else {
+                    onChange("conservacao", v);
+                  }
+                }
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                
+                {Object.values(Conservacao_produto).map((c) => (
+                  <SelectItem
+                    className="hover:cursor-pointer"
+                    key={c}
+                    value={c}
+                  >
+                    {c}
+                  </SelectItem>
+                ))}
+                <SelectItem
+                  className="hover:cursor-pointer bg-muted/50 data-[state=open]:bg-muted"
+                  key="Selecione"
+                  value="Selecione"
+                >
+                  NÃO INFORMAR
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

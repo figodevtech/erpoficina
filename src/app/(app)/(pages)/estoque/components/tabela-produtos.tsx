@@ -22,6 +22,9 @@ import {
   FileText,
   MoreHorizontal,
   PackagePlus,
+  BadgeCheck,
+  ShieldCheck,
+  ShieldX,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -327,6 +330,30 @@ export default function TabelaProdutos({
                               <TooltipContent>Exibindo no Marketplace</TooltipContent>
                             </Tooltip>
                           )}
+                          {p.conservacao && p.conservacao === "NOVO" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                              <BadgeCheck className="w-4 h-4 text-primary" />
+                              </TooltipTrigger>
+                              <TooltipContent>Produto Novo</TooltipContent>
+                            </Tooltip>
+                            )}
+                          {p.conservacao && p.conservacao === "USADO" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <ShieldX className="w-4 h-4 text-yellow-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>Produto Usado</TooltipContent>
+                            </Tooltip>
+                            )}
+                          {p.conservacao && p.conservacao === "RECONDICIONADO" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <ShieldCheck className="w-4 h-4 text-green-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>Produto Recondicionado</TooltipContent>
+                            </Tooltip>
+                            )}
                         </div>
                         <p className="text-xs text-muted-foreground max-w-[350px] truncate">
                           {p.unidade || "-"}

@@ -35,11 +35,12 @@ const WRITABLE_FIELDS = new Set([
   'exibirPdv',
   'tituloMarketplace',
   'descricaoMarketplace',
+  'conservacao',
 ]);
 
 /** Campos a retornar ao criar/listar/atualizar se quiser o objeto completo */
 const PRODUTO_FIELDS =
-  'id, descricao, titulo, referencia, precovenda, precocompra, estoque, estoqueminimo, unidade, ncm, cfop, csosn, cst, cest, aliquotaicms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, codigobarras, status_estoque, fabricante, grupo: produtogrupo(id, nome, descricao, ativo), grupo_produto_id, exibirPdv, tituloMarketplace, descricaoMarketplace, createdat, updatedat';
+  'id, descricao, titulo, referencia, precovenda, precocompra, estoque, estoqueminimo, unidade, ncm, cfop, csosn, cst, cest, aliquotaicms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, codigobarras, status_estoque, fabricante, grupo: produtogrupo(id, nome, descricao, ativo), grupo_produto_id, exibirPdv, tituloMarketplace, descricaoMarketplace, conservacao, createdat, updatedat';
 
 function toNullIfEmpty(v: unknown) {
   return typeof v === 'string' && v.trim() === '' ? null : v;
@@ -117,7 +118,7 @@ export async function GET(req: Request) {
       .from('produto')
       .select(
         `
-        id, titulo, precovenda, precocompra, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, exibirPdv
+        id, titulo, precovenda, precocompra, estoque, estoqueminimo, unidade, referencia, status_estoque, fabricante, exibirPdv, conservacao
         `,
         { count: 'exact' }
       )

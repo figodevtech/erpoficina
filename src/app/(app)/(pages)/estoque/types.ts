@@ -16,6 +16,12 @@ export interface Grupo_produto {
   ativo: boolean;
 }
 
+export enum Conservacao_produto {
+  NOVO = "NOVO",
+  USADO = "USADO",
+  RECONDICIONADO = "RECONDICIONADO",
+}
+
 export enum Unidade_medida {
   UN = "UN",
   JGO = "JGO",
@@ -132,6 +138,7 @@ export interface Produto {
   ordensdoproduto?: OSProduto[];
   fornecedorid?: number;
   codigofornecedor?: string;
+  conservacao?: Conservacao_produto;
 }
 
 export interface Pagination {

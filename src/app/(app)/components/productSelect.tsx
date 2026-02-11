@@ -18,6 +18,7 @@ import axios from "axios";
 import { ReactNode, useEffect, useState } from "react";
 
 import {
+  BadgeCheck,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeft,
@@ -25,6 +26,9 @@ import {
   Loader,
   Plus,
   Search,
+  ShieldCheck,
+  ShieldX,
+  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { DialogProduto } from "../(pages)/estoque/components/dialog-produto/dialog-produto";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProductSelectProps {
   children?: ReactNode;
@@ -206,9 +211,48 @@ export default function ProductSelect({
                         </span>
                         <span>{p.fabricante}</span>
                       </div>
-                      <span className="hidden md:block">{p.titulo}</span>
+                      <div className="hidden md:flex flex-row gap-2 items-center">
+                          <p className="font-medium max-w-[350px] truncate">{p.titulo || "-"}</p>
+                          
+                          {p.conservacao && p.conservacao === "NOVO" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+
+                              <BadgeCheck className="w-3 h-3 text-primary" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Produto Novo</TooltipContent>
+                            </Tooltip>
+                            )}
+                          {p.conservacao && p.conservacao === "USADO" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+
+                                <ShieldX className="w-3 h-3 text-yellow-500" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Produto Usado</TooltipContent>
+                            </Tooltip>
+                            )}
+                          {p.conservacao && p.conservacao === "RECONDICIONADO" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+
+                                <ShieldCheck className="w-3 h-3 text-green-500" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Produto Recondicionado</TooltipContent>
+                            </Tooltip>
+                            )}
+                        </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{p.fabricante || "-"}</TableCell>
+                    <TableCell className="hidden md:table-cell max-w-[120px] truncate"> 
+                      
+                      {p.fabricante || "-"}
+                      </TableCell>
                     <TableCell>{p.estoque}</TableCell>
                     <TableCell>{formatarEmReal(p.precovenda || 0)}</TableCell>
                   </TableRow>
