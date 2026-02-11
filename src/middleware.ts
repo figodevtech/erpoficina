@@ -189,23 +189,25 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
   // ✅ Lógica de Usuário ROOT
   if (isRoot) {
     // Se for API, deixa passar (para não quebrar fetches do front)
-    // Se quiser ser restrito, poderia filtrar apenas /api/ordens/root, mas
-    // geralmente APIs retornam 403 se não tiver permissão, o que é melhor que redirect HTML.
     if (isApi) {
-      return NextResponse.next();
+      return NextResponse.next({ headers: { "Cache-Control": "no-store" } });
     }
 
     if (!pathname.startsWith("/root")) {
       // Se tentar acessar qualquer coisa fora do /root (ex: /dashboard, /clientes), joga para /root
-      return NextResponse.redirect(new URL("/root", nextUrl));
+      return NextResponse.redirect(new URL("/root", nextUrl), {
+        headers: { "Cache-Control": "no-store" },
+      });
     }
     // Se for /root, deixa passar (ainda vai cair no return next() lá embaixo)
-    return NextResponse.next();
+    return NextResponse.next({ headers: { "Cache-Control": "no-store" } });
   } else {
     // ❌ Não é root
     if (pathname.startsWith("/root")) {
       // Se tentar acessar /root sendo comum, joga para /dashboard
-      return NextResponse.redirect(new URL("/dashboard", nextUrl));
+      return NextResponse.redirect(new URL("/dashboard", nextUrl), {
+        headers: { "Cache-Control": "no-store" },
+      });
     }
   }
 
@@ -215,13 +217,18 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     const ok = hasPermFromSession(user, rule.perm);
     if (!ok) {
       if (isApi) {
-        return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+        return NextResponse.json(
+          { error: "FORBIDDEN" },
+          { status: 403, headers: { "Cache-Control": "no-store" } },
+        );
       }
-      return NextResponse.redirect(new URL("/nao-autorizado", nextUrl));
+      return NextResponse.redirect(new URL("/nao-autorizado", nextUrl), {
+        headers: { "Cache-Control": "no-store" },
+      });
     }
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ headers: { "Cache-Control": "no-store" } });
 });
 
 export const config = {
