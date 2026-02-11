@@ -7,17 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-const supabaseAdminEdge =
-  supabaseUrl && serviceKey
-    ? createClient(supabaseUrl, serviceKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-        global: {
-          fetch: (url, options) => {
-            return fetch(url, { ...options, cache: "no-store" });
-          },
-        },
-      })
-    : null;
+// REMOVED GLOBAL CLIENT TO AVOID STATE LEAKAGE
 
 const PUBLIC_PATHS = [
   "/login",
@@ -131,24 +121,44 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     isRoot = (user as any).is_root === true;
   }
 
+  // CRIAÇÃO DO CLIENTE SUPABASE ISOLADA NO HANDLER (evita leak de estado no Edge)
+  const supabaseAdminEdge =
+    supabaseUrl && serviceKey
+      ? createClient(supabaseUrl, serviceKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: {
+            fetch: (url, options) => {
+              return fetch(url, { ...options, cache: "no-store" });
+            },
+          },
+        })
+      : null;
+
   if (userId && supabaseAdminEdge) {
     try {
       // Força busca sem cache (garantido pelo client configurado acima com no-store)
-      const { data } = await supabaseAdminEdge
+      const { data, error } = await supabaseAdminEdge
         .from("usuario")
         .select("ativo, is_root")
         .eq("id", userId)
         .maybeSingle();
 
+      if (error) {
+        console.error("[Middleware] Erro ao buscar usuario:", error.message);
+      }
+
       if (data) {
         // Atualiza as variáveis locais com a verdade do banco
         isInactive = data.ativo === false;
         isRoot = data.is_root === true;
+
+        // Log de debug para produção
+        console.log(
+          `[Middleware] User: ${userId} | DB_IsRoot: ${data.is_root} | Token_IsRoot: ${(user as any).is_root}`,
+        );
       }
-    } catch {
-      // em caso de erro no banco, mantemos o fallback do token (ou assume false para evitar bloqueio indevido se for erro transiente?)
-      // Por segurança, se não conseguiu verificar, confia no token ou falha seguro.
-      // Manteremos o valor do token/sessão como fallback.
+    } catch (err) {
+      console.error("[Middleware] Falha geral user check:", err);
     }
   }
 

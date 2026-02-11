@@ -21,7 +21,8 @@ export function ForceLogout({ reason = "inactive" }: { reason?: string }) {
         await signOut({ redirect: false });
       } finally {
         if (!alive) return;
-        router.replace(`/login?reason=${encodeURIComponent(reason)}`);
+        // Force hard reload to clear client-side caches
+        window.location.href = `/login?reason=${encodeURIComponent(reason)}`;
       }
     })();
 
@@ -32,4 +33,3 @@ export function ForceLogout({ reason = "inactive" }: { reason?: string }) {
 
   return null;
 }
-

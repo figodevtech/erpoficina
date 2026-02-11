@@ -3,7 +3,14 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut, KeyRound, Loader2 } from "lucide-react";
+import {
+  BadgeCheck,
+  Bell,
+  ChevronsUpDown,
+  LogOut,
+  KeyRound,
+  Loader2,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -14,7 +21,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -50,9 +62,9 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
         await supabase.auth.signOut();
       } catch {}
       await signOut({ redirect: false });
-      router.push("/login");
-    } catch {
-      router.push("/login");
+    } finally {
+      // Force hard reload to clear client-side caches (Router Cache, etc.)
+      window.location.href = "/login";
     }
   };
 
@@ -65,9 +77,11 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
 
   const handleChangePassword = async () => {
     if (!currentPwd.trim()) return toast.error("Informe a senha atual.");
-    if (!pwd.trim() || !pwd2.trim()) return toast.error("Preencha a nova senha e a confirmação.");
+    if (!pwd.trim() || !pwd2.trim())
+      return toast.error("Preencha a nova senha e a confirmação.");
     if (pwd !== pwd2) return toast.error("As senhas não conferem.");
-    if (pwd.length < 8) return toast.error("A nova senha deve ter pelo menos 8 caracteres.");
+    if (pwd.length < 8)
+      return toast.error("A nova senha deve ter pelo menos 8 caracteres.");
 
     setSavingPwd(true);
     try {
@@ -83,7 +97,9 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
         if (msg.includes("invalid login")) {
           toast.error("Senha atual incorreta.");
         } else if (msg.includes("email not confirmed")) {
-          toast.error("E-mail não confirmado. Confirme seu e-mail para alterar a senha.");
+          toast.error(
+            "E-mail não confirmado. Confirme seu e-mail para alterar a senha.",
+          );
         } else {
           toast.error(signInErr.message || "Falha ao autenticar no Supabase.");
         }
@@ -91,7 +107,9 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
       }
 
       // 2) troca a senha
-      const { error: updErr } = await supabase.auth.updateUser({ password: pwd });
+      const { error: updErr } = await supabase.auth.updateUser({
+        password: pwd,
+      });
       if (updErr) {
         const m = (updErr.message || "").toLowerCase();
         if (m.includes("different")) {
@@ -152,7 +170,6 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>
-          
                 {/* Alterar senha */}
                 <DropdownMenuItem
                   onSelect={(e) => {
@@ -186,7 +203,9 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Alterar senha</DialogTitle>
-            <DialogDescription>Informe sua senha atual e defina uma nova.</DialogDescription>
+            <DialogDescription>
+              Informe sua senha atual e defina uma nova.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-3 py-2">
@@ -230,7 +249,11 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
           </div>
 
           <DialogFooter className="gap-2 sm:space-x-2">
-            <Button variant="outline" onClick={() => setPwdOpen(false)} disabled={savingPwd}>
+            <Button
+              variant="outline"
+              onClick={() => setPwdOpen(false)}
+              disabled={savingPwd}
+            >
               Cancelar
             </Button>
             <Button onClick={handleChangePassword} disabled={savingPwd}>
