@@ -32,14 +32,20 @@ import {
 import { OrdemRoot } from "../types";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pagination } from "@/app/(app)/(pages)/veiculos/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OrdensListProps {
   ordens: OrdemRoot[];
   activeTab: string;
   onTabChange: (val: string) => void;
   isLoading: boolean;
-  pagination: Pagination
+  pagination: Pagination;
   handleGetOrdens: (page: number, limit: number) => void;
 }
 
@@ -62,13 +68,20 @@ function formatCurrency(value: number) {
 }
 
 const tabTheme =
-    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
-
+  " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
 
 import { useState } from "react";
 import { OrdemDetailsDialog } from "./ordem-details-dialog";
+import { Badge } from "@/components/ui/badge";
 
-export function OrdensList({ ordens, activeTab, onTabChange, isLoading, pagination, handleGetOrdens }: OrdensListProps) {
+export function OrdensList({
+  ordens,
+  activeTab,
+  onTabChange,
+  isLoading,
+  pagination,
+  handleGetOrdens,
+}: OrdensListProps) {
   const [selectedOsId, setSelectedOsId] = useState<number | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -83,7 +96,11 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
         <CardTitle className="text-xl font-semibold">
           Últimas Ordens de Serviço
         </CardTitle>
-        <Tabs value={activeTab} onValueChange={onTabChange} className="w-full items-center mt-5">
+        <Tabs
+          value={activeTab}
+          onValueChange={onTabChange}
+          className="w-full items-center mt-5"
+        >
           <TabsList className="rounded-b-none">
             <TabsTrigger
               value="abertas"
@@ -156,11 +173,14 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                       <div>
                         <div className="flex flex-row items-center gap-1 mt-3 md:mt-0 ">
                           <div className=" md:hidden p-2 md:p-4 bg-primary/20 rounded-lg md:rounded-xl">
-                        <p className="font-bold text-primary">
-                          {ordem.numero || `#${ordem.id}`}
-                        </p>
-                      </div>
-                          <StatusBadge className="md:hidden" status={ordem.status} />
+                            <p className="font-bold text-primary">
+                              {ordem.numero || `#${ordem.id}`}
+                            </p>
+                          </div>
+                          <StatusBadge
+                            className="md:hidden"
+                            status={ordem.status}
+                          />
                         </div>
                         <div className="flex flex-row items-center gap-1 mt-3 md:mt-0 ">
                           <span>
@@ -170,7 +190,7 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                             {ordem.cliente?.nome || "Cliente não informado"}
                           </p>
                         </div>
-                        
+
                         <div className="flex flex-row items-center gap-1 mt-1">
                           <span>
                             {ordem.veiculo ? (
@@ -191,24 +211,49 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                         </div>
                         {ordem.peca?.descricao && (
                           <div className="md:hidden flex flex-row items-center gap-1 mt-1">
-                            
                             <div className="p-3 bg-muted-foreground/10 rounded-lg">
-
-                            <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground flex flex-row items-center gap-1">
-                              {ordem.peca?.descricao}
-                            </p>
+                              <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground flex flex-row items-center gap-1">
+                                {ordem.peca?.descricao}
+                              </p>
                             </div>
                           </div>
                         )}
 
-                        {}
-                        <div className="md:hidden flex flex-row items-center gap-4 mt-1">
-                            <div className="flex flex-row items-center gap-1"><Clock className="w-3 h-3 text-yellow-500"/><span className="">{formatDate(ordem.execucao_inicio_em || undefined)}</span></div>
-                            <div className="flex flex-row items-center gap-1"><Clock className="w-3 h-3 text-green-500"/><span className="">{formatDate(ordem.execucao_fim_em || undefined)}</span></div>
+                        <div className="md:hidden flex flex-col gap-2 mt-2">
+                          <div className="flex flex-row items-center gap-1">
+                            {ordem.execucao_inicio_em && (
+                              <>
+                                <Badge variant={"secondary"} className=" h-4">
+                                  Início em:
+                                </Badge>
+                                <span className="">
+                                  {formatDate(
+                                    ordem.execucao_inicio_em || undefined,
+                                  )}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex flex-row items-center gap-1">
+                            {ordem.execucao_fim_em && (
+                              <>
+                                <Badge className=" h-4">Fim em:</Badge>
+                                <span className="">
+                                  {formatDate(
+                                    ordem.execucao_fim_em || undefined,
+                                  )}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <p className="pt-2 text-muted-foreground">
                           {"Criado por: " + ordem.responsavel?.nome ||
                             "Usuário indefinido"}
+                        </p>
+                        <p className="pt-2 text-muted-foreground">
+                          {"Cadastrado em: " +
+                            formatDate(ordem.createdAt || undefined) || ""}
                         </p>
                       </div>
                     </div>
@@ -284,7 +329,9 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleRowDoubleClick(ordem.id)}>
+                        <DropdownMenuItem
+                          onClick={() => handleRowDoubleClick(ordem.id)}
+                        >
                           Ver detalhes
                         </DropdownMenuItem>
                         <DropdownMenuItem>Editar</DropdownMenuItem>
@@ -298,77 +345,91 @@ export function OrdensList({ ordens, activeTab, onTabChange, isLoading, paginati
           </Table>
 
           <div className="flex items-center mt-4 justify-between">
-                    <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
-                      <span>{pagination.limit * (pagination.page - 1) + 1}</span>
-                      {" - "}
-                      <span>{pagination.limit * (pagination.page - 1) + ordens.length}</span>
-                    </div>
-          
-                    <div className="flex items-center justify-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="hover:cursor-pointer"
-                        onClick={() => handleGetOrdens(1, pagination.limit)}
-                        disabled={pagination.page === 1}
-                      >
-                        <ChevronsLeft className="h-4 w-4" />
-                      </Button>
-          
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="hover:cursor-pointer"
-                        onClick={() => handleGetOrdens(pagination.page - 1, pagination.limit)}
-                        disabled={pagination.page === 1}
-                      >
-                        <ChevronLeftIcon className="h-4 w-4" />
-                      </Button>
-          
-                      <span className="text-xs font-medium text-nowrap">
-                        Pg. {pagination.page} de {pagination.totalPages || 1}
-                      </span>
-          
-                      <Button
-                        className="hover:cursor-pointer"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleGetOrdens(pagination.page + 1, pagination.limit)}
-                        disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
-                      >
-                        <ChevronRightIcon className="h-4 w-4" />
-                      </Button>
-          
-                      <Button
-                        className="hover:cursor-pointer"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleGetOrdens(pagination.totalPages, pagination.limit)}
-                        disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
-                      >
-                        <ChevronsRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-          
-                    {/* Select de itens por página com IDs estáveis */}
-                    <div>
-                      <Select>
-                        <SelectTrigger className="hover:cursor-pointer ml-2">
-                          <SelectValue placeholder={`${pagination.limit}`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem className="hover:cursor-pointer" value="20">
-                            {pagination.limit}
-                          </SelectItem>
-                          {/* adicione mais opções se desejar (10/20/50/100...) */}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+            <div className="text-xs text-muted-foreground mr-2 flex flex-nowrap">
+              <span>{pagination.limit * (pagination.page - 1) + 1}</span>
+              {" - "}
+              <span>
+                {pagination.limit * (pagination.page - 1) + ordens.length}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center space-x-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() => handleGetOrdens(1, pagination.limit)}
+                disabled={pagination.page === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="hover:cursor-pointer"
+                onClick={() =>
+                  handleGetOrdens(pagination.page - 1, pagination.limit)
+                }
+                disabled={pagination.page === 1}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+
+              <span className="text-xs font-medium text-nowrap">
+                Pg. {pagination.page} de {pagination.totalPages || 1}
+              </span>
+
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetOrdens(pagination.page + 1, pagination.limit)
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+
+              <Button
+                className="hover:cursor-pointer"
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  handleGetOrdens(pagination.totalPages, pagination.limit)
+                }
+                disabled={
+                  pagination.page === pagination.totalPages ||
+                  pagination.totalPages === 0
+                }
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Select de itens por página com IDs estáveis */}
+            <div>
+              <Select>
+                <SelectTrigger className="hover:cursor-pointer ml-2">
+                  <SelectValue placeholder={`${pagination.limit}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem className="hover:cursor-pointer" value="20">
+                    {pagination.limit}
+                  </SelectItem>
+                  {/* adicione mais opções se desejar (10/20/50/100...) */}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </CardContent>
 
-      <OrdemDetailsDialog 
+      <OrdemDetailsDialog
         osId={selectedOsId}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
