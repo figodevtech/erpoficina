@@ -20,33 +20,39 @@ export function DashboardHeader() {
   const router = useRouter();
   const { data: session } = useSession();
   const user = session?.user as any;
-     
+
   const handleLogout = async () => {
+    try {
       try {
-        try {
-          await supabase.auth.signOut();
-        } catch {}
-        await signOut({ redirect: false });
-        router.push("/login");
-      } catch {
-        router.push("/login");
-      }
-    };
+        await supabase.auth.signOut();
+      } catch {}
+      await signOut({ redirect: false });
+    } finally {
+      // Force hard reload to clear client-side caches (Router Cache, etc.)
+      window.location.href = "/login";
+    }
+  };
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">OS</span>
+              <span className="text-primary-foreground font-bold text-sm">
+                OS
+              </span>
             </div>
             <span className="font-semibold text-lg hidden sm:inline">
               Sistema OS
             </span>
           </div>
-          
+
           <nav className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-foreground hover:cursor-pointer"
+            >
               Ordens
             </Button>
             {/* <Button variant="ghost" size="sm" className="text-foreground hover:cursor-pointer">
@@ -92,10 +98,8 @@ export function DashboardHeader() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user?.nome}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {user?.email}
-                  </p>
+                  <p className="text-sm font-medium">{user?.nome}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -109,8 +113,9 @@ export function DashboardHeader() {
               </DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-              onClick={handleLogout}
-              className="text-destructive">
+                onClick={handleLogout}
+                className="text-destructive"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
               </DropdownMenuItem>
