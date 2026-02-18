@@ -204,7 +204,6 @@ export default function CadastroProduto({
       <TabFiscal produto={newProduct} onChange={handleChange} />
       <TabEstoque mode="create" produto={newProduct} onChange={handleChange} />
       <TabImagensCreate previews={imagensPreview} onPick={handlePickImages} />
-      <TabImagensCreate previews={imagensPreview} onPick={handlePickImages} />
     </ProductDialogLayout>
   );
 }
