@@ -37,6 +37,7 @@ export interface VendaProdutoItem {
 }
 
 export enum vendaStatus {
+  ORCAMENTO = "ORCAMENTO",
   ABERTA = "ABERTA",
   PAGAMENTO = "PAGAMENTO",
   PENDENTE = "PENDENTE",
