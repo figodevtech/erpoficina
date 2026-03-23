@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Package,
   MoreHorizontal,
+  FileText,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -57,6 +58,15 @@ interface VendasDataTableProps {
 }
 
 const getStatusBadge = (status: vendaStatus) => {
+  if (status === "ORCAMENTO") {
+    return (
+      <Badge variant="secondary" className="text-xs bg-violet-600 not-dark:text-white">
+        <FileText className="h-3 w-3 mr-1" />
+        ORÇAMENTO
+      </Badge>
+    );
+  }
+
   if (status === "ABERTA") {
     return (
       <Badge variant="secondary" className="text-xs bg-primary">
@@ -316,6 +326,15 @@ export default function VendasDataTable({
                           <EyeIcon className="h-4 w-4" />
                           Visualizar
                         </DropdownMenuItem>
+
+                        {p.status === "ORCAMENTO" && (
+                          <DropdownMenuItem
+                            onClick={() => window.open(`/print/venda/${p.id}/orcamento`, "_blank")}
+                          >
+                            <FileText className="h-4 w-4" />
+                            Imprimir orçamento
+                          </DropdownMenuItem>
+                        )}
 
                         {String((p as any).canal ?? "").toUpperCase() === "ONLINE" && (
                           <DropdownMenuItem

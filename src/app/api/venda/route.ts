@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { auth } from "@/lib/auth";
 
 type Status =
+  | "ORCAMENTO"
   | "ABERTA"
   | "PAGAMENTO"
   | "PENDENTE"
@@ -16,6 +17,7 @@ type Status =
   | "CANCELADA"
   | "CANCELADO";
 const STATUS_SET = new Set<Status>([
+  "ORCAMENTO",
   "ABERTA",
   "PAGAMENTO",
   "PENDENTE",
@@ -255,8 +257,8 @@ export async function POST(req: Request) {
       !body.clienteId ||
       !body.created_by ||
       !body.status ||
-      !body.subTotal ||
-      !body.valorTotal ||
+      body.subTotal == null ||
+      body.valorTotal == null ||
       !Array.isArray(body.itens) ||
       body.itens.length === 0
     ) {

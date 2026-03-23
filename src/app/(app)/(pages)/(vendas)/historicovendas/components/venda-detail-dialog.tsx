@@ -78,6 +78,7 @@ interface VendaDetailsDialogProps {
 }
 
 const statusColors: Record<vendaStatus, string> = {
+  ORCAMENTO: "bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20",
   ABERTA: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
   PAGAMENTO: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
   PENDENTE: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
@@ -89,6 +90,7 @@ const statusColors: Record<vendaStatus, string> = {
 }
 
 const statusLabels: Record<vendaStatus, string> = {
+  ORCAMENTO: "Orçamento",
   ABERTA: "Aberta",
   PAGAMENTO: "Pagamento",
   PENDENTE: "Pendente",

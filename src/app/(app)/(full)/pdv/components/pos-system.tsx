@@ -17,14 +17,10 @@ import {
   Store,
   UserRoundX,
   CircleOff,
-  Power,
   ArrowLeftToLine,
+  ReceiptText,
 } from "lucide-react";
-import {
-  Estoque_status,
-  Grupo_produto,
-  Produto,
-} from "@/app/(app)/(pages)/estoque/types";
+import { Estoque_status, Produto } from "@/app/(app)/(pages)/estoque/types";
 import {
   Select,
   SelectItem,
@@ -42,9 +38,7 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "@/app/(app)/(pages)/clientes/types";
-import Image from "next/image";
 import { useGruposProduto } from "@/app/(app)/(pages)/estoque/components/dialog-produto/hooks/use-grupo-produtos";
-import { Router } from "next/router";
 import { useRouter } from "next/navigation";
 import { useConfig } from "@/app/(app)/(pages)/config-context";
 
@@ -57,6 +51,8 @@ interface CartItem {
   estoque: number;
 }
 
+type DiscountType = "FIXO" | "PORCENTAGEM";
+
 export function POSSystem() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +64,7 @@ export function POSSystem() {
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined)
   const [discount, setDiscount] = useState(0)
-  const [discountType, setDiscountType] = useState<"POCENTAGEM" | "FIXO" | null>(null)
+  const [discountType, setDiscountType] = useState<DiscountType | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
   const router = useRouter();
@@ -176,7 +172,76 @@ console.log(cart)
     (sum, item) => sum + item.precovenda * item.quantity,
     0
   );
-  const total = subtotal;
+  const normalizedDiscountInput = Number.isFinite(discount)
+    ? Math.max(discount, 0)
+    : 0;
+  const discountAmount =
+    discountType === "PORCENTAGEM"
+      ? Math.min(
+          subtotal,
+          subtotal * (Math.min(normalizedDiscountInput, 100) / 100)
+        )
+      : Math.min(subtotal, normalizedDiscountInput);
+  const total = Math.max(0, subtotal - discountAmount);
+
+  const handleSaveBudget = async () => {
+    if (cart.length === 0) {
+      toast.error("Carrinho vazio.", {
+        description: "Adicione produtos antes de salvar o orçamento.",
+      });
+      return;
+    }
+
+    if (!selectedCustomer) {
+      toast.error("Erro ao salvar orçamento.", {
+        description: "É necessário selecionar um cliente para continuar.",
+      });
+      return;
+    }
+
+    toast(
+      <div className="flex flex-row flex-nowrap gap-2">
+        <Loader2 className="animate-spin w-4 h-4" />
+        <span>Salvando orçamento...</span>
+      </div>
+    );
+
+    const payload = {
+      clienteId: selectedCustomer.id,
+      status: "ORCAMENTO",
+      descontoTipo: discountType,
+      descontoValor: discountAmount > 0 ? discountAmount : null,
+      subTotal: subtotal,
+      valorTotal: total,
+      dataVenda: null,
+      itens: cart.map((item) => ({
+        produtoId: item.id,
+        quantidade: item.quantity,
+        subTotal: item.precovenda * item.quantity,
+        valorTotal: item.precovenda * item.quantity,
+        valorDesconto: 0,
+        tipoDesconto: null,
+      })),
+    };
+
+    try {
+      const { data } = await axios.post("/api/venda", payload);
+
+      toast.success(`Orçamento #${data?.id ?? ""} salvo com sucesso.`);
+      setCart([]);
+      setDiscount(0);
+      setDiscountType(null);
+      setSelectedCustomer(undefined);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        toast.error("Erro ao salvar orçamento.", {
+          description: error.response?.data?.error || error.message,
+        });
+      } else {
+        toast.error("Erro interno ao salvar orçamento.");
+      }
+    }
+  };
 
   const createVenda = async () => {
   try {
@@ -200,8 +265,8 @@ console.log(cart)
     const payload = {
       clienteId: selectedCustomer?.id,
       status: "PAGAMENTO", // enum_status_venda
-      descontoTipo: undefined,
-      descontoValor: discount,
+      descontoTipo: discountType,
+      descontoValor: discountAmount > 0 ? discountAmount : null,
       subTotal: subtotal,
       valorTotal: total,
       dataVenda: null,
@@ -223,6 +288,8 @@ console.log(cart)
     toast.success("Venda cadastrada com sucesso.")
 
     setCart([]);
+    setDiscount(0);
+    setDiscountType(null);
     // aqui você pode disparar um toast ou algo do tipo
   } catch (error: any) {
 
@@ -450,7 +517,7 @@ console.log(cart)
                 </CardTitle>
               
               </CardHeader>
-              <CardContent className="p-4 space-y-4">
+              <CardContent className="space-y-4">
                 {cart.length === 0 ? (
                   <div className="py-8 text-center">
                     <ShoppingCart className="h-8 w-8 text-muted mx-auto mb-2 opacity-50" />
@@ -460,13 +527,17 @@ console.log(cart)
                   </div>
                 ) : (
                   <>
-                  <div className="flex w-full justify-start">
-                    <span
+                  <div className="flex w-full items-center justify-between pb-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Itens adicionados
+                    </span>
+                    <button
+                      type="button"
                       onClick={() => setCart([])}
                       className="text-xs text-red-500 not-dark:text-red-500 hover:cursor-pointer hover:underline"
                     >
                       Esvaziar carrinho
-                    </span>
+                    </button>
                   </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {cart.map((item) => (
@@ -529,14 +600,72 @@ console.log(cart)
 
                     {/* Totals */}
                     <div className="border-t border-border pt-4 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <span className="text-xs text-muted-foreground">
+                            Tipo de desconto
+                          </span>
+                          <Select
+                            value={discountType ?? "NONE"}
+                            onValueChange={(value) =>
+                              setDiscountType(
+                                value === "NONE" ? null : (value as DiscountType)
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Sem desconto" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NONE">Sem desconto</SelectItem>
+                              <SelectItem value="FIXO">Fixo</SelectItem>
+                              <SelectItem value="PORCENTAGEM">Porcentagem</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-xs text-muted-foreground">
+                            {discountType === "PORCENTAGEM"
+                              ? "Percentual (%)"
+                              : "Valor do desconto"}
+                          </span>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={discountType === "PORCENTAGEM" ? 100 : undefined}
+                            step="0.01"
+                            value={discount}
+                            onChange={(e) =>
+                              setDiscount(Number(e.target.value || 0))
+                            }
+                            disabled={!discountType}
+                            placeholder={discountType === "PORCENTAGEM" ? "0,00%" : "R$ 0,00"}
+                          />
+                        </div>
+                      </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Subtotal:</span>
                         <span>R$ {subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Desconto:</span>
-                        <span>R$ 0,00</span>
+                        <span>
+                          - R$ {discountAmount.toFixed(2)}
+                          {discountType === "PORCENTAGEM" && normalizedDiscountInput > 0
+                            ? ` (${Math.min(normalizedDiscountInput, 100).toFixed(2)}%)`
+                            : ""}
+                        </span>
                       </div>
+                      {discountType && discountAmount > 0 && (
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Desconto informado:</span>
+                          <span>
+                            {discountType === "PORCENTAGEM"
+                              ? `${Math.min(normalizedDiscountInput, 100).toFixed(2)}%`
+                              : `R$ ${normalizedDiscountInput.toFixed(2)}`}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="flex justify-between text-sm text-muted-foreground"></div>
                       <div className="flex justify-between text-lg font-bold text-primary-foreground bg-primary p-2 rounded">
@@ -548,10 +677,13 @@ console.log(cart)
                     {/* Action Buttons */}
                     <div className="space-y-2 pt-2">
                       <Button
-                        variant="outline"
-                        className="w-full text-muted-foreground hover:bg-destructive/20 hover:text-green-500 hover:cursor-pointer"
+                        type="button"
+                        variant="secondary"
+                        className="w-full hover:cursor-pointer"
+                        onClick={handleSaveBudget}
                       >
-                        Iniciar Pagamento
+                        <ReceiptText className="h-4 w-4" />
+                        Salvar como orçamento
                       </Button>
                       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                         <AlertDialogTrigger asChild>

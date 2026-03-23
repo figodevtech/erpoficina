@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type Status =
+  | "ORCAMENTO"
   | "ABERTA"
   | "PAGAMENTO"
   | "PENDENTE"
@@ -16,6 +17,7 @@ type Status =
   | "CANCELADA"
   | "CANCELADO";
 const STATUS_SET = new Set<Status>([
+  "ORCAMENTO",
   "ABERTA",
   "PAGAMENTO",
   "PENDENTE",
