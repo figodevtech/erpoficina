@@ -3,15 +3,10 @@
 import type React from "react";
 
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
-  FileText,
   DollarSign,
   Package,
-  TrendingUp,
-  Wallet,
   Users,
-
 } from "lucide-react";
 import DialogFluxo from "./dialogs/dialog-fluxo";
 import DialogDespesaCategoria from "./dialogs/dialog-despesa-categoria";
@@ -21,6 +16,8 @@ import { ProdutosEstoqueCritico } from "./produtosEstoqueCrítico";
 import { ProdutosSemEstoque } from "./produtosSemEstoque";
 import DialogClienteCompras from "./dialogs/dialog-cliente-compras";
 import DialogProdutoCompras from "./dialogs/dialog-produto-compras";
+import DialogComissaoRealizador from "./dialogs/dialog-comissao-realizador";
+import DialogVendasUsuario from "./dialogs/dialog-vendas-usuario";
 
 export function ReportsGrid() {
 
@@ -71,6 +68,27 @@ export function ReportsGrid() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DialogProdutoCompras/>
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Users />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-card-foreground">
+              Usuários
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Relatórios de desempenho e comissão por usuário
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <DialogVendasUsuario/>
+          <DialogComissaoRealizador/>
         </div>
       </Card>
 

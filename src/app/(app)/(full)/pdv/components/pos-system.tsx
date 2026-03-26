@@ -164,6 +164,16 @@ export function POSSystem() {
     }
   };
 
+  const updatePrice = (productId: number, price: number) => {
+    if (!Number.isFinite(price) || price < 0) return;
+
+    setCart(
+      cart.map((item) =>
+        item.id === productId ? { ...item, precovenda: price } : item
+      )
+    );
+  };
+
   useEffect(()=>{
 console.log(cart)
   },[cart])
@@ -550,9 +560,6 @@ console.log(cart)
                               <p className="text-sm font-medium text-foreground">
                                 {item.titulo}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                R$ {item.precovenda.toFixed(2)}
-                              </p>
                             </div>
                             <Button
                               onClick={() => removeFromCart(item.id)}
@@ -564,35 +571,62 @@ console.log(cart)
                             </Button>
                           </div>
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                              <Button
-                                onClick={() =>
-                                  updateQuantity(item.id, item.quantity - 1)
-                                }
-                                size="sm"
-                                variant="outline"
-                                className="h-6 w-6 p-0"
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="text-sm font-semibold text-foreground w-8 text-center">
-                                {item.quantity}
-                              </span>
-                              <Button
-                                onClick={() =>
-                                  updateQuantity(item.id, item.quantity + 1)
-                                }
-                                size="sm"
-                                variant="outline"
-                                className="h-6 w-6 p-0"
-                                disabled={item.quantity >= item.estoque}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
+                            <div className="flex items-end gap-3">
+                              <div className="space-y-1 max-w-32">
+                                <span className="text-[10px] text-muted-foreground">
+                                  Preço unitário
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    R$
+                                  </span>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    value={item.precovenda}
+                                    onChange={(e) =>
+                                      updatePrice(
+                                        item.id,
+                                        Number(e.target.value || 0)
+                                      )
+                                    }
+                                    className="h-7 text-xs"
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            <span className="text-sm font-semibold text-primary">
-                              R$ {(item.precovenda * item.quantity).toFixed(2)}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  onClick={() =>
+                                    updateQuantity(item.id, item.quantity - 1)
+                                  }
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="text-sm font-semibold text-foreground w-8 text-center">
+                                  {item.quantity}
+                                </span>
+                                <Button
+                                  onClick={() =>
+                                    updateQuantity(item.id, item.quantity + 1)
+                                  }
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 w-6 p-0"
+                                  disabled={item.quantity >= item.estoque}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <span className="text-sm font-semibold text-primary min-w-20 text-right">
+                                R$ {(item.precovenda * item.quantity).toFixed(2)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))}
