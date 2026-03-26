@@ -660,7 +660,7 @@ console.log(cart)
                                 </Button>
                               </div>
                               <span className="text-sm font-semibold text-primary min-w-20 text-right">
-                                R$ {(item.precovenda * item.quantity).toFixed(2)}
+                               {formatCurrencyBRL(item.precovenda * item.quantity)}
                               </span>
                             </div>
                           </div>
