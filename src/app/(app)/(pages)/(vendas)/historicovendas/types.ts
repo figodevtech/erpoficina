@@ -76,6 +76,7 @@ export interface VendaComItens {
   created_by: string | null; // uuid
   desconto_tipo: string | null;
   desconto_valor: number;
+  forma_pagamento?: string | null;
   sub_total: number;
   itens: VendaProdutoItem[];
 }

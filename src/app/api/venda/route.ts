@@ -41,6 +41,7 @@ type VendaPostBody = {
   clienteId: number;
   created_by: string; // uuid
   status: string; // enum_status_venda, ex: 'ABERTA', 'FINALIZADA', etc.
+  formaPagamento?: string | null;
   descontoTipo?: string | null; // enum_tipo_desconto_venda
   descontoValor?: number | null;
   subTotal: number;
@@ -73,6 +74,7 @@ const VENDA_SELECT = `
   danfe_url,
   desconto_tipo,
   desconto_valor,
+  forma_pagamento,
   sub_total,
   itens:vendaproduto (
     id,
@@ -309,6 +311,75 @@ export async function POST(req: Request) {
         { error: "Função fn_criar_venda_com_itens não retornou id da venda." },
         { status: 500 }
       );
+    }
+
+    if (body.formaPagamento !== undefined) {
+      const { error: formaPagamentoError } = await supabaseAdmin
+        .from("venda")
+        .update({
+          forma_pagamento: body.formaPagamento || null,
+          updatedat: new Date().toISOString(),
+        })
+        .eq("id", vendaId);
+
+      if (formaPagamentoError) {
+        console.error("Venda criada, mas erro ao salvar forma_pagamento:", formaPagamentoError);
+        return NextResponse.json(
+          {
+            error: "Venda criada, mas ocorreu um erro ao salvar a forma de pagamento.",
+            vendaId,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    const { data: vendaCanalRow, error: vendaCanalError } = await supabaseAdmin
+      .from("venda")
+      .select("id, canal")
+      .eq("id", vendaId)
+      .single();
+
+    if (vendaCanalError) {
+      console.error("Venda criada, mas erro ao verificar canal da venda:", vendaCanalError);
+      return NextResponse.json(
+        {
+          error: "Venda criada, mas ocorreu um erro ao validar os campos de entrega.",
+          vendaId,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (String((vendaCanalRow as any)?.canal ?? "").toUpperCase() !== "ONLINE") {
+      const { error: sanitizeEntregaError } = await supabaseAdmin
+        .from("venda")
+        .update({
+          status_entrega: null,
+          codigo_rastreio: null,
+          transportadora_rastreio: null,
+          ultimo_evento_rastreio: null,
+          ultimo_evento_rastreio_em: null,
+          status_rastreio: null,
+          eventos_rastreio: null,
+          rastreio_atualizado_em: null,
+          updatedat: new Date().toISOString(),
+        })
+        .eq("id", vendaId);
+
+      if (sanitizeEntregaError) {
+        console.error(
+          "Venda criada, mas erro ao limpar campos de entrega para venda não ONLINE:",
+          sanitizeEntregaError
+        );
+        return NextResponse.json(
+          {
+            error: "Venda criada, mas ocorreu um erro ao limpar os campos de entrega.",
+            vendaId,
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // Busca a venda completa (com itens + produto)

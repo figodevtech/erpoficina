@@ -4,6 +4,7 @@ import { ReactNode, useState } from "react";
 import EditContent from "./editContent";
 import RegisterContent from "./registerContent";
 import {
+  Metodo_pagamento,
   NewTransaction,
   Tipo_transacao,
   TransactionCustomer,
@@ -22,6 +23,7 @@ interface TransactionDialogProps {
   setOpen?: (value: boolean) => void;
   selectedTransactionId?: number | undefined;
   handleGetTransactions?: (pageNumber?: number) => void;
+  initialMetodoPagamento?: Metodo_pagamento;
 }
 export default function TransactionDialog({
   children,
@@ -32,6 +34,7 @@ export default function TransactionDialog({
   vendaId,
   setOpen,
   handleGetTransactions,
+  initialMetodoPagamento,
 }: TransactionDialogProps) {
   const [newTransaction, setNewTransaction] = useState<NewTransaction>({});
   const [selectedCustomer, setSelectedCustomer] = useState<
@@ -68,6 +71,7 @@ export default function TransactionDialog({
                 descricao: `Pagamento da Venda #${vendaId}`,
                 valor: 0,
                 valorLiquido: 0,
+                metodopagamento: initialMetodoPagamento,
               });
             }
 
@@ -137,6 +141,7 @@ export default function TransactionDialog({
               descricao: `Pagamento da Venda #${vendaId}`,
               valor: 0,
               valorLiquido: 0,
+              metodopagamento: initialMetodoPagamento,
             });
           }
 

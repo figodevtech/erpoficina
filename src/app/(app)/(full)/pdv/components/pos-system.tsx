@@ -52,6 +52,7 @@ interface CartItem {
 }
 
 type DiscountType = "FIXO" | "PORCENTAGEM";
+type PaymentMethod = "CREDITO" | "DEBITO" | "DINHEIRO" | "PIX" | "NAO_INFORMAR";
 
 export function POSSystem() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -65,6 +66,7 @@ export function POSSystem() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined)
   const [discount, setDiscount] = useState(0)
   const [discountType, setDiscountType] = useState<DiscountType | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
   const router = useRouter();
@@ -223,6 +225,7 @@ console.log(cart)
       descontoValor: discountAmount > 0 ? discountAmount : null,
       subTotal: subtotal,
       valorTotal: total,
+      formaPagamento: null,
       dataVenda: null,
       itens: cart.map((item) => ({
         produtoId: item.id,
@@ -279,6 +282,8 @@ console.log(cart)
       descontoValor: discountAmount > 0 ? discountAmount : null,
       subTotal: subtotal,
       valorTotal: total,
+      formaPagamento:
+        !paymentMethod || paymentMethod === "NAO_INFORMAR" ? null : paymentMethod,
       dataVenda: null,
       itens: cart.map((item) => ({
         produtoId: item.id,
@@ -300,6 +305,8 @@ console.log(cart)
     setCart([]);
     setDiscount(0);
     setDiscountType(null);
+    setPaymentMethod(null);
+    setSelectedCustomer(undefined);
     // aqui você pode disparar um toast ou algo do tipo
   } catch (error: any) {
 
@@ -732,9 +739,38 @@ console.log(cart)
                           <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
                           <AlertDialogDescription> Ao selecionar esta opção, o pagamento da venda ficará em aberto</AlertDialogDescription>
                         </AlertDialogHeader>
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-foreground">
+                            Método de pagamento
+                          </span>
+                          <Select
+                            value={paymentMethod ?? "NAO_INFORMAR"}
+                            onValueChange={(value) =>
+                              setPaymentMethod(value as PaymentMethod)
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Selecione o método de pagamento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NAO_INFORMAR">Não informar</SelectItem>
+                              <SelectItem value="CREDITO">Crédito</SelectItem>
+                              <SelectItem value="DEBITO">Débito</SelectItem>
+                              <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
+                              <SelectItem value="PIX">Pix</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <AlertDialogFooter>
                           <AlertDialogCancel className="hover:cursor-pointer">Cancelar</AlertDialogCancel>
-                          <AlertDialogAction className="hover:cursor-pointer" onClick={()=> createVenda()}>Confirmar</AlertDialogAction>
+                          <AlertDialogAction
+                            className="hover:cursor-pointer"
+                            onClick={() => {
+                              createVenda();
+                            }}
+                          >
+                            Confirmar
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>

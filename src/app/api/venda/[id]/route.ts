@@ -60,6 +60,7 @@ const VENDA_SELECT = `
   created_by,
   desconto_tipo,
   desconto_valor,
+  forma_pagamento,
   sub_total,
   itens:vendaproduto (
     id,
@@ -104,6 +105,7 @@ type VendaPatchBody = {
   danfeUrl?: string | null;
   descontoTipo?: string | null;
   descontoValor?: number | null;
+  formaPagamento?: string | null;
   subTotal?: number;
   valorTotal?: number;
   dataVenda?: string | null; // ISO string
@@ -212,6 +214,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       danfeUrl,
       descontoTipo,
       descontoValor,
+      formaPagamento,
       subTotal,
       valorTotal,
       dataVenda,
@@ -227,6 +230,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       danfeUrl === undefined &&
       descontoTipo === undefined &&
       descontoValor === undefined &&
+      formaPagamento === undefined &&
       subTotal === undefined &&
       valorTotal === undefined &&
       dataVenda === undefined
@@ -340,6 +344,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
 
     if (descontoTipo !== undefined) updatePayload.desconto_tipo = descontoTipo;
     if (descontoValor !== undefined) updatePayload.desconto_valor = descontoValor;
+    if (formaPagamento !== undefined) updatePayload.forma_pagamento = formaPagamento;
     if (subTotal !== undefined) updatePayload.sub_total = subTotal;
     if (valorTotal !== undefined) updatePayload.valortotal = valorTotal;
     if (dataVenda !== undefined) updatePayload.datavenda = dataVenda;

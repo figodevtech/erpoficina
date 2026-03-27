@@ -23,6 +23,16 @@ import {
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -56,6 +66,8 @@ interface VendasDataTableProps {
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
 }
+
+type ApprovalPaymentMethod = "CREDITO" | "DEBITO" | "DINHEIRO" | "PIX" | "NAO_INFORMAR";
 
 const getStatusBadge = (status: vendaStatus) => {
   if (status === "ORCAMENTO") {
@@ -197,6 +209,10 @@ export default function VendasDataTable({
   const [openDetails, setOpenDetails] = useState(false);
   const [openOnline, setOpenOnline] = useState(false);
   const [onlineVendaId, setOnlineVendaId] = useState<number | null>(null);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveVendaId, setApproveVendaId] = useState<number | null>(null);
+  const [approvalPaymentMethod, setApprovalPaymentMethod] =
+    useState<ApprovalPaymentMethod>("NAO_INFORMAR");
   const config = useConfig();
 
   const handleDeleteVenda = async (id: number) => {
@@ -222,6 +238,42 @@ export default function VendasDataTable({
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleApproveBudget = async () => {
+    if (!approveVendaId) return;
+
+    toast(
+      <div className="flex flex-row items-center flex-nowrap gap-1">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        <span>Aprovando orçamento</span>
+      </div>
+    );
+
+    try {
+      const response = await axios.patch(`/api/venda/${approveVendaId}`, {
+        status: "PAGAMENTO",
+        formaPagamento:
+          approvalPaymentMethod === "NAO_INFORMAR" ? null : approvalPaymentMethod,
+      });
+
+      if (response.status === 200) {
+        toast.success("Orçamento aprovado com sucesso.");
+        setApproveDialogOpen(false);
+        setApproveVendaId(null);
+        setApprovalPaymentMethod("NAO_INFORMAR");
+        handleGetVendas(pagination.page, pagination.limit, search, status);
+        fetchStatusCounts();
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro ao aprovar orçamento", {
+          description: error.response?.data?.error || "Tente novamente.",
+        });
+      } else {
+        toast.error("Erro ao aprovar orçamento");
+      }
     }
   };
   return (
@@ -326,6 +378,19 @@ export default function VendasDataTable({
                           <EyeIcon className="h-4 w-4" />
                           Visualizar
                         </DropdownMenuItem>
+
+                        {p.status === "ORCAMENTO" && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setApproveVendaId(p.id);
+                              setApprovalPaymentMethod("NAO_INFORMAR");
+                              setApproveDialogOpen(true);
+                            }}
+                          >
+                            <Check className="h-4 w-4" />
+                            Aprovar orçamento
+                          </DropdownMenuItem>
+                        )}
 
                         {p.status === "ORCAMENTO" && (
                           <DropdownMenuItem
@@ -444,6 +509,53 @@ export default function VendasDataTable({
           fetchStatusCounts();
         }}
       />
+      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aprovar orçamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ao aprovar, a venda passará para o status de pagamento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-foreground">
+              Método de pagamento
+            </span>
+            <Select
+              value={approvalPaymentMethod}
+              onValueChange={(value) =>
+                setApprovalPaymentMethod(value as ApprovalPaymentMethod)
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione o método de pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NAO_INFORMAR">Não informar</SelectItem>
+                <SelectItem value="CREDITO">Crédito</SelectItem>
+                <SelectItem value="DEBITO">Débito</SelectItem>
+                <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
+                <SelectItem value="PIX">Pix</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setApproveVendaId(null);
+                setApprovalPaymentMethod("NAO_INFORMAR");
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleApproveBudget()}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

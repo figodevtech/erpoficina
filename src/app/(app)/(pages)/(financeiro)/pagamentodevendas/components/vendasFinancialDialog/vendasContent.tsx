@@ -15,7 +15,7 @@ import {
   TableHead,
 } from "@/components/ui/table";
 import formatarEmReal from "@/utils/formatarEmReal";
-import {  Transaction } from "../../../fluxodecaixa/types";
+import { Metodo_pagamento, Transaction } from "../../../fluxodecaixa/types";
 import { useEffect, useState } from "react";
 import axios, { isAxiosError } from "axios";
 import TransactionDialog from "../../../fluxodecaixa/components/transactionDialog/transactionDialog";
@@ -54,6 +54,12 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
   const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
+  const initialMetodoPagamento = (() => {
+    const value = String(venda?.forma_pagamento ?? "").toUpperCase();
+    return Object.values(Metodo_pagamento).includes(value as Metodo_pagamento)
+      ? (value as Metodo_pagamento)
+      : undefined;
+  })();
 
   // ====== DATA LOADERS
   const handleGetVenda = async (
@@ -196,11 +202,17 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
         </div>
 
         <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+          {venda.forma_pagamento ? (
+            <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700">
+              Método de pagamento selecionado na venda: <b>{venda.forma_pagamento}</b>
+            </div>
+          ) : null}
           <div className="flex flex-row justify-end">
             
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
               vendaId={venda.id}
+              initialMetodoPagamento={initialMetodoPagamento}
               open={open}
               setOpen={setOpen}
             >
