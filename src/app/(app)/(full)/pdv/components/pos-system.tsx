@@ -33,7 +33,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
@@ -41,6 +51,7 @@ import { Customer } from "@/app/(app)/(pages)/clientes/types";
 import { useGruposProduto } from "@/app/(app)/(pages)/estoque/components/dialog-produto/hooks/use-grupo-produtos";
 import { useRouter } from "next/navigation";
 import { useConfig } from "@/app/(app)/(pages)/config-context";
+import { formatCurrencyBRL } from "@/app/(app)/(pages)/dashboard/components/dashboard-ordemservico/lib/format";
 
 interface CartItem {
   id: number;
@@ -62,31 +73,41 @@ export function POSSystem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("TODOS");
   const [creatingVenda, setCreatingVenda] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+<<<<<<< HEAD
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined)
   const [discount, setDiscount] = useState(0)
   const [discountType, setDiscountType] = useState<DiscountType | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
+=======
+  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<
+    Customer | undefined
+  >(undefined);
+  const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState<DiscountType | null>(null);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+>>>>>>> 843f8c14c1d04ba012062a3a3f63da0a3960e6e1
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
   const router = useRouter();
   const config = useConfig();
-  
-
 
   useEffect(() => {
     const fetchProdutos = async () => {
       try {
         setLoading(true);
         const response = await axios.get("/api/pdv/products");
-        if(response.status === 200){
-          const items =  response.data.data;
+        if (response.status === 200) {
+          const items = response.data.data;
           setProdutos(items);
         }
       } catch (error) {
-        if(isAxiosError(error)){
-          toast.error("Falha ao buscar produtos", {description: error.message})
-          console.log(error)
+        if (isAxiosError(error)) {
+          toast.error("Falha ao buscar produtos", {
+            description: error.message,
+          });
+          console.log(error);
         }
         setProdutos([]);
       } finally {
@@ -110,41 +131,43 @@ export function POSSystem() {
     return matchesText && matchesCategory;
   });
   const addToCart = (product: Produto) => {
-  // Garante que tem estoque válido
-  if (product.estoque == null || product.estoque <= 0) return;
+    // Garante que tem estoque válido
+    if (product.estoque == null || product.estoque <= 0) return;
 
-  // Garante que id e precovenda não são undefined/null
-  if (product.id == null || product.precovenda == null) {
-    console.error("Produto inválido para o PDV (id ou precovenda ausentes)", product);
-    return;
-  }
-
-  const existingItem = cart.find((item) => item.id === product.id);
-
-  if (existingItem) {
-    const newQuantity = existingItem.quantity + 1;
-    if (newQuantity <= product.estoque) {
-      setCart(
-        cart.map((item) =>
-          item.id === product.id ? { ...item, quantity: newQuantity } : item
-        )
+    // Garante que id e precovenda não são undefined/null
+    if (product.id == null || product.precovenda == null) {
+      console.error(
+        "Produto inválido para o PDV (id ou precovenda ausentes)",
+        product,
       );
+      return;
     }
-  } else {
-    setCart([
-      ...cart,
-      {
-        id: product.id,                     // agora é number garantido
-        titulo: product.titulo || "SEM TÍTULO",
-        precovenda: product.precovenda,     // agora é number garantido
-        quantity: 1,
-        grupo: product.grupo?.nome || "SEM GRUPO",
-        estoque: product.estoque,          // já garantimos que não é null/undefined
-      },
-    ]);
-  }
-};
 
+    const existingItem = cart.find((item) => item.id === product.id);
+
+    if (existingItem) {
+      const newQuantity = existingItem.quantity + 1;
+      if (newQuantity <= product.estoque) {
+        setCart(
+          cart.map((item) =>
+            item.id === product.id ? { ...item, quantity: newQuantity } : item,
+          ),
+        );
+      }
+    } else {
+      setCart([
+        ...cart,
+        {
+          id: product.id, // agora é number garantido
+          titulo: product.titulo || "SEM TÍTULO",
+          precovenda: product.precovenda, // agora é number garantido
+          quantity: 1,
+          grupo: product.grupo?.nome || "SEM GRUPO",
+          estoque: product.estoque, // já garantimos que não é null/undefined
+        },
+      ]);
+    }
+  };
 
   const removeFromCart = (productId: number) => {
     setCart(cart.filter((item) => item.id !== productId));
@@ -159,8 +182,8 @@ export function POSSystem() {
       if (product && quantity <= product.estoque) {
         setCart(
           cart.map((item) =>
-            item.id === productId ? { ...item, quantity } : item
-          )
+            item.id === productId ? { ...item, quantity } : item,
+          ),
         );
       }
     }
@@ -182,7 +205,7 @@ console.log(cart)
 
   const subtotal = cart.reduce(
     (sum, item) => sum + item.precovenda * item.quantity,
-    0
+    0,
   );
   const normalizedDiscountInput = Number.isFinite(discount)
     ? Math.max(discount, 0)
@@ -191,7 +214,7 @@ console.log(cart)
     discountType === "PORCENTAGEM"
       ? Math.min(
           subtotal,
-          subtotal * (Math.min(normalizedDiscountInput, 100) / 100)
+          subtotal * (Math.min(normalizedDiscountInput, 100) / 100),
         )
       : Math.min(subtotal, normalizedDiscountInput);
   const total = Math.max(0, subtotal - discountAmount);
@@ -215,7 +238,7 @@ console.log(cart)
       <div className="flex flex-row flex-nowrap gap-2">
         <Loader2 className="animate-spin w-4 h-4" />
         <span>Salvando orçamento...</span>
-      </div>
+      </div>,
     );
 
     const payload = {
@@ -257,24 +280,53 @@ console.log(cart)
   };
 
   const createVenda = async () => {
-  try {
-    if (cart.length === 0) {
-      setErrorMessage(
-        "Carrinho vazio. Adicione produtos antes de finalizar a venda."
+    try {
+      if (cart.length === 0) {
+        setErrorMessage(
+          "Carrinho vazio. Adicione produtos antes de finalizar a venda.",
+        );
+        return;
+      }
+
+      if (!selectedCustomer) {
+        toast.error("Erro ao cadastrar venda.", {
+          description: "É necessário selecionar um cliente para continuar.",
+        });
+        return;
+      }
+
+      setCreatingVenda(true);
+      toast(
+        <div className="flex flex-row flex-nowrap gap-2">
+          <Loader2 className="animate-spin w-4 h-4" />{" "}
+          <span>Cadastrando Venda...</span>
+        </div>,
       );
-      return;
-    }
 
-    if(!selectedCustomer){
-      toast.error("Erro ao cadastrar venda.", {description: "É necessário selecionar um cliente para continuar."})
-      return;
-    }
+      // TODO: substituir pelos valores reais
 
-    setCreatingVenda(true);
-    toast(<div className="flex flex-row flex-nowrap gap-2"><Loader2 className="animate-spin w-4 h-4"/> <span>Cadastrando Venda...</span></div>)
+      const payload = {
+        clienteId: selectedCustomer?.id,
+        status: "PAGAMENTO", // enum_status_venda
+        descontoTipo: discountType,
+        descontoValor: discountAmount > 0 ? discountAmount : null,
+        subTotal: subtotal,
+        valorTotal: total,
+        dataVenda: null,
+        itens: cart.map((item) => ({
+          produtoId: item.id,
+          quantidade: item.quantity,
+          subTotal: item.precovenda * item.quantity,
+          valorTotal: item.precovenda * item.quantity,
+          valorDesconto: 0,
+          tipoDesconto: null,
+        })),
+      };
 
-    // TODO: substituir pelos valores reais
+      // chamada com axios
+      const { data } = await axios.post("/api/venda", payload);
 
+<<<<<<< HEAD
     const payload = {
       clienteId: selectedCustomer?.id,
       status: "PAGAMENTO", // enum_status_venda
@@ -312,16 +364,27 @@ console.log(cart)
 
     if (axios.isAxiosError(error)) {
       
+=======
+      console.log("Venda criada com sucesso:", data);
+      toast.success("Venda cadastrada com sucesso.");
+
+      setCart([]);
+      setDiscount(0);
+      setDiscountType(null);
+      // aqui você pode disparar um toast ou algo do tipo
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+>>>>>>> 843f8c14c1d04ba012062a3a3f63da0a3960e6e1
         toast.error("Erro código: " + error.status, {
-          description: error.response?.data.error
-        })
-    } else {
-      toast.error("Erro interno ao criar venda")
+          description: error.response?.data.error,
+        });
+      } else {
+        toast.error("Erro interno ao criar venda");
+      }
+    } finally {
+      setCreatingVenda(false);
     }
-  } finally {
-    setCreatingVenda(false);
-  }
-};
+  };
 
   if (loading) {
     return (
@@ -349,10 +412,12 @@ console.log(cart)
               <h1 className="text-3xl font-bold text-foreground">
                 Ponto de Venda
               </h1>
-              <div onClick={()=>router.push("/historicovendas")} className=" hover:cursor-pointer flex felx-row gap-1 items-center text-red-800 hover:text-red-500 bg-muted/20 hover:bg-muted/50 py-2 px-3 rounded-2xl">
-
-              <ArrowLeftToLine className="w-5 h-5"/>
-              <span>SAIR</span>
+              <div
+                onClick={() => router.push("/historicovendas")}
+                className=" hover:cursor-pointer flex felx-row gap-1 items-center text-red-800 hover:text-red-500 bg-muted/20 hover:bg-muted/50 py-2 px-3 rounded-2xl"
+              >
+                <ArrowLeftToLine className="w-5 h-5" />
+                <span>SAIR</span>
               </div>
             </div>
           </div>
@@ -361,7 +426,7 @@ console.log(cart)
               Total em Carrinho
             </div>
             <div className="text-3xl font-bold text-primary">
-              R$ {total.toFixed(2)}
+              {formatCurrencyBRL(total)}
             </div>
           </div>
         </div>
@@ -419,52 +484,59 @@ console.log(cart)
                     <div className="h-48 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-all relative">
                       {product.imgUrl ? (
                         <div className="w-full h-full relative">
-
-                        <div className="w-full h-full overflow-hidden flex items-center justify-center absolute">
-
-                          <img alt={product.titulo || "imagem do produto"} className="w-full blur-xs opacity-50" src={product.imgUrl}/>
+                          <div className="w-full h-full overflow-hidden flex items-center justify-center absolute">
+                            <img
+                              alt={product.titulo || "imagem do produto"}
+                              className="w-full blur-xs opacity-50"
+                              src={product.imgUrl}
+                            />
+                          </div>
+                          <div className="w-full h-full overflow-hidden flex items-center justify-center absolute z-10">
+                            <img
+                              alt={product.titulo || "imagem do produto"}
+                              className="h-full group-hover:scale-110 transition-all duration-500"
+                              src={product.imgUrl}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full h-full overflow-hidden flex items-center justify-center absolute z-10">
-
-                          <img alt={product.titulo || "imagem do produto"} className="h-full group-hover:scale-110 transition-all duration-500" src={product.imgUrl}/>
-                        </div>
-                        </div>
-
-                      ):
-                      <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                      
-                      }
-                      
-                      {config?.alerta_estoque_pdv && product.status_estoque === Estoque_status.CRITICO && (
-                            <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
-                        <Tooltip>
-                          <TooltipTrigger>
-                              <AlertCircle className="h-4 w-4" />
-                          </TooltipTrigger>
-                          <TooltipContent>Estoque Crítico</TooltipContent>
-                        </Tooltip>
-                            </div>
+                      ) : (
+                        <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                       )}
-                      {config?.alerta_estoque_pdv && product.status_estoque === Estoque_status.BAIXO && (
-                        <div className="absolute top-1 z-20 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
-                          <Tooltip>
-                          <TooltipTrigger>
-                          <AlertTriangle className="h-4 w-4" />
-                           </TooltipTrigger>
-                          <TooltipContent>Estoque Baixo</TooltipContent>
-                        </Tooltip>
-                        </div>
-                      )}
-                      {config?.alerta_estoque_pdv && product.status_estoque === Estoque_status.SEM_ESTOQUE && (
-                        <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-purple-800 not-dark:bg-purple-300">
-                          <Tooltip>
-                          <TooltipTrigger>
-                          <CircleOff className="h-4 w-4" />
-                           </TooltipTrigger>
-                          <TooltipContent>Sem estoque</TooltipContent>
-                        </Tooltip>
-                        </div>
-                      )}
+
+                      {config?.alerta_estoque_pdv &&
+                        product.status_estoque === Estoque_status.CRITICO && (
+                          <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-red-800 not-dark:bg-red-300">
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertCircle className="h-4 w-4" />
+                              </TooltipTrigger>
+                              <TooltipContent>Estoque Crítico</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
+                      {config?.alerta_estoque_pdv &&
+                        product.status_estoque === Estoque_status.BAIXO && (
+                          <div className="absolute top-1 z-20 right-1 flex p-1 items-center justify-center rounded-full bg-yellow-800 not-dark:bg-yellow-300">
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertTriangle className="h-4 w-4" />
+                              </TooltipTrigger>
+                              <TooltipContent>Estoque Baixo</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
+                      {config?.alerta_estoque_pdv &&
+                        product.status_estoque ===
+                          Estoque_status.SEM_ESTOQUE && (
+                          <div className="absolute z-20 top-1 right-1 flex p-1 items-center justify-center rounded-full bg-purple-800 not-dark:bg-purple-300">
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <CircleOff className="h-4 w-4" />
+                              </TooltipTrigger>
+                              <TooltipContent>Sem estoque</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
                     </div>
                     <div className="space-y-1">
                       <h3 className="font-semibold text-foreground text-sm line-clamp-2">
@@ -479,7 +551,7 @@ console.log(cart)
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-border">
                       <span className="font-bold text-primary">
-                        R$ {product.precovenda?.toFixed(2)}
+                        {formatCurrencyBRL(product.precovenda || 0)}
                       </span>
                       <Button
                         onClick={() => addToCart(product)}
@@ -510,29 +582,37 @@ console.log(cart)
                       ({cart.length})
                     </span>
                   </div>
-                  
-                  <div className="flex w-full justify-start">
-                    {selectedCustomer ? 
-                    <div className="flex flex-row items-center gap-2 text-sm font-light">
-                      <span>Cliente:</span>
-                      <span className="">{selectedCustomer.nomerazaosocial}</span>
-                      <UserRoundX onClick={()=>setSelectedCustomer(undefined)} className="h-4 w-4 hover:cursor-pointer hover:text-red-500 "/>
-                    </div>
-                    : 
-                    <CustomerSelect
-                    open={isCustomerSelectOpen}
-                    setOpen={setIsCustomerSelectOpen}
-                    OnSelect={(c)=> setSelectedCustomer(c)}
-                    >
 
-                    <Button size={"sm"} variant={"outline"} className="text-xs hover:cursor-pointer"><Search className="size-4"/>Selecionar Cliente</Button>
-                    </CustomerSelect>
-                    }
-                    
+                  <div className="flex w-full justify-start">
+                    {selectedCustomer ? (
+                      <div className="flex flex-row items-center gap-2 text-sm font-light">
+                        <span>Cliente:</span>
+                        <span className="">
+                          {selectedCustomer.nomerazaosocial}
+                        </span>
+                        <UserRoundX
+                          onClick={() => setSelectedCustomer(undefined)}
+                          className="h-4 w-4 hover:cursor-pointer hover:text-red-500 "
+                        />
+                      </div>
+                    ) : (
+                      <CustomerSelect
+                        open={isCustomerSelectOpen}
+                        setOpen={setIsCustomerSelectOpen}
+                        OnSelect={(c) => setSelectedCustomer(c)}
+                      >
+                        <Button
+                          size={"sm"}
+                          variant={"outline"}
+                          className="text-xs hover:cursor-pointer"
+                        >
+                          <Search className="size-4" />
+                          Selecionar Cliente
+                        </Button>
+                      </CustomerSelect>
+                    )}
                   </div>
-                  
                 </CardTitle>
-              
               </CardHeader>
               <CardContent className="space-y-4">
                 {cart.length === 0 ? (
@@ -544,18 +624,18 @@ console.log(cart)
                   </div>
                 ) : (
                   <>
-                  <div className="flex w-full items-center justify-between pb-1">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Itens adicionados
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setCart([])}
-                      className="text-xs text-red-500 not-dark:text-red-500 hover:cursor-pointer hover:underline"
-                    >
-                      Esvaziar carrinho
-                    </button>
-                  </div>
+                    <div className="flex w-full items-center justify-between pb-1">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Itens adicionados
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCart([])}
+                        className="text-xs text-red-500 not-dark:text-red-500 hover:cursor-pointer hover:underline"
+                      >
+                        Esvaziar carrinho
+                      </button>
+                    </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {cart.map((item) => (
                         <div
@@ -631,7 +711,7 @@ console.log(cart)
                                 </Button>
                               </div>
                               <span className="text-sm font-semibold text-primary min-w-20 text-right">
-                                R$ {(item.precovenda * item.quantity).toFixed(2)}
+                               {formatCurrencyBRL(item.precovenda * item.quantity)}
                               </span>
                             </div>
                           </div>
@@ -650,7 +730,9 @@ console.log(cart)
                             value={discountType ?? "NONE"}
                             onValueChange={(value) =>
                               setDiscountType(
-                                value === "NONE" ? null : (value as DiscountType)
+                                value === "NONE"
+                                  ? null
+                                  : (value as DiscountType),
                               )
                             }
                           >
@@ -660,7 +742,9 @@ console.log(cart)
                             <SelectContent>
                               <SelectItem value="NONE">Sem desconto</SelectItem>
                               <SelectItem value="FIXO">Fixo</SelectItem>
-                              <SelectItem value="PORCENTAGEM">Porcentagem</SelectItem>
+                              <SelectItem value="PORCENTAGEM">
+                                Porcentagem
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -673,26 +757,33 @@ console.log(cart)
                           <Input
                             type="number"
                             min={0}
-                            max={discountType === "PORCENTAGEM" ? 100 : undefined}
+                            max={
+                              discountType === "PORCENTAGEM" ? 100 : undefined
+                            }
                             step="0.01"
                             value={discount}
                             onChange={(e) =>
                               setDiscount(Number(e.target.value || 0))
                             }
                             disabled={!discountType}
-                            placeholder={discountType === "PORCENTAGEM" ? "0,00%" : "R$ 0,00"}
+                            placeholder={
+                              discountType === "PORCENTAGEM"
+                                ? "0,00%"
+                                : "R$ 0,00"
+                            }
                           />
                         </div>
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Subtotal:</span>
-                        <span>R$ {subtotal.toFixed(2)}</span>
+                        <span>{formatCurrencyBRL(subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Desconto:</span>
                         <span>
-                          - R$ {discountAmount.toFixed(2)}
-                          {discountType === "PORCENTAGEM" && normalizedDiscountInput > 0
+                          - {formatCurrencyBRL(discountAmount)}
+                          {discountType === "PORCENTAGEM" &&
+                          normalizedDiscountInput > 0
                             ? ` (${Math.min(normalizedDiscountInput, 100).toFixed(2)}%)`
                             : ""}
                         </span>
@@ -703,7 +794,7 @@ console.log(cart)
                           <span>
                             {discountType === "PORCENTAGEM"
                               ? `${Math.min(normalizedDiscountInput, 100).toFixed(2)}%`
-                              : `R$ ${normalizedDiscountInput.toFixed(2)}`}
+                              : formatCurrencyBRL(normalizedDiscountInput)}
                           </span>
                         </div>
                       )}
@@ -711,7 +802,7 @@ console.log(cart)
                       <div className="flex justify-between text-sm text-muted-foreground"></div>
                       <div className="flex justify-between text-lg font-bold text-primary-foreground bg-primary p-2 rounded">
                         <span>Total:</span>
-                        <span>R$ {total.toFixed(2)}</span>
+                        <span>{formatCurrencyBRL(total)}</span>
                       </div>
                     </div>
 
@@ -726,14 +817,17 @@ console.log(cart)
                         <ReceiptText className="h-4 w-4" />
                         Salvar como orçamento
                       </Button>
-                      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+                      <AlertDialog
+                        open={isAlertOpen}
+                        onOpenChange={setIsAlertOpen}
+                      >
                         <AlertDialogTrigger asChild>
-                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold hover:cursor-pointer">
-                        Finalizar Venda
-                      </Button>
-
+                          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold hover:cursor-pointer">
+                            Finalizar Venda
+                          </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
+<<<<<<< HEAD
 
                         <AlertDialogHeader>
                           <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
@@ -772,6 +866,27 @@ console.log(cart)
                             Confirmar
                           </AlertDialogAction>
                         </AlertDialogFooter>
+=======
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {" "}
+                              Ao selecionar esta opção, o pagamento da venda
+                              ficará em aberto
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="hover:cursor-pointer">
+                              Cancelar
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              className="hover:cursor-pointer"
+                              onClick={() => createVenda()}
+                            >
+                              Confirmar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+>>>>>>> 843f8c14c1d04ba012062a3a3f63da0a3960e6e1
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
