@@ -73,22 +73,16 @@ export function POSSystem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("TODOS");
   const [creatingVenda, setCreatingVenda] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-<<<<<<< HEAD
-  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false)
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined)
-  const [discount, setDiscount] = useState(0)
-  const [discountType, setDiscountType] = useState<DiscountType | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
-  const [isAlertOpen, setIsAlertOpen] = useState(false)
-=======
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<
     Customer | undefined
   >(undefined);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<DiscountType | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
+    null
+  );
   const [isAlertOpen, setIsAlertOpen] = useState(false);
->>>>>>> 843f8c14c1d04ba012062a3a3f63da0a3960e6e1
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
   const router = useRouter();
   const config = useConfig();
@@ -306,28 +300,6 @@ console.log(cart)
       // TODO: substituir pelos valores reais
 
       const payload = {
-        clienteId: selectedCustomer?.id,
-        status: "PAGAMENTO", // enum_status_venda
-        descontoTipo: discountType,
-        descontoValor: discountAmount > 0 ? discountAmount : null,
-        subTotal: subtotal,
-        valorTotal: total,
-        dataVenda: null,
-        itens: cart.map((item) => ({
-          produtoId: item.id,
-          quantidade: item.quantity,
-          subTotal: item.precovenda * item.quantity,
-          valorTotal: item.precovenda * item.quantity,
-          valorDesconto: 0,
-          tipoDesconto: null,
-        })),
-      };
-
-      // chamada com axios
-      const { data } = await axios.post("/api/venda", payload);
-
-<<<<<<< HEAD
-    const payload = {
       clienteId: selectedCustomer?.id,
       status: "PAGAMENTO", // enum_status_venda
       descontoTipo: discountType,
@@ -335,7 +307,9 @@ console.log(cart)
       subTotal: subtotal,
       valorTotal: total,
       formaPagamento:
-        !paymentMethod || paymentMethod === "NAO_INFORMAR" ? null : paymentMethod,
+        !paymentMethod || paymentMethod === "NAO_INFORMAR"
+          ? null
+          : paymentMethod,
       dataVenda: null,
       itens: cart.map((item) => ({
         produtoId: item.id,
@@ -349,32 +323,16 @@ console.log(cart)
 
     // chamada com axios
     const { data } = await axios.post("/api/venda", payload);
-
-
-    console.log("Venda criada com sucesso:", data);
-    toast.success("Venda cadastrada com sucesso.")
-
-    setCart([]);
-    setDiscount(0);
-    setDiscountType(null);
-    setPaymentMethod(null);
-    setSelectedCustomer(undefined);
-    // aqui você pode disparar um toast ou algo do tipo
-  } catch (error: any) {
-
-    if (axios.isAxiosError(error)) {
-      
-=======
       console.log("Venda criada com sucesso:", data);
       toast.success("Venda cadastrada com sucesso.");
 
       setCart([]);
       setDiscount(0);
       setDiscountType(null);
-      // aqui você pode disparar um toast ou algo do tipo
+      setPaymentMethod(null);
+      setSelectedCustomer(undefined);
     } catch (error: any) {
       if (axios.isAxiosError(error)) {
->>>>>>> 843f8c14c1d04ba012062a3a3f63da0a3960e6e1
         toast.error("Erro código: " + error.status, {
           description: error.response?.data.error,
         });
@@ -827,7 +785,6 @@ console.log(cart)
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
-<<<<<<< HEAD
 
                         <AlertDialogHeader>
                           <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
@@ -866,27 +823,6 @@ console.log(cart)
                             Confirmar
                           </AlertDialogAction>
                         </AlertDialogFooter>
-=======
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {" "}
-                              Ao selecionar esta opção, o pagamento da venda
-                              ficará em aberto
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="hover:cursor-pointer">
-                              Cancelar
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              className="hover:cursor-pointer"
-                              onClick={() => createVenda()}
-                            >
-                              Confirmar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
->>>>>>> 843f8c14c1d04ba012062a3a3f63da0a3960e6e1
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
