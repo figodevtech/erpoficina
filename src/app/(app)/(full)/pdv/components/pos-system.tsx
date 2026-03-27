@@ -19,6 +19,7 @@ import {
   CircleOff,
   ArrowLeftToLine,
   ReceiptText,
+  Info,
 } from "lucide-react";
 import { Estoque_status, Produto } from "@/app/(app)/(pages)/estoque/types";
 import {
@@ -44,6 +45,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
@@ -82,6 +91,9 @@ export function POSSystem() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
     null
   );
+  const [selectedProductInfo, setSelectedProductInfo] = useState<
+    Produto | undefined
+  >(undefined);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
   const router = useRouter();
@@ -460,6 +472,105 @@ console.log(cart)
                       ) : (
                         <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                       )}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="secondary"
+                            className="absolute top-2 left-2 z-20 h-8 w-8 rounded-full bg-background/90 hover:bg-background hover:cursor-pointer"
+                            onClick={() => setSelectedProductInfo(product)}
+                          >
+                            <Info className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-xl">
+                          <DialogHeader>
+                            <DialogTitle>
+                              {selectedProductInfo?.titulo || "Produto"}
+                            </DialogTitle>
+                            <DialogDescription>
+                              Informações detalhadas do produto selecionado.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+                            <div className="h-40 overflow-hidden rounded-lg border border-border bg-muted flex items-center justify-center">
+                              {selectedProductInfo?.imgUrl ? (
+                                <img
+                                  alt={
+                                    selectedProductInfo?.titulo ||
+                                    "imagem do produto"
+                                  }
+                                  className="h-full w-full object-contain"
+                                  src={selectedProductInfo.imgUrl}
+                                />
+                              ) : (
+                                <Wrench className="h-10 w-10 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="grid gap-3 text-sm">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-lg border border-border bg-muted/40 p-3">
+                                  <p className="text-xs text-muted-foreground">
+                                    Preço
+                                  </p>
+                                  <p className="font-semibold text-foreground">
+                                    {formatCurrencyBRL(
+                                      selectedProductInfo?.precovenda || 0
+                                    )}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-muted/40 p-3">
+                                  <p className="text-xs text-muted-foreground">
+                                    Estoque
+                                  </p>
+                                  <p className="font-semibold text-foreground">
+                                    {selectedProductInfo?.estoque ?? 0}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="grid gap-2 rounded-lg border border-border bg-muted/40 p-3">
+                                <p>
+                                  <span className="text-muted-foreground">
+                                    Grupo:
+                                  </span>{" "}
+                                  {selectedProductInfo?.grupo?.nome || "-"}
+                                </p>
+                                <p>
+                                  <span className="text-muted-foreground">
+                                    Referência:
+                                  </span>{" "}
+                                  {selectedProductInfo?.referencia || "-"}
+                                </p>
+                                <p>
+                                  <span className="text-muted-foreground">
+                                    Fabricante:
+                                  </span>{" "}
+                                  {selectedProductInfo?.fabricante || "-"}
+                                </p>
+                                <p>
+                                  <span className="text-muted-foreground">
+                                    Unidade:
+                                  </span>{" "}
+                                  {selectedProductInfo?.unidade || "-"}
+                                </p>
+                                <p>
+                                  <span className="text-muted-foreground">
+                                    Código de barras:
+                                  </span>{" "}
+                                  {selectedProductInfo?.codigobarras || "-"}
+                                </p>
+                                <p>
+                                  <span className="text-muted-foreground">
+                                    Descrição:
+                                  </span>{" "}
+                                  {selectedProductInfo?.descricao || "-"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
 
                       {config?.alerta_estoque_pdv &&
                         product.status_estoque === Estoque_status.CRITICO && (
