@@ -393,7 +393,7 @@ export default function DashboardClientes({
 
                 <ChartLegend
                   content={<ChartLegendContent nameKey="key" />}
-                  className="-translate-y-2 flex-wrap gap-2 text-xs [&>*]:basis-1/2 [&>*]:justify-center sm:[&>*]:basis-1/4"
+                    
                 />
               </PieChart>
             </ChartContainer>
