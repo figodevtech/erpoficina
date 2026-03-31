@@ -1,12 +1,10 @@
 // src/app/api/nfe/consultar/[id]/route.ts
 import { NextResponse } from 'next/server';
 import https from 'https';
-import fs from 'fs';
-import path from 'path';
 import { XMLParser } from 'fast-xml-parser';
-
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { EmpresaRow } from '@/lib/nfe/types';
+import { carregarCertificadoA1 } from '@/lib/nfe/certificado';
 
 export const runtime = 'nodejs';
 
@@ -201,23 +199,20 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
         ? 'https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx'
         : 'https://nfe-homologacao.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx';
 
-    // 7) Montar agente HTTPS com PFX
-    const pfxPathRaw =
-      empresa.certificadocaminho ||
-      process.env.NFE_CERT_PFX_PATH ||
-      'C:\\certs\\certificado.pfx';
+    // 7) Carregar certificado A1 (chave privada + certificado em PEM)
+    const { privateKeyPem, certificatePem } = await carregarCertificadoA1(
+      empresa,
+    );
 
-    const pfxPath = path.resolve(pfxPathRaw);
-    const pfxPass =
-      empresa.certificadosenha ?? process.env.NFE_CERT_PFX_PASSWORD ?? '';
-
+    // 8) Montar agente HTTPS com a chave e certificado extraídos (PEM)
+    // Isso evita o erro "unsupported" que ocorre ao passar o PFX direto em Node 17+
     const httpsAgent = new https.Agent({
-      pfx: fs.readFileSync(pfxPath),
-      passphrase: pfxPass,
+      key: privateKeyPem,
+      cert: certificatePem,
       rejectUnauthorized: false, // em produção, ideal é true com cadeia correta
     });
 
-    // 8) Enviar SOAP
+    // 9) Enviar SOAP
     const { httpStatus, body: respostaText } = await postSoapComCert(
       url,
       soapEnvelope,
@@ -241,7 +236,7 @@ async function consultarHandler(_req: Request, nfeIdParam: string) {
       );
     }
 
-    // 9) Parse do XML de retorno (retConsSitNFe + eventos de cancelamento)
+    // 10) Parse do XML de retorno (retConsSitNFe + eventos de cancelamento)
     const parser = new XMLParser({ ignoreAttributes: false });
 
     let cStat: string | null = null;

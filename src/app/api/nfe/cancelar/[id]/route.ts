@@ -2,8 +2,6 @@
 
 import { NextResponse } from 'next/server';
 import https from 'https';
-import fs from 'fs';
-import path from 'path';
 import { XMLParser } from 'fast-xml-parser';
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -279,20 +277,11 @@ async function cancelarHandler(req: Request, nfeIdParam: string) {
         : 'https://nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx';
 
     // -------------------------------------------------------------------
-    // 10) Montar agente HTTPS com o PFX
-    // -------------------------------------------------------------------
-    const pfxPathRaw =
-      empresa.certificadocaminho ||
-      process.env.NFE_CERT_PFX_PATH ||
-      'C:\\certs\\certificado.pfx';
-
-    const pfxPath = path.resolve(pfxPathRaw);
-    const pfxPass =
-      empresa.certificadosenha ?? process.env.NFE_CERT_PFX_PASSWORD ?? '';
-
+    // 10) Montar agente HTTPS com a chave e certificado extraídos (PEM)
+    // Isso evita o erro "unsupported" que ocorre ao passar o PFX direto em Node 17+
     const httpsAgent = new https.Agent({
-      pfx: fs.readFileSync(pfxPath),
-      passphrase: pfxPass,
+      key: privateKeyPem,
+      cert: certificatePem,
       // Em produção, ideal é true com cadeia correta
       rejectUnauthorized: false,
     });
