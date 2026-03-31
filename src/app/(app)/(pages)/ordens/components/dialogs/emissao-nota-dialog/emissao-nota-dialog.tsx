@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { AutorizarNfeButton } from "./autorizarNfe-button";
 import { GerarNotaDeOsDialog } from "./gerarNotaDeOsDialog/gerarNotaDeOsDialog";
+import { EmissaoNfseDialog } from "./emissao-nfse-dialog/emissao-nfse-dialog";
 import { CancelarNfeButton } from "./cancelarNfeButton";
 import {
   DropdownMenu,
@@ -58,6 +59,8 @@ type NfeResumo = {
   createdat: string | null;
   updatedat: string | null;
   empresaid: number | null;
+  url_pdf?: string;
+  codigo_verificacao?: string;
 };
 
 type ListarNfeResponsePorOs = {
@@ -153,6 +156,7 @@ export function EmissaoNotaDialog({
   const [loading, setLoading] = useState(false);
   const [nfes, setNfes] = useState<NfeResumo[] | null>(null);
   const [openGerarNfe, setOpenGerarNfe] = useState(false);
+  const [openGerarNfse, setOpenGerarNfse] = useState(false);
   const [generatingEntryParams, setGeneratingEntryParams] = useState(false);
 
   const origem = osId ? "OS" : vendaId ? "VENDA" : entradaId ? "ENTRADA" : null;
@@ -193,8 +197,38 @@ export function EmissaoNotaDialog({
         throw new Error(msg);
       }
 
+      let fetchedNfes = (json as any).nfes ?? [];
+
+      if (origem === "OS" && osId) {
+        const nfseRes = await fetch(`/api/nfse/por-os/${osId}`, { signal });
+        const nfseJson = await nfseRes.json().catch(() => null);
+        const mappedNfses = (nfseJson?.nfses ?? []).map((n: any) => ({
+          id: n.id,
+          modelo: "NFSE",
+          serie: null,
+          numero: n.numero || null,
+          chave_acesso: n.referencia,
+          ambiente: "Produção / Sefaz",
+          status: n.status || null,
+          ordemservicoid: n.ordemservicoid,
+          vendaid: null,
+          clienteid: n.clienteid,
+          dataemissao: n.dataemissao,
+          dataautorizacao: n.status === "AUTORIZADO" ? n.updatedat : null,
+          protocolo: n.protocolo || null,
+          total_produtos: 0,
+          total_servicos: n.valor_total || 0,
+          total_nfe: n.valor_total || 0,
+          justificativacancelamento: n.erros ? JSON.stringify(n.erros) : null,
+          createdat: n.createdat,
+          empresaid: n.empresaid,
+          url_pdf: n.url_pdf,
+        }));
+        fetchedNfes = [...fetchedNfes, ...mappedNfses].sort((a, b) => new Date(b.createdat || 0).getTime() - new Date(a.createdat || 0).getTime());
+      }
+
       if (!signal?.aborted) {
-        setNfes((json as any).nfes ?? []);
+        setNfes(fetchedNfes);
       }
     } catch (e: any) {
       if (e?.name === "AbortError") return;
@@ -304,21 +338,34 @@ export function EmissaoNotaDialog({
                   <RotateCw className={loading ? "animate-spin" : ""} />
                 </Button>
 
-                <Button
-                  disabled={loading || generatingEntryParams}
-                  variant="secondary"
-                  onClick={() => {
-                      if (origem === "ENTRADA") {
-                          handleGerarNotaEntrada();
-                      } else {
-                          setOpenGerarNfe(true);
-                      }
-                  }}
-                  className="text-xs hover:cursor-pointer"
-                >
-                  {generatingEntryParams && <Loader2 className="animate-spin mr-2 h-3 w-3" />}
-                  <Plus className={generatingEntryParams ? "hidden" : ""} /> Nova Nota
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={loading || generatingEntryParams}
+                    variant="secondary"
+                    onClick={() => {
+                        if (origem === "ENTRADA") {
+                            handleGerarNotaEntrada();
+                        } else {
+                            setOpenGerarNfe(true);
+                        }
+                    }}
+                    className="text-xs hover:cursor-pointer"
+                  >
+                    {generatingEntryParams && <Loader2 className="animate-spin mr-2 h-3 w-3" />}
+                    <Plus className={generatingEntryParams ? "hidden" : "h-4 w-4 mr-1"} /> NF-e (Produto)
+                  </Button>
+
+                  {origem === "OS" && (
+                    <Button
+                      disabled={loading || generatingEntryParams}
+                      variant="secondary"
+                      onClick={() => setOpenGerarNfse(true)}
+                      className="text-xs hover:cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> NFS-e (Serviço)
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </DialogHeader>
@@ -385,7 +432,24 @@ export function EmissaoNotaDialog({
                             </DropdownMenuTrigger>
 
                             <DropdownMenuContent>
-                              {nfe.status === "RASCUNHO" && (
+                              {nfe.modelo === "NFSE" ? (
+                                <div className="flex flex-col gap-1 text-xs px-2 py-1 text-muted-foreground">
+                                  {nfe.url_pdf ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-xs hover:cursor-pointer"
+                                      onClick={() => window.open(nfe.url_pdf, "_blank")}
+                                    >
+                                      Baixar NFS-e (PDF)
+                                    </Button>
+                                  ) : (
+                                    <span>Nenhuma ação disponível.</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <>
+                                  {nfe.status === "RASCUNHO" && (
                                 <div className="flex flex-col gap-1">
                                   <AutorizarNfeButton
                                     nfeId={nfe.id}
@@ -550,6 +614,8 @@ export function EmissaoNotaDialog({
                                   </Button>
                                 </div>
                               )}
+                              </>
+                            )}
                             </DropdownMenuContent>
                           </DropdownMenu>
 
@@ -568,7 +634,7 @@ export function EmissaoNotaDialog({
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="font-medium">
-                                NF-e {nfe.numero ?? "—"}
+                                {nfe.modelo === "NFSE" ? "NFS-e" : "NF-e"} {nfe.numero ?? "—"}
                                 {nfe.serie ? `/Série ${nfe.serie}` : ""}
                               </div>
 
@@ -639,6 +705,18 @@ export function EmissaoNotaDialog({
             }}
             osId={osId ?? null}
             vendaId={vendaId ?? null}
+            onAfterGenerate={() => fetchNfes()}
+          />
+        )}
+
+        {!!origemId && origem === "OS" && (
+          <EmissaoNfseDialog
+            open={openGerarNfse}
+            onOpenChange={(v) => {
+              setOpenGerarNfse(v);
+              if (!v) fetchNfes();
+            }}
+            osId={osId ?? null}
             onAfterGenerate={() => fetchNfes()}
           />
         )}
