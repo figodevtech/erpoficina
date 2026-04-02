@@ -20,13 +20,21 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const reqBody = await req.json().catch(() => ({}));
+    const { osservicoId } = reqBody;
+    if (!osservicoId) {
+      return NextResponse.json(
+        { ok: false, message: "ID do serviço (osservicoId) não fornecido." },
+        { status: 400 }
+      );
+    }
+
     // 1. Fetch OS data including services, client, and company
     const { data: os, error: osError } = await supabaseAdmin
       .from("ordemservico")
       .select(`
         *,
         cliente (*),
-        empresa (*),
         osservico (
           *,
           servico (*)
@@ -50,9 +58,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (!os.empresa) {
+    const { data: empresa } = await supabaseAdmin.from("empresa").select("*").limit(1).single();
+    if (!empresa) {
       return NextResponse.json(
-        { ok: false, message: "A OS não possui uma empresa (prestador) vinculada." },
+        { ok: false, message: "A aplicação não possui uma empresa configurada." },
         { status: 400 }
       );
     }
@@ -64,36 +73,40 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 2. Aggregate services
-    let totalServicos = 0;
-    const descricoes: string[] = [];
+    // 2. Aggregate single service
+    const itemServico = os.osservico.find((item: any) => item.servicoid === osservicoId);
+    if (!itemServico) {
+      return NextResponse.json(
+        { ok: false, message: "O serviço informado não pertence a esta OS ou não existe." },
+        { status: 400 }
+      );
+    }
     
     // We assume the first service's taxation data applies to all, as is common in a single OS
-    const firstServico = os.osservico[0].servico;
+    const firstServico = itemServico.servico;
 
-    for (const item of os.osservico) {
-      const q = item.quantidade || 1;
-      const v = item.valorunitario || 0;
-      const val = q * v;
-      totalServicos += val;
-      descricoes.push(`${q}x ${item.servico?.nome || "Serviço"} - R$ ${val.toFixed(2)}`);
-    }
+    const q = itemServico.quantidade || 1;
+    const v = itemServico.precounitario || 0;
+    const val = q * v;
+    let totalServicos = val;
+    const descricao = `${q}x ${itemServico.servico?.descricao || "Serviço Padrão"} - R$ ${val.toFixed(2)}`;
 
-    const descricaoCompleta = `Serviços referentes à OS #${os.id}:\n` + descricoes.join("\n");
+    const descricaoCompleta = `Serviços da OS #${os.id}:\n` + descricao;
 
     // 3. Prepare parameters for Focus NFe
-    const referencia = `OS_${os.id}_${Date.now()}`;
+    const referencia = `OS_${os.id}_SRV_${itemServico.servicoid}_${Date.now()}`;
     
     // Defaulting to empty values, but users should maintain their CAD.
-    const prestadorCnpj = os.empresa.cnpj || "";
-    // Note: If inscricao_municipal and codigo_municipio aren't in empresa, we should use empty or default.
-    // In many schemas they might be missing. We assume the table has them or we pass "0".
+    const empresaData = empresa as any;
+    const prestadorCnpj = empresaData.cnpj || "";
     
-    const empresaData = os.empresa as any;
     const clienteData = os.cliente as any;
 
     const emitirParams: NFSeEmitirParams = {
       referencia,
+      natureza_operacao: 1, // Tributação no município (Padrão ABRASF/DSF)
+      optante_simples_nacional: true, // true para Simples Nacional
+      regime_especial_tributacao: 6, // 6 para Microempresa Municipal (Padrão comum João Pessoa)
       prestador: {
         cnpj: prestadorCnpj.replace(/\D/g, ""),
         inscricao_municipal: empresaData.inscricaomunicipal?.replace(/\D/g, "") || "",
@@ -116,8 +129,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       servico: {
         aliquota: 3, // Fallback if no specific config
         discriminacao: descricaoCompleta,
-        iss_retido: false,
+        iss_retido: "false", // Use string "false"
         item_lista_servico: firstServico?.codigomunicipal || "0107", 
+        codigo_cnae: empresaData.cnae?.replace(/\D/g, "") || "829979900", // Mandatory for Joao Pessoa
         valor_servicos: totalServicos,
       }
     };
@@ -130,7 +144,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const insercao = {
       ordemservicoid: os.id,
       clienteid: os.cliente.id,
-      empresaid: os.empresa.id,
+      empresaid: empresa.id,
       referencia,
       status: result.ok ? result.status : "REJEITADA",
       erros: result.ok ? null : result.erros,

@@ -433,8 +433,69 @@ export function EmissaoNotaDialog({
 
                             <DropdownMenuContent>
                               {nfe.modelo === "NFSE" ? (
-                                <div className="flex flex-col gap-1 text-xs px-2 py-1 text-muted-foreground">
-                                  {nfe.url_pdf ? (
+                                <div className="flex flex-col gap-1">
+                                  {statusUpper !== "CANCELADA" && (
+                                    <Button
+                                      className="text-xs hover:cursor-pointer"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={async () => {
+                                        toast(
+                                          <div className="flex flex-row flex-nowrap items-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Consultando NFS-e</span>
+                                          </div>
+                                        );
+                                        const res = await fetch(`/api/nfse/consultar/${nfe.id}`, { method: "POST" });
+                                        const json = await res.json().catch(() => null);
+                                        if (!res.ok || !json?.ok) {
+                                          toast.error(json?.message || "Erro ao consultar NFS-e.");
+                                          return;
+                                        }
+                                        toast.success(`SEFAZ (API Focus): ${json.status || ""}`);
+                                        fetchNfes();
+                                      }}
+                                    >
+                                      Consultar NFS-e
+                                    </Button>
+                                  )}
+
+                                  {isAutorizada && (
+                                    <Button
+                                      className="text-xs hover:cursor-pointer text-destructive border-destructive"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={async () => {
+                                        const justificativa = window.prompt("Digite o motivo do cancelamento dessa NFS-e (Mínimo 15 caracteres):");
+                                        if (!justificativa || justificativa.length < 15) {
+                                          toast.error("A justificativa precisa ter pelo menos 15 caracteres.");
+                                          return;
+                                        }
+                                        toast(
+                                          <div className="flex flex-row flex-nowrap items-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Cancelando NFS-e</span>
+                                          </div>
+                                        );
+                                        const res = await fetch(`/api/nfse/cancelar/${nfe.id}`, {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ justificativa })
+                                        });
+                                        const json = await res.json().catch(() => null);
+                                        if (!res.ok || !json?.ok) {
+                                          toast.error(json?.message || "Erro ao cancelar NFS-e.");
+                                          return;
+                                        }
+                                        toast.success("NFS-e enviado para cancelamento com sucesso!");
+                                        fetchNfes();
+                                      }}
+                                    >
+                                      Cancelar NFS-e
+                                    </Button>
+                                  )}
+
+                                  {nfe.url_pdf && (
                                     <Button
                                       variant="outline"
                                       size="sm"
@@ -443,8 +504,10 @@ export function EmissaoNotaDialog({
                                     >
                                       Baixar NFS-e (PDF)
                                     </Button>
-                                  ) : (
-                                    <span>Nenhuma ação disponível.</span>
+                                  )}
+
+                                  {!nfe.url_pdf && statusUpper === "CANCELADA" && (
+                                     <span className="text-xs px-2 py-1 text-muted-foreground text-center">Nota Cancelada.</span>
                                   )}
                                 </div>
                               ) : (

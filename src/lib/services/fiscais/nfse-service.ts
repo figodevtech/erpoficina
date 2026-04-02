@@ -1,5 +1,8 @@
 export type NFSeEmitirParams = {
   referencia: string;
+  natureza_operacao?: number | string;
+  optante_simples_nacional?: boolean;
+  regime_especial_tributacao?: number | string;
   prestador: {
     cnpj: string;
     inscricao_municipal: string;
@@ -22,9 +25,10 @@ export type NFSeEmitirParams = {
   servico: {
     aliquota: number;
     discriminacao: string;
-    iss_retido: boolean;
+    iss_retido: boolean | string;
     item_lista_servico: string;
     codigo_tributario_municipio?: string;
+    codigo_cnae?: string;
     valor_servicos: number;
   };
 };
@@ -52,12 +56,16 @@ export class NFSeService {
 
     const url = `${this.apiUrl}/v2/nfse?ref=${params.referencia}`;
 
-    const payload = {
+    const payload: any = {
       data_emissao: new Date().toISOString(),
       prestador: params.prestador,
       tomador: params.tomador,
       servico: params.servico,
     };
+
+    if (params.natureza_operacao !== undefined) payload.natureza_operacao = params.natureza_operacao;
+    if (params.optante_simples_nacional !== undefined) payload.optante_simples_nacional = params.optante_simples_nacional;
+    if (params.regime_especial_tributacao !== undefined) payload.regime_especial_tributacao = params.regime_especial_tributacao;
 
     const res = await fetch(url, {
       method: "POST",
@@ -71,10 +79,18 @@ export class NFSeService {
     const json = await res.json().catch(() => null);
 
     if (!res.ok) {
+      let msg = json?.mensagem || json?.codigo || "Erro ao emitir NFS-e";
+      const errosArr = json?.erros || (json ? [json] : []);
+      
+      if (errosArr.length > 0) {
+        const errorDetails = errosArr.map((e: any) => e.mensagem || e.codigo || JSON.stringify(e)).join(" | ");
+        msg = errorDetails.includes(msg) ? errorDetails : `${msg}: ${errorDetails}`;
+      }
+
       return {
         ok: false,
-        message: json?.mensagem || json?.codigo || "Erro ao emitir NFS-e",
-        erros: json?.erros || (json ? [json] : []),
+        message: msg,
+        erros: errosArr,
       };
     }
 
@@ -118,17 +134,27 @@ export class NFSeService {
     };
   }
 
-  async cancelar(referencia: string) {
+  async cancelar(referencia: string, justificativa?: string) {
     if (!this.token) throw new Error("FOCUS_NFE_API_TOKEN não configurado.");
 
     const url = `${this.apiUrl}/v2/nfse/${referencia}`;
 
-    const res = await fetch(url, {
+    const options: RequestInit = {
       method: "DELETE",
       headers: {
         Authorization: this.getAuthHeader(),
       },
-    });
+    };
+
+    if (justificativa) {
+      options.headers = {
+        ...options.headers,
+        "Content-Type": "application/json",
+      };
+      options.body = JSON.stringify({ justificativa });
+    }
+
+    const res = await fetch(url, options);
 
     const json = await res.json().catch(() => null);
 
