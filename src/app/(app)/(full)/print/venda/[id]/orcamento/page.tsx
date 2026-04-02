@@ -351,7 +351,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
           </div>
 
           <div className="os-header-box">
-            <div className="os-label">Orçamento PDV</div>
+            <div className="os-label ">Venda</div>
             <div className="os-numero">#{venda.id}</div>
             <Badge className="text-xs text-white" variant="outline">
               {String(venda.status) === "PAGAMENTO"
