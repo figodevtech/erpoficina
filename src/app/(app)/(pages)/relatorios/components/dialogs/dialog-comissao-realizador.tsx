@@ -85,7 +85,7 @@ export default function DialogComissaoRealizador() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
               <Settings />
             </div>
-            <span className="flex-1 font-medium">Comissão por serviço</span>
+            <span className="flex-1 font-medium">Comissão por realizador/funcionário</span>
           </div>
           <p className="text-xs text-muted-foreground">
             Exporta as comissões dos serviços realizados no período
@@ -94,7 +94,7 @@ export default function DialogComissaoRealizador() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Exportar comissão por serviço</DialogTitle>
+          <DialogTitle>Exportar comissão por realizador/funcionário</DialogTitle>
           <DialogDescription>
             Selecione o realizador e o período do relatório
           </DialogDescription>
