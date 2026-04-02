@@ -18,6 +18,7 @@ import {
   Loader,
   Loader2,
   MoreHorizontal,
+  Eye,
   Plus,
   Trash2Icon,
 } from "lucide-react";
@@ -49,7 +50,7 @@ interface FinancialTableProps {
     search?: string,
     dateFrom?: string,
     dateTo?: string,
-    tipo?: Tipo_transacao | ""
+    tipo?: Tipo_transacao | "",
   ) => void;
   search: string;
   tipo: Tipo_transacao | "";
@@ -84,7 +85,7 @@ export default function FinancialTable({
       <div className="flex flex-row flex-nowrap items-center gap-1 ">
         {" "}
         <span>Marcando como concluído</span> <Loader2 className="w-3 h-3 animate-spin" />
-      </div>
+      </div>,
     );
     setLoadingPago(true);
     try {
@@ -111,7 +112,7 @@ export default function FinancialTable({
       <div className="flex gap-2 items-center flex-nowrap">
         <Loader className="animate-spin w-4" />
         <span className="text-nowrap">Deletando transação...</span>
-      </div>
+      </div>,
     );
     try {
       const response = await axios.delete(`/api/transaction/${id}`, {});
@@ -227,7 +228,7 @@ export default function FinancialTable({
                       {t.descricao}
                       <span className="text-xs text-muted-foreground">ID: {t.id}</span>
                       <span className="text-xs text-muted-foreground md:hidden">
-                        {t.banco.titulo} - {t.metodopagamento}
+                        {t.banco?.titulo ?? "Sem banco"} - {t.metodopagamento}
                       </span>
                       <span className="text-muted-foreground text-nowrap flex-nowrap flex justify-center items-center gap-2 md:hidden">
                         <Calendar className="w-[10px] h-[10px]" />
@@ -247,7 +248,7 @@ export default function FinancialTable({
                     )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{t.categoria}</TableCell>
-                  <TableCell className="hidden md:table-cell">{t.banco.titulo}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.banco?.titulo ?? "Sem banco"}</TableCell>
                   <TableCell className="hidden md:table-cell">{t.metodopagamento}</TableCell>
 
                   <TableCell className={`text-right ${getTypeColor(t.tipo)}`}>
@@ -261,7 +262,7 @@ export default function FinancialTable({
                     </div>
                   </TableCell>
 
-                  <TableCell className="flex justify-end">
+                  <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -274,18 +275,16 @@ export default function FinancialTable({
                         </Button>
                       </DropdownMenuTrigger>
 
-                      <DropdownMenuContent id={menuId} aria-labelledby={triggerId} className="space-y-1">
-                        <DeleteAlert
-                          handleDeleteTransaction={handleDeleteTransaction}
-                          isAlertOpen={isAlertOpen}
-                          setIsAlertOpen={setIsAlertOpen}
-                          idToDelete={t.id}
+                      <DropdownMenuContent id={menuId} aria-labelledby={triggerId} align="center">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedTransactionId(t.id);
+                            setIsOpen(true);
+                          }}
                         >
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
-                            <Trash2Icon className="h-4 w-4" />
-                            <span>Excluir</span>
-                          </DropdownMenuItem>
-                        </DeleteAlert>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Visualizar
+                        </DropdownMenuItem>
 
                         {t.pendente && (
                           <ConculidoAlert
@@ -294,12 +293,24 @@ export default function FinancialTable({
                             handleSetConcluido={(value) => handleSetPago(value)}
                             idConcluido={t.id}
                           >
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              <Check className="h-4 w-4" />
-                              <span>Pago</span>
+                            <DropdownMenuItem onClick={() => undefined}>
+                              <Check className="mr-2 h-4 w-4" />
+                              Pago
                             </DropdownMenuItem>
                           </ConculidoAlert>
                         )}
+
+                        <DeleteAlert
+                          handleDeleteTransaction={handleDeleteTransaction}
+                          isAlertOpen={isAlertOpen}
+                          setIsAlertOpen={setIsAlertOpen}
+                          idToDelete={t.id}
+                        >
+                          <DropdownMenuItem onClick={() => undefined} variant="destructive">
+                            <Trash2Icon className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DeleteAlert>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

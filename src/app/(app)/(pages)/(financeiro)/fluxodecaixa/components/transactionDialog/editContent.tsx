@@ -1,5 +1,3 @@
-// EditContent.tsx
-
 import {
   DialogClose,
   DialogContent,
@@ -21,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
-import CustomerSelect from "@/app/(app)/components/customerSelect";
 import axios from "axios";
 import {
   Banco,
@@ -48,18 +45,12 @@ interface EditContentProps {
   selectedTransactionId: number | undefined;
   selectedCustomer: TransactionCustomer | undefined;
   setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
-
   isDesktop: boolean;
 }
 
-/**
- * Aqui eu padronizo o "data" do form como Date, independente do tipo original em Transaction.
- * Assim você aplica a MESMA lógica do RegisterContent sem precisar mexer nos types globais.
- */
 type TransactionForm = Omit<Transaction, "data"> & { data?: Date };
 
 function parseLocalDateTime(value: string): Date | undefined {
-  // value: "YYYY-MM-DDTHH:mm"
   if (!value) return undefined;
   const [dataParte, horaParte] = value.split("T");
   if (!dataParte || !horaParte) return undefined;
@@ -70,7 +61,7 @@ function parseLocalDateTime(value: string): Date | undefined {
   if (!y || !m || !d) return undefined;
   if (hh == null || mm == null) return undefined;
 
-  return new Date(y, m - 1, d, hh, mm, 0, 0); // LOCAL TIME (sem shift de fuso)
+  return new Date(y, m - 1, d, hh, mm, 0, 0);
 }
 
 function toIsoMinuteString(date: Date | undefined) {
@@ -82,6 +73,7 @@ function toIsoMinuteString(date: Date | undefined) {
   const d = pad(date.getDate());
   const hh = pad(date.getHours());
   const mm = pad(date.getMinutes());
+
   return `${y}-${m}-${d}T${hh}:${mm}`;
 }
 
@@ -89,22 +81,28 @@ function nowIsoMinute() {
   return toIsoMinuteString(new Date());
 }
 
+function toDateInputString(date: Date | undefined) {
+  if (!date) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}`;
+}
+
 function toDateFromApi(value: unknown): Date | undefined {
   if (!value) return undefined;
   if (value instanceof Date) return value;
 
   if (typeof value === "string") {
-    // se vier com timezone (Z ou +hh:mm), pode usar Date direto
     const temTimezone = value.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(value);
 
     if (temTimezone) return new Date(value);
 
-    // se vier "YYYY-MM-DDTHH:mm" (sem timezone), parse local
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
       return parseLocalDateTime(value.slice(0, 16));
     }
 
-    // fallback
     const d = new Date(value);
     return isNaN(d.getTime()) ? undefined : d;
   }
@@ -114,24 +112,20 @@ function toDateFromApi(value: unknown): Date | undefined {
 
 export default function EditContent({
   selectedTransactionId,
-  selectedCustomer,
-  setSelectedCustomer,
   isDesktop,
 }: EditContentProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingTransaction, setIsLoadingTransaction] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<
     TransactionForm | undefined
   >(undefined);
-
-  const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
-  const [, setIsLoadingBanks] = useState(false);
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const { categorias, loadingCategorias, errorCategorias } =
     useCategoriasTransacao();
 
   const handleChange = (
     field: keyof TransactionForm,
-    value: string | number,
+    value: string | number | boolean | null | undefined,
   ) => {
     setSelectedTransaction((prev) =>
       prev ? { ...prev, [field]: value } : prev,
@@ -141,10 +135,9 @@ export default function EditContent({
   const handleGetBanks = async () => {
     setIsLoadingBanks(true);
     try {
-      const response = await axios.get("/api/banks", {});
+      const response = await axios.get("/api/banks");
       if (response.status === 200) {
-        const { data } = response;
-        setBanks(data.data);
+        setBanks(response.data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar bancos:", error);
@@ -154,76 +147,32 @@ export default function EditContent({
   };
 
   const handleGetTransaction = async (id: number) => {
-    setIsLoading(true);
+    setIsLoadingTransaction(true);
     try {
       const response = await axios.get(`/api/transaction/${id}`);
       if (response.status === 200) {
-        const { data } = response;
-
-        const t: Transaction = data.data;
-
-        // normaliza "data" para Date no form
-        const dataNormalizada = toDateFromApi((t as any).data);
+        const t: Transaction = response.data.data;
 
         setSelectedTransaction({
           ...(t as any),
-          data: dataNormalizada,
+          data: toDateFromApi((t as any).data),
         });
       }
     } catch (error) {
-      console.log("Erro ao buscar transação:", error);
+      console.log("Erro ao buscar transacao:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingTransaction(false);
     }
   };
 
-  // carrega sempre que o ID mudar
   useEffect(() => {
-    if (selectedTransactionId) {
-      handleGetTransaction(selectedTransactionId);
-      handleGetBanks();
-    }
+    if (!selectedTransactionId) return;
+    handleGetTransaction(selectedTransactionId);
+    handleGetBanks();
   }, [selectedTransactionId]);
 
-  // quando seleciona cliente, atualiza pagador
-  useEffect(() => {
-    if (!selectedCustomer) return;
-
-    setSelectedTransaction((prev) =>
-      prev
-        ? {
-            ...prev,
-            cliente_id: selectedCustomer.id,
-            nomepagador: selectedCustomer.nome,
-            cpfcnpjpagador: selectedCustomer.cpfcnpj,
-          }
-        : prev,
-    );
-  }, [selectedCustomer]);
-
-  // se tipo for SAQUE/DEPOSITO, força pendente false (e limpa data por segurança)
-  useEffect(() => {
-    setSelectedTransaction((prev) => {
-      if (!prev) return prev;
-
-      if (
-        prev.tipo === Tipo_transacao.SAQUE ||
-        prev.tipo === Tipo_transacao.DEPOSITO
-      ) {
-        if (prev.pendente === false) return prev;
-        return { ...prev, pendente: false, data: undefined };
-      }
-
-      return prev;
-    });
-  }, [selectedTransaction?.tipo]);
-
-  // mesma regra do RegisterContent: ao trocar pendente, limpa a data
-  useEffect(() => {
-    setSelectedTransaction((prev) =>
-      prev ? { ...prev, data: undefined } : prev,
-    );
-  }, [selectedTransaction?.pendente]);
+  const isLoading =
+    isLoadingTransaction || isLoadingBanks || loadingCategorias;
 
   const Content = isDesktop ? DialogContent : DrawerContent;
   const Header = isDesktop ? DialogHeader : DrawerHeader;
@@ -245,10 +194,10 @@ export default function EditContent({
         }
       >
         <Header className="hidden">
-          <Title></Title>
+          <Title />
         </Header>
-        <div className="flex h-full min-h-0 flex-col justify-center items-center">
-          <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
+        <div className="flex h-full min-h-0 flex-col items-center justify-center">
+          <div className="size-8 animate-spin rounded-t-full border-t-2 border-primary" />
           <span className="text-primary">Carregando</span>
         </div>
       </Content>
@@ -267,13 +216,13 @@ export default function EditContent({
             : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
         }
       >
-        <Header className="shrink-0 px-6 py-4 border-b-1">
-          <Title>Editar transação</Title>
-          <Description>Nenhuma transação selecionada.</Description>
+        <Header className="shrink-0 border-b-1 px-6 py-4">
+          <Title>Editar transacao</Title>
+          <Description>Nenhuma transacao selecionada.</Description>
         </Header>
         <Footer className="px-6 py-4">
           <Close asChild>
-            <Button className="hover:cursor-pointer" variant={"outline"}>
+            <Button className="hover:cursor-pointer" variant="outline">
               Fechar
             </Button>
           </Close>
@@ -294,18 +243,18 @@ export default function EditContent({
       }
     >
       <div className="flex h-full min-h-0 flex-col">
-        <Header className="shrink-0 px-6 py-4 border-b-1">
-          <Title>Transação #{selectedTransaction.id}</Title>
-          <Description>Preencha dados para editar a transação</Description>
+        <Header className="shrink-0 border-b-1 px-6 py-4">
+          <Title>Transacao #{selectedTransaction.id}</Title>
+          <Description>Visualize os dados da transacao</Description>
         </Header>
 
-        <div className="h-full min-h-0 overflow-hidden p-0 b">
-          <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
-            {/* dados da transação */}
-            <div className="space-y-4 grid sm:grid-cols-3 gap-4">
+        <div className="h-full min-h-0 overflow-hidden p-0">
+          <div className="h-full min-h-0 overflow-auto space-y-2 bg-muted-foreground/5 px-4 py-10">
+            <div className="grid space-y-4 gap-4 sm:grid-cols-3">
               <div className="space-y-2 w-full">
                 <Label htmlFor="tipo">Tipo</Label>
                 <Select
+                  disabled
                   value={selectedTransaction.tipo}
                   onValueChange={(v) => handleChange("tipo", v)}
                 >
@@ -322,15 +271,32 @@ export default function EditContent({
                 </Select>
               </div>
 
+              <div className="space-y-2 w-full">
+                <Label htmlFor="metodopagamento">Metodo de pagamento</Label>
+                <Select
+                  disabled
+                  value={selectedTransaction.metodopagamento || ""}
+                  onValueChange={(v) => handleChange("metodopagamento", v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(Metodo_pagamento).map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-4 w-full">
-                <Label>Lançamento futuro</Label>
-                <div className="flex felx-row items-center gap-2">
+                <Label>Lancamento futuro</Label>
+                <div className="flex items-center gap-2">
                   <Switch
-                    className="hover:cursor-pointer"
-                    disabled={
-                      selectedTransaction.tipo === Tipo_transacao.SAQUE ||
-                      selectedTransaction.tipo === Tipo_transacao.DEPOSITO
-                    }
+                    className="hover:cursor-default"
+                    disabled
                     checked={selectedTransaction.pendente || false}
                     onCheckedChange={(checked) =>
                       setSelectedTransaction({
@@ -342,67 +308,137 @@ export default function EditContent({
 
                   {selectedTransaction.tipo === Tipo_transacao.RECEITA && (
                     <div
-                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                      className={`flex items-center gap-1 text-xs text-muted-foreground ${
                         selectedTransaction.pendente
                           ? "opacity-100"
                           : "opacity-50"
                       }`}
                     >
-                      <Info className="w-3 h-3" />
-                      <span>LANÇAMENTO A RECEBER</span>
+                      <Info className="h-3 w-3" />
+                      <span>LANCAMENTO A RECEBER</span>
                     </div>
                   )}
 
                   {selectedTransaction.tipo === Tipo_transacao.DESPESA && (
                     <div
-                      className={`flex flex-row gap-1 items-center text-xs text-muted-foreground ${
+                      className={`flex items-center gap-1 text-xs text-muted-foreground ${
                         selectedTransaction.pendente
                           ? "opacity-100"
                           : "opacity-50"
                       }`}
                     >
-                      <Info className="w-3 h-3" />
-                      <span>LANÇAMENTO A PAGAR</span>
+                      <Info className="h-3 w-3" />
+                      <span>LANCAMENTO A PAGAR</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-2 w-full col-span-full">
-                <Label htmlFor="descricao">Descrição*</Label>
-                <Input
-                  id="descricao"
-                  value={selectedTransaction.descricao || ""}
-                  onChange={(e) => handleChange("descricao", e.target.value)}
-                  placeholder="Descrição"
-                  className="w-full"
-                />
-              </div>
-
               <div className="space-y-2 w-full">
                 <Label htmlFor="valor">Valor*</Label>
                 <ValueInput
+                  disabled
                   price={selectedTransaction.valor || 0}
                   setPrice={(v) => handleChange("valor", v)}
                 />
               </div>
 
               <div className="space-y-2 w-full">
-                <Label htmlFor="data">Data</Label>
+                <Label htmlFor="banco">Banco</Label>
+                <Select
+                  disabled
+                  value={selectedTransaction.banco_id?.toString() || ""}
+                  onValueChange={(v) => {
+                    const bancoId = Number(v);
+                    const banco = banks.find((x) => x.id === bancoId);
+
+                    setSelectedTransaction((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            banco_id: bancoId,
+                            banco: banco
+                              ? { ...(prev as any).banco, ...banco }
+                              : (prev as any).banco,
+                          }
+                        : prev,
+                    );
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {banks.map((b) => (
+                      <SelectItem key={b.id} value={b.id.toString()}>
+                        {b.titulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 w-full">
+                <Label htmlFor="categoria">Categoria</Label>
+                <Select
+                  disabled
+                  value={selectedTransaction.categoria}
+                  onValueChange={(v) => handleChange("categoria", v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue
+                      placeholder={
+                        loadingCategorias
+                          ? "Carregando..."
+                          : errorCategorias
+                            ? "Erro ao carregar"
+                            : "Selecione"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.map((c) => (
+                      <SelectItem key={c.id} value={c.nome}>
+                        {c.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 w-full col-span-full">
+                <Label htmlFor="descricao">Descricao*</Label>
                 <Input
-                  className="w-min"
-                  type="datetime-local"
-                  value={toIsoMinuteString(selectedTransaction.data) ?? ""}
+                  disabled
+                  id="descricao"
+                  value={selectedTransaction.descricao || ""}
+                  onChange={(e) => handleChange("descricao", e.target.value)}
+                  placeholder="Descricao"
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2 w-full sm:col-span-3">
+                <Label htmlFor="data">Data do vencimento</Label>
+                <Input
+                  disabled
+                  id="data"
+                  className="w-full sm:max-w-xs"
+                  type="date"
+                  value={toDateInputString(selectedTransaction.data)}
                   min={
-                    selectedTransaction.pendente ? nowIsoMinute() : undefined
+                    selectedTransaction.pendente
+                      ? toDateInputString(new Date())
+                      : undefined
                   }
                   max={
-                    !selectedTransaction.pendente ? nowIsoMinute() : undefined
+                    !selectedTransaction.pendente
+                      ? toDateInputString(new Date())
+                      : undefined
                   }
                   onChange={(e) => {
-                    const value = e.target.value;
-                    const selecionada = value
-                      ? parseLocalDateTime(value)
+                    const selecionada = e.target.value
+                      ? parseLocalDateTime(`${e.target.value}T00:00`)
                       : undefined;
 
                     if (!selecionada) {
@@ -442,150 +478,20 @@ export default function EditContent({
                   }}
                 />
               </div>
-
-              <div className="space-y-2 w-full">
-                <Label htmlFor="banco">Banco</Label>
-                <Select
-                  value={selectedTransaction.banco_id?.toString() || ""}
-                  onValueChange={(v) => {
-                    const bancoId = Number(v);
-                    const b = banks.find((x) => x.id === bancoId);
-
-                    setSelectedTransaction((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            banco_id: bancoId,
-                            banco: b
-                              ? { ...(prev as any).banco, ...b }
-                              : (prev as any).banco,
-                          }
-                        : prev,
-                    );
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {banks.map((b) => (
-                      <SelectItem key={b.id} value={b.id.toString()}>
-                        {b.titulo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 w-full">
-                <Label htmlFor="metodopagamento">Método de pagamento</Label>
-                <Select
-                  value={selectedTransaction.metodopagamento || ""}
-                  onValueChange={(v) => handleChange("metodopagamento", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(Metodo_pagamento).map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 w-full">
-                <Label htmlFor="categoria">Categoria</Label>
-                <Select
-                  disabled={loadingCategorias || !!errorCategorias}
-                  value={selectedTransaction.categoria}
-                  onValueChange={(v) => handleChange("categoria", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        loadingCategorias
-                          ? "Carregando..."
-                          : errorCategorias
-                            ? "Erro ao carregar"
-                            : "Selecione"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.map((c) => (
-                      <SelectItem
-                        className="hover:cursor-pointer"
-                        key={c.id}
-                        value={c.nome}
-                      >
-                        {c.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
-            {/* dados do cliente */}
-            <div>
-              <span className=" text-xs text-muted-foreground">
+            <div className="mb-4">
+              <span className="text-xs text-muted-foreground">
                 Dados do pagador
               </span>
               <Separator />
             </div>
 
-            <div className="flex justify-end">
-              {selectedCustomer ? (
-                <Button
-                  onClick={() => {
-                    setSelectedTransaction({
-                      ...selectedTransaction,
-                      nomepagador: "",
-                      cpfcnpjpagador: "",
-                      cliente_id: undefined,
-                    });
-                    setSelectedCustomer(undefined);
-                  }}
-                  className="hover:cursor-pointer"
-                  variant={"ghost"}
-                  size={"sm"}
-                >
-                  Remover Cliente
-                </Button>
-              ) : (
-                <>
-                  <CustomerSelect
-                    open={isCustomerSelectOpen}
-                    setOpen={setIsCustomerSelectOpen}
-                    OnSelect={(c) => {
-                      setSelectedCustomer({
-                        cpfcnpj: c.cpfcnpj,
-                        nome: c.nomerazaosocial,
-                        id: c.id,
-                      });
-                    }}
-                  />
-
-                  <Button
-                    onClick={() => setIsCustomerSelectOpen(true)}
-                    className="hover:cursor-pointer"
-                    variant={"outline"}
-                    size={"sm"}
-                  >
-                    Selecionar Cliente
-                  </Button>
-                </>
-              )}
-            </div>
-
-            <div className="space-y-4 grid sm:grid-cols-2 gap-4">
+            <div className="grid space-y-4 gap-4 sm:grid-cols-2">
               <div className="space-y-2 w-full">
                 <Label htmlFor="nomepagador">Nome do pagador*</Label>
                 <Input
-                  disabled={!!selectedCustomer}
+                  disabled
                   id="nomepagador"
                   value={selectedTransaction.nomepagador || ""}
                   onChange={(e) => handleChange("nomepagador", e.target.value)}
@@ -597,7 +503,7 @@ export default function EditContent({
               <div className="space-y-2 w-full">
                 <Label htmlFor="cpfcnpjpagador">CPF/CNPJ do pagador*</Label>
                 <Input
-                  disabled={!!selectedCustomer}
+                  disabled
                   id="cpfcnpjpagador"
                   maxLength={14}
                   value={
@@ -616,9 +522,9 @@ export default function EditContent({
         </div>
 
         <Footer className="px-6 py-4">
-          <div className="flex sm:flex-row gap-3 sm:gap-4">
+          <div className="flex gap-3 sm:flex-row sm:gap-4">
             <Close asChild>
-              <Button className="hover:cursor-pointer" variant={"outline"}>
+              <Button className="hover:cursor-pointer" variant="outline">
                 Cancelar
               </Button>
             </Close>

@@ -25,16 +25,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Info, Upload } from "lucide-react";
+import { CalendarIcon, Info, Minus, Plus, Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import formatarEmReal from "@/utils/formatarEmReal";
-import { set } from "nprogress";
 import { useCategoriasTransacao } from "../../hooks/use-categoria-transacao";
 import {
   DrawerClose,
@@ -44,6 +44,90 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+
+interface ParcelaFormulario {
+  id: number;
+  dataVencimento?: Date;
+  valor: number;
+}
+
+function addMonths(date: Date, months: number) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+function distribuirValoresIguais(total: number, quantidade: number) {
+  if (quantidade <= 0) return [];
+
+  const totalCentavos = Math.round((total || 0) * 100);
+  const valorBase = Math.floor(totalCentavos / quantidade);
+  const resto = totalCentavos - valorBase * quantidade;
+
+  return Array.from({ length: quantidade }, (_, index) => {
+    const centavos = valorBase + (index < resto ? 1 : 0);
+    return centavos / 100;
+  });
+}
+
+function toCentavos(value: number | undefined) {
+  return Math.round((value || 0) * 100);
+}
+
+function toDateInputValue(date: Date | undefined) {
+  return date ? new Date(date).toISOString().slice(0, 10) : "";
+}
+
+function toDateOnly(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDateLabel(date?: Date) {
+  return date ? date.toLocaleDateString("pt-BR") : "Selecionar data";
+}
+
+function DatePickerField({
+  value,
+  onChange,
+  disabled = false,
+}: {
+  value?: Date;
+  onChange: (date: Date | undefined) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !value && "text-muted-foreground",
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {formatDateLabel(value)}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value ? toDateOnly(value) : undefined}
+          onSelect={(date) => onChange(date ? toDateOnly(date) : undefined)}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface RegisterContentProps {
   osId?: number | undefined;
@@ -76,14 +160,29 @@ export default function RegisterContent({
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const [isChecked, setIsChecked] = useState(false);
+  const [parcelasIguais, setParcelasIguais] = useState(false);
+  const [parcelasDetalhadas, setParcelasDetalhadas] = useState<
+    ParcelaFormulario[]
+  >([]);
   const { categorias, loadingCategorias, errorCategorias } =
     useCategoriasTransacao();
+  const canManageParcelas =
+    newTransaction.metodopagamento === Metodo_pagamento.BOLETO &&
+    !!newTransaction.pendente;
 
   const handleChange = (
     field: keyof NewTransaction,
-    value: string | number,
+    value: string | number | null,
   ) => {
     setNewTransaction({ ...newTransaction, [field]: value });
+  };
+
+  const setParcelas = (
+    updater: ParcelaFormulario[] | ((prev: ParcelaFormulario[]) => ParcelaFormulario[]),
+  ) => {
+    setParcelasDetalhadas((prev) =>
+      typeof updater === "function" ? updater(prev) : updater,
+    );
   };
 
   const handleGetBanks = async () => {
@@ -117,8 +216,59 @@ export default function RegisterContent({
   const handleCreateTransaction = async () => {
     setIsSubmitting(true);
     try {
+      let parcelasPayload: Array<{ data: Date; valor: number }> | undefined;
+
+      if (!newTransaction.banco_id) {
+        toast.error("Selecione um banco.");
+        return;
+      }
+
+      if (canManageParcelas) {
+        if (parcelasDetalhadas.length === 0) {
+          toast.error("Adicione ao menos uma parcela.");
+          return;
+        }
+
+        if (
+          parcelasDetalhadas.some(
+            (parcela) =>
+              !parcela.valor ||
+              parcela.valor <= 0 ||
+              !parcela.dataVencimento,
+          )
+        ) {
+          toast.error("As parcelas ainda não foram geradas corretamente.");
+          return;
+        }
+
+        if (parcelasDetalhadas.some((parcela) => !parcela.valor || parcela.valor <= 0)) {
+          toast.error("Todas as parcelas precisam ter valor maior que zero.");
+          return;
+        }
+
+        const somaParcelas = parcelasDetalhadas.reduce(
+          (acc, parcela) => acc + toCentavos(parcela.valor),
+          0,
+        );
+        const valorTotal = toCentavos(newTransaction.valor);
+
+        if (somaParcelas !== valorTotal) {
+          toast.error("A soma das parcelas deve ser igual ao valor total.");
+          return;
+        }
+
+        parcelasPayload = parcelasDetalhadas.map((parcela) => ({
+          data: parcela.dataVencimento!,
+          valor: parcela.valor,
+        }));
+      }
+
       const response = await axios.post("/api/transaction/os", {
-        newTransaction,
+        newTransaction: {
+          ...newTransaction,
+          data: parcelasDetalhadas[0]?.dataVencimento ?? newTransaction.data,
+        },
+        parcelasDetalhadas: parcelasPayload,
       });
 
       if (response.status === 201) {
@@ -130,7 +280,9 @@ export default function RegisterContent({
         });
 
         // se existir, seta o id (fluxo fora de OS)
-        setSelectedTransactionId?.(created?.id);
+        setSelectedTransactionId?.(
+          Array.isArray(created) ? created[0]?.id : created?.id,
+        );
 
         // recarrega a lista da OS (quando veio por OS)
         handleGetTransactions?.();
@@ -141,6 +293,8 @@ export default function RegisterContent({
         // opcional: limpar o formulário
         setNewTransaction({});
         setSelectedCustomer?.(undefined);
+        setParcelasDetalhadas([]);
+        setParcelasIguais(false);
       }
     } catch (error) {
       if (isAxiosError(error)) {
@@ -173,6 +327,40 @@ export default function RegisterContent({
     });
     setIsChecked(false);
   }, [, newTransaction.metodopagamento]);
+
+  useEffect(() => {
+    if (!canManageParcelas) {
+      setParcelasDetalhadas([]);
+      setParcelasIguais(false);
+    }
+  }, [canManageParcelas]);
+
+  useEffect(() => {
+    if (!canManageParcelas) return;
+
+    setParcelasDetalhadas((prev) => {
+      const quantidade = Math.max(1, prev.length || 1);
+      const valoresPadrao = distribuirValoresIguais(
+        newTransaction.valor ?? 0,
+        quantidade,
+      );
+      const dataBase = newTransaction.data ?? new Date();
+
+      return Array.from({ length: quantidade }, (_, index) => ({
+        id: prev[index]?.id ?? Date.now() + index,
+        dataVencimento:
+          prev[index]?.dataVencimento ?? addMonths(dataBase, index),
+        valor: parcelasIguais
+          ? valoresPadrao[index] ?? 0
+          : prev[index]?.valor ?? valoresPadrao[index] ?? 0,
+      }));
+    });
+  }, [
+    canManageParcelas,
+    parcelasIguais,
+    newTransaction.data,
+    newTransaction.valor,
+  ]);
 
   useEffect(() => {
     if (!isChecked) {
@@ -276,6 +464,24 @@ export default function RegisterContent({
                   </Select>
                 )}
               </div>
+              <div className="space-y-2 w-full">
+                <Label htmlFor="metodopagamento">Método de pagamento</Label>
+                <Select
+                  value={newTransaction.metodopagamento || ""}
+                  onValueChange={(v) => handleChange("metodopagamento", v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(Metodo_pagamento).map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-4 w-full">
                 <Label>Lançamento futuro</Label>
                 <div className="flex felx-row items-center gap-2">
@@ -319,7 +525,7 @@ export default function RegisterContent({
                 </div>
               </div>
 
-              <div className="space-y-2 w-full col-span-full">
+              <div className="hidden space-y-2 w-full col-span-full">
                 <Label htmlFor="descricao">Descrição*</Label>
                 <Input
                   disabled={osId || vendaId ? true : false}
@@ -386,47 +592,44 @@ export default function RegisterContent({
                   </>
                 )}
               </div>
-              <div className="space-y-2 w-full">
-                <Label htmlFor="data">Data</Label>
-                <Input
-                  className="w-full"
-                  type="datetime-local"
-                  value={toIsoMinuteString(newTransaction.data) ?? ""} // converte Date -> string certa
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const selecionada = value ? new Date(value) : undefined;
+              {!canManageParcelas && (
+                <div className="space-y-2 w-full">
+                  <Label htmlFor="data">Data</Label>
+                  <DatePickerField
+                    value={newTransaction.data}
+                    onChange={(selecionada) => {
+                      if (!selecionada) {
+                        setNewTransaction({ ...newTransaction, data: undefined });
+                        return;
+                      }
 
-                    if (!selecionada) {
-                      setNewTransaction({ ...newTransaction, data: undefined });
-                      return;
-                    }
+                      const agora = new Date();
 
-                    const agora = new Date();
+                      if (
+                        !newTransaction.pendente &&
+                        selecionada.getTime() > agora.getTime()
+                      ) {
+                        toast.warning(
+                          "Ative o pagamento futuro para selecionar uma data futura.",
+                        );
+                        return;
+                      }
 
-                    if (
-                      !newTransaction.pendente &&
-                      selecionada.getTime() > agora.getTime()
-                    ) {
-                      toast.warning(
-                        "Ative o pagamento futuro para selecionar uma data futura.",
-                      );
-                      return;
-                    }
+                      if (
+                        newTransaction.pendente &&
+                        selecionada.getTime() < agora.getTime()
+                      ) {
+                        toast.warning(
+                          "Desative o pagamento futuro para selecionar uma data passada.",
+                        );
+                        return;
+                      }
 
-                    if (
-                      newTransaction.pendente &&
-                      selecionada.getTime() < agora.getTime()
-                    ) {
-                      toast.warning(
-                        "Desative o pagamento futuro para selecionar uma data passada.",
-                      );
-                      return;
-                    }
-
-                    setNewTransaction({ ...newTransaction, data: selecionada }); // salva Date
-                  }}
-                />
-              </div>
+                      setNewTransaction({ ...newTransaction, data: selecionada });
+                    }}
+                  />
+                </div>
+              )}
               <div className="space-y-2 w-full">
                 <Label htmlFor="banco">Banco</Label>
                 <Select
@@ -446,24 +649,248 @@ export default function RegisterContent({
                 </Select>
               </div>
               <div className="space-y-2 w-full">
-                <Label htmlFor="metodopagamento">Método de pagamento</Label>
-                <Select
-                  value={newTransaction.metodopagamento || ""}
-                  onValueChange={(v) => handleChange("metodopagamento", v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(Metodo_pagamento).map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
+                <Label htmlFor="categoria-topo">Categoria</Label>
+                {osId && (
+                  <Select
+                    disabled
+                    value={newTransaction.categoria}
+                    onValueChange={(v) => handleChange("categoria", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ORDEM DE SERVIÃ‡O">
+                        ORDEM DE SERVIÃ‡O
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                )}
+                {vendaId && (
+                  <Select
+                    disabled
+                    value={newTransaction.categoria}
+                    onValueChange={(v) => handleChange("categoria", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VENDA">VENDA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {!osId && !vendaId && (
+                  <Select
+                    disabled={loadingCategorias || !!errorCategorias}
+                    value={newTransaction.categoria}
+                    onValueChange={(v) => handleChange("categoria", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          loadingCategorias
+                            ? "Carregando..."
+                            : errorCategorias
+                              ? "Erro ao carregar"
+                              : "Selecione"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categorias.map((c) => (
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          key={c.id}
+                          value={c.nome}
+                        >
+                          {c.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
-              <div className="space-y-2 w-full">
+              <div className="space-y-2 w-full col-span-full">
+                <Label htmlFor="descricao-topo">Descrição*</Label>
+                <Input
+                  disabled={osId || vendaId ? true : false}
+                  id="descricao-topo"
+                  value={newTransaction.descricao || ""}
+                  onChange={(e) => handleChange("descricao", e.target.value)}
+                  placeholder="Descrição"
+                  className="w-full"
+                />
+              </div>
+              {newTransaction.metodopagamento === Metodo_pagamento.BOLETO &&
+                !newTransaction.pendente && (
+                  <div className="w-full sm:col-span-3 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                    Ative `Lançamento futuro` para habilitar o parcelamento do
+                    boleto.
+                  </div>
+                )}
+              {canManageParcelas && (
+                <div className="space-y-3 w-full sm:col-span-3 rounded-xl border bg-background/70 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Parcelas do boleto</p>
+                      <p className="text-xs text-muted-foreground">
+                        Adicione parcelas como na entrada fiscal.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="parcelas-iguais" className="text-xs">
+                        Parcelas iguais
+                      </Label>
+                      <Switch
+                        id="parcelas-iguais"
+                        checked={parcelasIguais}
+                        onCheckedChange={setParcelasIguais}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {parcelasDetalhadas.map((parcela, index) => (
+                      <div
+                        key={parcela.id ?? index}
+                        className="relative flex flex-row items-center justify-between gap-4 rounded-xl bg-muted-foreground/5 px-3 py-6"
+                      >
+                        <span className="absolute left-3 top-1 text-xs text-muted-foreground">
+                          {index + 1}º parcela
+                        </span>
+                        <button
+                          type="button"
+                          className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 hover:cursor-pointer"
+                          onClick={() => {
+                            if (parcelasDetalhadas.length === 1) {
+                              toast.error("E necessario ao menos uma parcela");
+                              return;
+                            }
+
+                            setParcelas((prev) => {
+                              const next = prev.filter(
+                                (_, itemIndex) => itemIndex !== index,
+                              );
+
+                              if (!parcelasIguais) {
+                                return next;
+                              }
+
+                              const valoresRedistribuidos =
+                                distribuirValoresIguais(
+                                  newTransaction.valor ?? 0,
+                                  next.length,
+                                );
+
+                              return next.map((parcela, parcelaIndex) => ({
+                                ...parcela,
+                                valor: valoresRedistribuidos[parcelaIndex] ?? 0,
+                              }));
+                            });
+                          }}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            Data vencimento:
+                          </span>
+                          <DatePickerField
+                            value={parcela.dataVencimento}
+                            onChange={(date) =>
+                              setParcelas((prev) =>
+                                prev.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? {
+                                        ...item,
+                                        dataVencimento: date,
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            Valor:
+                          </span>
+                          <ValueInput
+                            price={parcela.valor}
+                            disabled={parcelasIguais}
+                            setPrice={(valor) =>
+                              setParcelas((prev) =>
+                                prev.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? { ...item, valor }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      Valor total: {formatarEmReal(newTransaction.valor || 0)}
+                    </span>
+                    <span>
+                      Soma das parcelas:{" "}
+                      {formatarEmReal(
+                        parcelasDetalhadas.reduce(
+                          (acc, parcela) => acc + (parcela.valor || 0),
+                          0,
+                        ),
+                      )}
+                    </span>
+                  </div>
+
+                  <div
+                    className="group mt-3 flex w-max flex-row items-center gap-2 hover:cursor-pointer"
+                    onClick={() =>
+                      setParcelas((prev) => {
+                        const next = [
+                          ...prev,
+                          {
+                            id: Date.now(),
+                            dataVencimento: addMonths(
+                              prev[prev.length - 1]?.dataVencimento ??
+                                newTransaction.data ??
+                                new Date(),
+                              1,
+                            ),
+                            valor: 0,
+                          },
+                        ];
+
+                        if (!parcelasIguais) {
+                          return next;
+                        }
+
+                        const valoresRedistribuidos = distribuirValoresIguais(
+                          newTransaction.valor ?? 0,
+                          next.length,
+                        );
+
+                        return next.map((parcela, index) => ({
+                          ...parcela,
+                          valor: valoresRedistribuidos[index] ?? 0,
+                        }));
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4 text-green-300 group-hover:text-green-600" />
+                    <span className="text-xs text-card-foreground">
+                      Adicionar Parcela
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="hidden space-y-2 w-full">
                 <Label htmlFor="categoria">Categoria</Label>
                 {osId && (
                   <Select
@@ -587,7 +1014,7 @@ export default function RegisterContent({
                   id="descricao"
                   value={newTransaction.nomepagador || ""}
                   onChange={(e) => handleChange("nomepagador", e.target.value)}
-                  placeholder="Descrição"
+                  placeholder="Nome do pagador"
                   className="w-full"
                 />
               </div>

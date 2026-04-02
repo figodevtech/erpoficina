@@ -6,9 +6,14 @@ import { Input } from "@/components/ui/input";
 interface ValueInputProps {
   setPrice: (value: number) => void;
   price: number;
+  disabled?: boolean;
 }
 
-export default function ValueInput({ setPrice, price }: ValueInputProps) {
+export default function ValueInput({
+  setPrice,
+  price,
+  disabled = false,
+}: ValueInputProps) {
   // Apenas dígitos (centavos)
   const [digits, setDigits] = useState<string>("");
 
@@ -62,6 +67,7 @@ export default function ValueInput({ setPrice, price }: ValueInputProps) {
       type="text"
       inputMode="numeric"
       pattern="[0-9]*"
+      disabled={disabled}
       value={formatBRL(digits) || ""}
       onChange={handleChange}
       // onKeyDown={handleKeyDown}

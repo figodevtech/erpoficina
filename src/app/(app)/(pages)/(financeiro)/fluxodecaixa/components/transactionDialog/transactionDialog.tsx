@@ -60,6 +60,7 @@ export default function TransactionDialog({
                 descricao: `Pagamento da OS #${osId}`,
                 valor: 0,
                 valorLiquido: 0,
+                parcelas: 1,
               });
             }
 
@@ -72,6 +73,7 @@ export default function TransactionDialog({
                 valor: 0,
                 valorLiquido: 0,
                 metodopagamento: initialMetodoPagamento,
+                parcelas: 1,
               });
             }
 
@@ -130,6 +132,7 @@ export default function TransactionDialog({
               descricao: `Pagamento da OS #${osId}`,
               valor: 0,
               valorLiquido: 0,
+              parcelas: 1,
             });
           }
 
@@ -142,6 +145,7 @@ export default function TransactionDialog({
               valor: 0,
               valorLiquido: 0,
               metodopagamento: initialMetodoPagamento,
+              parcelas: 1,
             });
           }
 

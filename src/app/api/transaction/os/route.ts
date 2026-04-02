@@ -73,6 +73,49 @@ function fortalezaNowIsoForTimestamp(): string {
   const pseudoLocal = new Date(now.getTime() - FORTALEZA_OFFSET_MS);
   return pseudoLocal.toISOString(); // ex: 2025-12-12T15:27:00.000Z
 }
+
+function centsToNumber(cents: number): number {
+  return Number((cents / 100).toFixed(2));
+}
+
+function distributeNetByGross(grossCentsList: number[], totalNetCents: number) {
+  const grossTotal = grossCentsList.reduce((acc, value) => acc + value, 0);
+  if (grossTotal <= 0) return grossCentsList.map(() => 0);
+
+  let allocated = 0;
+
+  return grossCentsList.map((gross, index) => {
+    if (index === grossCentsList.length - 1) {
+      return totalNetCents - allocated;
+    }
+
+    const proportional = Math.floor((gross * totalNetCents) / grossTotal);
+    allocated += proportional;
+    return proportional;
+  });
+}
+
+function sanitizeParcelasDetalhadas(raw: any) {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((parcela, index) => {
+    const valor = toNumberOrNull(parcela?.valor);
+    const data = toDateISOStringOrNull(parcela?.data);
+
+    if (valor == null || valor <= 0) {
+      throw new Error(`Valor inválido na parcela ${index + 1}.`);
+    }
+
+    if (!data) {
+      throw new Error(`Data inválida na parcela ${index + 1}.`);
+    }
+
+    return {
+      valor,
+      data,
+    };
+  });
+}
 /**
  * Saneia e valida payload de transacao:
  * - strings vazias -> null
@@ -115,7 +158,7 @@ function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
   }
 
   if (strict) {
-    const required = ["descricao", "valor", "data", "metodopagamento", "categoria", "tipo", "banco_id"];
+    const required = ["descricao", "valor", "data", "metodopagamento", "categoria", "tipo"];
     const missing = required.filter((k) => out[k] == null);
     if (missing.length) {
       throw new Error(`Campos obrigatórios ausentes: ${missing.join(", ")}`);
@@ -244,6 +287,9 @@ export async function POST(req: Request) {
     }
 
     const payload = sanitizeTransacaoPayload(json, { strict: true });
+    const parcelasDetalhadas = sanitizeParcelasDetalhadas(body?.parcelasDetalhadas);
+    const hasParcelamento = parcelasDetalhadas.length > 1;
+    const totalParcelas = hasParcelamento ? parcelasDetalhadas.length : 1;
 
     // =================== Validações contra a OS / Venda (antes de inserir) ===================
     let preSumCents: number | null = null;
@@ -253,12 +299,25 @@ export async function POST(req: Request) {
     const isReceita = typeof payload?.tipo === "string" && payload.tipo.toUpperCase() === "RECEITA";
 
     // valida valor > 0 (para qualquer transação; pedido do usuário)
-    const valorCents = moneyToCents(payload?.valor as any);
-    if (valorCents == null || valorCents <= 0) {
+    const valorTotalCents = moneyToCents(payload?.valor as any);
+    if (valorTotalCents == null || valorTotalCents <= 0) {
       return NextResponse.json({ error: "O valor da transação deve ser maior que zero." }, { status: 400 });
     }
 
     // ------ Validação quando é OS ------
+    const parcelasGrossCents = hasParcelamento
+      ? parcelasDetalhadas.map((parcela) => moneyToCents(parcela.valor as any) ?? 0)
+      : [valorTotalCents ?? 0];
+    const totalNovoValorCents = parcelasGrossCents.reduce((acc, value) => acc + value, 0);
+    const valorCents = totalNovoValorCents;
+
+    if (hasParcelamento && totalNovoValorCents !== valorTotalCents) {
+      return NextResponse.json(
+        { error: "A soma das parcelas deve ser igual ao valor total informado." },
+        { status: 400 }
+      );
+    }
+
     if (payload?.ordemservicoid != null && isReceita) {
       osId = Number(payload.ordemservicoid);
 
@@ -282,7 +341,7 @@ export async function POST(req: Request) {
       }
 
       // 2) Pagamento único não pode ultrapassar orçamento
-      if (valorCents > orcCents) {
+      if (totalNovoValorCents > orcCents) {
         return NextResponse.json(
           {
             error: `Pagamento único (${brl(valorCents)}) ultrapassa o valor da OS (${brl(orcCents)}).`,
@@ -383,16 +442,37 @@ export async function POST(req: Request) {
     // =================== Fim validações pré-inserção ===================
 
     // 🔹 Insere e retorna já com o banco relacionado
+    const valorLiquidoTotalCents = moneyToCents(payload?.valorLiquido as any) ?? valorTotalCents;
+    const parcelasNetCents = hasParcelamento
+      ? distributeNetByGross(parcelasGrossCents, valorLiquidoTotalCents)
+      : [valorLiquidoTotalCents];
+    const now = Date.now();
+    const baseDescricao = String(payload.descricao ?? "").trim();
+    const rowsToInsert = (hasParcelamento ? parcelasDetalhadas : [{ valor: payload.valor, data: payload.data }]).map(
+      (_, index) => ({
+        ...payload,
+        descricao:
+          totalParcelas > 1
+            ? `${baseDescricao} - Parcela ${index + 1}/${totalParcelas}`
+            : baseDescricao,
+        valor: centsToNumber(parcelasGrossCents[index] ?? 0),
+        valorLiquido: centsToNumber(
+          parcelasNetCents[index] ?? parcelasGrossCents[index] ?? 0
+        ),
+        data: hasParcelamento ? parcelasDetalhadas[index]?.data : payload.data,
+        pendente: hasParcelamento ? Boolean(payload.pendente) : payload.pendente,
+      })
+    );
+
     const { data, error } = await supabaseAdmin
       .from("transacao")
-      .insert(payload)
+      .insert(rowsToInsert)
       .select(
         `
         ${TRANSACAO_FIELDS},
         banco:bancoconta!transacao_banco_id_fkey ( ${BANCO_FIELDS} )
         `
-      )
-      .single();
+      );
 
     if (error) {
       // 23503 = foreign_key_violation (banco_id / cliente_id)
@@ -418,6 +498,9 @@ export async function POST(req: Request) {
     // =================== Pós-inserção: fechar OS/Venda se bateu orçamento ===================
 
     // 👉 OS: se total pago == orçamento, marca CONCLUIDO + datasaida
+    const createdRows = data ?? [];
+    const createdPayload = createdRows.length === 1 ? createdRows[0] : createdRows;
+
     if (osId != null && preSumCents != null && orcCents != null) {
       const novoTotal = preSumCents + valorCents!;
       if (novoTotal === orcCents) {
@@ -456,7 +539,10 @@ export async function POST(req: Request) {
     }
     // ===================================================================
 
-    return NextResponse.json({ data, id: data.id }, { status: 201 });
+    return NextResponse.json(
+      { data: createdPayload, id: createdRows[0]?.id, count: createdRows.length },
+      { status: 201 }
+    );
   } catch (e: any) {
     const msg = e?.message ?? "Erro ao criar transação. Verifique os campos obrigatórios e os tipos.";
     const isBadReq = msg.includes("Campos obrigatórios ausentes") || msg.toLowerCase().includes("obrigatório");

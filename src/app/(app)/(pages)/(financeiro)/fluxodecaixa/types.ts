@@ -57,8 +57,9 @@ export interface Transaction {
   categoria: string;
   tipo: Tipo_transacao;
   cliente_id?: number;
-  banco_id: number;
-  banco: Banco;
+  banco_id?: number | null;
+  banco?: Banco | null;
+  parcelas?: number;
   nomepagador?: string;
   cpfcnpjpagador?: string;
   ordemservicoid?: number | null
@@ -77,8 +78,9 @@ export interface NewTransaction {
   categoria?: string;
   tipo?: Tipo_transacao;
   cliente_id?: number | null;
-  banco_id?: number;
-  banco?: Banco;
+  banco_id?: number | null;
+  banco?: Banco | null;
+  parcelas?: number;
   ordemservicoid?: number | null
   vendaid?: number | null
   nomepagador?: string;

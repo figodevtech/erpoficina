@@ -41,7 +41,6 @@ const NOT_NULL_FIELDS = new Set([
   "metodopagamento",
   "categoria",
   "tipo",
-  "banco_id",
   "nomepagador",
   "cpfcnpjpagador",
   "pendente",
@@ -182,7 +181,6 @@ function sanitizePayload(body: any, { strict }: { strict: boolean }) {
       "metodopagamento",
       "categoria",
       "tipo",
-      "banco_id",
       "nomepagador",
       "cpfcnpjpagador",
     ];
