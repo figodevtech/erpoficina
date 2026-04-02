@@ -58,10 +58,29 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 2. Validate and find the specific service (using the servicoid as primary key in osservico)
+    const itemServico = os.osservico.find((item: any) => item.servicoid === osservicoId);
+    if (!itemServico) {
+      return NextResponse.json(
+        { ok: false, message: "O serviço informado não pertence a esta OS ou não existe." },
+        { status: 400 }
+      );
+    }
+
     const { data: empresa } = await supabaseAdmin.from("empresa").select("*").limit(1).single();
     if (!empresa) {
       return NextResponse.json(
         { ok: false, message: "A aplicação não possui uma empresa configurada." },
+        { status: 400 }
+      );
+    }
+
+    if (!empresa.inscricaomunicipal) {
+      return NextResponse.json(
+        { 
+          ok: false, 
+          message: "A Inscrição Municipal da empresa não está cadastrada. Por favor, complete o cadastro da empresa." 
+        },
         { status: 400 }
       );
     }
@@ -73,83 +92,51 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 2. Aggregate single service
-    const itemServico = os.osservico.find((item: any) => item.servicoid === osservicoId);
-    if (!itemServico) {
+    // 2. Validate Tomador (Client) Address mandatory fields (João Pessoa requirements)
+    const clienteData = os.cliente as any;
+    const requiredFields = {
+      logradouro: clienteData.endereco,
+      bairro: clienteData.bairro,
+      cep: clienteData.cep,
+      uf: clienteData.estado || empresa.uf,
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value || value.trim() === "")
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
       return NextResponse.json(
-        { ok: false, message: "O serviço informado não pertence a esta OS ou não existe." },
+        { 
+          ok: false, 
+          message: `Dados do cliente incompletos para emissão: ${missingFields.join(", ")}. Por favor, atualize o cadastro do cliente.` 
+        },
         { status: 400 }
       );
     }
-    
-    // We assume the first service's taxation data applies to all, as is common in a single OS
-    const firstServico = itemServico.servico;
 
-    const q = itemServico.quantidade || 1;
-    const v = itemServico.precounitario || 0;
-    const val = q * v;
-    let totalServicos = val;
-    const descricao = `${q}x ${itemServico.servico?.descricao || "Serviço Padrão"} - R$ ${val.toFixed(2)}`;
-
-    const descricaoCompleta = `Serviços da OS #${os.id}:\n` + descricao;
-
-    // 3. Prepare parameters for Focus NFe
-    const referencia = `OS_${os.id}_SRV_${itemServico.servicoid}_${Date.now()}`;
-    
-    // Defaulting to empty values, but users should maintain their CAD.
-    const empresaData = empresa as any;
-    const prestadorCnpj = empresaData.cnpj || "";
-    
-    const clienteData = os.cliente as any;
-
-    const emitirParams: NFSeEmitirParams = {
-      referencia,
-      natureza_operacao: 1, // Tributação no município (Padrão ABRASF/DSF)
-      optante_simples_nacional: true, // true para Simples Nacional
-      regime_especial_tributacao: 6, // 6 para Microempresa Municipal (Padrão comum João Pessoa)
-      prestador: {
-        cnpj: prestadorCnpj.replace(/\D/g, ""),
-        inscricao_municipal: empresaData.inscricaomunicipal?.replace(/\D/g, "") || "",
-        codigo_municipio: empresaData.codigomunicipio || "", // IBGE
-      },
-      tomador: {
-        cpf: clienteData.cpfcnpj?.length <= 14 ? clienteData.cpfcnpj.replace(/\D/g, "") : undefined,
-        cnpj: clienteData.cpfcnpj?.length > 14 ? clienteData.cpfcnpj.replace(/\D/g, "") : undefined,
-        razao_social: clienteData.nome || "Cliente Não Identificado",
-        email: clienteData.email || undefined,
-        endereco: {
-          logradouro: clienteData.endereco || "",
-          numero: clienteData.numero || "S/N",
-          bairro: clienteData.bairro || "",
-          codigo_municipio: clienteData.codigomunicipio || "", 
-          uf: clienteData.estado || "",
-          cep: clienteData.cep?.replace(/\D/g, "") || "",
-        }
-      },
-      servico: {
-        aliquota: 3, // Fallback if no specific config
-        discriminacao: descricaoCompleta,
-        iss_retido: "false", // Use string "false"
-        item_lista_servico: firstServico?.codigomunicipal || "0107", 
-        codigo_cnae: empresaData.cnae?.replace(/\D/g, "") || "829979900", // Mandatory for Joao Pessoa
-        valor_servicos: totalServicos,
-      }
-    };
+    // 3. Prepare parameters using Service Mapper
+    const nfseService = new NFSeService();
+    nfseService.configurarAmbiente(empresa.ambiente);
+    const emitirParams = nfseService.mapearOSParaFocus(os, empresa, itemServico);
 
     // 4. Send to Focus API
-    const nfseService = new NFSeService();
     const result = await nfseService.emitir(emitirParams);
+
+
+    require('fs').writeFileSync('focus_request_log.json', JSON.stringify({ params: emitirParams, result }, null, 2));
 
     // 5. Store in our Database
     const insercao = {
       ordemservicoid: os.id,
       clienteid: os.cliente.id,
       empresaid: empresa.id,
-      referencia,
+      referencia: emitirParams.referencia,
       status: result.ok ? result.status : "REJEITADA",
       erros: result.ok ? null : result.erros,
-      valor_total: totalServicos,
+      valor_total: emitirParams.servico.valor_servicos,
     };
+
 
     const { error: insertError } = await supabaseAdmin
       .from("nfse")

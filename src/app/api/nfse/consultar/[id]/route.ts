@@ -42,7 +42,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     // 2. Call Focus NFe API
+    const { data: empresa } = await supabaseAdmin.from("empresa").select("ambiente").limit(1).single();
     const nfseService = new NFSeService();
+    if (empresa) nfseService.configurarAmbiente(empresa.ambiente);
+
     const resultado = await nfseService.consultar(nfsDb.referencia);
 
     // 3. Update DB state

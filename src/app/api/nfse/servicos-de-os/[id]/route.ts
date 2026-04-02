@@ -44,11 +44,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { data: notas } = await supabaseAdmin
       .from("nfse")
       .select("id, referencia, status, erros")
-      .eq("ordemservicoid", osId);
+      .eq("ordemservicoid", osId)
+      .order("id", { ascending: false });
 
     // Mescla os dados
     const servicosMapeados = os.osservico.map((item: any) => {
-      const refPattern = `OS_${os.id}_SRV_${item.id}_`;
+      const refPattern = `OS_${os.id}_SRV_${item.servicoid}_`;
       const notaGerada = notas?.find((n: any) => n.referencia?.startsWith(refPattern));
 
       return {

@@ -1,0 +1,38 @@
+{
+  "params": {
+    "referencia": "OS_25_SRV_5_1775158545117",
+    "natureza_operacao": 1,
+    "optante_simples_nacional": false,
+    "prestador": {
+      "cnpj": "12260723000109",
+      "inscricao_municipal": "1094653",
+      "codigo_municipio": "2507507"
+    },
+    "tomador": {
+      "cpf": "70303429410",
+      "razao_social": "Consumidor Final",
+      "email": "luc1497@gmail.com",
+      "endereco": {
+        "logradouro": "Rua José Rodrigues Matos",
+        "numero": "S/N",
+        "bairro": "Planalto Boa Esperança",
+        "codigo_municipio": "2507507",
+        "uf": "PB",
+        "cep": "58065198"
+      }
+    },
+    "servico": {
+      "aliquota": 3,
+      "discriminacao": "1x Mão de obra - OS #25",
+      "iss_retido": false,
+      "item_lista_servico": "14.01",
+      "codigo_cnae": "452000100",
+      "valor_servicos": 1
+    }
+  },
+  "result": {
+    "ok": true,
+    "status": "processando_autorizacao",
+    "referencia": "OS_25_SRV_5_1775158545117"
+  }
+}

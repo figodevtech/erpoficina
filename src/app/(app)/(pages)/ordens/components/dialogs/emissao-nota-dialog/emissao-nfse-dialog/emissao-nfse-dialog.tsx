@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Zap, CheckCircle2 } from "lucide-react";
+import { Loader2, Zap, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function EmissaoNfseDialog({
   open,
@@ -73,82 +75,119 @@ export function EmissaoNfseDialog({
     }
   };
 
+  const hasRejection = servicos.some(s => s.notaFiscalStatus === "REJEITADA" || s.notaFiscalStatus === "ERRO");
+  const rejectionErrors = servicos
+    .filter(s => s.notaFiscalStatus === "REJEITADA" || s.notaFiscalStatus === "ERRO")
+    .map(s => s.notaFiscalErros)
+    .filter(Boolean);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-amber-500" /> Emissão de NFS-e por Serviço
+      <DialogContent className="sm:max-w-[700px] p-0">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <Zap className="h-5 w-5 text-amber-500 fill-amber-500" /> Emissão de NFS-e por Serviço
           </DialogTitle>
           <DialogDescription>
-            Abaixo estão os serviços atrelados a esta Ordem. Cada serviço pode ser gerado numa Nota Fiscal Eletrônica individual.
+            Cada serviço pode ser gerado em uma Nota Fiscal individual para cumprir requisitos fiscais. Você pode emitir novas notas quantas vezes desejar.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 overflow-x-auto max-h-[60vh] overflow-y-auto">
-          {fetching ? (
-            <div className="flex justify-center p-8"><Loader2 className="animate-spin h-6 w-6 text-primary" /></div>
-          ) : servicos.length === 0 ? (
-            <p className="text-sm text-center text-muted-foreground p-8">Nenhum serviço encontrado nesta OS.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status NFS-e</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {servicos.map((s, index) => {
-                  const valorTotal = (s.quantidade || 1) * (s.precounitario || 0);
-                  const status = s.notaFiscalStatus;
-                  const canEmit = !status || status === "REJEITADA" || status === "ERRO";
-
-                  return (
-                    <TableRow key={s.servicoid || index}>
-                      <TableCell className="font-medium">
-                        {s.quantidade}x {s.servico?.descricao || "Serviço Padrão"}
-                      </TableCell>
-                      <TableCell>
-                        R$ {valorTotal.toFixed(2).replace('.', ',')}
-                      </TableCell>
-                      <TableCell>
-                         {!status && <Badge variant="outline">Não emitido</Badge>}
-                         {status === "AUTORIZADA" && <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Autorizada</Badge>}
-                         {status === "PROCESSANDO" && <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Processando</Badge>}
-                         {(status === "REJEITADA" || status === "ERRO") && (
-                             <Badge variant="destructive" title={s.notaFiscalErros && JSON.stringify(s.notaFiscalErros)}>Rejeitada</Badge>
-                         )}
-                         {status && !["AUTORIZADA","PROCESSANDO","REJEITADA","ERRO"].includes(status) && (
-                            <Badge variant="secondary">{status}</Badge>
-                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {canEmit ? (
-                           <Button 
-                             size="sm" 
-                             disabled={loading} 
-                             onClick={() => handleEmitir(s.servicoid)}
-                           >
-                             Emitir Nota
-                           </Button>
-                        ) : (
-                           <Button size="sm" variant="ghost" disabled>
-                             <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" /> Emitida
-                           </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+        <div className="px-6 pb-6 space-y-4">
+          {hasRejection && (
+            <Alert variant="destructive" className="bg-destructive/5 border-destructive/20">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Rejeição Detectada</AlertTitle>
+              <AlertDescription className="text-xs">
+                {rejectionErrors.length > 0 
+                  ? "Alguns serviços foram rejeitados. Verifique se os dados do cliente (CPF/CNPJ, Endereço, CEP) estão corretos."
+                  : "Erro na comunicação com a FocusNFe ou dados inconsistentes."}
+              </AlertDescription>
+            </Alert>
           )}
+
+          <div className="rounded-xl border bg-card/50 overflow-hidden">
+            {fetching ? (
+              <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                <Loader2 className="animate-spin h-8 w-8 text-primary/60" />
+                <p className="text-sm text-muted-foreground animate-pulse">Carregando serviços...</p>
+              </div>
+            ) : servicos.length === 0 ? (
+              <p className="text-sm text-center text-muted-foreground p-12">Nenhum serviço encontrado nesta OS.</p>
+            ) : (
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="font-semibold">Serviço/Descrição</TableHead>
+                    <TableHead className="font-semibold text-right">Total (BRL)</TableHead>
+                    <TableHead className="font-semibold text-center">Status Fiscal</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {servicos.map((s, index) => {
+                    const valorTotal = (s.quantidade || 1) * (s.precounitario || 0);
+                    const status = s.notaFiscalStatus;
+                    const isProcessing = status === "PROCESSANDO";
+                    const isAuthorized = status === "AUTORIZADA";
+                    const isRejected = status === "REJEITADA" || status === "ERRO";
+                    
+                    const canEmit = !isProcessing; 
+
+                    return (
+                      <TableRow key={s.servicoid || index} className="group hover:bg-muted/30 transition-colors">
+                        <TableCell className="max-w-[250px]">
+                          <div className="font-medium line-clamp-2">
+                             {s.servico?.descricao || "Serviço Padrão"}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            Qtd: {s.quantidade} • Un: R$ {(s.precounitario || 0).toFixed(2)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-primary/80">
+                           {valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-center">
+                           {!status && <Badge variant="outline" className="opacity-60">Pendente</Badge>}
+                           {status === "AUTORIZADA" && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Autorizada</Badge>}
+                           {status === "PROCESSANDO" && <Badge className="bg-sky-500/10 text-sky-600 border-sky-500/20 animate-pulse">Processando</Badge>}
+                           {(status === "REJEITADA" || status === "ERRO") && (
+                             <TooltipProvider>
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <Badge variant="destructive" className="cursor-help transition-transform hover:scale-105">Rejeitada</Badge>
+                                 </TooltipTrigger>
+                                 <TooltipContent className="max-w-[300px] break-words">
+                                    {s.notaFiscalErros ? JSON.stringify(s.notaFiscalErros) : "Erro não detalhado"}
+                                 </TooltipContent>
+                               </Tooltip>
+                             </TooltipProvider>
+                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            size="sm" 
+                            disabled={loading || isProcessing} 
+                            onClick={() => handleEmitir(s.servicoid)}
+                            variant={isAuthorized ? "outline" : "default"}
+                            className="hover:scale-105 active:scale-95 transition-all text-xs"
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : null}
+                            {isAuthorized ? "Re-emitir Nota" : "Emitir Nota"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 bg-muted/30 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>

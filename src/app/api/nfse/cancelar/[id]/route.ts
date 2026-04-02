@@ -44,7 +44,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     // 2. Cancel on Focus NFe
+    const { data: empresa } = await supabaseAdmin.from("empresa").select("ambiente").limit(1).single();
     const nfseService = new NFSeService();
+    if (empresa) nfseService.configurarAmbiente(empresa.ambiente);
+
     const resultado = await nfseService.cancelar(nfsDb.referencia, justificativa);
 
     // 3. Update DB state

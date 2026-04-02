@@ -38,13 +38,27 @@ export class NFSeService {
   private token: string;
 
   constructor() {
-    this.token = process.env.FOCUS_NFE_API_TOKEN || "";
-    // Configura ambiente. Se houver var explícita usamos, senão homologacao.
-    this.apiUrl =
-      process.env.FOCUS_NFE_API_URL ||
-      (process.env.NODE_ENV === "production"
-        ? "https://api.focusnfe.com.br"
-        : "https://homologacao.focusnfe.com.br");
+    this.token = "";
+    this.apiUrl = "";
+  }
+
+  /**
+   * Configura o ambiente (Homologação ou Produção) baseado na coluna ambiente da tabela empresa.
+   * Chamado antes de qualquer emissão ou consulta.
+   */
+  configurarAmbiente(ambiente: "PRODUCAO" | "HOMOLOGACAO" | string) {
+    if (ambiente === "PRODUCAO") {
+      this.token = process.env.FOCUS_NFE_API_TOKEN || "";
+      this.apiUrl = "https://api.focusnfe.com.br";
+    } else {
+      this.token = process.env.FOCUS_NFE_API_TOKEN_HOMOLOGACAO || "";
+      this.apiUrl = "https://homologacao.focusnfe.com.br";
+    }
+
+    // Sobrescrita manual via env (se existir ainda para fins de debug local)
+    if (process.env.FOCUS_NFE_API_URL) {
+      this.apiUrl = process.env.FOCUS_NFE_API_URL;
+    }
   }
 
   private getAuthHeader() {
@@ -79,7 +93,7 @@ export class NFSeService {
     const json = await res.json().catch(() => null);
 
     if (!res.ok) {
-      let msg = json?.mensagem || json?.codigo || "Erro ao emitir NFS-e";
+      let msg = json?.mensagem || json?.codigo || `Erro ${res.status} ao emitir NFS-e`;
       const errosArr = json?.erros || (json ? [json] : []);
       
       if (errosArr.length > 0) {
@@ -171,4 +185,125 @@ export class NFSeService {
       status: json?.status,
     };
   }
+
+  async configurarEmpresa(empresa: any, certificadoBase64?: string, senhaCertificado?: string) {
+    if (!this.token) throw new Error("FOCUS_NFE_API_TOKEN não configurado.");
+
+    const cnpj = empresa.cnpj?.replace(/\D/g, "");
+    if (!cnpj) throw new Error("CNPJ é obrigatório para configurar empresa.");
+
+    const payload: any = {
+      cnpj: cnpj,
+      inscricao_municipal: empresa.inscricaomunicipal?.replace(/\D/g, "") || "",
+      inscricao_estadual: empresa.inscricaoestadual?.replace(/\D/g, "") || "",
+      nome_fantasia: empresa.nomefantasia || empresa.razaosocial,
+      razao_social: empresa.razaosocial,
+      email: empresa.email || "",
+      telefone: empresa.telefone?.replace(/\D/g, "") || "",
+      logradouro: empresa.endereco || "Não Informado",
+      numero: empresa.numero || "S/N",
+      complemento: empresa.complemento || "",
+      bairro: empresa.bairro || "Centro",
+      codigo_municipio: empresa.codigomunicipio || "",
+      uf: empresa.uf || "",
+      cep: empresa.cep?.replace(/\D/g, "") || "",
+      regime_tributario: empresa.regimetributario || 3, // Padrão: 3 (Regime Normal)
+      enviar_email_destinatario: false,
+    };
+
+    if (certificadoBase64 && senhaCertificado) {
+      payload.certificado_arquivo = certificadoBase64;
+      payload.certificado_senha = senhaCertificado;
+    }
+
+    // Try POST first
+    let res = await fetch(`${this.apiUrl}/v2/empresas`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: this.getAuthHeader(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    let json = await res.json().catch(() => null);
+
+    // If it already exists, use PUT
+    if (!res.ok && (json?.codigo === "cnpj_ja_cadastrado" || res.status === 400 || res.status === 422)) {
+      res = await fetch(`${this.apiUrl}/v2/empresas/${cnpj}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: this.getAuthHeader(),
+        },
+        body: JSON.stringify(payload),
+      });
+      json = await res.json().catch(() => null);
+    }
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        message: json?.mensagem || "Erro ao configurar empresa na FocusNFe",
+        erros: json?.erros || [json],
+      };
+    }
+
+    return {
+      ok: true,
+      message: "Empresa configurada com sucesso",
+      dados: json
+    };
+  }
+
+  /**
+   * Mapeia os dados do sistema para o formato esperado pela Focus NFe.
+   * Centraliza as regras de negócio de João Pessoa e sanitização.
+   */
+  mapearOSParaFocus(os: any, empresa: any, itemServico: any): NFSeEmitirParams {
+    const cliente = os.cliente;
+    const servico = itemServico.servico;
+
+    const q = itemServico.quantidade || 1;
+    const v = itemServico.precounitario || 0;
+    const val = q * v;
+
+    const referencia = `OS_${os.id}_SRV_${itemServico.servicoid}_${Date.now()}`;
+
+    return {
+
+      referencia,
+      natureza_operacao: 1, // Tributação no município
+      optante_simples_nacional: empresa.regimetributario === "1",
+      regime_especial_tributacao: empresa.regimetributario === "1" ? 6 : undefined, // 6 Microempresa Municipal (JP)
+      prestador: {
+        cnpj: empresa.cnpj?.replace(/\D/g, "") || "",
+        inscricao_municipal: empresa.inscricaomunicipal?.replace(/\D/g, "") || "",
+        codigo_municipio: empresa.codigomunicipio || "2507507", // João Pessoa fallback
+      },
+      tomador: {
+        cpf: cliente.cpfcnpj?.replace(/\D/g, "").length <= 11 ? cliente.cpfcnpj.replace(/\D/g, "") : undefined,
+        cnpj: cliente.cpfcnpj?.replace(/\D/g, "").length > 11 ? cliente.cpfcnpj.replace(/\D/g, "") : undefined,
+        razao_social: cliente.razaosocial || cliente.nome || "Consumidor Final",
+        email: cliente.email || undefined,
+        endereco: {
+          logradouro: (cliente.endereco || "Não Informado").substring(0, 100),
+          numero: cliente.numero || "S/N",
+          bairro: (cliente.bairro || "Centro").substring(0, 60),
+          codigo_municipio: cliente.codigomunicipio || empresa.codigomunicipio || "2507507",
+          uf: cliente.estado || empresa.uf || "PB",
+          cep: cliente.cep?.replace(/\D/g, "").substring(0, 8) || "58000000",
+        },
+      },
+      servico: {
+        aliquota: servico?.aliquota || 3,
+        discriminacao: `${q}x ${servico?.descricao || "Serviço"} - OS #${os.id}`,
+        iss_retido: false,
+        item_lista_servico: "14.01", // Padrão oficina mecânica João Pessoa
+        codigo_cnae: (empresa.cnae?.replace(/\D/g, "") || "4520001").padEnd(9, "0"),
+        valor_servicos: val,
+      },
+    };
+  }
 }
+
