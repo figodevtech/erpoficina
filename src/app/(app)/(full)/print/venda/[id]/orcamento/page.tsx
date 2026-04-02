@@ -46,8 +46,10 @@ function fmtPhone(value?: string | null) {
 function fmtDoc(value?: string | null) {
   if (!value) return EMPTY;
   const s = String(value).replace(/\D/g, "");
-  if (s.length === 11) return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-  if (s.length === 14) return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  if (s.length === 11)
+    return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (s.length === 14)
+    return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
   return value;
 }
 
@@ -61,7 +63,9 @@ function joinParts(parts: Array<string | null | undefined>, separator = ", ") {
 async function fetchEmpresa() {
   const { data, error } = await supabaseAdmin
     .from("empresa")
-    .select("nomefantasia, razaosocial, telefone, endereco, numero, complemento, bairro, uf, cep, cnpj")
+    .select(
+      "nomefantasia, razaosocial, telefone, endereco, numero, complemento, bairro, uf, cep, cnpj",
+    )
     .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -74,7 +78,9 @@ async function fetchEmpresa() {
   return data ?? null;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { id } = await params;
   return { title: `Orçamento de venda #${id}` };
 }
@@ -87,7 +93,8 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
 
   const { data: venda, error } = await supabaseAdmin
     .from("venda")
-    .select(`
+    .select(
+      `
       id,
       status,
       datavenda,
@@ -123,7 +130,8 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
           )
         )
       )
-    `)
+    `,
+    )
     .eq("id", vendaId)
     .single();
 
@@ -133,15 +141,26 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
   }
 
   const empresa = await fetchEmpresa();
-  const cliente = Array.isArray(venda.cliente) ? venda.cliente[0] : venda.cliente;
-  const empresaNome = empresa?.nomefantasia || empresa?.razaosocial || "Empresa";
+  const cliente = Array.isArray(venda.cliente)
+    ? venda.cliente[0]
+    : venda.cliente;
+  const empresaNome =
+    empresa?.nomefantasia || empresa?.razaosocial || "Empresa";
   const empresaEndereco = joinParts(
-    [empresa?.endereco, empresa?.numero ? `Nº ${empresa.numero}` : null, empresa?.complemento],
-    ", "
+    [
+      empresa?.endereco,
+      empresa?.numero ? `Nº ${empresa.numero}` : null,
+      empresa?.complemento,
+    ],
+    ", ",
   );
   const empresaLocal = joinParts(
-    [empresa?.bairro, empresa?.uf, empresa?.cep ? `CEP ${formatCep(empresa.cep)}` : null],
-    " • "
+    [
+      empresa?.bairro,
+      empresa?.uf,
+      empresa?.cep ? `CEP ${formatCep(empresa.cep)}` : null,
+    ],
+    " • ",
   );
 
   const clienteEndereco = joinParts(
@@ -150,7 +169,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
       cliente?.endereconumero ? `Nº ${cliente.endereconumero}` : null,
       cliente?.enderecocomplemento,
     ],
-    ", "
+    ", ",
   );
   const clienteLocal = joinParts(
     [
@@ -159,7 +178,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
       cliente?.estado,
       cliente?.cep ? `CEP ${formatCep(cliente.cep)}` : null,
     ],
-    " • "
+    " • ",
   );
 
   return (
@@ -291,7 +310,12 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
           <div className="text-xs font-bold">Visualização de orçamento</div>
         </div>
         <div className="flex flex-row items-center gap-2">
-          <Button asChild size="sm" variant="outline" className="hover:cursor-pointer hover:text-black">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="hover:cursor-pointer hover:text-black"
+          >
             <Link href="/historicovendas">
               <Power className="w-3 h-3" />
               Sair
@@ -305,7 +329,11 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
         <div className="header-os">
           <div className="logo-box">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={EMPRESA_LOGO_URL} alt="Logo da empresa" className="logo-img" />
+            <img
+              src={EMPRESA_LOGO_URL}
+              alt="Logo da empresa"
+              className="logo-img"
+            />
           </div>
 
           <div>
@@ -314,17 +342,21 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
               {empresaEndereco && <div>{empresaEndereco}</div>}
               {empresaLocal && <div>{empresaLocal}</div>}
               <div>
-                {empresa?.telefone && <span>Tel: {fmtPhone(empresa.telefone)}</span>}
+                {empresa?.telefone && (
+                  <span>Tel: {fmtPhone(empresa.telefone)}</span>
+                )}
                 {empresa?.cnpj && <span> • CNPJ: {fmtDoc(empresa.cnpj)}</span>}
               </div>
             </div>
           </div>
 
           <div className="os-header-box">
-            <div className="os-label">Orçamento PDV</div>
+            <div className="os-label ">Venda</div>
             <div className="os-numero">#{venda.id}</div>
             <Badge className="text-xs text-white" variant="outline">
-              {String(venda.status || "ORCAMENTO")}
+              {String(venda.status) === "PAGAMENTO"
+                ? "PEDIDO DE VENDA"
+                : String(venda.status)}
             </Badge>
           </div>
         </div>
@@ -333,7 +365,9 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
           <div className="meta-grid">
             <div className="meta-badge">
               <div className="label">Emitido em</div>
-              <div className="valor">{fmtDateTime(venda.datavenda || venda.createdat)}</div>
+              <div className="valor">
+                {fmtDateTime(venda.datavenda || venda.createdat)}
+              </div>
             </div>
             <div className="meta-badge">
               <div className="label">Itens</div>
@@ -420,7 +454,10 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
                     <td>{item.produto?.grupo?.nome || EMPTY}</td>
                     <td className="col-qtd">{item.quantidade}</td>
                     <td className="col-unit">
-                      {fmtMoney(Number(item.sub_total || 0) / Math.max(Number(item.quantidade || 1), 1))}
+                      {fmtMoney(
+                        Number(item.sub_total || 0) /
+                          Math.max(Number(item.quantidade || 1), 1),
+                      )}
                     </td>
                     <td className="col-sub">{fmtMoney(item.sub_total)}</td>
                   </tr>
@@ -436,7 +473,8 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
                 Observações
               </div>
               <div className="obs-texto">
-                Este orçamento foi salvo no PDV e pode ser convertido em venda posteriormente conforme o fluxo operacional.
+                Este orçamento foi salvo no PDV e pode ser convertido em venda
+                posteriormente conforme o fluxo operacional.
               </div>
             </div>
 
@@ -451,7 +489,9 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
               </div>
               <div className="linha-total-final">
                 <span className="total-label">Total</span>
-                <span className="total-valor">{fmtMoney(venda.valortotal)}</span>
+                <span className="total-valor">
+                  {fmtMoney(venda.valortotal)}
+                </span>
               </div>
             </div>
           </div>
