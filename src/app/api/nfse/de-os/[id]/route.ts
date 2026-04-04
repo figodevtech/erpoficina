@@ -95,7 +95,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     // 2. Validate Tomador (Client) Address mandatory fields (João Pessoa requirements)
     const clienteData = os.cliente as any;
     const requiredFields = {
+      nome: clienteData.nomerazaosocial,
       logradouro: clienteData.endereco,
+      numero: clienteData.endereconumero,
       bairro: clienteData.bairro,
       cep: clienteData.cep,
       uf: clienteData.estado || empresa.uf,

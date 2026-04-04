@@ -9,6 +9,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { supabase } from "@/lib/supabase";
 
 export function EmissaoNfseDialog({
   open,
@@ -31,6 +32,35 @@ export function EmissaoNfseDialog({
     } else {
       setServicos([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, osId]);
+
+  /**
+   * Assina atualizações em tempo real para refletir mudanças no status fiscal
+   */
+  useEffect(() => {
+    if (!open || !osId) return;
+
+    const channel = supabase
+      .channel(`nfse-servicos-os-${osId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "nfse",
+          filter: `ordemservicoid=eq.${osId}`,
+        },
+        () => {
+          console.log(`[EmissaoNfseDialog] Mudança na NFSe detectada. Recarregando serviços...`);
+          carregarServicos();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [open, osId]);
 
   const carregarServicos = async () => {
@@ -66,8 +96,8 @@ export function EmissaoNfseDialog({
       }
 
       toast.success("NFS-e registrada com sucesso!", { id: toastId });
-      carregarServicos();
       if (onAfterGenerate) onAfterGenerate();
+      onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message || "Erro de rede ao conectar à API", { id: toastId });
     } finally {

@@ -16,6 +16,7 @@ export type NFSeEmitirParams = {
     endereco?: {
       logradouro?: string;
       numero?: string;
+      complemento?: string;
       bairro?: string;
       codigo_municipio?: string;
       uf?: string;
@@ -70,8 +71,14 @@ export class NFSeService {
 
     const url = `${this.apiUrl}/v2/nfse?ref=${params.referencia}`;
 
+    const agora = new Date();
+    // Ajuste manual de Timezone para fuso Brasília (UTC-3)
+    // Isso evita que, à noite, o envio seja visto como "dia seguinte" pela prefeitura em UTC.
+    const brDate = new Date(agora.getTime() - (3 * 60 * 60 * 1000));
+    const dataEmissao = brDate.toISOString().substring(0, 19);
+
     const payload: any = {
-      data_emissao: new Date().toISOString(),
+      data_emissao: dataEmissao,
       prestador: params.prestador,
       tomador: params.tomador,
       servico: params.servico,
@@ -284,11 +291,12 @@ export class NFSeService {
       tomador: {
         cpf: cliente.cpfcnpj?.replace(/\D/g, "").length <= 11 ? cliente.cpfcnpj.replace(/\D/g, "") : undefined,
         cnpj: cliente.cpfcnpj?.replace(/\D/g, "").length > 11 ? cliente.cpfcnpj.replace(/\D/g, "") : undefined,
-        razao_social: cliente.razaosocial || cliente.nome || "Consumidor Final",
+        razao_social: cliente.nomerazaosocial || "Consumidor Final",
         email: cliente.email || undefined,
         endereco: {
           logradouro: (cliente.endereco || "Não Informado").substring(0, 100),
-          numero: cliente.numero || "S/N",
+          numero: cliente.endereconumero || "S/N",
+          complemento: (cliente.enderecocomplemento || "").substring(0, 100) || undefined,
           bairro: (cliente.bairro || "Centro").substring(0, 60),
           codigo_municipio: cliente.codigomunicipio || empresa.codigomunicipio || "2507507",
           uf: cliente.estado || empresa.uf || "PB",

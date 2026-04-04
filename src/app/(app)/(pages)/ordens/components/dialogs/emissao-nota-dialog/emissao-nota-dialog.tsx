@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import {
   Loader2,
   Receipt,
@@ -93,6 +94,8 @@ const nfeStatusClasses: Record<string, string> = {
   RASCUNHO: "bg-slate-600/15 text-slate-200",
   CANCELADA: "bg-amber-600/15 text-amber-300",
   CANCELADO: "bg-amber-600/15 text-amber-300",
+  PROCESSANDO: "bg-sky-600/15 text-sky-400 animate-pulse",
+  PROCESSANDO_AUTORIZACAO: "bg-sky-600/15 text-sky-400 animate-pulse",
 };
 
 function fmtDate(s?: string | null) {
@@ -133,6 +136,10 @@ function buildObservacao(nfe: NfeResumo): string {
 
   if (statusUpper === "RASCUNHO") {
     return "NF-e em rascunho. Ainda não foi enviada para a SEFAZ.";
+  }
+
+  if (statusUpper === "PROCESSANDO" || statusUpper === "PROCESSANDO_AUTORIZACAO") {
+    return "NFS-e em processamento na Focus NFe. Aguarde a autorização automática.";
   }
 
   return "Nenhuma observação registrada.";
@@ -276,8 +283,38 @@ export function EmissaoNotaDialog({
     return () => {
       ac.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-disable
   }, [canFetch, endpointListar]);
+
+  /**
+   * Assina atualizações em tempo real para as notas desta OS
+   */
+  useEffect(() => {
+    if (!open || !osId) return;
+
+    console.log(`[EmissaoNotaDialog] Subscribing to NFSe for OS #${osId}`);
+
+    const channel = supabase
+      .channel(`nfse-os-${osId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "nfse",
+          filter: `ordemservicoid=eq.${osId}`,
+        },
+        () => {
+          console.log(`[EmissaoNotaDialog] Update detected on NFSe for OS #${osId}. Refreshing...`);
+          fetchNfes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, osId]);
 
   const titulo = useMemo(() => {
     if (!origem || !origemId) return "Emissão de Nota Fiscal";
@@ -464,11 +501,12 @@ export function EmissaoNotaDialog({
                     const isAutorizada = statusUpper === "AUTORIZADA" || statusUpper === "AUTORIZADO" || statusUpper === "EMITIDA";
                     const isRejeitada = statusUpper === "REJEITADA";
                     const isCancelada = statusUpper === "CANCELADA" || statusUpper === "CANCELADO";
+                    const isProcessing = statusUpper === "PROCESSANDO" || statusUpper === "PROCESSANDO_AUTORIZACAO";
 
                     const observacao = buildObservacao(nfe);
 
                     return (
-                      <li key={nfe.id}>
+                      <li key={`${nfe.modelo}-${nfe.id}`}>
                         {idx > 0 && <Separator className="my-3" />}
 
                         <div className="flex items-start p-3 hover:bg-muted/15 rounded-xl relative">
@@ -741,6 +779,8 @@ export function EmissaoNotaDialog({
                               <XCircle className="h-5 w-5 text-red-400" />
                             ) : isCancelada ? (
                               <AlertCircle className="h-5 w-5 text-amber-400" />
+                            ) : isProcessing ? (
+                              <Loader2 className="h-5 w-5 text-sky-400 animate-spin" />
                             ) : (
                               <Info className="h-5 w-5 text-muted-foreground" />
                             )}
