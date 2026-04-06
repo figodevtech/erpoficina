@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import {
   Loader2,
   Receipt,
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 import { AutorizarNfeButton } from "./autorizarNfe-button";
 import { GerarNotaDeOsDialog } from "./gerarNotaDeOsDialog/gerarNotaDeOsDialog";
+import { EmissaoNfseDialog } from "./emissao-nfse-dialog/emissao-nfse-dialog";
 import { CancelarNfeButton } from "./cancelarNfeButton";
 import {
   DropdownMenu,
@@ -34,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ExcluirRascunhoNfeButton } from "./excluirRascunhoNfeButton";
+import { CancelarNotaDialog } from "./cancelar-nota-dialog";
 
 type NfeResumo = {
   id: number;
@@ -58,6 +61,8 @@ type NfeResumo = {
   createdat: string | null;
   updatedat: string | null;
   empresaid: number | null;
+  url_pdf?: string;
+  codigo_verificacao?: string;
 };
 
 type ListarNfeResponsePorOs = {
@@ -83,9 +88,14 @@ type ListarNfeResponsePorEntrada = {
 
 const nfeStatusClasses: Record<string, string> = {
   AUTORIZADA: "bg-emerald-600/15 text-emerald-400",
+  AUTORIZADO: "bg-emerald-600/15 text-emerald-400",
+  EMITIDA: "bg-emerald-600/15 text-emerald-400",
   REJEITADA: "bg-red-600/15 text-red-400",
   RASCUNHO: "bg-slate-600/15 text-slate-200",
   CANCELADA: "bg-amber-600/15 text-amber-300",
+  CANCELADO: "bg-amber-600/15 text-amber-300",
+  PROCESSANDO: "bg-sky-600/15 text-sky-400 animate-pulse",
+  PROCESSANDO_AUTORIZACAO: "bg-sky-600/15 text-sky-400 animate-pulse",
 };
 
 function fmtDate(s?: string | null) {
@@ -105,14 +115,14 @@ function fmtMoney(v: number | null | undefined) {
 function buildObservacao(nfe: NfeResumo): string {
   const statusUpper = (nfe.status || "").toUpperCase();
 
-  if (statusUpper === "CANCELADA") {
+  if (statusUpper === "CANCELADA" || statusUpper === "CANCELADO") {
     if (nfe.justificativacancelamento && nfe.justificativacancelamento.trim()) {
       return `NF-e cancelada. Justificativa: ${nfe.justificativacancelamento}`;
     }
     return "NF-e cancelada. Nenhuma justificativa registrada.";
   }
 
-  if (statusUpper === "AUTORIZADA") {
+  if (statusUpper === "AUTORIZADA" || statusUpper === "AUTORIZADO" || statusUpper === "EMITIDA") {
     const base = "NF-e autorizada pela SEFAZ.";
     if (nfe.protocolo) {
       return `${base} Protocolo: ${nfe.protocolo}.`;
@@ -126,6 +136,10 @@ function buildObservacao(nfe: NfeResumo): string {
 
   if (statusUpper === "RASCUNHO") {
     return "NF-e em rascunho. Ainda não foi enviada para a SEFAZ.";
+  }
+
+  if (statusUpper === "PROCESSANDO" || statusUpper === "PROCESSANDO_AUTORIZACAO") {
+    return "NFS-e em processamento na Focus NFe. Aguarde a autorização automática.";
   }
 
   return "Nenhuma observação registrada.";
@@ -153,7 +167,11 @@ export function EmissaoNotaDialog({
   const [loading, setLoading] = useState(false);
   const [nfes, setNfes] = useState<NfeResumo[] | null>(null);
   const [openGerarNfe, setOpenGerarNfe] = useState(false);
+  const [openGerarNfse, setOpenGerarNfse] = useState(false);
   const [generatingEntryParams, setGeneratingEntryParams] = useState(false);
+  const [ambienteEmpresa, setAmbienteEmpresa] = useState<string | null>(null);
+  const [openCancelNfseDialog, setOpenCancelNfseDialog] = useState(false);
+  const [selectedNfseId, setSelectedNfseId] = useState<number | null>(null);
 
   const origem = osId ? "OS" : vendaId ? "VENDA" : entradaId ? "ENTRADA" : null;
   const origemId = osId ?? vendaId ?? entradaId ?? null;
@@ -188,13 +206,46 @@ export function EmissaoNotaDialog({
 
       if (!res.ok || !json?.ok) {
         const msg =
-          (json as any)?.message ||
-          `Erro ao buscar NF-e (HTTP ${res.status}).`;
+          (json as any)?.message || `Erro ao buscar NF-e (HTTP ${res.status}).`;
         throw new Error(msg);
       }
 
+      let fetchedNfes = (json as any).nfes ?? [];
+
+      if (origem === "OS" && osId) {
+        const nfseRes = await fetch(`/api/nfse/por-os/${osId}`, { signal });
+        const nfseJson = await nfseRes.json().catch(() => null);
+        const mappedNfses = (nfseJson?.nfses ?? []).map((n: any) => ({
+          id: n.id,
+          modelo: "NFSE",
+          serie: null,
+          numero: n.numero || null,
+          chave_acesso: n.referencia,
+          ambiente: "Produção / Sefaz",
+          status: n.status || null,
+          ordemservicoid: n.ordemservicoid,
+          vendaid: null,
+          clienteid: n.clienteid,
+          dataemissao: n.dataemissao,
+          dataautorizacao: n.status === "AUTORIZADO" ? n.updatedat : null,
+          protocolo: n.protocolo || null,
+          total_produtos: 0,
+          total_servicos: n.valor_total || 0,
+          total_nfe: n.valor_total || 0,
+          justificativacancelamento: n.erros ? JSON.stringify(n.erros) : null,
+          createdat: n.createdat,
+          empresaid: n.empresaid,
+          url_pdf: n.url_pdf,
+        }));
+        fetchedNfes = [...fetchedNfes, ...mappedNfses].sort(
+          (a, b) =>
+            new Date(b.createdat || 0).getTime() -
+            new Date(a.createdat || 0).getTime(),
+        );
+      }
+
       if (!signal?.aborted) {
-        setNfes((json as any).nfes ?? []);
+        setNfes(fetchedNfes);
       }
     } catch (e: any) {
       if (e?.name === "AbortError") return;
@@ -210,47 +261,94 @@ export function EmissaoNotaDialog({
     }
   };
 
+  const fetchEmpresa = async () => {
+    try {
+      const res = await fetch("/api/empresa");
+      const json = await res.json();
+      if (json.ok && json.empresas?.length > 0) {
+        setAmbienteEmpresa(json.empresas[0].ambiente);
+      }
+    } catch (e) {
+      console.error("Erro ao buscar ambiente da empresa:", e);
+    }
+  };
+
   useEffect(() => {
     if (!canFetch) return;
 
     const ac = new AbortController();
     fetchNfes(ac.signal);
+    fetchEmpresa();
 
     return () => {
       ac.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-disable
   }, [canFetch, endpointListar]);
+
+  /**
+   * Assina atualizações em tempo real para as notas desta OS
+   */
+  useEffect(() => {
+    if (!open || !osId) return;
+
+    console.log(`[EmissaoNotaDialog] Subscribing to NFSe for OS #${osId}`);
+
+    const channel = supabase
+      .channel(`nfse-os-${osId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "nfse",
+          filter: `ordemservicoid=eq.${osId}`,
+        },
+        () => {
+          console.log(`[EmissaoNotaDialog] Update detected on NFSe for OS #${osId}. Refreshing...`);
+          fetchNfes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, osId]);
 
   const titulo = useMemo(() => {
     if (!origem || !origemId) return "Emissão de Nota Fiscal";
     if (origem === "OS") return `Emissão de Nota Fiscal - OS #${origemId}`;
-    if (origem === "VENDA") return `Emissão de Nota Fiscal - Venda #${origemId}`;
+    if (origem === "VENDA")
+      return `Emissão de Nota Fiscal - Venda #${origemId}`;
     return `Emissão de Nota Fiscal - Entrada #${origemId}`;
   }, [origem, origemId]);
 
   const handleGerarNotaEntrada = async () => {
-      if (!entradaId) return;
-      try {
-          setGeneratingEntryParams(true);
-          const res = await fetch(`/api/nfe/de-entrada/${entradaId}/gerar-rascunho`, {
-              method: "POST"
-          });
-          const json = await res.json().catch(() => ({}));
-          
-          if (!res.ok || !json.ok) {
-              toast.error(json.message || "Erro ao gerar nota da entrada");
-              return;
-          }
-          
-          toast.success("Rascunho criado com sucesso!");
-          fetchNfes();
-      } catch (err) {
-          console.error(err);
-          toast.error("Erro ao gerar nota.");
-      } finally {
-          setGeneratingEntryParams(false);
+    if (!entradaId) return;
+    try {
+      setGeneratingEntryParams(true);
+      const res = await fetch(
+        `/api/nfe/de-entrada/${entradaId}/gerar-rascunho`,
+        {
+          method: "POST",
+        },
+      );
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json.ok) {
+        toast.error(json.message || "Erro ao gerar nota da entrada");
+        return;
       }
+
+      toast.success("Rascunho criado com sucesso!");
+      fetchNfes();
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar nota.");
+    } finally {
+      setGeneratingEntryParams(false);
+    }
   };
 
   return (
@@ -285,12 +383,29 @@ export function EmissaoNotaDialog({
           </DialogClose>
 
           <DialogHeader className="px-5 pt-5 pb-3 border-b-1">
-            <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-primary" />
-              {titulo}
+            <DialogTitle className="flex items-center justify-between gap-2 pr-4">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-primary" />
+                {titulo}
+              </div>
+
+              {ambienteEmpresa && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] uppercase font-bold py-0 h-5 ${
+                    ambienteEmpresa === "PRODUCAO"
+                      ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                      : "bg-amber-500/15 text-amber-600 border-amber-500/30"
+                  }`}
+                >
+                  Ambiente:{" "}
+                  {ambienteEmpresa === "PRODUCAO" ? "PRODUÇÃO" : "HOMOLOGAÇÃO"}
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>
-              Visualize as NF-e vinculadas e gere novas NF-e a partir dos produtos.
+              Visualize as NF-e vinculadas e gere novas NF-e a partir dos
+              produtos.
             </DialogDescription>
 
             {!!origemId && (
@@ -304,21 +419,41 @@ export function EmissaoNotaDialog({
                   <RotateCw className={loading ? "animate-spin" : ""} />
                 </Button>
 
-                <Button
-                  disabled={loading || generatingEntryParams}
-                  variant="secondary"
-                  onClick={() => {
+                <div className="flex gap-2">
+                  <Button
+                    disabled={loading || generatingEntryParams}
+                    variant="secondary"
+                    onClick={() => {
                       if (origem === "ENTRADA") {
-                          handleGerarNotaEntrada();
+                        handleGerarNotaEntrada();
                       } else {
-                          setOpenGerarNfe(true);
+                        setOpenGerarNfe(true);
                       }
-                  }}
-                  className="text-xs hover:cursor-pointer"
-                >
-                  {generatingEntryParams && <Loader2 className="animate-spin mr-2 h-3 w-3" />}
-                  <Plus className={generatingEntryParams ? "hidden" : ""} /> Nova Nota
-                </Button>
+                    }}
+                    className="text-xs hover:cursor-pointer"
+                  >
+                    {generatingEntryParams && (
+                      <Loader2 className="animate-spin mr-2 h-3 w-3" />
+                    )}
+                    <Plus
+                      className={
+                        generatingEntryParams ? "hidden" : "h-4 w-4 mr-1"
+                      }
+                    />{" "}
+                    NF-e (Produto)
+                  </Button>
+
+                  {origem === "OS" && (
+                    <Button
+                      disabled={loading || generatingEntryParams}
+                      variant="secondary"
+                      onClick={() => setOpenGerarNfse(true)}
+                      className="text-xs hover:cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> NFS-e (Serviço)
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </DialogHeader>
@@ -348,7 +483,8 @@ export function EmissaoNotaDialog({
                 <div>
                   <div className="font-medium">Nenhuma NF-e encontrada</div>
                   <div className="text-muted-foreground text-xs">
-                    Clique em <b>Nova Nota</b> para gerar um rascunho a partir dos produtos.
+                    Clique em <b>Nova Nota</b> para gerar um rascunho a partir
+                    dos produtos.
                   </div>
                 </div>
               </div>
@@ -362,14 +498,15 @@ export function EmissaoNotaDialog({
                     const statusClass =
                       nfeStatusClasses[statusUpper] || "bg-muted/40";
 
-                    const isAutorizada = statusUpper === "AUTORIZADA";
+                    const isAutorizada = statusUpper === "AUTORIZADA" || statusUpper === "AUTORIZADO" || statusUpper === "EMITIDA";
                     const isRejeitada = statusUpper === "REJEITADA";
-                    const isCancelada = statusUpper === "CANCELADA";
+                    const isCancelada = statusUpper === "CANCELADA" || statusUpper === "CANCELADO";
+                    const isProcessing = statusUpper === "PROCESSANDO" || statusUpper === "PROCESSANDO_AUTORIZACAO";
 
                     const observacao = buildObservacao(nfe);
 
                     return (
-                      <li key={nfe.id}>
+                      <li key={`${nfe.modelo}-${nfe.id}`}>
                         {idx > 0 && <Separator className="my-3" />}
 
                         <div className="flex items-start p-3 hover:bg-muted/15 rounded-xl relative">
@@ -385,73 +522,8 @@ export function EmissaoNotaDialog({
                             </DropdownMenuTrigger>
 
                             <DropdownMenuContent>
-                              {nfe.status === "RASCUNHO" && (
+                              {nfe.modelo === "NFSE" ? (
                                 <div className="flex flex-col gap-1">
-                                  <AutorizarNfeButton
-                                    nfeId={nfe.id}
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs hover:cursor-pointer"
-                                    onAfterAuthorize={() => fetchNfes()}
-                                  >
-                                    Autorizar NF-e
-                                  </AutorizarNfeButton>
-
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs hover:cursor-pointer"
-                                    onClick={() =>
-                                      window.open(
-                                        `/nfe/${nfe.id}/danfe`,
-                                        "_blank",
-                                        "noopener,noreferrer"
-                                      )
-                                    }
-                                  >
-                                    Ver DANFE
-                                  </Button>
-
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs hover:cursor-pointer"
-                                    onClick={() =>
-                                      window.open(
-                                        `/nfe/${nfe.id}/editor`,
-                                        "_blank",
-                                        "noopener,noreferrer"
-                                      )
-                                    }
-                                  >
-                                    Editar XML
-                                  </Button>
-
-                                  <ExcluirRascunhoNfeButton
-                                    nfeId={nfe.id}
-                                    status={nfe.status ?? ""}
-                                    onAfterDelete={() => fetchNfes()}
-                                  />
-                                </div>
-                              )}
-
-                              {nfe.status === "AUTORIZADA" && (
-                                <div className="flex flex-col gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs hover:cursor-pointer"
-                                    onClick={() =>
-                                      window.open(
-                                        `/nfe/${nfe.id}/danfe`,
-                                        "_blank",
-                                        "noopener,noreferrer"
-                                      )
-                                    }
-                                  >
-                                    Ver DANFE
-                                  </Button>
-
                                   <Button
                                     className="text-xs hover:cursor-pointer"
                                     variant="outline"
@@ -460,95 +532,242 @@ export function EmissaoNotaDialog({
                                       toast(
                                         <div className="flex flex-row flex-nowrap items-center gap-2">
                                           <Loader2 className="w-4 h-4 animate-spin" />
-                                          <span>Consultando Nota Fiscal</span>
-                                        </div>
+                                          <span>Consultando NFS-e</span>
+                                        </div>,
                                       );
-
                                       const res = await fetch(
-                                        `/api/nfe/consultar/${nfe.id}`,
-                                        { method: "POST" }
+                                        `/api/nfse/consultar/${nfe.id}`,
+                                        { method: "POST" },
                                       );
-                                      const json = await res.json().catch(() => null);
-
+                                      const json = await res
+                                        .json()
+                                        .catch(() => null);
                                       if (!res.ok || !json?.ok) {
                                         toast.error(
                                           json?.message ||
-                                            "Erro ao consultar NF-e na SEFAZ."
+                                            "Erro ao consultar NFS-e.",
                                         );
                                         return;
                                       }
-
                                       toast.success(
-                                        `SEFAZ: ${json.sefaz?.cStat} - ${
-                                          json.sefaz?.xMotivo || ""
-                                        }`
+                                        `SEFAZ (API Focus): ${json.status || ""}`,
                                       );
+                                      fetchNfes();
                                     }}
                                   >
-                                    Consultar NF-e
+                                    Consultar NFS-e
                                   </Button>
 
-                                  <CancelarNfeButton
-                                    nfeId={nfe.id}
-                                    status={nfe.status}
-                                    onAfterCancel={() => fetchNfes()}
-                                  />
-                                </div>
-                              )}
+                                  {isAutorizada && (
+                                    <Button
+                                      className="text-xs hover:cursor-pointer text-destructive border-destructive"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedNfseId(nfe.id);
+                                        setOpenCancelNfseDialog(true);
+                                      }}
+                                    >
+                                      Cancelar NFS-e
+                                    </Button>
+                                  )}
 
-                              {nfe.status === "CANCELADA" && (
-                                <div className="flex flex-col gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs hover:cursor-pointer"
-                                    onClick={() =>
-                                      window.open(
-                                        `/nfe/${nfe.id}/danfe`,
-                                        "_blank",
-                                        "noopener,noreferrer"
-                                      )
-                                    }
-                                  >
-                                    Ver DANFE
-                                  </Button>
-
-                                  <Button
-                                    className="text-xs hover:cursor-pointer"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={async () => {
-                                      toast(
-                                        <div className="flex flex-row flex-nowrap items-center gap-2">
-                                          <Loader2 className="w-4 h-4 animate-spin" />
-                                          <span>Consultando Nota Fiscal</span>
-                                        </div>
-                                      );
-
-                                      const res = await fetch(
-                                        `/api/nfe/consultar/${nfe.id}`,
-                                        { method: "POST" }
-                                      );
-                                      const json = await res.json().catch(() => null);
-
-                                      if (!res.ok || !json?.ok) {
-                                        toast.error(
-                                          json?.message ||
-                                            "Erro ao consultar NF-e na SEFAZ."
-                                        );
-                                        return;
+                                  {nfe.url_pdf && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-xs hover:cursor-pointer"
+                                      onClick={() =>
+                                        window.open(nfe.url_pdf, "_blank")
                                       }
+                                    >
+                                      Baixar NFS-e (PDF)
+                                    </Button>
+                                  )}
 
-                                      toast.success(
-                                        `SEFAZ: ${json.sefaz?.cStat} - ${
-                                          json.sefaz?.xMotivo || ""
-                                        }`
-                                      );
-                                    }}
-                                  >
-                                    Consultar NF-e
-                                  </Button>
+                                  {!nfe.url_pdf &&
+                                    statusUpper === "CANCELADA" && (
+                                      <span className="text-xs px-2 py-1 text-muted-foreground text-center">
+                                        Nota Cancelada.
+                                      </span>
+                                    )}
                                 </div>
+                              ) : (
+                                <>
+                                  {nfe.status === "RASCUNHO" && (
+                                    <div className="flex flex-col gap-1">
+                                      <AutorizarNfeButton
+                                        nfeId={nfe.id}
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs hover:cursor-pointer"
+                                        onAfterAuthorize={() => fetchNfes()}
+                                      >
+                                        Autorizar NF-e
+                                      </AutorizarNfeButton>
+
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs hover:cursor-pointer"
+                                        onClick={() =>
+                                          window.open(
+                                            `/nfe/${nfe.id}/danfe`,
+                                            "_blank",
+                                            "noopener,noreferrer",
+                                          )
+                                        }
+                                      >
+                                        Ver DANFE
+                                      </Button>
+
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs hover:cursor-pointer"
+                                        onClick={() =>
+                                          window.open(
+                                            `/nfe/${nfe.id}/editor`,
+                                            "_blank",
+                                            "noopener,noreferrer",
+                                          )
+                                        }
+                                      >
+                                        Editar XML
+                                      </Button>
+
+                                      <ExcluirRascunhoNfeButton
+                                        nfeId={nfe.id}
+                                        status={nfe.status ?? ""}
+                                        onAfterDelete={() => fetchNfes()}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {nfe.status === "AUTORIZADA" && (
+                                    <div className="flex flex-col gap-1">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs hover:cursor-pointer"
+                                        onClick={() =>
+                                          window.open(
+                                            `/nfe/${nfe.id}/danfe`,
+                                            "_blank",
+                                            "noopener,noreferrer",
+                                          )
+                                        }
+                                      >
+                                        Ver DANFE
+                                      </Button>
+
+                                      <Button
+                                        className="text-xs hover:cursor-pointer"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={async () => {
+                                          toast(
+                                            <div className="flex flex-row flex-nowrap items-center gap-2">
+                                              <Loader2 className="w-4 h-4 animate-spin" />
+                                              <span>
+                                                Consultando Nota Fiscal
+                                              </span>
+                                            </div>,
+                                          );
+
+                                          const res = await fetch(
+                                            `/api/nfe/consultar/${nfe.id}`,
+                                            { method: "POST" },
+                                          );
+                                          const json = await res
+                                            .json()
+                                            .catch(() => null);
+
+                                          if (!res.ok || !json?.ok) {
+                                            toast.error(
+                                              json?.message ||
+                                                "Erro ao consultar NF-e na SEFAZ.",
+                                            );
+                                            return;
+                                          }
+
+                                          toast.success(
+                                            `SEFAZ: ${json.sefaz?.cStat} - ${
+                                              json.sefaz?.xMotivo || ""
+                                            }`,
+                                          );
+                                        }}
+                                      >
+                                        Consultar NF-e
+                                      </Button>
+
+                                      <CancelarNfeButton
+                                        nfeId={nfe.id}
+                                        status={nfe.status}
+                                        onAfterCancel={() => fetchNfes()}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {nfe.status === "CANCELADA" && (
+                                    <div className="flex flex-col gap-1">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs hover:cursor-pointer"
+                                        onClick={() =>
+                                          window.open(
+                                            `/nfe/${nfe.id}/danfe`,
+                                            "_blank",
+                                            "noopener,noreferrer",
+                                          )
+                                        }
+                                      >
+                                        Ver DANFE
+                                      </Button>
+
+                                      <Button
+                                        className="text-xs hover:cursor-pointer"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={async () => {
+                                          toast(
+                                            <div className="flex flex-row flex-nowrap items-center gap-2">
+                                              <Loader2 className="w-4 h-4 animate-spin" />
+                                              <span>
+                                                Consultando Nota Fiscal
+                                              </span>
+                                            </div>,
+                                          );
+
+                                          const res = await fetch(
+                                            `/api/nfe/consultar/${nfe.id}`,
+                                            { method: "POST" },
+                                          );
+                                          const json = await res
+                                            .json()
+                                            .catch(() => null);
+
+                                          if (!res.ok || !json?.ok) {
+                                            toast.error(
+                                              json?.message ||
+                                                "Erro ao consultar NF-e na SEFAZ.",
+                                            );
+                                            return;
+                                          }
+
+                                          toast.success(
+                                            `SEFAZ: ${json.sefaz?.cStat} - ${
+                                              json.sefaz?.xMotivo || ""
+                                            }`,
+                                          );
+                                        }}
+                                      >
+                                        Consultar NF-e
+                                      </Button>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -560,6 +779,8 @@ export function EmissaoNotaDialog({
                               <XCircle className="h-5 w-5 text-red-400" />
                             ) : isCancelada ? (
                               <AlertCircle className="h-5 w-5 text-amber-400" />
+                            ) : isProcessing ? (
+                              <Loader2 className="h-5 w-5 text-sky-400 animate-spin" />
                             ) : (
                               <Info className="h-5 w-5 text-muted-foreground" />
                             )}
@@ -568,7 +789,8 @@ export function EmissaoNotaDialog({
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="font-medium">
-                                NF-e {nfe.numero ?? "—"}
+                                {nfe.modelo === "NFSE" ? "NFS-e" : "NF-e"}{" "}
+                                {nfe.numero ?? "—"}
                                 {nfe.serie ? `/Série ${nfe.serie}` : ""}
                               </div>
 
@@ -577,7 +799,10 @@ export function EmissaoNotaDialog({
                               </Badge>
 
                               {nfe.ambiente && (
-                                <Badge variant="outline" className="text-[10px]">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px]"
+                                >
                                   {nfe.ambiente}
                                 </Badge>
                               )}
@@ -591,10 +816,12 @@ export function EmissaoNotaDialog({
                                 Emissão: {fmtDate(nfe.dataemissao)}{" "}
                                 {nfe.dataautorizacao && (
                                   <>
-                                    {" · "}Autorização: {fmtDate(nfe.dataautorizacao)}
+                                    {" · "}Autorização:{" "}
+                                    {fmtDate(nfe.dataautorizacao)}
                                   </>
                                 )}{" "}
-                                {" · "}Total NF-e: <b>{fmtMoney(nfe.total_nfe)}</b>
+                                {" · "}Total NF-e:{" "}
+                                <b>{fmtMoney(nfe.total_nfe)}</b>
                               </div>
 
                               {nfe.chave_acesso && (
@@ -606,12 +833,16 @@ export function EmissaoNotaDialog({
                                 </div>
                               )}
 
-                              {nfe.protocolo && <div>Protocolo: {nfe.protocolo}</div>}
+                              {nfe.protocolo && (
+                                <div>Protocolo: {nfe.protocolo}</div>
+                              )}
                             </div>
 
                             <div className="mt-2 text-xs">
                               <span className="font-medium">Observações: </span>
-                              <span className="text-muted-foreground">{observacao}</span>
+                              <span className="text-muted-foreground">
+                                {observacao}
+                              </span>
                             </div>
 
                             {nfe.createdat && (
@@ -642,6 +873,26 @@ export function EmissaoNotaDialog({
             onAfterGenerate={() => fetchNfes()}
           />
         )}
+
+        {!!origemId && origem === "OS" && (
+          <EmissaoNfseDialog
+            open={openGerarNfse}
+            onOpenChange={(v) => {
+              setOpenGerarNfse(v);
+              if (!v) fetchNfes();
+            }}
+            osId={osId ?? null}
+            onAfterGenerate={() => fetchNfes()}
+          />
+        )}
+
+        <CancelarNotaDialog
+          open={openCancelNfseDialog}
+          onOpenChange={setOpenCancelNfseDialog}
+          tipo="NFSE"
+          id={selectedNfseId ?? 0}
+          onSuccess={() => fetchNfes()}
+        />
       </DialogContent>
     </Dialog>
   );

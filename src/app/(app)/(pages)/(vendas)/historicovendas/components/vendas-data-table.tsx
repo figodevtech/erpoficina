@@ -1,8 +1,21 @@
 ﻿"use client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Clock,
   ChevronDown,
@@ -21,7 +34,13 @@ import {
   MoreHorizontal,
   FileText,
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,7 +75,12 @@ interface VendasDataTableProps {
   isLoading: boolean;
   pagination: Pagination;
   search: string;
-  handleGetVendas: (pageNumber?: number, limit?: number, searchText?: string, status?: vendaStatus | "TODOS") => void;
+  handleGetVendas: (
+    pageNumber?: number,
+    limit?: number,
+    searchText?: string,
+    status?: vendaStatus | "TODOS",
+  ) => void;
   fetchStatusCounts: () => void;
   status: vendaStatus | "TODOS";
 
@@ -67,12 +91,20 @@ interface VendasDataTableProps {
   setIsOpen: (value: boolean) => void;
 }
 
-type ApprovalPaymentMethod = "CREDITO" | "DEBITO" | "DINHEIRO" | "PIX" | "NAO_INFORMAR";
+type ApprovalPaymentMethod =
+  | "CREDITO"
+  | "DEBITO"
+  | "DINHEIRO"
+  | "PIX"
+  | "NAO_INFORMAR";
 
 const getStatusBadge = (status: vendaStatus) => {
   if (status === "ORCAMENTO") {
     return (
-      <Badge variant="secondary" className="text-xs bg-violet-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-violet-600 not-dark:text-white"
+      >
         <FileText className="h-3 w-3 mr-1" />
         ORÇAMENTO
       </Badge>
@@ -88,9 +120,16 @@ const getStatusBadge = (status: vendaStatus) => {
     );
   }
 
-  if (status === "PAGAMENTO" || status === "PENDENTE" || status === "AUTORIZADO") {
+  if (
+    status === "PAGAMENTO" ||
+    status === "PENDENTE" ||
+    status === "AUTORIZADO"
+  ) {
     return (
-      <Badge variant="secondary" className="text-xs bg-yellow-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-yellow-600 not-dark:text-white"
+      >
         <CreditCard className="h-3 w-3 mr-1" />
         {status}
       </Badge>
@@ -99,7 +138,10 @@ const getStatusBadge = (status: vendaStatus) => {
 
   if (status === "PAGO") {
     return (
-      <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-emerald-600 not-dark:text-white"
+      >
         <Check className="h-3 w-3 mr-1" />
         PAGO
       </Badge>
@@ -108,7 +150,10 @@ const getStatusBadge = (status: vendaStatus) => {
 
   if (status === "FINALIZADA") {
     return (
-      <Badge variant="secondary" className="text-xs bg-gray-800 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-gray-800 not-dark:text-white"
+      >
         <Check className="h-3 w-3 mr-1" />
         FINALIZADA
       </Badge>
@@ -117,7 +162,10 @@ const getStatusBadge = (status: vendaStatus) => {
 
   if (status === "CANCELADA" || status === "CANCELADO") {
     return (
-      <Badge variant="secondary" className="text-xs bg-red-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-red-600 not-dark:text-white"
+      >
         <AlertCircle className="h-3 w-3 mr-1" />
         {status}
       </Badge>
@@ -134,19 +182,28 @@ const getCanalBadge = (canal: VendaCanal | string | null | undefined) => {
   const c = String(canal || "").toUpperCase();
   if (c === "ONLINE") {
     return (
-      <Badge variant="secondary" className="text-xs bg-sky-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-sky-600 not-dark:text-white"
+      >
         ONLINE
       </Badge>
     );
   }
   return (
-    <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
+    <Badge
+      variant="secondary"
+      className="text-xs bg-emerald-600 not-dark:text-white"
+    >
       PDV
     </Badge>
   );
 };
 
-const getEntregaBadge = (canal: VendaCanal | string | null | undefined, statusEntrega?: string | null) => {
+const getEntregaBadge = (
+  canal: VendaCanal | string | null | undefined,
+  statusEntrega?: string | null,
+) => {
   const c = String(canal || "").toUpperCase();
   if (c !== "ONLINE") {
     return <span className="text-xs text-muted-foreground">-</span>;
@@ -163,7 +220,10 @@ const getEntregaBadge = (canal: VendaCanal | string | null | undefined, statusEn
 
   if (s === "SEPARACAO") {
     return (
-      <Badge variant="secondary" className="text-xs bg-sky-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-sky-600 not-dark:text-white"
+      >
         SEPARACAO
       </Badge>
     );
@@ -171,7 +231,10 @@ const getEntregaBadge = (canal: VendaCanal | string | null | undefined, statusEn
 
   if (s === "ENVIO") {
     return (
-      <Badge variant="secondary" className="text-xs bg-indigo-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-indigo-600 not-dark:text-white"
+      >
         ENVIO
       </Badge>
     );
@@ -179,7 +242,10 @@ const getEntregaBadge = (canal: VendaCanal | string | null | undefined, statusEn
 
   if (s === "ENTREGUE") {
     return (
-      <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
+      <Badge
+        variant="secondary"
+        className="text-xs bg-emerald-600 not-dark:text-white"
+      >
         ENTREGUE
       </Badge>
     );
@@ -220,7 +286,7 @@ export default function VendasDataTable({
       <div className="flex flex-row items-center flex-nowrap gap-1">
         <Loader2 className="w-3 h-3 animate-spin" />
         <span>Deletando venda</span>
-      </div>
+      </div>,
     );
     setIsDeleting(true);
     try {
@@ -248,14 +314,16 @@ export default function VendasDataTable({
       <div className="flex flex-row items-center flex-nowrap gap-1">
         <Loader2 className="w-3 h-3 animate-spin" />
         <span>Aprovando orçamento</span>
-      </div>
+      </div>,
     );
 
     try {
       const response = await axios.patch(`/api/venda/${approveVendaId}`, {
         status: "PAGAMENTO",
         formaPagamento:
-          approvalPaymentMethod === "NAO_INFORMAR" ? null : approvalPaymentMethod,
+          approvalPaymentMethod === "NAO_INFORMAR"
+            ? null
+            : approvalPaymentMethod,
       });
 
       if (response.status === 200) {
@@ -285,13 +353,21 @@ export default function VendasDataTable({
             <CardDescription>
               <button
                 onClick={() => {
-                  handleGetVendas(pagination.page, pagination.limit, search, status);
+                  handleGetVendas(
+                    pagination.page,
+                    pagination.limit,
+                    search,
+                    status,
+                  );
                   fetchStatusCounts();
                 }}
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
               >
                 <span>Recarregar</span>
-                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
+                <Loader2
+                  width={12}
+                  className={isLoading ? "animate-spin" : ""}
+                />
               </button>
             </CardDescription>
           </div>
@@ -338,37 +414,55 @@ export default function VendasDataTable({
           <TableBody>
             {vendas.map((p) => {
               return (
-                <TableRow onDoubleClick={() => setSelectedVendaId?.(p.id)} key={p.id} className="hover:cursor-pointer">
+                <TableRow
+                  onDoubleClick={() => setSelectedVendaId?.(p.id)}
+                  key={p.id}
+                  className="hover:cursor-pointer"
+                >
                   <TableCell>{p.id}</TableCell>
                   <TableCell>{p.cliente.nomerazaosocial}</TableCell>
 
-                  <TableCell className="font-mono text-xs">{formatDate(p.datavenda)}</TableCell>
-                  <TableCell className="text-center">{getCanalBadge((p as any).canal)}</TableCell>
-                  <TableCell>{formatarEmReal(p.valortotal)}</TableCell>
-                  <TableCell className="text-center">{getStatusBadge(p.status)}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {formatDate(p.datavenda)}
+                  </TableCell>
                   <TableCell className="text-center">
-                    {getEntregaBadge((p as any).canal, (p as any).status_entrega)}
+                    {getCanalBadge((p as any).canal)}
+                  </TableCell>
+                  <TableCell>{formatarEmReal(p.valortotal)}</TableCell>
+                  <TableCell className="text-center">
+                    {getStatusBadge(p.status)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {getEntregaBadge(
+                      (p as any).canal,
+                      (p as any).status_entrega,
+                    )}
                   </TableCell>
 
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 cursor-pointer"
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
-                        {config?.habilitar_emissao_nfe && (p.status === "FINALIZADA" || p.status === "PAGO") && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEmissaoId(p.id);
-                              setOpenEmissao(true);
-                            }}
-                          >
-                            <CreditCard className=" h-4 w-4" />
-                            Emissão de NF-e
-                          </DropdownMenuItem>
-                        )}
+                        {config?.habilitar_emissao_nfe &&
+                          (p.status === "FINALIZADA" ||
+                            p.status === "PAGO") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEmissaoId(p.id);
+                                setOpenEmissao(true);
+                              }}
+                            >
+                              <CreditCard className=" h-4 w-4" />
+                              Emissão de NF-e
+                            </DropdownMenuItem>
+                          )}
                         <DropdownMenuItem
                           onClick={() => {
                             setSelectedVendaId(p.id);
@@ -392,16 +486,20 @@ export default function VendasDataTable({
                           </DropdownMenuItem>
                         )}
 
-                        {p.status === "ORCAMENTO" && (
-                          <DropdownMenuItem
-                            onClick={() => window.open(`/print/venda/${p.id}/orcamento`, "_blank")}
-                          >
-                            <FileText className="h-4 w-4" />
-                            Imprimir orçamento
-                          </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem
+                          onClick={() =>
+                            window.open(
+                              `/print/venda/${p.id}/orcamento`,
+                              "_blank",
+                            )
+                          }
+                        >
+                          <FileText className="h-4 w-4" />
+                          Imprimir venda
+                        </DropdownMenuItem>
 
-                        {String((p as any).canal ?? "").toUpperCase() === "ONLINE" && (
+                        {String((p as any).canal ?? "").toUpperCase() ===
+                          "ONLINE" && (
                           <DropdownMenuItem
                             onClick={() => {
                               setOnlineVendaId(p.id);
@@ -419,7 +517,10 @@ export default function VendasDataTable({
                           setIsAlertOpen={setIsAlertOpen}
                           idToDelete={p.id}
                         >
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                            variant="destructive"
+                          >
                             <Trash2Icon className="h-4 w-4" />
                             Excluir
                           </DropdownMenuItem>
@@ -436,9 +537,14 @@ export default function VendasDataTable({
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
-            <span>{pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0)}</span>
+            <span>
+              {pagination.limit * (pagination.page - 1) +
+                (pagination.pageCount || 0)}
+            </span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
-            <Loader className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`} />
+            <Loader
+              className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`}
+            />
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
@@ -446,7 +552,9 @@ export default function VendasDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() => handleGetVendas(1, pagination.limit, search, status)}
+              onClick={() =>
+                handleGetVendas(1, pagination.limit, search, status)
+              }
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -455,7 +563,14 @@ export default function VendasDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() => handleGetVendas(pagination.page - 1, pagination.limit, search, status)}
+              onClick={() =>
+                handleGetVendas(
+                  pagination.page - 1,
+                  pagination.limit,
+                  search,
+                  status,
+                )
+              }
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -467,8 +582,18 @@ export default function VendasDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() => handleGetVendas(pagination.page + 1, pagination.limit, search, status)}
-              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
+              onClick={() =>
+                handleGetVendas(
+                  pagination.page + 1,
+                  pagination.limit,
+                  search,
+                  status,
+                )
+              }
+              disabled={
+                pagination.page === pagination.totalPages ||
+                pagination.totalPages === 0
+              }
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
@@ -476,8 +601,18 @@ export default function VendasDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() => handleGetVendas(pagination.totalPages, pagination.limit, search, status)}
-              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
+              onClick={() =>
+                handleGetVendas(
+                  pagination.totalPages,
+                  pagination.limit,
+                  search,
+                  status,
+                )
+              }
+              disabled={
+                pagination.page === pagination.totalPages ||
+                pagination.totalPages === 0
+              }
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -497,9 +632,17 @@ export default function VendasDataTable({
           </div>
         </div>
 
-        <EmissaoNotaDialog onOpenChange={setOpenEmissao} open={openEmissao} vendaId={emissaoId} />
+        <EmissaoNotaDialog
+          onOpenChange={setOpenEmissao}
+          open={openEmissao}
+          vendaId={emissaoId}
+        />
       </CardContent>
-      <VendaDetailsDialog vendaId={selectedVendaId} onOpenChange={setOpenDetails} open={openDetails} />
+      <VendaDetailsDialog
+        vendaId={selectedVendaId}
+        onOpenChange={setOpenDetails}
+        open={openDetails}
+      />
       <PedidoOnlineDialog
         vendaId={onlineVendaId}
         open={openOnline}
@@ -559,4 +702,3 @@ export default function VendasDataTable({
     </Card>
   );
 }
-
