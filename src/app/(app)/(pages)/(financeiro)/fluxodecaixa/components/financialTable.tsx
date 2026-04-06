@@ -293,7 +293,7 @@ export default function FinancialTable({
                             handleSetConcluido={(value) => handleSetPago(value)}
                             idConcluido={t.id}
                           >
-                            <DropdownMenuItem onClick={() => undefined}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                               <Check className="mr-2 h-4 w-4" />
                               Pago
                             </DropdownMenuItem>
@@ -306,7 +306,7 @@ export default function FinancialTable({
                           setIsAlertOpen={setIsAlertOpen}
                           idToDelete={t.id}
                         >
-                          <DropdownMenuItem onClick={() => undefined} variant="destructive">
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
                             <Trash2Icon className="mr-2 h-4 w-4" />
                             Excluir
                           </DropdownMenuItem>
