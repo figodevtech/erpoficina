@@ -24,6 +24,8 @@ const PUBLIC_API_PREFIXES = [
   // ex: "/api/public",
 
   "/api/ordens/aprovacao",
+  "/api/nfse/test-jp",
+  "/api/webhooks/focus",
 ];
 
 function isStaticAsset(pathname: string) {

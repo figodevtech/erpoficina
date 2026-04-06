@@ -2,8 +2,6 @@
 
 import { NextResponse } from "next/server";
 import https from "https";
-import fs from "fs";
-import path from "path";
 import { XMLParser } from "fast-xml-parser";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -358,19 +356,16 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
 
     let xmlSemAssinatura = xmlRascunhoSalvo;
 
-    // Se nÇœo houver XML salvo, gera um novo com base nos itens atuais
-    // if (!xmlSemAssinatura) {
-    //   const { xml: xmlGerado, chave: chaveGerada, id } = buildNFePreviewXml(
-    //     empresa,
-    //     numeroNota,
-    //     serie,
-    //     itens,
-    //     destinatario
-    //   );
-    //   xmlSemAssinatura = xmlGerado;
-    //   if (!chave) chave = chaveGerada;
-    //   if (!idNFeXml) idNFeXml = id;
-    // }
+    // Se não houver XML salvo, retorna erro ou poderia gerar um novo (descomente se desejar)
+    if (!xmlSemAssinatura) {
+      return NextResponse.json(
+        {
+          ok: false,
+          mensagem: "Não existe XML de rascunho salvo para esta NF-e. Gere o rascunho primeiro.",
+        },
+        { status: 400 }
+      );
+    }
 
     // -------------------------------------------------------------------
     // 7) Carregar certificado A1 (chave privada + certificado em PEM)
@@ -418,21 +413,12 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
         : "https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx";
 
     // -------------------------------------------------------------------
-    // 12) Montar agente HTTPS com o PFX para autenticação mútua TLS
+    // 12) Montar agente HTTPS com a chave e certificado extraídos (PEM)
+    // Isso evita o erro "unsupported" que ocorre ao passar o PFX direto em Node 17+
     // -------------------------------------------------------------------
-    const pfxPathRaw =
-      nfe.certificadocaminho ||
-      empresa.certificadocaminho ||
-      process.env.NFE_CERT_PFX_PATH ||
-      "C:\\certs\\certificado.pfx";
-
-    const pfxPath = path.resolve(pfxPathRaw);
-    const pfxPass =
-      empresa.certificadosenha ?? process.env.NFE_CERT_PFX_PASSWORD ?? "";
-
     const httpsAgent = new https.Agent({
-      pfx: fs.readFileSync(pfxPath),
-      passphrase: pfxPass,
+      key: privateKeyPem,
+      cert: certificatePem,
       // Em produção, o ideal é deixar como true e ter a cadeia de certificados correta:
       rejectUnauthorized: false,
     });

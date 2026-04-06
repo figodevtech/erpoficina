@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/theme-provider";
 import NProgressHandler from "@/components/NProgressHandler";
 import { RouteAwareToaster } from "@/components/route-aware-toaster";
+import { NFSeRealtimeListener } from "@/components/fiscais/NFSeRealtimeListener";
 
 export const metadata: Metadata = {
   title: "ERP Oficina",
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <NProgressHandler />
           {children}
+          <NFSeRealtimeListener />
           <RouteAwareToaster />
         </Providers>
       </body>
