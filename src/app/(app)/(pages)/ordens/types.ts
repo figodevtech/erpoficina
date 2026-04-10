@@ -48,6 +48,7 @@ export type Ordem = {
   tecnicoid?: string | null; // se mantiver
   descricao?: string | null;
   observacoes?: string | null;
+  observacoes_fiscais?: string | null;
   cliente?: Cliente | null;
   veiculo?: Veiculo | null;
   peca?: Peca | null

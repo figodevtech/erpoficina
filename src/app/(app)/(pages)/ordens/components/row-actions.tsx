@@ -114,7 +114,6 @@ export function RowActions<TRow extends RowBase>({
   setEmissaoId: (id: number) => void;
   setEmissaoOpen: (open: boolean) => void;
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL
   const config = useConfig();
   const st = String(row.status ?? "").toUpperCase();
 
@@ -317,7 +316,7 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuItem onClick={()=>window.open(`${siteUrl}/print/ordemservico/${row.id}`, '_blank')}>
+        <DropdownMenuItem onClick={() => window.open(`/print/ordemservico/${row.id}`, "_blank")}>
           <Printer className="mr-2 h-4 w-4"/>
           Imprimir
         </DropdownMenuItem>

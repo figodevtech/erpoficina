@@ -13,7 +13,7 @@ type Props = {
 };
 
 export function NovaOSDialog({ open, onOpenChange }: Props) {
-  const submitRef = useRef<null | (() => Promise<void>)>(null);
+  const submitRef = useRef<null | ((mode?: "CHECKLIST" | "ORCAMENTO") => Promise<void>)>(null);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -34,11 +34,26 @@ export function NovaOSDialog({ open, onOpenChange }: Props) {
             Cancelar
           </Button>
 
-          <Button onClick={() => submitRef.current?.()} disabled={saving}>
+          <Button
+            variant="secondary"
+            onClick={() => submitRef.current?.("ORCAMENTO")}
+            disabled={saving}
+          >
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando…
+                Salvando...
+              </>
+            ) : (
+              "Salvar como orçamento"
+            )}
+          </Button>
+
+          <Button onClick={() => submitRef.current?.("CHECKLIST")} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
               </>
             ) : (
               "Criar OS"

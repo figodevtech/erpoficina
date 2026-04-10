@@ -34,8 +34,9 @@ export function EditarOSDialog({
     <DialogShell
       open={open}
       onOpenChange={onOpenChange}
-      title={titulo}
-      description={desc}
+      title={titulo || "Editar Ordem de Serviço"}
+      description="Atualize os dados da ordem de serviço usando o mesmo formulário da criação."
+      maxW="lg:max-w-5xl xl:max-w-6xl"
       footer={
         <>
           <Button
@@ -47,8 +48,14 @@ export function EditarOSDialog({
             Cancelar
           </Button>
           <Button onClick={() => submitRef.current?.()} disabled={saving}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {saving ? "Salvando..." : "Salvar alterações"}
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              "Salvar OS"
+            )}
           </Button>
         </>
       }

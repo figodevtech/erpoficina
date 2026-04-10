@@ -9,17 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User2, Wrench, ClipboardList } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, User2, Wrench, ClipboardList, Building2, Search, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { Customer } from "../../../clientes/types";
 import { listarSetores } from "../../lib/api";
-
-type Cliente = {
-  id: number;
-  nomerazaosocial: string;
-  email?: string | null;
-  telefone?: string | null;
-  cpfcnpj: string;
-};
+import { ClienteInfoCard } from "../novaOS/cliente-info-card";
+import { CustomerDialog } from "../../../clientes/components/customerDialogRegister/customerDialog";
 
 type Veiculo = {
   id: number;
@@ -64,9 +62,12 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
   const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
   const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
 
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [veiculosDoCliente, setVeiculosDoCliente] = useState<Veiculo[]>([]);
+  const [cliente, setCliente] = useState<Customer | null>(null);
+  const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
   const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
+  const [openCustomer, setOpenCustomer] = useState(false);
+  const [customerRegisterOpen, setCustomerRegisterOpen] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>(undefined);
 
   const [avulsoNome, setAvulsoNome] = useState("");
   const [avulsoDoc, setAvulsoDoc] = useState("");
@@ -75,6 +76,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
 
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [observacoesFiscais, setObservacoesFiscais] = useState("");
 
   const [alvoTipo, setAlvoTipo] = useState<AlvoTipo>("VEICULO");
 
@@ -131,25 +133,45 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
         setPrioridade((os?.prioridade as any) || "NORMAL");
         setDescricao(os?.descricao || "");
         setObservacoes(os?.observacoes || "");
+        setObservacoesFiscais(os?.observacoes_fiscais || "");
 
         if (cli?.id) {
           // Cliente cadastrado (inclui o "avulso" que foi salvo na tabela cliente)
           setModoAtendimento("cadastrado");
           setCliente({
             id: cli.id,
-            nomerazaosocial: cli.nomerazaosocial ?? cli.nome ?? "Cliente",
+            tipopessoa: cli.tipopessoa ?? "FISICA",
             cpfcnpj: cli.cpfcnpj ?? "",
-            email: cli.email ?? null,
-            telefone: cli.telefone ?? null,
-          });
+            nomerazaosocial: cli.nomerazaosocial ?? cli.nome ?? "Cliente",
+            email: cli.email ?? "",
+            telefone: cli.telefone ?? "",
+            endereco: cli.endereco ?? "",
+            endereconumero: cli.endereconumero ?? "",
+            enderecocomplemento: cli.enderecocomplemento ?? "",
+            cidade: cli.cidade ?? "",
+            estado: cli.estado ?? "",
+            bairro: cli.bairro ?? "",
+            cep: cli.cep ?? "",
+            inscricaoestadual: cli.inscricaoestadual ?? "",
+            inscricaomunicipal: cli.inscricaomunicipal ?? "",
+            codigomunicipio: cli.codigomunicipio ?? "",
+            createdat: cli.createdat ?? new Date().toISOString(),
+            updatedat: cli.updatedat ?? null,
+            status: cli.status ?? "ATIVO",
+            veiculos: Array.isArray(cli.veiculos) ? cli.veiculos : [],
+            ordens: Array.isArray(cli.ordens) ? cli.ordens : [],
+            rank: cli.rank ?? "NORMAL",
+          } as Customer);
 
           try {
-            const rv = await fetch(`/api/clientes/${cli.id}/veiculos`, {
+            const rv = await fetch(`/api/veiculos/cliente/${cli.id}`, {
               cache: "no-store",
             });
             if (rv.ok) {
               const vj = await rv.json();
-              const arr: Veiculo[] = (Array.isArray(vj) ? vj : (vj?.items ?? [])).map((v: any) => ({
+              const arr: Veiculo[] = (
+                Array.isArray(vj) ? vj : (vj?.veiculos ?? vj?.items ?? [])
+              ).map((v: any) => ({
                 id: v.id,
                 placa: v.placa,
                 modelo: v.modelo,
@@ -164,7 +186,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
             // se der erro aqui, só ignora a lista de veículos
           }
         } else {
-          // fallback — caso um dia você trate cliente avulso separado
+          // fallback: caso um dia você trate cliente avulso separado
           setModoAtendimento("avulso");
           setCliente(null);
           setAvulsoNome(cli?.nomerazaosocial ?? cli?.nome ?? "");
@@ -211,6 +233,8 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
       })),
     [veiculosDoCliente],
   );
+  const veiculoSelecionado =
+    veiculosDoCliente.find((v) => Number(v.id) === veiculoSelecionadoId) ?? null;
 
   function validar(): string | null {
     if (!osId) return "OS inválida.";
@@ -250,6 +274,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
       prioridade,
       descricao: (descricao || "").trim() || null,
       observacoes: (observacoes || "").trim() || null,
+      observacoes_fiscais: (observacoesFiscais || "").trim() || null,
     };
 
     base.cliente =
@@ -328,6 +353,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
     avulsoEmail,
     descricao,
     observacoes,
+    observacoesFiscais,
     alvoTipo,
     vPlaca,
     vModelo,
@@ -343,22 +369,26 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
   if (!osId) return <div className="text-sm text-red-600">OS inválida para edição.</div>;
 
   return (
-    <div className="space-y-6">
+    <div className={initialLoading ? "min-h-[55vh]" : "space-y-6"}>
       {initialLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Carregando dados…
+        <div className="flex h-full min-h-[55vh] flex-col items-center justify-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-t-2 border-primary" />
+          <span className="text-sm font-medium text-primary">Carregando</span>
         </div>
       ) : (
         <>
           {/* Definição da OS */}
           <Card className="border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-3">
-                  <Label>Setor responsável</Label>
+                  <Label>Setor responsavel</Label>
                   <Select
                     value={setor}
                     onValueChange={setSetor}
@@ -368,7 +398,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
                       <SelectValue
                         placeholder={
                           loadingSetores
-                            ? "Carregando setores…"
+                            ? "Carregando setores..."
                             : setores.length
                               ? "Selecione o setor"
                               : "Nenhum setor disponível"
@@ -400,6 +430,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
                   </Select>
                 </div>
               </div>
+              <Separator />
             </CardContent>
           </Card>
 
@@ -408,31 +439,80 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <User2 className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">Cliente</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
               </div>
               <CardDescription>
-                {modoAtendimento === "cadastrado"
-                  ? "Cliente cadastrado — dados exibidos somente para conferência."
-                  : "Atendimento avulso — edite os dados abaixo."}
+                Selecione um cliente cadastrado para manter a OS alinhada ao fluxo de criação.
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-5">
-              {modoAtendimento === "cadastrado" ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Nome/Razão Social</Label>
-                    <Input value={cliente?.nomerazaosocial ?? ""} readOnly placeholder="—" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Telefone</Label>
-                    <Input value={cliente?.telefone ?? ""} readOnly placeholder="—" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>E-mail</Label>
-                    <Input value={cliente?.email ?? ""} readOnly placeholder="—" />
-                  </div>
+            <CardContent className="space-y-4">
+              <div className="w-full flex flex-row justify-between gap-2">
+                <div className="flex flex-row items-center gap-2">
+                  <CustomerSelect
+                    open={openCustomer}
+                    setOpen={setOpenCustomer}
+                    OnSelect={(c) => {
+                      setCliente(c ?? null);
+                      setModoAtendimento("cadastrado");
+                      setVeiculoSelecionadoId(null);
+                      setVeiculosDoCliente(c?.veiculos ?? []);
+                    }}
+                  >
+                    <Button
+                      variant={"outline"}
+                      className="hover:cursor-pointer w-min text-xs"
+                      disabled={saving}
+                    >
+                      <Search className="h-3 w-3" />
+                      Selecionar Cliente
+                    </Button>
+                  </CustomerSelect>
+                  {cliente && (
+                    <div
+                      onClick={() => {
+                        if (saving) return;
+                        setCliente(null);
+                        setVeiculoSelecionadoId(null);
+                        setVeiculosDoCliente([]);
+                      }}
+                      className="p-1.5 rounded-full hover:cursor-pointer bg-muted"
+                    >
+                      <X className="w-3 h-3 text-red-500" />
+                    </div>
+                  )}
                 </div>
+                <CustomerDialog
+                  customerId={selectedCustomerId}
+                  setSelectedCustomerId={setSelectedCustomerId}
+                  isOpen={customerRegisterOpen}
+                  setIsOpen={setCustomerRegisterOpen}
+                  onRegister={(c) => {
+                    setCliente(c ?? null);
+                    setModoAtendimento("cadastrado");
+                    setVeiculoSelecionadoId(null);
+                    setVeiculosDoCliente(c?.veiculos ?? []);
+                  }}
+                />
+                <Button
+                  onClick={() => setCustomerRegisterOpen(true)}
+                  variant={"outline"}
+                  className="hover:cursor-pointer w-min text-xs"
+                  disabled={saving}
+                >
+                  <Plus className="h-3 w-3" />
+                  Novo Cliente
+                </Button>
+              </div>
+
+              {modoAtendimento === "cadastrado" ? (
+                cliente ? (
+                  <ClienteInfoCard customer={cliente} />
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                    Nenhum cliente selecionado.
+                  </div>
+                )
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -519,7 +599,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
                           <SelectValue
                             placeholder={
                               !cliente
-                                ? "Carregando cliente…"
+                                ? "Carregando cliente..."
                                 : veiculoOptions.length
                                   ? "Selecione um veículo"
                                   : "Cliente sem veículos"
@@ -535,6 +615,22 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
                           ))}
                         </SelectContent>
                       </Select>
+                      {veiculoSelecionado && (
+                        <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                          <p className="font-medium text-foreground">
+                            Veículo vinculado: {veiculoSelecionado.modelo || "-"}
+                          </p>
+                          <p className="text-muted-foreground">
+                            Placa: {veiculoSelecionado.placa || "-"}
+                            {veiculoSelecionado.marca
+                              ? ` • Marca: ${veiculoSelecionado.marca}`
+                              : ""}
+                            {veiculoSelecionado.ano
+                              ? ` • Ano: ${veiculoSelecionado.ano}`
+                              : ""}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -598,7 +694,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
                       value={pNome}
                       maxLength={60}
                       onChange={(e) => setPNome(e.target.value)}
-                      placeholder="Ex.: Radiador, Bomba d’água…"
+                      placeholder="Ex.: Radiador, Bomba d'água..."
                       disabled={saving}
                     />
                     <div className="text-right text-xs text-muted-foreground">{pNome.length}/60</div>
@@ -640,7 +736,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
             </CardHeader>
             <CardContent>
               <Textarea
-                placeholder="Descreva o problema…"
+                placeholder="Descreva o problema..."
                 className="min-h-[100px] resize-y"
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
@@ -656,7 +752,7 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
             </CardHeader>
             <CardContent>
               <Textarea
-                placeholder="Informações adicionais…"
+                placeholder="Informações adicionais..."
                 className="min-h-[80px] resize-y"
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
@@ -665,10 +761,25 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
             </CardContent>
           </Card>
 
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base sm:text-lg">Observações Fiscais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Informações fiscais adicionais..."
+                className="min-h-[80px] resize-y"
+                value={observacoesFiscais}
+                onChange={(e) => setObservacoesFiscais(e.target.value)}
+                disabled={saving}
+              />
+            </CardContent>
+          </Card>
+
           {saving && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Salvando alterações…
+              Salvando alterações...
             </div>
           )}
         </>
@@ -676,3 +787,6 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
     </div>
   );
 }
+
+
+

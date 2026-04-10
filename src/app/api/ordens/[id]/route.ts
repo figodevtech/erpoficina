@@ -50,6 +50,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           "datasaida",
           "orcamentototal",
           "observacoes",
+          "observacoes_fiscais",
           "motivo_cancelamento",
           "motivo_sem_cobranca",
           "createdat",
@@ -81,6 +82,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       datasaida: string | null;
       orcamentototal: number | null;
       observacoes: string | null;
+      observacoes_fiscais: string | null;
       createdat: string | null;
       updatedat: string | null;
       checklist_modelo_id: number | null;
@@ -103,7 +105,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     // Cliente
     const cli_res = await supabase
       .from("cliente")
-      .select("id, nomerazaosocial, cpfcnpj, email, telefone")
+      .select(
+        "id, tipopessoa, nomerazaosocial, cpfcnpj, email, telefone, endereco, endereconumero, enderecocomplemento, bairro, cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio, createdat, updatedat, status, rank"
+      )
       .eq("id", osRow.clienteid)
       .maybeSingle();
     if (cli_res.error) throw cli_res.error;
@@ -111,20 +115,50 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     const clienteRow =
       (cli_res.data as {
         id: number;
+        tipopessoa: string | null;
         nomerazaosocial: string;
         cpfcnpj: string;
         email: string | null;
         telefone: string | null;
+        endereco: string | null;
+        endereconumero: string | null;
+        enderecocomplemento: string | null;
+        bairro: string | null;
+        cidade: string | null;
+        estado: string | null;
+        cep: string | null;
+        inscricaoestadual: string | null;
+        inscricaomunicipal: string | null;
+        codigomunicipio: string | null;
+        createdat: string | null;
+        updatedat: string | null;
+        status: string | null;
+        rank: string | null;
       } | null) ?? null;
 
     const cliente =
       clienteRow &&
       ({
         id: clienteRow.id,
+        tipopessoa: clienteRow.tipopessoa,
         nomerazaosocial: clienteRow.nomerazaosocial,
         cpfcnpj: clienteRow.cpfcnpj,
         email: clienteRow.email,
         telefone: clienteRow.telefone,
+        endereco: clienteRow.endereco,
+        endereconumero: clienteRow.endereconumero,
+        enderecocomplemento: clienteRow.enderecocomplemento,
+        bairro: clienteRow.bairro,
+        cidade: clienteRow.cidade,
+        estado: clienteRow.estado,
+        cep: clienteRow.cep,
+        inscricaoestadual: clienteRow.inscricaoestadual,
+        inscricaomunicipal: clienteRow.inscricaomunicipal,
+        codigomunicipio: clienteRow.codigomunicipio,
+        createdat: clienteRow.createdat,
+        updatedat: clienteRow.updatedat,
+        status: clienteRow.status,
+        rank: clienteRow.rank,
       } as const);
 
     // Veículo
@@ -354,6 +388,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       orcamentototal: osRow.orcamentototal,
       descricao: osRow.descricao ?? null,
       observacoes: osRow.observacoes ?? null,
+      observacoes_fiscais: osRow.observacoes_fiscais ?? null,
       motivocancelamento: (osRow as any).motivo_cancelamento ?? null,
       motivosemcobranca: (osRow as any).motivo_sem_cobranca ?? null,
       status: osRow.status ?? null,
@@ -364,15 +399,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       datasaida: osRow.datasaida ?? null,
       alvo_tipo: (osRow.alvo_tipo ?? "VEICULO") as AlvoTipo,
       setor: setor ? { id: setor.id, nome: setor.nome } : null,
-      cliente: cliente
-        ? {
-            id: cliente.id,
-            nomerazaosocial: cliente.nomerazaosocial,
-            cpfcnpj: cliente.cpfcnpj,
-            email: cliente.email,
-            telefone: cliente.telefone,
-          }
-        : null,
+      cliente: cliente ? { ...cliente } : null,
       veiculo,
       peca,
     };
@@ -445,6 +472,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     const prioridade = pickStr("prioridade") as Prioridade | undefined;
     const descricao = pickStr("descricao");
     const observacoes = pickStr("observacoes");
+    const observacoes_fiscais = pickStr("observacoes_fiscais", "observacoesFiscais");
     const alvo_tipoStr = pickStr("alvo_tipo", "alvoTipo");
     const alvo_tipo = ((): AlvoTipo | undefined => {
       const up = (alvo_tipoStr || "").toUpperCase();
@@ -457,6 +485,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     if (prioridade !== undefined) patch.prioridade = prioridade || "NORMAL";
     if (descricao !== undefined) patch.descricao = descricao;
     if (observacoes !== undefined) patch.observacoes = observacoes;
+    if (observacoes_fiscais !== undefined) patch.observacoes_fiscais = observacoes_fiscais;
     if (alvo_tipo !== undefined) patch.alvo_tipo = alvo_tipo;
     if (pecaid !== undefined) patch.pecaid = pecaid;
 

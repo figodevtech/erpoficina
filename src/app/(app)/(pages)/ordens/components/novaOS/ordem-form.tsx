@@ -10,6 +10,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Search, User2, ClipboardList, Building2, Wrench, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
@@ -20,7 +30,7 @@ import { CustomerDialog } from "../../../clientes/components/customerDialogRegis
 
 /* ========== Props ========== */
 export type FormularioNovaOSProps = {
-  exposeSubmit?: (fn: () => Promise<void>) => void;
+  exposeSubmit?: (fn: (mode?: "CHECKLIST" | "ORCAMENTO") => Promise<void>) => void;
   onDone?: (osId?: number) => void;
   onSavingChange?: (saving: boolean) => void;
 };
@@ -52,6 +62,11 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [observacoesFiscais, setObservacoesFiscais] = useState("");
+  const [confirmSemVeiculoOpen, setConfirmSemVeiculoOpen] = useState(false);
+  const [pendingSubmitMode, setPendingSubmitMode] = useState<
+    "CHECKLIST" | "ORCAMENTO"
+  >("CHECKLIST");
 
   // Alvo
   const [alvoTipo, setAlvoTipo] = useState<AlvoTipo>("VEICULO");
@@ -102,6 +117,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     setor,
     descricao,
     observacoes,
+    observacoesFiscais,
     cliente,
     veiculosDoCliente,
     veiculoSelecionadoId,
@@ -124,11 +140,6 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
 
     if (alvoTipo === "VEICULO") {
       const placaNorm = vPlaca.trim().toUpperCase();
-      if (!veiculoVinculado && !placaNorm) {
-        return "Para criar um veículo novo, informe ao menos a PLACA.";
-      }
-
-      // evita duplicar placa em veículo novo
       if (!veiculoVinculado && placaNorm && veiculosDoCliente.length > 0) {
         const normalize = (s: string) => s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
         const jaExiste = veiculosDoCliente.some((v: any) => {
@@ -147,19 +158,16 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   };
 
   /* ================== Submit ================== */
-  const salvar = async (): Promise<void> => {
-    if (saving) return;
-
-    const err = validateAll();
-    if (err) return void toast.error(err);
-
+  const salvarOS = async (mode: "CHECKLIST" | "ORCAMENTO"): Promise<void> => {
     setSaving(true);
     try {
       const payload: any = {
         setorid: setor ? Number(setor) : null,
         descricao: descricao || null,
         observacoes: (observacoes || "").trim() || null,
+        observacoes_fiscais: (observacoesFiscais || "").trim() || null,
         prioridade,
+        status: mode === "ORCAMENTO" ? "ORCAMENTO" : "AGUARDANDO_CHECKLIST",
 
         // ✅ sempre cadastrado
         cliente: { id: cliente!.id },
@@ -208,9 +216,54 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     }
   };
 
+  const salvar = async (
+    mode: "CHECKLIST" | "ORCAMENTO" = "CHECKLIST"
+  ): Promise<void> => {
+    if (saving) return;
+
+    const err = validateAll();
+    if (err) return void toast.error(err);
+
+    if (alvoTipo === "VEICULO" && !veiculoVinculado && !vPlaca.trim()) {
+      setPendingSubmitMode(mode);
+      setConfirmSemVeiculoOpen(true);
+      return;
+    }
+
+    await salvarOS(mode);
+  };
+
   /* ===================== RENDER ===================== */
   return (
-    <div className="space-y-6">
+    <>
+      <AlertDialog
+        open={confirmSemVeiculoOpen}
+        onOpenChange={setConfirmSemVeiculoOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Criar OS sem veículo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja criar a ordem de serviço sem selecionar um veículo vinculado?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(event) => {
+                event.preventDefault();
+                setConfirmSemVeiculoOpen(false);
+                void salvarOS(pendingSubmitMode);
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="space-y-6">
       {/* DADOS DO CLIENTE */}
       <Card className="border-border">
         <CardHeader className="pb-3">
@@ -528,6 +581,21 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
           />
         </CardContent>
       </Card>
-    </div>
+
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base sm:text-lg">Observações Fiscais</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="Informações fiscais adicionais..."
+            className="min-h-[80px] resize-y"
+            value={observacoesFiscais}
+            onChange={(e) => setObservacoesFiscais(e.target.value)}
+          />
+        </CardContent>
+      </Card>
+      </div>
+    </>
   );
 }

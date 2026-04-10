@@ -9,12 +9,17 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 type DBChecklistStatus = "OK" | "ALERTA" | "FALHA";
 type DBAlvo = "VEICULO" | "PECA";
 type DBPrioridade = "BAIXA" | "NORMAL" | "ALTA";
+type DBStatusOS =
+  | "AGUARDANDO_CHECKLIST"
+  | "ORCAMENTO";
 
 type Payload = {
   setorid: number | null;
   veiculoid: number | null;
   descricao: string | null;
   observacoes: string | null;
+  observacoes_fiscais?: string | null;
+  status?: DBStatusOS | null;
   checklistTemplateId?: string | null; // legado
   prioridade?: DBPrioridade;
 
@@ -69,6 +74,8 @@ export async function POST(req: NextRequest) {
 
     const setorid = Number(payload.setorid);
     const prioridade = normPrioridade(payload.prioridade);
+    const status =
+      payload.status === "ORCAMENTO" ? "ORCAMENTO" : "AGUARDANDO_CHECKLIST";
 
     // ========= Resolve cliente =========
     const clienteid = Number(payload.cliente.id);
@@ -113,31 +120,28 @@ export async function POST(req: NextRequest) {
         const cor = (alvo.veiculo?.cor || "").trim() || null;
         const kmatual = alvo.veiculo?.kmatual ?? null;
 
-        if (!placa) {
-          return NextResponse.json(
-            { error: "Para alvo VEICULO sem vínculo, informe ao menos a PLACA (modelo/marca recomendados)." },
-            { status: 400 }
-          );
+        if (placa) {
+          const { data: vNew, error: eVNew } = await supabaseAdmin
+            .from("veiculo")
+            .insert({
+              clienteid,
+              placa,
+              modelo,
+              marca,
+              ano,
+              cor,
+              kmatual,
+            })
+            .select("id")
+            .single();
+
+          if (eVNew) throw eVNew;
+
+          veiculoid = vNew.id;
+          createdVeiculoId = vNew.id;
+        } else {
+          veiculoid = null;
         }
-
-        const { data: vNew, error: eVNew } = await supabaseAdmin
-          .from("veiculo")
-          .insert({
-            clienteid,
-            placa,
-            modelo,
-            marca,
-            ano,
-            cor,
-            kmatual,
-          })
-          .select("id")
-          .single();
-
-        if (eVNew) throw eVNew;
-
-        veiculoid = vNew.id;
-        createdVeiculoId = vNew.id;
       }
 
       pecaid = null;
@@ -182,7 +186,8 @@ export async function POST(req: NextRequest) {
         prioridade,
         descricao: payload.descricao || null,
         observacoes: payload.observacoes || null,
-        status: "AGUARDANDO_CHECKLIST",
+        observacoes_fiscais: payload.observacoes_fiscais || null,
+        status,
       })
       .select("id")
       .single();
