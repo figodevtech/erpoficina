@@ -54,6 +54,9 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
   const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
+  const totalPago =
+    transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0;
+  const saldoDevedor = (venda?.valortotal || 0) - totalPago;
   const initialMetodoPagamento = (() => {
     const value = String(venda?.forma_pagamento ?? "").toUpperCase();
     return Object.values(Metodo_pagamento).includes(value as Metodo_pagamento)
@@ -80,15 +83,16 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     }
   };
 
-  const handleGetTransactions = async (pageNumber?: number) => {
-    if (!venda?.id) return;
+  const handleGetTransactions = async (pageNumber?: number, vendaIdArg?: number) => {
+    const targetId = vendaIdArg ?? venda?.id;
+    if (!targetId) return;
     setIsLoading(true);
     try {
       const response = await axios.get("/api/transaction", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
-          vendaid: venda.id,
+          vendaid: targetId,
         },
       });
       if (response.status === 200) {
@@ -141,19 +145,12 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     }
   };
 
-  // ====== EFFECTS
   useEffect(() => {
-    if (venda?.id) {
-      handleGetTransactions();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venda?.id]);
-
-  useEffect(() => {
-    if (vendaId) {
+    if (vendaId && IsOpen) {
       handleGetVenda(vendaId);
+      handleGetTransactions(undefined, vendaId);
     }
-  }, [vendaId]);
+  }, [vendaId, IsOpen]);
 
 
 
@@ -185,7 +182,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
               | PAGAMENTOS{" "}
             </span>
           </DialogTitle>
-          <DialogDescription>Pagamentos da OS</DialogDescription>
+          <DialogDescription>Pagamentos da Venda</DialogDescription>
         </DialogHeader>
 
         {/* Barra de progresso fina no topo */}
@@ -201,12 +198,75 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
           />
         </div>
 
-        <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+        <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-4 space-y-2">
           {venda.forma_pagamento ? (
             <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700">
               Método de pagamento selecionado na venda: <b>{venda.forma_pagamento}</b>
             </div>
           ) : null}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
+              <p className="mt-1 text-sm font-medium">{venda.cliente?.nomerazaosocial || "—"}</p>
+              <p className="text-xs text-muted-foreground">{venda.cliente?.telefone || venda.cliente?.email || "Sem contato"}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Venda</span>
+              <p className="mt-1 text-sm font-medium">{venda.status || "—"}</p>
+              <p className="text-xs text-muted-foreground">{formatDate(venda.datavenda)}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Itens</span>
+              <p className="mt-1 text-sm font-medium">{venda.itens?.length ?? 0} item(ns)</p>
+              <p className="text-xs text-muted-foreground">Subtotal: {formatarEmReal(venda.sub_total || 0)}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobrança</span>
+              <p className="mt-1 text-sm font-medium">{formatarEmReal(venda.valortotal || 0)}</p>
+              <p className="text-xs text-muted-foreground">Aberto: {formatarEmReal(saldoDevedor)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Canal</span>
+              <p className="mt-1 text-sm">{venda.canal || "—"}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Desconto</span>
+              <p className="mt-1 text-sm">
+                {venda.desconto_tipo
+                  ? `${venda.desconto_tipo} • ${formatarEmReal(venda.desconto_valor || 0)}`
+                  : "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Observações fiscais</span>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{venda.observacoes_fiscais || "—"}</p>
+            </div>
+          </div>
+
+          {venda.itens?.length ? (
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Itens da cobrança</span>
+              <div className="mt-2 space-y-2">
+                {venda.itens.map((item) => (
+                  <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium line-clamp-2">
+                        {item.produto?.titulo || item.produto?.descricao || `Produto #${item.produtoid}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.quantidade} x {formatarEmReal((item.valor_total || 0) / Math.max(item.quantidade || 1, 1))}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-medium">{formatarEmReal(item.valor_total)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-row justify-end">
             
             <TransactionDialog
@@ -222,16 +282,17 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
             </TransactionDialog>
           </div>
 
-          <h1>Transações: {transactions.length}</h1>
-          <Separator />
+          <h1 className="m-0">Transações: {transactions.length}</h1>
 
           <div
-            className="flex flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
+            className="flex w-fit flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
             onClick={() => handleGetTransactions()}
           >
             <span>Recarregar</span>
             <Loader2 className="w-[12px]" />
           </div>
+
+          <Separator />
 
           {/* WRAPPER para rolagem horizontal no mobile */}
           <div className="w-full min-w-0 overflow-x-auto">
@@ -338,25 +399,14 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
               <span className="text-nowrap">Total Pago:</span>
               <div className="w-full border-b h-full border-dashed"></div>
               <h1 className="text-blue-500 font-bold">
-                {formatarEmReal(
-                  transactions?.reduce(
-                    (acc, t) => acc + Number(t?.valor ?? 0),
-                    0
-                  ) ?? 0
-                )}
+                {formatarEmReal(totalPago)}
               </h1>
             </div>
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Saldo Devedor:</span>
               <div className="w-full border-b h-full border-dashed"></div>
               <h1 className="font-bold text-gray-400">
-                {formatarEmReal(
-                  (venda.valortotal || 0) -
-                    (transactions?.reduce(
-                      (acc, t) => acc + Number(t?.valor ?? 0),
-                      0
-                    ) ?? 0)
-                )}
+                {formatarEmReal(saldoDevedor)}
               </h1>
             </div>
             <div className="w-full flex flex-col space-y-1"></div>

@@ -18,6 +18,7 @@ export type StatusOS =
 export type Cliente = {
   id: number;
   nome: string;
+  nomerazaosocial?: string | null;
   telefone?: string | null;
   email?: string | null;
   documento?: string | null; // CPF/CNPJ

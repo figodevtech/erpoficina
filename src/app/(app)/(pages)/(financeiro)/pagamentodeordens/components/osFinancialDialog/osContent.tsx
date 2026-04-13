@@ -36,6 +36,34 @@ interface OsContentProps {
   IsOpen?: boolean;
 }
 
+type OsProdutoItem = {
+  ordemservicoid: number;
+  produtoid: number;
+  quantidade: number;
+  precounitario: number;
+  subtotal: number;
+  produto?: {
+    id: number;
+    codigo?: string | null;
+    titulo?: string | null;
+    descricao?: string | null;
+    unidade?: string | null;
+  } | null;
+};
+
+type OsServicoItem = {
+  ordemservicoid: number;
+  servicoid: number;
+  quantidade: number;
+  precounitario: number;
+  subtotal: number;
+  servico?: {
+    id: number;
+    codigo?: string | null;
+    descricao?: string | null;
+  } | null;
+};
+
 // Ajuste conforme a sua estrutura real
 
 export default function OsContent({ osId, IsOpen }: OsContentProps) {
@@ -51,9 +79,21 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     totalPages: 0,
   });
   const [ordem, setOrdem] = useState<Ordem | undefined>(undefined);
+  const [itensProduto, setItensProduto] = useState<OsProdutoItem[]>([]);
+  const [itensServico, setItensServico] = useState<OsServicoItem[]>([]);
   const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const totalPago =
+    transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0;
+  const saldoDevedor = (ordem?.orcamentototal || 0) - totalPago;
+  const alvoDescricao =
+    ordem?.alvo_tipo === "PECA"
+      ? ordem?.peca?.titulo || ordem?.peca?.descricao || "Peça"
+      : ordem?.veiculo
+        ? `${ordem.veiculo.marca ?? ""} ${ordem.veiculo.modelo ?? ""} ${ordem.veiculo.placa ? `- ${ordem.veiculo.placa}` : ""}`.trim()
+        : "Não vinculado";
 
   // ====== DATA LOADERS
   const handleGetOrdem = async (
@@ -64,6 +104,8 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       const response = await axios.get(`/api/ordens/${osId}`);
       if (response.status === 200) {
         setOrdem(response.data.os);
+        setItensProduto(response.data.itensProduto ?? []);
+        setItensServico(response.data.itensServico ?? []);
       }
     } catch (error) {
       console.log("Erro ao buscar Ordem:", error);
@@ -73,15 +115,16 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     }
   };
 
-  const handleGetTransactions = async (pageNumber?: number) => {
-    if (!ordem?.id) return;
+  const handleGetTransactions = async (pageNumber?: number, ordemIdArg?: number) => {
+    const targetId = ordemIdArg ?? ordem?.id;
+    if (!targetId) return;
     setIsLoading(true);
     try {
       const response = await axios.get("/api/transaction", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
-          ordemservicoid: ordem.id,
+          ordemservicoid: targetId,
         },
       });
       if (response.status === 200) {
@@ -101,6 +144,8 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     if(!IsOpen){
       setTransactions([]);
       setOrdem(undefined);
+      setItensProduto([]);
+      setItensServico([]);
       }
     },[IsOpen])
 
@@ -134,19 +179,12 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     }
   };
 
-  // ====== EFFECTS
   useEffect(() => {
-    if (ordem?.id) {
-      handleGetTransactions();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordem?.id]);
-
-  useEffect(() => {
-    if (osId) {
+    if (osId && IsOpen) {
       handleGetOrdem(osId);
+      handleGetTransactions(undefined, osId);
     }
-  }, [osId]);
+  }, [osId, IsOpen]);
 
 
 
@@ -194,7 +232,99 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
           />
         </div>
 
-        <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+        <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-4 space-y-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
+              <p className="mt-1 text-sm font-medium">
+                {ordem.cliente?.nome || ordem.cliente?.nomerazaosocial || "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">{ordem.cliente?.telefone || ordem.cliente?.email || "Sem contato"}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">OS</span>
+              <p className="mt-1 text-sm font-medium">{ordem.status || "—"}</p>
+              <p className="text-xs text-muted-foreground">{ordem.setor?.nome || "Sem setor"}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Alvo</span>
+              <p className="mt-1 text-sm font-medium">{ordem.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</p>
+              <p className="text-xs text-muted-foreground line-clamp-2">{alvoDescricao}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobrança</span>
+              <p className="mt-1 text-sm font-medium">{formatarEmReal(ordem.orcamentototal || 0)}</p>
+              <p className="text-xs text-muted-foreground">Aberto: {formatarEmReal(saldoDevedor)}</p>
+            </div>
+          </div>
+
+          {(ordem.descricao || ordem.observacoes || ordem.observacoes_fiscais) ? (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              <div className="rounded-lg border bg-background px-4 py-3">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Descrição</span>
+                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.descricao || "—"}</p>
+              </div>
+              <div className="rounded-lg border bg-background px-4 py-3">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Observações</span>
+                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.observacoes || "—"}</p>
+              </div>
+              <div className="rounded-lg border bg-background px-4 py-3">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Observações fiscais</span>
+                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.observacoes_fiscais || "—"}</p>
+              </div>
+            </div>
+          ) : null}
+
+          {(itensProduto.length > 0 || itensServico.length > 0) ? (
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              <div className="rounded-lg border bg-background px-4 py-3">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Produtos da cobrança</span>
+                {itensProduto.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {itensProduto.map((item, index) => (
+                      <div key={`${item.produtoid}-${index}`} className="flex items-start justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-medium line-clamp-2">
+                            {item.produto?.titulo || item.produto?.descricao || `Produto #${item.produtoid}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.quantidade} x {formatarEmReal(item.precounitario)}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-medium">{formatarEmReal(item.subtotal)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">Nenhum produto na cobrança.</p>
+                )}
+              </div>
+
+              <div className="rounded-lg border bg-background px-4 py-3">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Serviços da cobrança</span>
+                {itensServico.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {itensServico.map((item, index) => (
+                      <div key={`${item.servicoid}-${index}`} className="flex items-start justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-medium line-clamp-2">
+                            {item.servico?.descricao || item.servico?.codigo || `Serviço #${item.servicoid}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.quantidade} x {formatarEmReal(item.precounitario)}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-medium">{formatarEmReal(item.subtotal)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">Nenhum serviço na cobrança.</p>
+                )}
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-row justify-end">
             
             <TransactionDialog
@@ -209,16 +339,17 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             </TransactionDialog>
           </div>
 
-          <h1>Transações: {transactions.length}</h1>
-          <Separator />
+          <h1 className="m-0">Transações: {transactions.length}</h1>
 
           <div
-            className="flex flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
+            className="flex w-fit flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
             onClick={() => handleGetTransactions()}
           >
             <span>Recarregar</span>
             <Loader2 className="w-[12px]" />
           </div>
+
+          <Separator />
 
           {/* WRAPPER para rolagem horizontal no mobile */}
           <div className="w-full min-w-0 overflow-x-auto">
@@ -325,25 +456,14 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
               <span className="text-nowrap">Total Pago:</span>
               <div className="w-full border-b h-full border-dashed"></div>
               <h1 className="text-blue-500 font-bold">
-                {formatarEmReal(
-                  transactions?.reduce(
-                    (acc, t) => acc + Number(t?.valor ?? 0),
-                    0
-                  ) ?? 0
-                )}
+                {formatarEmReal(totalPago)}
               </h1>
             </div>
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Saldo Devedor:</span>
               <div className="w-full border-b h-full border-dashed"></div>
               <h1 className="font-bold text-gray-400">
-                {formatarEmReal(
-                  (ordem.orcamentototal || 0) -
-                    (transactions?.reduce(
-                      (acc, t) => acc + Number(t?.valor ?? 0),
-                      0
-                    ) ?? 0)
-                )}
+                {formatarEmReal(saldoDevedor)}
               </h1>
             </div>
             <div className="w-full flex flex-col space-y-1"></div>
