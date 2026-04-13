@@ -148,7 +148,7 @@ export function RowActions<TRow extends RowBase>({
   // Enviar p/ aprovação
   const showSendToApproval = policy.showSendToApproval && (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
-  const showEmissaoDeNota = st === "CONCLUIDO";
+  const showEmissaoDeNota = config?.emissao_nf_ordens_nao_pagas ? st === "CONCLUIDO" || st === "PAGAMENTO" : st === "CONCLUIDO";
 
   // Produção / Pagamento
   const showStart = policy.showStart && st === "ORCAMENTO_APROVADO";
@@ -275,7 +275,7 @@ export function RowActions<TRow extends RowBase>({
             Receber pagamento
           </DropdownMenuItem>
         )}
-        
+
         {/* {showStonePayment && (
           <DropdownMenuItem
             onClick={() => {
@@ -288,7 +288,7 @@ export function RowActions<TRow extends RowBase>({
           </DropdownMenuItem>
         )} */}
 
-        {config?.habilitar_emissao_nfe && showEmissaoDeNota && (
+        {config?.habilitar_emissao_nfe && showEmissaoDeNota && config?.emissao_nf_no_modulo_ordens && (
           <DropdownMenuItem
             onClick={() => {
               setEmissaoId(row.id);
@@ -317,7 +317,7 @@ export function RowActions<TRow extends RowBase>({
         )}
 
         <DropdownMenuItem onClick={() => window.open(`/print/ordemservico/${row.id}`, "_blank")}>
-          <Printer className="mr-2 h-4 w-4"/>
+          <Printer className="mr-2 h-4 w-4" />
           Imprimir
         </DropdownMenuItem>
 

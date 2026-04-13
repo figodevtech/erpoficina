@@ -1,12 +1,44 @@
 "use client"
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useCallback, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, User, Package, Hash, ShoppingCart, Loader2, AlertCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Calendar,
+  User,
+  Package,
+  Hash,
+  ShoppingCart,
+  AlertCircle,
+  Truck,
+  FileText,
+  Upload,
+} from "lucide-react"
+import { toast } from "sonner"
 import type { VendaCanal, VendaStatusEntrega, vendaStatus } from "../types"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogTitle,
+  DialogHeader,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import {
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerClose,
+} from "@/components/ui/drawer"
+import { Button } from "@/components/ui/button"
 
 interface Produto {
   id: number
@@ -65,9 +97,14 @@ interface Venda {
   createdat: string | null
   updatedat: string | null
   created_by: string | null
+  criador?: {
+    id: string
+    nome: string
+  } | null
   desconto_tipo: string | null
   desconto_valor: number
   sub_total: number
+  observacoes_fiscais?: string | null
   itens: VendaProduto[]
 }
 
@@ -105,36 +142,79 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
   const [venda, setVenda] = useState<Venda | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentTab, setCurrentTab] = useState<string>("Geral")
+  const isDesktop = useMediaQuery("(min-width: 768px)")
+
+  const fetchVenda = useCallback(async () => {
+    if (!vendaId) return
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/venda/${vendaId}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Erro ao buscar venda")
+      }
+
+      const result = await response.json()
+      setVenda(result.data)
+    } catch (err) {
+      console.error("[debug] Erro ao buscar venda:", err)
+      setError(err instanceof Error ? err.message : "Erro ao carregar dados da venda")
+    } finally {
+      setLoading(false)
+    }
+  }, [vendaId])
 
   useEffect(() => {
-    if (!open || !vendaId) {
-      return
+    if (open && vendaId) {
+      fetchVenda()
+    } else if (!open) {
+      setVenda(null)
+      setCurrentTab("Geral")
     }
+  }, [open, vendaId, fetchVenda])
 
-    const fetchVenda = async () => {
-      setLoading(true)
-      setError(null)
+  const handleUpdateVenda = async () => {
+    if (!venda || !vendaId) return
 
-      try {
-        const response = await fetch(`/api/venda/${vendaId}`)
+    setIsSubmitting(true)
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || "Erro ao buscar venda")
-        }
+    try {
+      const response = await fetch(`/api/venda/${vendaId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          observacoesFiscais: venda.observacoes_fiscais,
+        }),
+      })
 
-        const result = await response.json()
-        setVenda(result.data)
-      } catch (err) {
-        console.error("[v0] Erro ao buscar venda:", err)
-        setError(err instanceof Error ? err.message : "Erro ao carregar dados da venda")
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Erro ao atualizar venda")
       }
-    }
 
-    fetchVenda()
-  }, [open, vendaId])
+      toast.success("Sucesso!", { description: "Venda atualizada com sucesso.", duration: 2000 })
+      
+      // Trigger full loading state
+      setVenda(null) 
+      await fetchVenda()
+    } catch (err) {
+      console.error("Erro ao atualizar venda:", err)
+      toast.error("Erro", { description: err instanceof Error ? err.message : "Erro ao atualizar venda", duration: 2500 })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleChange = (field: keyof Venda, value: any) => {
+    setVenda((prev) => (prev ? { ...prev, [field]: value } : null))
+  }
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -161,258 +241,275 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
     }).format(qty)
   }
 
+  const tabTheme =
+    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+
+  const showFullLoading = (loading || isSubmitting) && !venda;
+  
+  const Content = isDesktop ? DialogContent : DrawerContent;
+  const Header = isDesktop ? DialogHeader : DrawerHeader;
+  const Title = isDesktop ? DialogTitle : DrawerTitle;
+  const Description = isDesktop ? DialogDescription : DrawerDescription;
+  const Footer = isDesktop ? DialogFooter : DrawerFooter;
+  const Close = isDesktop ? DialogClose : DrawerClose;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        
-      <DialogContent className="max-w-3xl max-h-[90vh]">
-        
-        {loading && (
+      <Content className={
+        isDesktop
+          ? `h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0 sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0`
+          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+      }>
+        <div className="flex h-full min-h-0 min-w-0 flex-col">
+          {showFullLoading ? (
+            <div className="flex flex-1 flex-col justify-center items-center">
+              <Header className="hidden">
+                <Title></Title>
+                <Description></Description>
+              </Header>
+              <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
+              <span className="text-primary mt-3 text-sm font-medium animate-pulse">
+                {isSubmitting ? "Salvando alterações..." : "Buscando dados da venda..."}
+              </span>
+            </div>
+          ) : (
             <>
-            <DialogHeader>
-              <DialogTitle></DialogTitle>
-            </DialogHeader>
-          <div className="flex min-h-[400px] flex-col items-center justify-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Carregando detalhes da venda...</p>
-          </div>
-            </>
-        )}
+              <Header className={isDesktop ? "shrink-0 px-6 py-4 border-b-1" : "shrink-0 px-4 py-2"}>
+                <Title className={isDesktop ? "text-sm sm:text-lg pr-4" : ""}>
+                  {venda ? `Venda #${venda.id}` : "Venda"}
+                </Title>
+                <Description>
+                  {venda ? "Detalhes completos da transação" : error ? "Erro ao carregar dados" : "Carregando..."}
+                </Description>
+              </Header>
 
-        {error && !loading && (
-
-          <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 text-center">
-            <div className="rounded-full bg-destructive/10 p-3">
-              <AlertCircle className="h-8 w-8 text-destructive" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-semibold">Erro ao carregar venda</p>
-              <p className="text-sm text-muted-foreground">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {venda && !loading && !error && (
-          <>
-            <DialogHeader>
-              <div className="flex items-start justify-between gap-4 pr-5">
-                <div className="space-y-1">
-                  <DialogTitle className="text-2xl font-semibold">Venda #{venda.id}</DialogTitle>
-                  <p className="text-sm text-muted-foreground">Detalhes completos da transação</p>
-                </div>
-                <Badge variant="outline" className={statusColors[venda.status]}>
-                  {statusLabels[venda.status]}
-                </Badge>
-              </div>
-            </DialogHeader>
-
-            <ScrollArea className="max-h-[calc(90vh-140px)] pr-4">
-              <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                    <div className="rounded-full bg-primary/10 p-2">
-                      <User className="h-4 w-4 text-primary" />
+              <div className="flex-1 min-h-0 min-w-0 relative">
+                {error && !venda ? (
+                  <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+                    <div className="rounded-full bg-destructive/10 p-3 mb-4">
+                      <AlertCircle className="h-8 w-8 text-destructive" />
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Cliente</p>
-                      <p className="text-sm font-semibold leading-tight">{venda.cliente.nomerazaosocial}</p>
-                      <p className="text-xs text-muted-foreground">ID: {venda.cliente.id}</p>
-                    </div>
+                    <p className="font-semibold text-destructive">Erro ao carregar venda</p>
+                    <p className="text-sm text-muted-foreground">{error}</p>
+                    <Button variant="outline" className="mt-4" onClick={() => fetchVenda()}>Tentar novamente</Button>
                   </div>
-
-                  <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                    <div className="rounded-full bg-primary/10 p-2">
-                      <Calendar className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Data da Venda</p>
-                      <p className="text-sm font-semibold">{formatDate(venda.datavenda)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {venda.canal === "ONLINE" && (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <Package className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-xs font-medium text-muted-foreground">Entrega</p>
-                          <p className="text-sm font-semibold">
-                            {venda.status_entrega ?? "Nao iniciada"}
-                          </p>
-                          {venda.ultimo_evento_rastreio && (
-                            <p className="text-xs text-muted-foreground">
-                              Rastreio: {venda.ultimo_evento_rastreio}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <Hash className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-xs font-medium text-muted-foreground">Codigo de rastreio</p>
-                          <p className="text-sm font-semibold leading-tight">
-                            {venda.codigo_rastreio ?? "Nao informado"}
-                          </p>
-                          {venda.transportadora_rastreio && (
-                            <p className="text-xs text-muted-foreground">
-                              Transportadora: {venda.transportadora_rastreio}
-                            </p>
-                          )}
-                        </div>
+                ) : venda ? (
+                  <Tabs
+                    value={currentTab}
+                    defaultValue="Geral"
+                    className="flex h-full flex-col min-h-0 overflow-hidden"
+                  >
+                    <div className="shrink-0 sticky top-0 z-10 mt-4">
+                      <div className={isDesktop ? "overflow-x-auto px-6 pb-2" : "overflow-x-auto px-4 pb-2"}>
+                        <TabsList className="w-max justify-start bg-transparent">
+                          <TabsTrigger onClick={() => setCurrentTab("Geral")} value="Geral" className={"hover:cursor-pointer" + tabTheme}>
+                            Geral
+                          </TabsTrigger>
+                          <TabsTrigger onClick={() => setCurrentTab("Entrega")} value="Entrega" className={"hover:cursor-pointer" + tabTheme}>
+                            Entrega
+                          </TabsTrigger>
+                          <TabsTrigger onClick={() => setCurrentTab("Financeiro")} value="Financeiro" className={"hover:cursor-pointer" + tabTheme}>
+                            Financeiro
+                          </TabsTrigger>
+                          <TabsTrigger onClick={() => setCurrentTab("Produtos")} value="Produtos" className={"hover:cursor-pointer" + tabTheme}>
+                            Produtos
+                          </TabsTrigger>
+                          <TabsTrigger onClick={() => setCurrentTab("Fiscal")} value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
+                            Fiscal
+                          </TabsTrigger>
+                        </TabsList>
                       </div>
                     </div>
 
-                    {(venda.nfe_chave_acesso || venda.danfe_url) && (
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                          <div className="rounded-full bg-primary/10 p-2">
-                            <Hash className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <p className="text-xs font-medium text-muted-foreground">Chave NF-e</p>
-                            <p className="text-sm font-semibold break-all">
-                              {venda.nfe_chave_acesso ?? "Nao informado"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                          <div className="rounded-full bg-primary/10 p-2">
-                            <Package className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <p className="text-xs font-medium text-muted-foreground">DANFE</p>
-                            <p className="text-sm font-semibold break-all">
-                              {venda.danfe_url ?? "Nao informado"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <Separator />
-                  </>
-                )}
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      Resumo Financeiro
-                    </h3>
-                  </div>
-
-                  <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(venda.sub_total)}</span>
-                    </div>
-
-                    {venda.desconto_valor > 0 && (
-                      <div className="flex items-center justify-between text-sm text-emerald-600 dark:text-emerald-400">
-                        <span>Desconto</span>
-                        <span className="font-medium">-{formatCurrency(venda.desconto_valor)}</span>
-                      </div>
-                    )}
-
-                    <Separator className="my-2" />
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-semibold">Valor Total</span>
-                      <span className="text-xl font-bold text-primary">{formatCurrency(venda.valortotal)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {venda.itens && venda.itens.length > 0 && (
-                  <>
-                    <Separator />
-
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                          Produtos ({venda.itens.length})
-                        </h3>
-                      </div>
-
-                      <div className="space-y-3">
-                        {venda.itens.map((item, index) => (
-                          <div key={item.id} className="rounded-lg border bg-card p-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-start gap-3">
-                                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                    {index + 1}
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className="font-semibold leading-tight">{item.produto.titulo}</p>
-                                    <p className="mt-1 text-xs text-muted-foreground">{item.produto.descricao}</p>
-                                  </div>
+                    <ScrollArea className="flex-1 px-6 py-4">
+                      <TabsContent value="Geral" className="m-0 space-y-6">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                                <div className="rounded-full bg-primary/10 p-2">
+                                    <User className="h-4 w-4 text-primary" />
                                 </div>
-
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-11 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Hash className="h-3 w-3" />
-                                    <span>
-                                      {formatQuantity(item.quantidade)} {item.produto.unidade}
-                                    </span>
-                                  </div>
-                                  <span>•</span>
-                                  <span>{formatCurrency(item.sub_total / item.quantidade)} / unid.</span>
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-xs font-medium text-muted-foreground">Cliente</p>
+                                    <p className="text-sm font-semibold leading-tight">{venda.cliente.nomerazaosocial}</p>
+                                    <p className="text-xs text-muted-foreground">ID: {venda.cliente.id}</p>
                                 </div>
-                              </div>
+                            </div>
+                            <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                                <div className="rounded-full bg-primary/10 p-2">
+                                    <Calendar className="h-4 w-4 text-primary" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-xs font-medium text-muted-foreground">Data da Venda</p>
+                                    <p className="text-sm font-semibold">{formatDate(venda.datavenda)}</p>
+                                </div>
+                            </div>
+                        </div>
 
-                              <div className="text-right">
-                                <p className="text-lg font-bold">{formatCurrency(item.valor_total)}</p>
-                                {item.valor_desconto > 0 && (
-                                  <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                    Desc. {formatCurrency(item.valor_desconto)}
-                                  </p>
+                        <div className="rounded-lg bg-muted/30 p-4">
+                            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Informações do Sistema</h3>
+                            <div className="grid gap-3 text-xs sm:grid-cols-2">
+                                {venda.createdat && (
+                                    <div>
+                                        <p className="text-muted-foreground">Criado em</p>
+                                        <p className="font-medium">{formatDate(venda.createdat)}</p>
+                                    </div>
                                 )}
-                              </div>
+                                {venda.updatedat && (
+                                    <div>
+                                        <p className="text-muted-foreground">Atualizado em</p>
+                                        <p className="font-medium">{formatDate(venda.updatedat)}</p>
+                                    </div>
+                                )}
+                                {venda.created_by && (
+                                    <div>
+                                        <p className="text-muted-foreground">Criado por</p>
+                                        <p className="font-medium">{venda.criador?.nome || venda.created_by}</p>
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="text-muted-foreground">Status</p>
+                                    <Badge variant="outline" className={statusColors[venda.status] + " mt-1"}>
+                                        {statusLabels[venda.status]}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="Entrega" className="m-0 space-y-6">
+                        {venda.canal === "ONLINE" ? (
+                          <div className="space-y-6">
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                                    <div className="rounded-full bg-primary/10 p-2">
+                                        <Package className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-xs font-medium text-muted-foreground">Entrega</p>
+                                        <p className="text-sm font-semibold">{venda.status_entrega ?? "Não iniciada"}</p>
+                                        {venda.ultimo_evento_rastreio && (
+                                            <p className="text-xs text-muted-foreground">Rastreio: {venda.ultimo_evento_rastreio}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                                    <div className="rounded-full bg-primary/10 p-2">
+                                        <Hash className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-xs font-medium text-muted-foreground">Código de rastreio</p>
+                                        <p className="text-sm font-semibold leading-tight">{venda.codigo_rastreio ?? "Não informado"}</p>
+                                        {venda.transportadora_rastreio && (
+                                            <p className="text-xs text-muted-foreground">Transportadora: {venda.transportadora_rastreio}</p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
+                        ) : (
+                          <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+                            <Truck className="h-12 w-12 opacity-20" />
+                            <p>Esta é uma venda de PDV (presencial). Não possui dados de entrega.</p>
+                          </div>
+                        )}
+                      </TabsContent>
 
-                <Separator />
+                      <TabsContent value="Financeiro" className="m-0 space-y-6">
+                        <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Subtotal</span>
+                            <span className="font-medium">{formatCurrency(venda.sub_total)}</span>
+                          </div>
+                          {venda.desconto_valor > 0 && (
+                            <div className="flex items-center justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                              <span>Desconto</span>
+                              <span className="font-medium">-{formatCurrency(venda.desconto_valor)}</span>
+                            </div>
+                          )}
+                          <Separator className="my-2" />
+                          <div className="flex items-center justify-between">
+                            <span className="text-base font-semibold">Valor Total</span>
+                            <span className="text-xl font-bold text-primary">{formatCurrency(venda.valortotal)}</span>
+                          </div>
+                        </div>
+                      </TabsContent>
 
-                <div className="rounded-lg bg-muted/30 p-4">
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Informações do Sistema
-                  </h3>
-                  <div className="grid gap-3 text-xs sm:grid-cols-2">
-                    {venda.createdat && (
-                      <div>
-                        <p className="text-muted-foreground">Criado em</p>
-                        <p className="font-medium">{formatDate(venda.createdat)}</p>
-                      </div>
-                    )}
-                    {venda.updatedat && (
-                      <div>
-                        <p className="text-muted-foreground">Atualizado em</p>
-                        <p className="font-medium">{formatDate(venda.updatedat)}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                      <TabsContent value="Produtos" className="m-0 space-y-6">
+                        <div className="space-y-3">
+                          {venda.itens.map((item, index) => (
+                            <div key={item.id} className="rounded-lg border bg-card p-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <p className="font-semibold leading-tight">{item.produto.titulo}</p>
+                                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                    <span>{formatQuantity(item.quantidade)} {item.produto.unidade}</span>
+                                    <span>•</span>
+                                    <span>{formatCurrency(item.valor_total / item.quantidade)} / unid.</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold">{formatCurrency(item.valor_total)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="Fiscal" className="m-0 space-y-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Observações Fiscais</h3>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="observacoes_fiscais">Observações livres para nota fiscal e impostos</Label>
+                            <Textarea
+                              id="observacoes_fiscais"
+                              placeholder="Ex: Venda com benefício fiscal, isenção de IPI, etc..."
+                              className="min-h-[150px] resize-none"
+                              value={venda.observacoes_fiscais || ""}
+                              onChange={(e) => handleChange("observacoes_fiscais", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </ScrollArea>
+                  </Tabs>
+                ) : null}
               </div>
-            </ScrollArea>
-          </>
-        )}
-      </DialogContent>
+
+              <Footer className={isDesktop ? "px-6 py-4" : "px-4 py-4"}>
+                <div className="flex justify-end gap-2 w-full">
+                  <Close asChild>
+                    <Button className="hover:cursor-pointer" variant={"outline"}>
+                      Cancelar
+                    </Button>
+                  </Close>
+                  <Button
+                    type="button"
+                    disabled={isSubmitting || loading || !venda}
+                    className="hover:cursor-pointer min-w-[120px]"
+                    onClick={handleUpdateVenda}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Salvar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </Footer>
+            </>
+          )}
+        </div>
+      </Content>
     </Dialog>
   )
 }

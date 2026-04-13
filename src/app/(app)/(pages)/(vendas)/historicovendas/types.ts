@@ -78,6 +78,7 @@ export interface VendaComItens {
   desconto_valor: number;
   forma_pagamento?: string | null;
   sub_total: number;
+  observacoes_fiscais?: string | null;
   itens: VendaProdutoItem[];
 }
 

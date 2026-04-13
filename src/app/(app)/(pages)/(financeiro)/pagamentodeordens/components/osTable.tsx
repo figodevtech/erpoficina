@@ -11,6 +11,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   DollarSign,
+  FileText,
   Loader2,
   MoreHorizontal,
 } from "lucide-react";
@@ -27,6 +28,9 @@ import OsFinancialDialog from "./osFinancialDialog/osFinancialDialog";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
+import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
+import { useConfig } from "../../../config-context";
+import { Badge } from "@/components/ui/badge";
 
 interface OsTableProps {
   ordens: Ordem[];
@@ -40,6 +44,8 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
   // ID estável para o Select de "itens por página"
   const [selectedStatus, setSelectedStatus] = useState<StatusOS>("PAGAMENTO");
   const limitUid = React.useId();
+  const [openEmissao, setOpenEmissao] = useState(false);
+  const [emissaoId, setEmissaoId] = useState<number | undefined>(undefined);
   const limitListboxId = `${limitUid}-os-limit-listbox`;
   const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
@@ -47,6 +53,8 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
   useEffect(() => {
     handleGetOrdens(selectedStatus);
   }, [selectedStatus]);
+
+  const config = useConfig();
 
   return (
     <Card className="">
@@ -86,16 +94,19 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative flex flex-col justify-between">
+        <EmissaoNotaDialog
+          onOpenChange={setOpenEmissao}
+          open={openEmissao}
+          osId={emissaoId}
+        />
         {/* barra superior de loading */}
         <div
-          className={`${
-            isLoading && "opacity-100"
-          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${isLoading && "opacity-100"
+            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
-              isLoading && "animate-slideIn "
-            }`}
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${isLoading && "animate-slideIn "
+              }`}
           />
         </div>
 
@@ -108,7 +119,7 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
               <TableHead>Setor</TableHead>
               <TableHead className="whitespace-nowrap">Pago</TableHead>
               <TableHead className="whitespace-nowrap">Total</TableHead>
-              <TableHead>Situação</TableHead>
+              <TableHead className="text-center">Situação</TableHead>
               <TableHead className="text-right whitespace-nowrap w-[90px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -131,13 +142,13 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
                       {formatarEmReal(o.transacoes?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0)}
                     </TableCell>
                     <TableCell>{formatarEmReal(o.orcamentototal || 0)}</TableCell>
-                    <TableCell className="">
+                    <TableCell className="text-center">
                       {o.orcamentototal ? (
                         (o.transacoes?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) || 0) <
-                        (o.orcamentototal || 0) ? (
-                          <span className="font-bold text-amber-400">Pendente</span>
+                          (o.orcamentototal || 0) ? (
+                          <Badge variant="secondary" className="font-bold text-amber-400">Pagamento</Badge>
                         ) : (
-                          <span className="font-bold text-green-400">Faturado</span>
+                          <Badge variant="secondary" className="font-bold text-green-400">Faturado</Badge>
                         )
                       ) : (
                         "Orçamento falta valor"
@@ -163,6 +174,22 @@ export default function OsTable({ ordens, pagination, handleGetOrdens, isLoading
                               <span>Pagamento</span>
                             </DropdownMenuItem>
                           </OsFinancialDialog>
+                          {
+                            config?.habilitar_emissao_nfe &&
+                            (config?.emissao_nf_ordens_nao_pagas ? o.status === "PAGAMENTO" ||
+                              o.status === "CONCLUIDO" : o.status === "CONCLUIDO") && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEmissaoId(o.id);
+                                  setOpenEmissao(true);
+                                }}
+                              >
+                                <FileText className="h-4 w-4" />
+                                <span>Emitir NF</span>
+                              </DropdownMenuItem>
+                            )
+                          }
+
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

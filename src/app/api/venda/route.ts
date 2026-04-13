@@ -61,6 +61,7 @@ const VENDA_SELECT = `
   createdat,
   updatedat,
   created_by,
+  criador:created_by ( id, nome ),
   canal,
   status_entrega,
   codigo_rastreio,
@@ -74,6 +75,7 @@ const VENDA_SELECT = `
   danfe_url,
   desconto_tipo,
   desconto_valor,
+  observacoes_fiscais,
   forma_pagamento,
   sub_total,
   itens:vendaproduto (
@@ -243,7 +245,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth()
 
-    if(!session?.user.id) {
+    if (!session?.user.id) {
       return NextResponse.json({ error: "Usuário não autenticado." }, { status: 401 });
     }
 

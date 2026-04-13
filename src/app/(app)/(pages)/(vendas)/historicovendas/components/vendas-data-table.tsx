@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import {
   Card,
   CardContent,
@@ -385,14 +385,12 @@ export default function VendasDataTable({
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
         <div
-          className={`${
-            isLoading && " opacity-100"
-          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${isLoading && " opacity-100"
+            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
-              isLoading && "animate-slideIn "
-            } `}
+            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "
+              } `}
           ></div>
         </div>
 
@@ -415,7 +413,10 @@ export default function VendasDataTable({
             {vendas.map((p) => {
               return (
                 <TableRow
-                  onDoubleClick={() => setSelectedVendaId?.(p.id)}
+                  onDoubleClick={() => {
+                    setSelectedVendaId(p.id);
+                    setOpenDetails(true);
+                  }}
                   key={p.id}
                   className="hover:cursor-pointer"
                 >
@@ -451,8 +452,9 @@ export default function VendasDataTable({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
                         {config?.habilitar_emissao_nfe &&
-                          (p.status === "FINALIZADA" ||
-                            p.status === "PAGO") && (
+                          config?.emissao_nf_no_modulo_vendas &&
+                          (config?.emissao_nf_vendas_nao_pagas ? p.status === "FINALIZADA" ||
+                            p.status === "PAGO" || p.status === "PAGAMENTO" : p.status === "FINALIZADA") && (
                             <DropdownMenuItem
                               onClick={() => {
                                 setEmissaoId(p.id);
@@ -500,16 +502,16 @@ export default function VendasDataTable({
 
                         {String((p as any).canal ?? "").toUpperCase() ===
                           "ONLINE" && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setOnlineVendaId(p.id);
-                              setOpenOnline(true);
-                            }}
-                          >
-                            <Package className="h-4 w-4" />
-                            Pedido online
-                          </DropdownMenuItem>
-                        )}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setOnlineVendaId(p.id);
+                                setOpenOnline(true);
+                              }}
+                            >
+                              <Package className="h-4 w-4" />
+                              Pedido online
+                            </DropdownMenuItem>
+                          )}
 
                         <DeleteAlert
                           onDelete={() => handleDeleteVenda(p.id)}

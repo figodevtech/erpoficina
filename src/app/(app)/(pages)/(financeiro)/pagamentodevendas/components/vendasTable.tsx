@@ -10,6 +10,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   DollarSign,
+  FileText,
   Loader2,
   MoreHorizontal,
 } from "lucide-react";
@@ -28,6 +29,8 @@ import { useEffect, useState } from "react";
 import { VendaComItens, vendaStatus } from "../../../(vendas)/historicovendas/types";
 import { formatDate } from "@/utils/formatDate";
 import VendasFinancialDialog from "./vendasFinancialDialog/vendasFinancialDialog";
+import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
+import { useConfig } from "../../../config-context";
 
 interface OsTableProps {
   vendas: VendaComItens[];
@@ -41,6 +44,8 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
   // ID estável para o Select de "itens por página"
   const [selectedStatus, setSelectedStatus] = useState<vendaStatus>(vendaStatus.PAGAMENTO);
   const [open, setOpen] = useState(false);
+  const [openEmissao, setOpenEmissao] = useState(false);
+  const [emissaoId, setEmissaoId] = useState<number | undefined>(undefined);
   const limitUid = React.useId();
   const limitListboxId = `${limitUid}-os-limit-listbox`;
   const tabTheme =
@@ -49,6 +54,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
   useEffect(() => {
     handleGetVendas(selectedStatus);
   }, [selectedStatus]);
+  const config = useConfig();
 
   return (
     <Card className="">
@@ -89,17 +95,19 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative flex flex-col justify-between">
         {/* barra superior de loading */}
         <div
-          className={`${
-            isLoading && "opacity-100"
-          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${isLoading && "opacity-100"
+            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
-              isLoading && "animate-slideIn "
-            }`}
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${isLoading && "animate-slideIn "
+              }`}
           />
         </div>
-
+        <EmissaoNotaDialog
+          onOpenChange={setOpenEmissao}
+          open={openEmissao}
+          vendaId={emissaoId}
+        />
         <Table className="text-xs mt-6">
           <TableHeader>
             <TableRow className="font-bold">
@@ -153,6 +161,21 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
                               <span>Pagamento</span>
                             </DropdownMenuItem>
                           </VendasFinancialDialog>
+                          {
+                            config?.habilitar_emissao_nfe &&
+                            (config?.emissao_nf_vendas_nao_pagas ? v.status === "PAGAMENTO" ||
+                              v.status === "FINALIZADA" : v.status === "FINALIZADA") && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEmissaoId(v.id);
+                                  setOpenEmissao(true);
+                                }}
+                              >
+                                <FileText className="h-4 w-4" />
+                                <span>Emitir NF</span>
+                              </DropdownMenuItem>
+                            )
+                          }
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

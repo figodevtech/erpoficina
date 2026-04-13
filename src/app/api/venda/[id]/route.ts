@@ -58,8 +58,10 @@ const VENDA_SELECT = `
   createdat,
   updatedat,
   created_by,
+  criador:created_by ( id, nome ),
   desconto_tipo,
   desconto_valor,
+  observacoes_fiscais,
   forma_pagamento,
   sub_total,
   itens:vendaproduto (
@@ -109,6 +111,7 @@ type VendaPatchBody = {
   subTotal?: number;
   valorTotal?: number;
   dataVenda?: string | null; // ISO string
+  observacoesFiscais?: string | null;
 };
 
 type ParamsCtx = { params: Promise<{ id: string }> };
@@ -218,6 +221,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       subTotal,
       valorTotal,
       dataVenda,
+      observacoesFiscais,
     } = body;
 
     if (
@@ -233,7 +237,8 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       formaPagamento === undefined &&
       subTotal === undefined &&
       valorTotal === undefined &&
-      dataVenda === undefined
+      dataVenda === undefined &&
+      observacoesFiscais === undefined
     ) {
       return NextResponse.json(
         {
@@ -348,6 +353,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     if (subTotal !== undefined) updatePayload.sub_total = subTotal;
     if (valorTotal !== undefined) updatePayload.valortotal = valorTotal;
     if (dataVenda !== undefined) updatePayload.datavenda = dataVenda;
+    if (observacoesFiscais !== undefined) updatePayload.observacoes_fiscais = observacoesFiscais;
 
     updatePayload.updatedat = new Date().toISOString();
 

@@ -27,7 +27,7 @@ function booleanValido(v: any) {
 async function buscarConfigAtual() {
   const { data, error } = await supabase
     .from("config_geral")
-    .select("id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, created_at, habilitar_drawers")
+    .select("id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers")
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
