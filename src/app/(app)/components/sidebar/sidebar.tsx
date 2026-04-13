@@ -135,6 +135,11 @@ const data = {
       icon: Settings2,
       items: [
         {
+          title: "Geral",
+          url: "/configuracoes/geral",
+          icon: Settings,
+        },
+        {
           title: "Fiscal & Pagamentos",
           url: "/configuracoes/fiscal-pagamentos",
           icon: Receipt,

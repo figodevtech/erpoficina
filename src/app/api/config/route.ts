@@ -27,7 +27,9 @@ function booleanValido(v: any) {
 async function buscarConfigAtual() {
   const { data, error } = await supabase
     .from("config_geral")
-    .select("id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers")
+    .select(
+      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers"
+    )
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -43,7 +45,9 @@ async function criarConfigPadraoSeNaoExistir() {
   const { data, error } = await supabase
     .from("config_geral")
     .insert({}) // usa defaults do banco
-    .select("id, aviso_pagamento, checklist_obrigatorio, created_at, habilitar_drawers")
+    .select(
+      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers"
+    )
     .single();
 
   if (error) throw error;
@@ -65,35 +69,30 @@ export async function PUT(request: Request) {
     const body = await request.json().catch(() => null);
     if (!body) return respostaJSON({ error: "JSON inválido no body." }, 400);
 
-    // Aceita os campos direto no body:
-    // { aviso_pagamento?: boolean, checklist_obrigatorio?: boolean }
+    const validKeys = [
+      "checklist_obrigatorio",
+      "alerta_estoque_pdv",
+      "habilitar_emissao_nfe",
+      "emissao_nf_no_modulo_ordens",
+      "emissao_nf_no_modulo_vendas",
+      "emissao_nf_ordens_nao_pagas",
+      "emissao_nf_vendas_nao_pagas",
+    ];
+
     const patch: any = {};
 
-    const avisoPagamento = booleanValido(body.aviso_pagamento);
-    const checklistObrigatorio = booleanValido(body.checklist_obrigatorio);
-
-    if (body.aviso_pagamento !== undefined && avisoPagamento === undefined) {
-      return respostaJSON(
-        { error: "Campo 'aviso_pagamento' deve ser boolean." },
-        400
-      );
+    for (const key of validKeys) {
+      if (body[key] !== undefined) {
+        const val = booleanValido(body[key]);
+        if (val === undefined) {
+          return respostaJSON({ error: `Campo '${key}' deve ser boolean.` }, 400);
+        }
+        patch[key] = val;
+      }
     }
-    if (
-      body.checklist_obrigatorio !== undefined &&
-      checklistObrigatorio === undefined
-    ) {
-      return respostaJSON(
-        { error: "Campo 'checklist_obrigatorio' deve ser boolean." },
-        400
-      );
-    }
-
-    if (avisoPagamento !== undefined) patch.aviso_pagamento = avisoPagamento;
-    if (checklistObrigatorio !== undefined)
-      patch.checklist_obrigatorio = checklistObrigatorio;
 
     if (Object.keys(patch).length === 0) {
-      return respostaJSON({ error: "Nenhum campo para atualizar." }, 400);
+      return respostaJSON({ error: "Nenhum campo válido para atualizar." }, 400);
     }
 
     const atual = await criarConfigPadraoSeNaoExistir();
@@ -102,7 +101,7 @@ export async function PUT(request: Request) {
       .from("config_geral")
       .update(patch)
       .eq("id", atual.id)
-      .select("id, aviso_pagamento, checklist_obrigatorio, created_at")
+      .select("*")
       .single();
 
     if (error) {

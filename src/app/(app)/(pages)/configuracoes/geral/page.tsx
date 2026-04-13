@@ -1,0 +1,292 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import {
+  Settings,
+  Receipt,
+  ShoppingCart,
+  ClipboardCheck,
+  Loader2,
+  Save,
+  AlertCircle,
+  FileText,
+  CreditCard,
+  Package,
+  AppWindow
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import type { Config } from "../../type";
+
+export default function ConfigGeralPage() {
+  const [salvando, setSalvando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+
+  const { register, handleSubmit, setValue, watch, reset } = useForm<Partial<Config>>({
+    defaultValues: {
+      checklist_obrigatorio: false,
+      alerta_estoque_pdv: false,
+      habilitar_emissao_nfe: false,
+      emissao_nf_no_modulo_ordens: false,
+      emissao_nf_no_modulo_vendas: false,
+      emissao_nf_ordens_nao_pagas: false,
+      emissao_nf_vendas_nao_pagas: false,
+    },
+  });
+
+  const carregarConfig = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const response = await fetch("/api/config", { cache: "no-store" });
+      const data = await response.json();
+      if (response.ok && data.config) {
+        reset(data.config);
+      } else {
+        toast.error("Erro ao carregar configurações");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Falha na comunicação com o servidor");
+    } finally {
+      setCarregando(false);
+    }
+  }, [reset]);
+
+  useEffect(() => {
+    carregarConfig();
+  }, [carregarConfig]);
+
+  const onSalvar = async (values: Partial<Config>) => {
+    setSalvando(true);
+    try {
+      const response = await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        toast.success("Configurações atualizadas com sucesso!");
+        reset(data.config);
+      } else {
+        throw new Error(data.error || "Erro ao salvar");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao salvar configurações");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  if (carregando) {
+    return (
+      <div className="flex h-[80vh] w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-muted-foreground animate-pulse">Carregando configurações...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8 max-w-5xl space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Settings className="h-8 w-8 text-primary" />
+            Configurações Gerais
+          </h1>
+          <p className="text-muted-foreground">
+            Gerencie o comportamento global do sistema, módulos fiscais e alertas do PDV.
+          </p>
+        </div>
+        <Button
+          onClick={handleSubmit(onSalvar)}
+          disabled={salvando}
+          className="shadow-md hover:shadow-lg transition-all"
+        >
+          {salvando ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          Salvar Alterações
+        </Button>
+      </div>
+
+      <Separator />
+
+      <div className="grid gap-6">
+        {/* MÓDULO FISCAL */}
+        <Card className="overflow-hidden border-primary/10 shadow-sm p-0">
+          <CardHeader className="bg-primary/5 py-4">
+            <div className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              <CardTitle>Módulo Fiscal (NF-e / NFC-e)</CardTitle>
+            </div>
+            <CardDescription>
+              Configure a visibilidade e as travas de emissão de notas fiscais no sistema.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 py-6">
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col space-y-1">
+                <Label className="text-base">Habilitar Emissão de NF</Label>
+                <span className="text-sm text-muted-foreground">
+                  Habilita globalmente os botões e recursos de emissão de NF-e e NFC-e.
+                </span>
+              </div>
+              <Switch
+                checked={watch("habilitar_emissao_nfe")}
+                onCheckedChange={(v) => setValue("habilitar_emissao_nfe", v)}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 font-medium text-sm text-primary">
+                  <FileText className="h-4 w-4" /> Módulo de Vendas
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border">
+                  <div className="flex flex-col space-y-1">
+                    <Label>Exibir no Módulo</Label>
+                    <span className="text-xs text-muted-foreground">Botão de emissão de NF é exibido no módulo de Vendas.</span>
+                  </div>
+                  <Switch
+                    checked={watch("emissao_nf_no_modulo_vendas")}
+                    onCheckedChange={(v) => setValue("emissao_nf_no_modulo_vendas", v)}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border">
+                  <div className="flex flex-col space-y-1">
+                    <Label>Emitir sem Pagamento</Label>
+                    <span className="text-xs text-muted-foreground">Permite emissão de NF de Vendas antes do financeiro baixar.</span>
+                  </div>
+                  <Switch
+                    checked={watch("emissao_nf_vendas_nao_pagas")}
+                    onCheckedChange={(v) => setValue("emissao_nf_vendas_nao_pagas", v)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 font-medium text-sm text-primary">
+                  <ClipboardCheck className="h-4 w-4" /> Módulo de Ordens (OS)
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border">
+                  <div className="flex flex-col space-y-1">
+                    <Label>Exibir no Módulo</Label>
+                    <span className="text-xs text-muted-foreground">Botão de emissão de NF é exibido no módulo de Ordens.</span>
+                  </div>
+                  <Switch
+                    checked={watch("emissao_nf_no_modulo_ordens")}
+                    onCheckedChange={(v) => setValue("emissao_nf_no_modulo_ordens", v)}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border">
+                  <div className="flex flex-col space-y-1">
+                    <Label>Emitir sem Pagamento</Label>
+                    <span className="text-xs text-muted-foreground">Permite emissão de NF de OS antes do financeiro baixar.</span>
+                  </div>
+                  <Switch
+                    checked={watch("emissao_nf_ordens_nao_pagas")}
+                    onCheckedChange={(v) => setValue("emissao_nf_ordens_nao_pagas", v)}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SISTEMA E INTERFACE */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card className="border-primary/10 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-primary" />
+                <CardTitle>Operações de Venda & PDV</CardTitle>
+              </div>
+              <CardDescription>
+                Alertas e comportamentos do fluxo de caixa e ponto de venda.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label>Alerta de Estoque PDV</Label>
+                    <Package className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">Exibe alerta em produtos sem etoque no módulo PDV.</span>
+                </div>
+                <Switch
+                  checked={watch("alerta_estoque_pdv")}
+                  onCheckedChange={(v) => setValue("alerta_estoque_pdv", v)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/10 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-primary" />
+                <CardTitle>Processos & Qualidade</CardTitle>
+              </div>
+              <CardDescription>
+                Regras de negócio para garantir a execução de processos internos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col space-y-1">
+                  <Label>Checklist de Entrada Obrigatório</Label>
+                  <span className="text-xs text-muted-foreground">
+                    Impede o início de uma OS sem que o veículo passe pelo checklist.
+                  </span>
+                </div>
+                <Switch
+                  checked={watch("checklist_obrigatorio")}
+                  onCheckedChange={(v) => setValue("checklist_obrigatorio", v)}
+                />
+              </div>
+
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 flex gap-3">
+                <AlertCircle className="h-5 w-5 text-primary shrink-0" />
+                <p className="text-xs text-primary/80 leading-relaxed">
+                  <strong>Dica:</strong> Ao ativar o checklist obrigatório, certifique-se de que todos os seus técnicos têm acesso aos formulários de inspeção.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-4 pb-12">
+        <Button
+          size="lg"
+          onClick={handleSubmit(onSalvar)}
+          disabled={salvando}
+          className="w-full md:w-auto px-12 shadow-md hover:shadow-lg transition-all"
+        >
+          {salvando ? (
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-5 w-5" />
+          )}
+          {salvando ? "Salvando..." : "Salvar Configurações"}
+        </Button>
+      </div>
+    </div>
+  );
+}
