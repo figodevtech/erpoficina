@@ -104,6 +104,7 @@ type OS = {
   id: number;
   descricao?: string | null;
   observacoes?: string | null;
+  observacoes_fiscais?: string | null;
   status?: string | null;
   statusaprovacao?: string | null;
   prioridade?: "ALTA" | "NORMAL" | "BAIXA" | null;
@@ -569,8 +570,9 @@ export function OSDetalhesDialog({
 
         <div className="px-5 pb-5">
           {loading ? (
-            <div className="h-48 grid place-items-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="flex min-h-[55vh] flex-col items-center justify-center gap-3">
+              <div className="size-8 animate-spin rounded-full border-t-2 border-primary" />
+              <span className="text-sm font-medium text-primary">Carregando</span>
             </div>
           ) : !data ? (
             <div className="h-24 grid place-items-center text-sm text-muted-foreground">Não foi possível carregar os detalhes.</div>
@@ -650,6 +652,13 @@ export function OSDetalhesDialog({
                     <span className="text-sm font-medium">Descrição</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{data.os.descricao || "—"}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <StickyNote className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Observações Fiscais</span>
+                  </div>
+                  <div className="text-sm whitespace-pre-wrap">{data.os.observacoes_fiscais || "—"}</div>
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2 mb-1.5">
