@@ -1,30 +1,13 @@
-import {
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogHeader,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogContent, DialogDescription, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-  TableHead,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { Metodo_pagamento, Transaction } from "../../../fluxodecaixa/types";
 import { useEffect, useState } from "react";
 import axios, { isAxiosError } from "axios";
 import TransactionDialog from "../../../fluxodecaixa/components/transactionDialog/transactionDialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Loader, Loader2, Trash2Icon } from "lucide-react";
 import DeleteAlert from "./deleteAlert";
 import { toast } from "sonner";
@@ -39,8 +22,6 @@ interface VendasContentProps {
 // Ajuste conforme a sua estrutura real
 
 export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
-
-
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingOs, setIsLoadingOs] = useState(false);
@@ -54,8 +35,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
   const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
-  const totalPago =
-    transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0;
+  const totalPago = transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0;
   const saldoDevedor = (venda?.valortotal || 0) - totalPago;
   const initialMetodoPagamento = (() => {
     const value = String(venda?.forma_pagamento ?? "").toUpperCase();
@@ -65,16 +45,14 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
   })();
 
   // ====== DATA LOADERS
-  const handleGetVenda = async (
-    vendaId: number,
-  ) => {
+  const handleGetVenda = async (vendaId: number) => {
     setIsLoadingOs(true);
     try {
       const response = await axios.get(`/api/venda/${vendaId}`);
       if (response.status === 200) {
         setVenda(response.data.data);
       }
-      console.log("venda:",response)
+      console.log("venda:", response);
     } catch (error) {
       console.log("Erro ao buscar Venda:", error);
       toast.error("Não foi possível carregar a Venda");
@@ -108,12 +86,12 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     }
   };
 
-  useEffect(()=> {
-    if(!IsOpen){
+  useEffect(() => {
+    if (!IsOpen) {
       setTransactions([]);
       setVenda(undefined);
-      }
-    },[IsOpen])
+    }
+  }, [IsOpen]);
 
   const handleDeleteTransaction = async (id: number) => {
     setIsDeleting(true);
@@ -121,7 +99,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
       <div className="flex gap-2 items-center flex-nowrap">
         <Loader className="animate-spin w-4" />
         <span className="text-nowrap">Deletando transação...</span>
-      </div>
+      </div>,
     );
     try {
       const response = await axios.delete(`/api/transaction/${id}/os`);
@@ -152,8 +130,6 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     }
   }, [vendaId, IsOpen]);
 
-
-
   // ====== RENDER
   if (isLoadingOs) {
     return (
@@ -176,11 +152,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b">
           <DialogTitle>
-            Venda #{venda.id}{" "}
-            <span className="text-muted-foreground text-sm font-light">
-              {" "}
-              | PAGAMENTOS{" "}
-            </span>
+            Venda #{venda.id} <span className="text-muted-foreground text-sm font-light"> | PAGAMENTOS </span>
           </DialogTitle>
           <DialogDescription>Pagamentos da Venda</DialogDescription>
         </DialogHeader>
@@ -204,30 +176,39 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
               Método de pagamento selecionado na venda: <b>{venda.forma_pagamento}</b>
             </div>
           ) : null}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border bg-background px-4 py-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
+            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
               <p className="mt-1 text-sm font-medium">{venda.cliente?.nomerazaosocial || "—"}</p>
-              <p className="text-xs text-muted-foreground">{venda.cliente?.telefone || venda.cliente?.email || "Sem contato"}</p>
+              <p className="text-xs text-muted-foreground">
+                {venda.cliente?.telefone || venda.cliente?.email || "Sem contato"}
+              </p>
             </div>
-            <div className="rounded-lg border bg-background px-4 py-3">
+            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Venda</span>
               <p className="mt-1 text-sm font-medium">{venda.status || "—"}</p>
               <p className="text-xs text-muted-foreground">{formatDate(venda.datavenda)}</p>
             </div>
-            <div className="rounded-lg border bg-background px-4 py-3">
+            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Vendedor</span>
+              <p className="mt-1 text-sm font-medium">{venda.criador?.nome || venda.created_by || "—"}</p>
+              <p className="text-xs text-muted-foreground">Usuário que realizou a venda</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+               <div className="rounded-lg border bg-background px-4 py-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Itens</span>
               <p className="mt-1 text-sm font-medium">{venda.itens?.length ?? 0} item(ns)</p>
               <p className="text-xs text-muted-foreground">Subtotal: {formatarEmReal(venda.sub_total || 0)}</p>
             </div>
-            <div className="rounded-lg border bg-background px-4 py-3">
+              <div className="rounded-lg border bg-background px-4 py-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobrança</span>
               <p className="mt-1 text-sm font-medium">{formatarEmReal(venda.valortotal || 0)}</p>
               <p className="text-xs text-muted-foreground">Aberto: {formatarEmReal(saldoDevedor)}</p>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-lg border bg-background px-4 py-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Canal</span>
               <p className="mt-1 text-sm">{venda.canal || "—"}</p>
@@ -235,9 +216,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
             <div className="rounded-lg border bg-background px-4 py-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Desconto</span>
               <p className="mt-1 text-sm">
-                {venda.desconto_tipo
-                  ? `${venda.desconto_tipo} • ${formatarEmReal(venda.desconto_valor || 0)}`
-                  : "—"}
+                {venda.desconto_tipo ? `${venda.desconto_tipo} • ${formatarEmReal(venda.desconto_valor || 0)}` : "—"}
               </p>
             </div>
             <div className="rounded-lg border bg-background px-4 py-3">
@@ -257,7 +236,8 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
                         {item.produto?.titulo || item.produto?.descricao || `Produto #${item.produtoid}`}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {item.quantidade} x {formatarEmReal((item.valor_total || 0) / Math.max(item.quantidade || 1, 1))}
+                        {item.quantidade} x{" "}
+                        {formatarEmReal((item.valor_total || 0) / Math.max(item.quantidade || 1, 1))}
                       </p>
                     </div>
                     <span className="shrink-0 font-medium">{formatarEmReal(item.valor_total)}</span>
@@ -268,7 +248,6 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
           ) : null}
 
           <div className="flex flex-row justify-end">
-            
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
               vendaId={venda.id}
@@ -276,9 +255,9 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
               open={open}
               setOpen={setOpen}
             >
-              <Button
-              disabled={venda.status === "FINALIZADA"}
-              className="hover:cursor-pointer">Novo pagamento</Button>
+              <Button disabled={venda.status === "FINALIZADA"} className="hover:cursor-pointer">
+                Novo pagamento
+              </Button>
             </TransactionDialog>
           </div>
 
@@ -311,23 +290,14 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
                 {transactions.length > 0 ? (
                   transactions.map((t) => (
                     <TableRow key={t.id} className="hover:cursor-pointer">
-                      <TableCell className="whitespace-nowrap">
-                        {t.id}
-                      </TableCell>
-                      <TableCell
-                        className="truncate max-w-[140px] sm:max-w-[220px]"
-                        title={t.descricao || "-"}
-                      >
+                      <TableCell className="whitespace-nowrap">{t.id}</TableCell>
+                      <TableCell className="truncate max-w-[140px] sm:max-w-[220px]" title={t.descricao || "-"}>
                         {t.descricao}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(t.data)}
-                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDate(t.data)}</TableCell>
                       <TableCell
                         className="truncate max-w-[160px] sm:max-w-[220px]"
-                        title={`${t.banco?.titulo ?? "-"} - ${
-                          t.metodopagamento ?? "-"
-                        }`}
+                        title={`${t.banco?.titulo ?? "-"} - ${t.metodopagamento ?? "-"}`}
                       >
                         {t.banco?.titulo} - {t.metodopagamento}
                       </TableCell>
@@ -342,18 +312,11 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="h-8 w-8 p-0 cursor-pointer"
-                              aria-label="Ações"
-                            >
+                            <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer" aria-label="Ações">
                               <ChevronDown className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            className="space-y-1 w-40"
-                            align="end"
-                          >
+                          <DropdownMenuContent className="space-y-1 w-40" align="end">
                             <DeleteAlert
                               statusVenda={venda.status}
                               handleDeleteTransaction={handleDeleteTransaction}
@@ -376,9 +339,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell className="col-span-full">
-                      Sem Transações
-                    </TableCell>
+                    <TableCell className="col-span-full">Sem Transações</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -398,16 +359,12 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Total Pago:</span>
               <div className="w-full border-b h-full border-dashed"></div>
-              <h1 className="text-blue-500 font-bold">
-                {formatarEmReal(totalPago)}
-              </h1>
+              <h1 className="text-blue-500 font-bold">{formatarEmReal(totalPago)}</h1>
             </div>
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Saldo Devedor:</span>
               <div className="w-full border-b h-full border-dashed"></div>
-              <h1 className="font-bold text-gray-400">
-                {formatarEmReal(saldoDevedor)}
-              </h1>
+              <h1 className="font-bold text-gray-400">{formatarEmReal(saldoDevedor)}</h1>
             </div>
             <div className="w-full flex flex-col space-y-1"></div>
           </div>

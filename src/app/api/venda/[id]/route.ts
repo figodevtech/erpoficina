@@ -39,7 +39,10 @@ const VENDA_SELECT = `
   clienteid,
   cliente:cliente (
     id,
-    nomerazaosocial
+    nomerazaosocial,
+    cpfcnpj,
+    email,
+    telefone
   ),
   status,
   canal,

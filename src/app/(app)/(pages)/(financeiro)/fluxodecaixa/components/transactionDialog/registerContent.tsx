@@ -27,12 +27,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { CalendarIcon, Info, Minus, Plus, Upload } from "lucide-react";
+import { CalendarIcon, Info, Minus, Plus, Save, Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { useCategoriasTransacao } from "../../hooks/use-categoria-transacao";
@@ -50,6 +50,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ParcelaFormulario {
   id: number;
@@ -134,7 +135,7 @@ interface RegisterContentProps {
   vendaId?: number | undefined;
   setSelectedTransactionId?: (value: number | undefined) => void;
   newTransaction: NewTransaction;
-  setNewTransaction: (value: NewTransaction) => void;
+  setNewTransaction: Dispatch<SetStateAction<NewTransaction>>;
   dialogOpen: boolean | undefined;
   selectedCustomer: TransactionCustomer | undefined;
   setSelectedCustomer: (value: TransactionCustomer | undefined) => void;
@@ -160,6 +161,10 @@ export default function RegisterContent({
   const [, setIsLoadingBanks] = useState(false);
   const [banks, setBanks] = useState<Banco[]>([]);
   const [isChecked, setIsChecked] = useState(false);
+  const [pagoPeloMesmo, setPagoPeloMesmo] = useState(false);
+  const [clienteMesmoCache, setClienteMesmoCache] = useState<
+    TransactionCustomer | undefined
+  >(undefined);
   const [parcelasIguais, setParcelasIguais] = useState(false);
   const [parcelasDetalhadas, setParcelasDetalhadas] = useState<
     ParcelaFormulario[]
@@ -169,6 +174,7 @@ export default function RegisterContent({
   const canManageParcelas =
     newTransaction.metodopagamento === Metodo_pagamento.BOLETO &&
     !!newTransaction.pendente;
+  const canUseMesmoCliente = Boolean(osId || vendaId);
 
   const handleChange = (
     field: keyof NewTransaction,
@@ -202,16 +208,138 @@ export default function RegisterContent({
     }
   };
 
+  const buscarClienteMesmo = async (): Promise<
+    TransactionCustomer | undefined
+  > => {
+    if (clienteMesmoCache?.id) {
+      return clienteMesmoCache;
+    }
+
+    try {
+      if (osId) {
+        const response = await axios.get(`/api/ordens/${osId}`);
+        const cliente = response.data?.cliente ?? response.data?.os?.cliente;
+        if (!cliente?.id) return undefined;
+
+        const transactionCustomer = {
+          id: cliente.id,
+          nome: cliente.nomerazaosocial ?? cliente.nome ?? "",
+          cpfcnpj: cliente.cpfcnpj ?? "",
+        };
+
+        setClienteMesmoCache(transactionCustomer);
+        return transactionCustomer;
+      }
+
+      if (vendaId) {
+        const response = await axios.get(`/api/venda/${vendaId}`);
+        const cliente = response.data?.data?.cliente;
+        if (!cliente?.id) return undefined;
+
+        const transactionCustomer = {
+          id: cliente.id,
+          nome: cliente.nomerazaosocial ?? cliente.nome ?? "",
+          cpfcnpj: cliente.cpfcnpj ?? "",
+        };
+
+        setClienteMesmoCache(transactionCustomer);
+        return transactionCustomer;
+      }
+    } catch {
+      toast.error("NÃ£o foi possÃ­vel carregar o cliente vinculado.");
+    }
+
+    return undefined;
+  };
+
+  const aplicarClienteMesmo = async () => {
+    const transactionCustomer = await buscarClienteMesmo();
+    if (transactionCustomer?.id) {
+      setSelectedCustomer(transactionCustomer);
+      setNewTransaction((prev) => ({
+        ...prev,
+        cliente_id: transactionCustomer.id,
+        nomepagador: transactionCustomer.nome,
+        cpfcnpjpagador: transactionCustomer.cpfcnpj,
+      }));
+      return;
+    }
+
+    try {
+      if (osId) {
+        const response = await axios.get(`/api/ordens/${osId}`);
+        const cliente = response.data?.cliente ?? response.data?.os?.cliente;
+        if (!cliente?.id) return;
+
+        const transactionCustomer = {
+          id: cliente.id,
+          nome: cliente.nomerazaosocial ?? cliente.nome ?? "",
+          cpfcnpj: cliente.cpfcnpj ?? "",
+        };
+
+        setSelectedCustomer(transactionCustomer);
+        setNewTransaction((prev) => ({
+          ...prev,
+          cliente_id: transactionCustomer.id,
+          nomepagador: transactionCustomer.nome,
+          cpfcnpjpagador: transactionCustomer.cpfcnpj,
+        }));
+        return;
+      }
+
+      if (vendaId) {
+        const response = await axios.get(`/api/venda/${vendaId}`);
+        const cliente = response.data?.data?.cliente;
+        if (!cliente?.id) return;
+
+        const transactionCustomer = {
+          id: cliente.id,
+          nome: cliente.nomerazaosocial ?? cliente.nome ?? "",
+          cpfcnpj: cliente.cpfcnpj ?? "",
+        };
+
+        setSelectedCustomer(transactionCustomer);
+        setNewTransaction((prev) => ({
+          ...prev,
+          cliente_id: transactionCustomer.id,
+          nomepagador: transactionCustomer.nome,
+          cpfcnpjpagador: transactionCustomer.cpfcnpj,
+        }));
+      }
+    } catch {
+      toast.error("Não foi possível carregar o cliente vinculado.");
+    }
+  };
+
   useEffect(() => {
     if (selectedCustomer) {
-      setNewTransaction({
-        ...newTransaction,
+      setNewTransaction((prev) => ({
+        ...prev,
         nomepagador: selectedCustomer.nome,
         cpfcnpjpagador: selectedCustomer.cpfcnpj,
         cliente_id: selectedCustomer.id,
-      });
+      }));
     }
   }, [setNewTransaction, selectedCustomer]);
+
+  useEffect(() => {
+    if (!canUseMesmoCliente) {
+      setPagoPeloMesmo(false);
+      setClienteMesmoCache(undefined);
+      return;
+    }
+    setPagoPeloMesmo(true);
+  }, [canUseMesmoCliente, osId, vendaId]);
+
+  useEffect(() => {
+    if (!canUseMesmoCliente) return;
+    void buscarClienteMesmo();
+  }, [canUseMesmoCliente, osId, vendaId]);
+
+  useEffect(() => {
+    if (!pagoPeloMesmo) return;
+    void aplicarClienteMesmo();
+  }, [clienteMesmoCache, pagoPeloMesmo, osId, vendaId]);
 
   const handleCreateTransaction = async () => {
     setIsSubmitting(true);
@@ -422,13 +550,27 @@ export default function RegisterContent({
     >
       <div className="flex h-full min-h-0 flex-col">
         <Header className="shrink-0 px-6 py-4 border-b-1">
-          {osId && <Title>Nova Transação OS #{osId}</Title>}
-          {vendaId && <Title>Nova Transação Venda #{vendaId}</Title>}
+          {osId && (
+            <Title>
+              OS #{osId}{" "}
+              <span className="text-muted-foreground text-sm font-light">
+                | TRANSAÇÃO
+              </span>
+            </Title>
+          )}
+          {vendaId && (
+            <Title>
+              Venda #{vendaId}{" "}
+              <span className="text-muted-foreground text-sm font-light">
+                | TRANSAÇÃO
+              </span>
+            </Title>
+          )}
           {!osId && !vendaId && <Title>Nova Transação</Title>}
           <Description>Preencha dados para registrar uma transação</Description>
         </Header>
-        <div className="h-full min-h-0 overflow-hidden p-0 b">
-          <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
+        <div className="h-full min-h-0 overflow-hidden">
+          <div className="h-full min-h-0 overflow-auto px-6 py-4 space-y-4 bg-background">
             {/* dados da transação */}
             <div className="space-y-4 grid sm:grid-cols-3 gap-4">
               <div className="space-y-2 w-full">
@@ -964,47 +1106,77 @@ export default function RegisterContent({
             </div>
 
             <div className="flex justify-end">
-              {selectedCustomer ? (
-                <Button
-                  onClick={() => {
-                    setNewTransaction({
-                      ...newTransaction,
-                      nomepagador: "",
-                      cpfcnpjpagador: "",
-                      cliente_id: null,
-                    });
-                    setSelectedCustomer(undefined);
-                  }}
-                  className="hover:cursor-pointer"
-                  variant={"ghost"}
-                  size={"sm"}
-                >
-                  Remover Cliente
-                </Button>
-              ) : (
-                <>
-                  <CustomerSelect
-                    open={isCustomerSelectOpen}
-                    setOpen={setIsCustomerSelectOpen}
-                    OnSelect={(c) => {
-                      setSelectedCustomer({
-                        cpfcnpj: c.cpfcnpj,
-                        nome: c.nomerazaosocial,
-                        id: c.id,
-                      });
-                    }}
-                  />
+              <div className="flex w-full items-center justify-end gap-4">
+                {canUseMesmoCliente && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="pago-pelo-mesmo"
+                      checked={pagoPeloMesmo}
+                      onCheckedChange={(checked) => {
+                        const next = checked === true;
+                        setPagoPeloMesmo(next);
 
+                        if (!next) {
+                          setSelectedCustomer(undefined);
+                          setNewTransaction((prev) => ({
+                            ...prev,
+                            cliente_id: null,
+                            nomepagador: "",
+                            cpfcnpjpagador: "",
+                          }));
+                        }
+                      }}
+                    />
+                    <Label htmlFor="pago-pelo-mesmo" className="cursor-pointer">
+                      Pago pelo mesmo
+                    </Label>
+                  </div>
+                )}
+
+                {selectedCustomer ? (
                   <Button
-                    onClick={() => setIsCustomerSelectOpen(true)}
+                    disabled={pagoPeloMesmo}
+                    onClick={() => {
+                      setNewTransaction({
+                        ...newTransaction,
+                        nomepagador: "",
+                        cpfcnpjpagador: "",
+                        cliente_id: null,
+                      });
+                      setSelectedCustomer(undefined);
+                    }}
                     className="hover:cursor-pointer"
-                    variant={"outline"}
+                    variant={"ghost"}
                     size={"sm"}
                   >
-                    Selecionar Cliente
+                    Remover Cliente
                   </Button>
-                </>
-              )}
+                ) : (
+                  <>
+                    <CustomerSelect
+                      open={isCustomerSelectOpen}
+                      setOpen={setIsCustomerSelectOpen}
+                      OnSelect={(c) => {
+                        setSelectedCustomer({
+                          cpfcnpj: c.cpfcnpj,
+                          nome: c.nomerazaosocial,
+                          id: c.id,
+                        });
+                      }}
+                    />
+
+                    <Button
+                      disabled={pagoPeloMesmo}
+                      onClick={() => setIsCustomerSelectOpen(true)}
+                      className="hover:cursor-pointer"
+                      variant={"outline"}
+                      size={"sm"}
+                    >
+                      Selecionar Cliente
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="space-y-4 grid sm:grid-cols-2 gap-4">
               <div className="space-y-2 w-full">
@@ -1037,13 +1209,13 @@ export default function RegisterContent({
             </div>
           </div>
         </div>
-        <Footer className="px-6 py-4">
+        <Footer className="px-6 py-4 border-t">
           <div className="flex sm:flex-row gap-3 sm:gap-4">
             <Button
               type="submit"
               form="register-form"
               // disabled={isSubmitting}
-              className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+              className="flex-1  hover:cursor-pointer"
               onClick={handleCreateTransaction}
             >
               {isSubmitting ? (
@@ -1053,7 +1225,7 @@ export default function RegisterContent({
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4" />
                   Registrar
                 </>
               )}
@@ -1069,3 +1241,5 @@ export default function RegisterContent({
     </Content>
   );
 }
+
+

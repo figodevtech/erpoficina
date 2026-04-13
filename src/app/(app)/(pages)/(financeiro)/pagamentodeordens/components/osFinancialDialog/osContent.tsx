@@ -1,31 +1,14 @@
 import { Ordem } from "@/app/(app)/(pages)/ordens/types";
-import {
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogHeader,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogContent, DialogDescription, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-  TableHead,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import formatarEmReal from "@/utils/formatarEmReal";
-import {  Transaction } from "../../../fluxodecaixa/types";
+import { Transaction } from "../../../fluxodecaixa/types";
 import { useEffect, useState } from "react";
 import axios, { isAxiosError } from "axios";
 import TransactionDialog from "../../../fluxodecaixa/components/transactionDialog/transactionDialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Loader, Loader2, Trash2Icon } from "lucide-react";
 import DeleteAlert from "./deleteAlert";
 import { toast } from "sonner";
@@ -67,11 +50,10 @@ type OsServicoItem = {
 // Ajuste conforme a sua estrutura real
 
 export default function OsContent({ osId, IsOpen }: OsContentProps) {
-
-
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingOs, setIsLoadingOs] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -85,8 +67,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const totalPago =
-    transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0;
+  const totalPago = transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0;
   const saldoDevedor = (ordem?.orcamentototal || 0) - totalPago;
   const alvoDescricao =
     ordem?.alvo_tipo === "PECA"
@@ -96,9 +77,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         : "Não vinculado";
 
   // ====== DATA LOADERS
-  const handleGetOrdem = async (
-    osId: number,
-  ) => {
+  const handleGetOrdem = async (osId: number) => {
     setIsLoadingOs(true);
     try {
       const response = await axios.get(`/api/ordens/${osId}`);
@@ -111,6 +90,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       console.log("Erro ao buscar Ordem:", error);
       toast.error("Não foi possível carregar a OS");
     } finally {
+      setHasLoadedOnce(true);
       setIsLoadingOs(false);
     }
   };
@@ -140,14 +120,15 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     }
   };
 
-  useEffect(()=> {
-    if(!IsOpen){
+  useEffect(() => {
+    if (!IsOpen) {
       setTransactions([]);
       setOrdem(undefined);
       setItensProduto([]);
       setItensServico([]);
-      }
-    },[IsOpen])
+      setHasLoadedOnce(false);
+    }
+  }, [IsOpen]);
 
   const handleDeleteTransaction = async (id: number) => {
     setIsDeleting(true);
@@ -155,7 +136,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       <div className="flex gap-2 items-center flex-nowrap">
         <Loader className="animate-spin w-4" />
         <span className="text-nowrap">Deletando transação...</span>
-      </div>
+      </div>,
     );
     try {
       const response = await axios.delete(`/api/transaction/${id}/os`);
@@ -180,13 +161,12 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
   };
 
   useEffect(() => {
-    if (osId && IsOpen) {
+    if (osId) {
+      setHasLoadedOnce(false);
       handleGetOrdem(osId);
       handleGetTransactions(undefined, osId);
     }
-  }, [osId, IsOpen]);
-
-
+  }, [osId]);
 
   // ====== RENDER
   if (isLoadingOs) {
@@ -203,18 +183,41 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     );
   }
 
-  if (!ordem) return null;
+  if (!ordem && !hasLoadedOnce) {
+    return (
+      <DialogContent className="h-dvh w-[100svw] max-w-[100svw] p-0 overflow-hidden rounded-none sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:rounded-2xl">
+        <DialogHeader className="hidden">
+          <DialogTitle></DialogTitle>
+        </DialogHeader>
+        <div className="flex h-full min-h-0 flex-col justify-center items-center">
+          <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
+          <span className="text-primary">Carregando</span>
+        </div>
+      </DialogContent>
+    );
+  }
+
+  if (!ordem) {
+    return (
+      <DialogContent className="h-dvh w-[100svw] max-w-[100svw] p-0 overflow-hidden rounded-none sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:rounded-2xl">
+        <div className="flex h-full min-h-0 flex-col justify-center items-center">
+          <div className="max-w-sm space-y-3 text-center">
+            <p className="text-sm font-medium">NÃ£o foi possÃ­vel carregar a OS.</p>
+            <Button variant="outline" onClick={() => osId && handleGetOrdem(osId)}>
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    );
+  }
 
   return (
     <DialogContent className="h-svh w-[100svw] max-w-[100svw] p-0 overflow-hidden rounded-none sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:rounded-2xl">
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         <DialogHeader className="shrink-0 px-6 py-4 border-b">
           <DialogTitle>
-            OS #{ordem.id}{" "}
-            <span className="text-muted-foreground text-sm font-light">
-              {" "}
-              | PAGAMENTOS{" "}
-            </span>
+            OS #{ordem.id} <span className="text-muted-foreground text-sm font-light"> | PAGAMENTOS </span>
           </DialogTitle>
           <DialogDescription>Pagamentos da OS</DialogDescription>
         </DialogHeader>
@@ -233,24 +236,33 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         </div>
 
         <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-4 space-y-2">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border bg-background px-4 py-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
+            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
-              <p className="mt-1 text-sm font-medium">
-                {ordem.cliente?.nome || ordem.cliente?.nomerazaosocial || "—"}
+              <p className="mt-1 text-sm font-medium">{ordem.cliente?.nome || ordem.cliente?.nomerazaosocial || "—"}</p>
+              <p className="text-xs text-muted-foreground">
+                {ordem.cliente?.telefone || ordem.cliente?.email || "Sem contato"}
               </p>
-              <p className="text-xs text-muted-foreground">{ordem.cliente?.telefone || ordem.cliente?.email || "Sem contato"}</p>
             </div>
-            <div className="rounded-lg border bg-background px-4 py-3">
+            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">OS</span>
               <p className="mt-1 text-sm font-medium">{ordem.status || "—"}</p>
               <p className="text-xs text-muted-foreground">{ordem.setor?.nome || "Sem setor"}</p>
             </div>
+            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Criador da OS</span>
+              <p className="mt-1 text-sm font-medium">{ordem.criador?.nome || ordem.usuariocriadorid || "—"}</p>
+              <p className="text-xs text-muted-foreground">Usuário responsável pela abertura</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <div className="rounded-lg border bg-background px-4 py-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Alvo</span>
               <p className="mt-1 text-sm font-medium">{ordem.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</p>
               <p className="text-xs text-muted-foreground line-clamp-2">{alvoDescricao}</p>
             </div>
+            
             <div className="rounded-lg border bg-background px-4 py-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobrança</span>
               <p className="mt-1 text-sm font-medium">{formatarEmReal(ordem.orcamentototal || 0)}</p>
@@ -258,7 +270,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             </div>
           </div>
 
-          {(ordem.descricao || ordem.observacoes || ordem.observacoes_fiscais) ? (
+          {ordem.descricao || ordem.observacoes || ordem.observacoes_fiscais ? (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <div className="rounded-lg border bg-background px-4 py-3">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Descrição</span>
@@ -275,14 +287,17 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             </div>
           ) : null}
 
-          {(itensProduto.length > 0 || itensServico.length > 0) ? (
+          {itensProduto.length > 0 || itensServico.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               <div className="rounded-lg border bg-background px-4 py-3">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Produtos da cobrança</span>
                 {itensProduto.length > 0 ? (
                   <div className="mt-2 space-y-2">
                     {itensProduto.map((item, index) => (
-                      <div key={`${item.produtoid}-${index}`} className="flex items-start justify-between gap-3 text-sm">
+                      <div
+                        key={`${item.produtoid}-${index}`}
+                        className="flex items-start justify-between gap-3 text-sm"
+                      >
                         <div className="min-w-0">
                           <p className="font-medium line-clamp-2">
                             {item.produto?.titulo || item.produto?.descricao || `Produto #${item.produtoid}`}
@@ -305,7 +320,10 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                 {itensServico.length > 0 ? (
                   <div className="mt-2 space-y-2">
                     {itensServico.map((item, index) => (
-                      <div key={`${item.servicoid}-${index}`} className="flex items-start justify-between gap-3 text-sm">
+                      <div
+                        key={`${item.servicoid}-${index}`}
+                        className="flex items-start justify-between gap-3 text-sm"
+                      >
                         <div className="min-w-0">
                           <p className="font-medium line-clamp-2">
                             {item.servico?.descricao || item.servico?.codigo || `Serviço #${item.servicoid}`}
@@ -326,16 +344,15 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
           ) : null}
 
           <div className="flex flex-row justify-end">
-            
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
               osId={ordem.id}
               open={open}
               setOpen={setOpen}
             >
-              <Button
-              disabled={ordem.status === "CONCLUIDO"}
-              className="hover:cursor-pointer">Novo pagamento</Button>
+              <Button disabled={ordem.status === "CONCLUIDO"} className="hover:cursor-pointer">
+                Novo pagamento
+              </Button>
             </TransactionDialog>
           </div>
 
@@ -368,23 +385,14 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                 {transactions.length > 0 ? (
                   transactions.map((t) => (
                     <TableRow key={t.id} className="hover:cursor-pointer">
-                      <TableCell className="whitespace-nowrap">
-                        {t.id}
-                      </TableCell>
-                      <TableCell
-                        className="truncate max-w-[140px] sm:max-w-[220px]"
-                        title={t.descricao || "-"}
-                      >
+                      <TableCell className="whitespace-nowrap">{t.id}</TableCell>
+                      <TableCell className="truncate max-w-[140px] sm:max-w-[220px]" title={t.descricao || "-"}>
                         {t.descricao}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(t.data)}
-                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDate(t.data)}</TableCell>
                       <TableCell
                         className="truncate max-w-[160px] sm:max-w-[220px]"
-                        title={`${t.banco?.titulo ?? "-"} - ${
-                          t.metodopagamento ?? "-"
-                        }`}
+                        title={`${t.banco?.titulo ?? "-"} - ${t.metodopagamento ?? "-"}`}
                       >
                         {t.banco?.titulo} - {t.metodopagamento}
                       </TableCell>
@@ -399,18 +407,11 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="h-8 w-8 p-0 cursor-pointer"
-                              aria-label="Ações"
-                            >
+                            <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer" aria-label="Ações">
                               <ChevronDown className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            className="space-y-1 w-40"
-                            align="end"
-                          >
+                          <DropdownMenuContent className="space-y-1 w-40" align="end">
                             <DeleteAlert
                               statusOs={ordem.status}
                               handleDeleteTransaction={handleDeleteTransaction}
@@ -433,9 +434,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell className="col-span-full">
-                      Sem Transações
-                    </TableCell>
+                    <TableCell className="col-span-full">Sem Transações</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -455,16 +454,12 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Total Pago:</span>
               <div className="w-full border-b h-full border-dashed"></div>
-              <h1 className="text-blue-500 font-bold">
-                {formatarEmReal(totalPago)}
-              </h1>
+              <h1 className="text-blue-500 font-bold">{formatarEmReal(totalPago)}</h1>
             </div>
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Saldo Devedor:</span>
               <div className="w-full border-b h-full border-dashed"></div>
-              <h1 className="font-bold text-gray-400">
-                {formatarEmReal(saldoDevedor)}
-              </h1>
+              <h1 className="font-bold text-gray-400">{formatarEmReal(saldoDevedor)}</h1>
             </div>
             <div className="w-full flex flex-col space-y-1"></div>
           </div>

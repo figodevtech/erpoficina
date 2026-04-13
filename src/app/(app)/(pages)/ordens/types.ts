@@ -44,6 +44,8 @@ export type Ordem = {
   id: number;
   numero?: string;
   status?: StatusOS | null;
+  usuariocriadorid?: string | null;
+  criador?: { id: string; nome?: string | null } | null;
   setor?: { id: number; nome: string } | null;
   responsavel?: { id: number; nome: string } | null;
   tecnicoid?: string | null; // se mantiver

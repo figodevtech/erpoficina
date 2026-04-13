@@ -102,6 +102,22 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
     const setor = (setor_res.data as { id: number; nome: string; descricao: string | null } | null) ?? null;
 
+    const criador_res = await supabase
+      .from("usuario")
+      .select("id, nome")
+      .eq("id", osRow.usuariocriadorid)
+      .maybeSingle();
+
+    const criador =
+      criador_res.error
+        ? null
+        : criador_res.data
+        ? {
+            id: String((criador_res.data as any).id),
+            nome: ((criador_res.data as any).nome ?? null) as string | null,
+          }
+        : null;
+
     // Cliente
     const cli_res = await supabase
       .from("cliente")
@@ -385,6 +401,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     // OS agregada
     const os = {
       id: osRow.id,
+      usuariocriadorid: osRow.usuariocriadorid,
+      criador,
       orcamentototal: osRow.orcamentototal,
       descricao: osRow.descricao ?? null,
       observacoes: osRow.observacoes ?? null,
