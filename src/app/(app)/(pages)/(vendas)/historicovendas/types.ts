@@ -55,6 +55,7 @@ export type VendaStatusEntrega = "SEPARACAO" | "ENVIO" | "ENTREGUE";
 
 export interface VendaComItens {
   id: number;
+  notaNumero?: number | null;
   clienteid: number;
   valortotal: number;
   cliente: Customer

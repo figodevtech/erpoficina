@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { VendaComItens, vendaStatus } from "../../(vendas)/historicovendas/types";
 import VendasTable from "./components/vendasTable";
+import { PaymentListFilters } from "../components/payments-filter-sheet";
 
 export default function AssistentePagamentoVendas (){
     const [vendas, setVendas] = useState<VendaComItens[]>([])
@@ -18,10 +19,11 @@ export default function AssistentePagamentoVendas (){
 
     const handleGetVendas = async (
       status: vendaStatus,
-    pageNumber?: number,
-    limit?: number,
-    search?: string,
-  ) => {
+      pageNumber?: number,
+      limit?: number,
+      search?: string,
+      filters?: PaymentListFilters,
+    ) => {
     setIsLoading(true);
     try {
       const response = await axios.get("/api/venda", {
@@ -30,6 +32,14 @@ export default function AssistentePagamentoVendas (){
           limit: limit || pagination.limit,
           q: search || "",
           status: status,
+          cliente: filters?.cliente || "",
+          notaNumero: filters?.notaNumero || "",
+          dateFrom: filters?.dataInicio
+            ? filters.dataInicio.toISOString().slice(0, 10)
+            : "",
+          dateTo: filters?.dataFim
+            ? filters.dataFim.toISOString().slice(0, 10)
+            : "",
         },
       });
       if (response.status === 200) {

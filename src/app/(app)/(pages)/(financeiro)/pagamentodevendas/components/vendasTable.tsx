@@ -31,11 +31,21 @@ import { formatDate } from "@/utils/formatDate";
 import VendasFinancialDialog from "./vendasFinancialDialog/vendasFinancialDialog";
 import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 import { useConfig } from "../../../config-context";
+import {
+  PaymentListFilters,
+  PaymentsFilterSheet,
+} from "../../components/payments-filter-sheet";
 
 interface OsTableProps {
   vendas: VendaComItens[];
   pagination: Pagination;
-  handleGetVendas: (status: vendaStatus, pageNumber?: number, limit?: number, search?: string) => void;
+  handleGetVendas: (
+    status: vendaStatus,
+    pageNumber?: number,
+    limit?: number,
+    search?: string,
+    filters?: PaymentListFilters,
+  ) => void;
   isLoading: boolean;
   search: string;
 }
@@ -46,31 +56,79 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
   const [open, setOpen] = useState(false);
   const [openEmissao, setOpenEmissao] = useState(false);
   const [emissaoId, setEmissaoId] = useState<number | undefined>(undefined);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<PaymentListFilters>({
+    cliente: "",
+    notaNumero: "",
+  });
   const limitUid = React.useId();
   const limitListboxId = `${limitUid}-os-limit-listbox`;
   const tabTheme =
     " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+  const hasActiveFilters = Boolean(
+    filters.cliente.trim() ||
+      filters.notaNumero.trim() ||
+      filters.dataInicio ||
+      filters.dataFim,
+  );
 
   useEffect(() => {
-    handleGetVendas(selectedStatus);
+    handleGetVendas(selectedStatus, 1, pagination.limit, search, filters);
   }, [selectedStatus]);
   const config = useConfig();
 
   return (
     <Card className="">
       <CardHeader className="border-b-2 flex flex-col">
-        <div className="flex flex-row justify-between w-full">
+        <div className="flex flex-row justify-between gap-3 w-full">
           <CardTitle className="text-lg font-medium">
             Vendas <span className="text-muted-foreground text-xs font-mono font-extralight">|EM PAGAMENTO</span>
           </CardTitle>
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:cursor-pointer"
+                onClick={() => {
+                  const cleared = { cliente: "", notaNumero: "" };
+                  setFilters(cleared);
+                  handleGetVendas(selectedStatus, 1, pagination.limit, search, cleared);
+                }}
+              >
+                Limpar filtros
+              </Button>
+            )}
+            <PaymentsFilterSheet
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onAplicar={() =>
+                handleGetVendas(selectedStatus, 1, pagination.limit, search, filters)
+              }
+              onLimpar={() => {
+                const cleared = { cliente: "", notaNumero: "" };
+                setFilters(cleared);
+                handleGetVendas(selectedStatus, 1, pagination.limit, search, cleared);
+              }}
+            />
+          </div>
         </div>
 
-        <div
-          onClick={() => handleGetVendas(selectedStatus, pagination.page)}
-          className="flex flex-row space-x-1 items-center hover:cursor-pointer"
-        >
-          <Loader2 className="w-3 h-3" />
-          <span className="text-xs text-muted-foreground"> Recarregar</span>
+        <div className="flex items-center gap-3">
+          <div
+            onClick={() =>
+              handleGetVendas(selectedStatus, pagination.page, pagination.limit, search, filters)
+            }
+            className="flex flex-row space-x-1 items-center hover:cursor-pointer"
+          >
+            <Loader2 className="w-3 h-3" />
+            <span className="text-xs text-muted-foreground"> Recarregar</span>
+          </div>
+          {hasActiveFilters && (
+            <span className="text-xs text-muted-foreground">Filtros ativos</span>
+          )}
         </div>
         <Tabs defaultValue="abertas" className="w-full items-center">
           <TabsList className="rounded-b-none">
@@ -112,6 +170,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
           <TableHeader>
             <TableRow className="font-bold">
               <TableCell>ID</TableCell>
+              <TableCell>Nota</TableCell>
               <TableCell>Cliente</TableCell>
               <TableCell>Data</TableCell>
               <TableCell>Valor Total</TableCell>
@@ -131,6 +190,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
                   <TableRow key={v.id} className="hover:cursor-pointer">
                     {/* ... suas outras células (descrição, data etc.) aqui, se/quando tiver ... */}
                     <TableCell>{v.id}</TableCell>
+                    <TableCell>{v.notaNumero ?? "-"}</TableCell>
                     <TableCell>{v.cliente.nomerazaosocial}</TableCell>
                     <TableCell>{formatDate(v.datavenda)}</TableCell>
                     <TableCell>{formatarEmReal(v.valortotal)}</TableCell>
@@ -204,7 +264,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetVendas(selectedStatus, 1, pagination.limit, search)}
+              onClick={() => handleGetVendas(selectedStatus, 1, pagination.limit, search, filters)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -214,7 +274,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetVendas(selectedStatus, pagination.page - 1, pagination.limit, search)}
+              onClick={() => handleGetVendas(selectedStatus, pagination.page - 1, pagination.limit, search, filters)}
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -228,7 +288,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() => handleGetVendas(selectedStatus, pagination.page + 1, pagination.limit, search)}
+              onClick={() => handleGetVendas(selectedStatus, pagination.page + 1, pagination.limit, search, filters)}
               disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
@@ -238,7 +298,7 @@ export default function VendasTable({ vendas, pagination, handleGetVendas, isLoa
               className="hover:cursor-pointer"
               variant="outline"
               size="icon"
-              onClick={() => handleGetVendas(selectedStatus, pagination.totalPages, pagination.limit, search)}
+              onClick={() => handleGetVendas(selectedStatus, pagination.totalPages, pagination.limit, search, filters)}
               disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />

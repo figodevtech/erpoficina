@@ -109,6 +109,10 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const clienteId = searchParams.get("clienteId");
+    const cliente = searchParams.get("cliente")?.trim() || "";
+    const notaNumero = searchParams.get("notaNumero")?.trim() || "";
+    const dateFrom = searchParams.get("dateFrom")?.trim() || "";
+    const dateTo = searchParams.get("dateTo")?.trim() || "";
 
     const statusParam = (searchParams.get("status") ?? "TODOS").toUpperCase();
     const statusFilter = STATUS_SET.has(statusParam as Status)
@@ -125,6 +129,25 @@ export async function GET(req: Request) {
     const limitRaw =
       searchParams.get("limit") ?? searchParams.get("pageSize") ?? "20";
     const limit = Math.min(Math.max(Number(limitRaw), 1), 100);
+
+    const emptyResponse = () =>
+      NextResponse.json({
+        data: [],
+        pagination: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 1,
+          pageCount: 0,
+          hasPrevPage: false,
+          hasNextPage: false,
+        },
+        filters: {
+          search: q,
+          clienteId: null,
+          status: statusFilter ?? null,
+        },
+      });
 
     // Se veio id, retorna somente uma venda específica (sem paginação)
     if (id) {
@@ -176,6 +199,14 @@ export async function GET(req: Request) {
       query = query.or(`id.ilike.%${q}%,valortotal.ilike.%${q}%`);
     }
 
+    if (dateFrom) {
+      query = query.gte("datavenda", `${dateFrom}T00:00:00.000Z`);
+    }
+
+    if (dateTo) {
+      query = query.lte("datavenda", `${dateTo}T23:59:59.999Z`);
+    }
+
     if (clienteId) {
       clienteIdNum = Number(clienteId);
       if (Number.isNaN(clienteIdNum)) {
@@ -185,6 +216,56 @@ export async function GET(req: Request) {
         );
       }
       query = query.eq("clienteid", clienteIdNum);
+    }
+
+    if (cliente) {
+      const { data: clientesData, error: clientesError } = await supabaseAdmin
+        .from("cliente")
+        .select("id")
+        .or(
+          `nomerazaosocial.ilike.%${cliente}%,cpfcnpj.ilike.%${cliente}%,telefone.ilike.%${cliente}%`
+        )
+        .limit(200);
+
+      if (clientesError) {
+        throw clientesError;
+      }
+
+      const clienteIds = (clientesData ?? []).map((item) => item.id);
+      if (clienteIds.length === 0) {
+        return emptyResponse();
+      }
+
+      query = query.in("clienteid", clienteIds);
+    }
+
+    if (notaNumero) {
+      const notaNumeroValue = Number(notaNumero.replace(/\D/g, ""));
+
+      if (!Number.isFinite(notaNumeroValue)) {
+        return emptyResponse();
+      }
+
+      const { data: notasData, error: notasError } = await supabaseAdmin
+        .from("nfe")
+        .select("vendaid")
+        .eq("numero", notaNumeroValue)
+        .not("vendaid", "is", null)
+        .limit(200);
+
+      if (notasError) {
+        throw notasError;
+      }
+
+      const vendaIds = (notasData ?? [])
+        .map((item) => item.vendaid)
+        .filter((value): value is number => Number.isFinite(Number(value)));
+
+      if (vendaIds.length === 0) {
+        return emptyResponse();
+      }
+
+      query = query.in("id", vendaIds);
     }
 
     if (statusFilter) {
@@ -202,6 +283,38 @@ export async function GET(req: Request) {
     }
 
     const items = data ?? [];
+
+    const vendaIds = items.map((item: any) => Number(item.id)).filter(Number.isFinite);
+
+    if (vendaIds.length > 0) {
+      const { data: notasData, error: notasError } = await supabaseAdmin
+        .from("nfe")
+        .select("vendaid, numero, createdat")
+        .in("vendaid", vendaIds)
+        .not("vendaid", "is", null)
+        .order("numero", { ascending: false });
+
+      if (notasError) {
+        throw notasError;
+      }
+
+      const notaPorVenda = new Map<number, number>();
+
+      for (const nota of notasData ?? []) {
+        const vendaId = Number((nota as any).vendaid);
+        const numero = Number((nota as any).numero);
+
+        if (!Number.isFinite(vendaId) || !Number.isFinite(numero)) continue;
+        if (notaPorVenda.has(vendaId)) continue;
+
+        notaPorVenda.set(vendaId, numero);
+      }
+
+      items.forEach((item: any) => {
+        item.notaNumero = notaPorVenda.get(Number(item.id)) ?? null;
+      });
+    }
+
     const total = count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
 

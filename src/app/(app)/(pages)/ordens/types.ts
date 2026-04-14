@@ -43,6 +43,7 @@ export type Peca = {
 export type Ordem = {
   id: number;
   numero?: string;
+  notaNumero?: number | null;
   status?: StatusOS | null;
   usuariocriadorid?: string | null;
   criador?: { id: string; nome?: string | null } | null;

@@ -28,11 +28,25 @@ const statusesParam = searchParams.get("statuses");
     const status = (searchParams.get("status") as StatusOS) || "TODAS";
     const statuses = parseStatuses(searchParams.get("statuses"));
     const q = searchParams.get("q")?.trim() || "";
+    const cliente = searchParams.get("cliente")?.trim() || "";
+    const notaNumero = searchParams.get("notaNumero")?.trim() || "";
+    const dateFrom = searchParams.get("dateFrom")?.trim() || "";
+    const dateTo = searchParams.get("dateTo")?.trim() || "";
 
     const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 10), 1), 200);
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
+
+    const emptyResponse = () =>
+      NextResponse.json({
+        items: [],
+        page,
+        limit,
+        total: 0,
+        totalPages: 1,
+        pageCount: 0,
+      });
 
     let query = supabaseAdmin
       .from("ordemservico")
@@ -104,6 +118,60 @@ const statusesParam = searchParams.get("statuses");
       query = query.in("status", statuses);
     }
 
+    if (dateFrom) {
+      query = query.gte("dataentrada", `${dateFrom}T00:00:00.000Z`);
+    }
+
+    if (dateTo) {
+      query = query.lte("dataentrada", `${dateTo}T23:59:59.999Z`);
+    }
+
+    if (cliente) {
+      const { data: clientesData, error: clientesError } = await supabaseAdmin
+        .from("cliente")
+        .select("id")
+        .or(
+          `nomerazaosocial.ilike.%${cliente}%,cpfcnpj.ilike.%${cliente}%,telefone.ilike.%${cliente}%`
+        )
+        .limit(200);
+
+      if (clientesError) throw clientesError;
+
+      const clienteIds = (clientesData ?? []).map((item) => item.id);
+      if (clienteIds.length === 0) {
+        return emptyResponse();
+      }
+
+      query = query.in("clienteid", clienteIds);
+    }
+
+    if (notaNumero) {
+      const notaNumeroValue = Number(notaNumero.replace(/\D/g, ""));
+
+      if (!Number.isFinite(notaNumeroValue)) {
+        return emptyResponse();
+      }
+
+      const { data: notasData, error: notasError } = await supabaseAdmin
+        .from("nfe")
+        .select("ordemservicoid")
+        .eq("numero", notaNumeroValue)
+        .not("ordemservicoid", "is", null)
+        .limit(200);
+
+      if (notasError) throw notasError;
+
+      const ordemIds = (notasData ?? [])
+        .map((item) => item.ordemservicoid)
+        .filter((value): value is number => Number.isFinite(Number(value)));
+
+      if (ordemIds.length === 0) {
+        return emptyResponse();
+      }
+
+      query = query.in("id", ordemIds);
+    }
+
     if (q) {
       const like = `%${q}%`;
       const onlyDigits = q.replace(/\D/g, "");
@@ -144,6 +212,7 @@ const statusesParam = searchParams.get("statuses");
       dataEntrada: r.dataentrada as string | null,
       orcamentototal: r.orcamentototal as number | null,
       dataSaida: r.datasaida as string | null,
+      notaNumero: null as number | null,
 
       alvo_tipo: (r.alvo_tipo as AlvoTipo) ?? null,
 
@@ -201,6 +270,35 @@ const statusesParam = searchParams.get("statuses");
         updatedAt: t.updated_at as string,
       })),
     }));
+
+    const ordemIds = items.map((item) => item.id).filter(Boolean);
+
+    if (ordemIds.length > 0) {
+      const { data: notasData, error: notasError } = await supabaseAdmin
+        .from("nfe")
+        .select("ordemservicoid, numero, createdat")
+        .in("ordemservicoid", ordemIds)
+        .not("ordemservicoid", "is", null)
+        .order("numero", { ascending: false });
+
+      if (notasError) throw notasError;
+
+      const notaPorOrdem = new Map<number, number>();
+
+      for (const nota of notasData ?? []) {
+        const ordemId = Number((nota as any).ordemservicoid);
+        const numero = Number((nota as any).numero);
+
+        if (!Number.isFinite(ordemId) || !Number.isFinite(numero)) continue;
+        if (notaPorOrdem.has(ordemId)) continue;
+
+        notaPorOrdem.set(ordemId, numero);
+      }
+
+      items.forEach((item) => {
+        item.notaNumero = notaPorOrdem.get(item.id) ?? null;
+      });
+    }
 
     const total = count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));

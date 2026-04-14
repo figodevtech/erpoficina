@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import OsTable from "./components/osTable";
 import { Ordem, StatusOS } from "../../ordens/types";
 import axios from "axios";
+import { PaymentListFilters } from "../components/payments-filter-sheet";
 
 export default function AssistentePagamento (){
     const [ordens, setOrdens] = useState<Ordem[]>([])
@@ -18,10 +19,11 @@ export default function AssistentePagamento (){
 
     const handleGetOrdens = async (
       status: StatusOS,
-    pageNumber?: number,
-    limit?: number,
-    search?: string,
-  ) => {
+      pageNumber?: number,
+      limit?: number,
+      search?: string,
+      filters?: PaymentListFilters,
+    ) => {
     setIsLoading(true);
     try {
       const response = await axios.get("/api/ordens", {
@@ -30,6 +32,14 @@ export default function AssistentePagamento (){
           limit: limit || pagination.limit,
           q: search || "",
           status: status,
+          cliente: filters?.cliente || "",
+          notaNumero: filters?.notaNumero || "",
+          dateFrom: filters?.dataInicio
+            ? filters.dataInicio.toISOString().slice(0, 10)
+            : "",
+          dateTo: filters?.dataFim
+            ? filters.dataFim.toISOString().slice(0, 10)
+            : "",
         },
       });
       if (response.status === 200) {
