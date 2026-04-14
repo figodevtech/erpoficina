@@ -10,8 +10,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, SlidersHorizontal } from "lucide-react";
@@ -39,7 +39,7 @@ interface SearchFilterProps {
     dateFrom?: string,
     dateTo?: string,
     tipo?: Tipo_transacao | "",
-    pendente?: boolean | ""
+    pendente?: boolean | "",
   ) => void | Promise<any>;
   disableTipo?: boolean;
   lockedTipoLabel?: string;
@@ -111,7 +111,7 @@ export default function SearchFilter({
     const to = range?.to;
     if (from && to) return `${format(from, "dd/MM/yyyy")} - ${format(to, "dd/MM/yyyy")}`;
     if (from && !to) return `${format(from, "dd/MM/yyyy")} - ...`;
-    return "Periodo";
+    return "Período";
   }, [range?.from, range?.to]);
 
   const applyFilters = () => {
@@ -137,16 +137,26 @@ export default function SearchFilter({
   };
 
   return (
-    <div className={renderOnlyTrigger ? "" : "w-full"}>
-      <div className="flex items-center gap-2">
+    <div className={cn("w-full", renderOnlyTrigger && "sm:w-auto")}>
+      <div className={cn("flex items-center gap-2", renderOnlyTrigger && "w-full flex-col sm:w-auto sm:flex-row")}>
         {activeCount > 0 && (
-          <Button variant="ghost" className="hover:cursor-pointer" onClick={clearFilters}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-center hover:cursor-pointer sm:w-auto"
+            onClick={clearFilters}
+          >
             Limpar filtros
           </Button>
         )}
+
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" className="gap-2 hover:cursor-pointer">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 w-full justify-center gap-2 hover:cursor-pointer sm:w-auto"
+            >
               <SlidersHorizontal className="h-4 w-4" />
               Filtros
               {activeCount > 0 && (
@@ -156,19 +166,26 @@ export default function SearchFilter({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md">
+
+          <SheetContent>
             <SheetHeader>
               <SheetTitle>Filtros do fluxo de caixa</SheetTitle>
             </SheetHeader>
 
-            <div className="grid gap-6 px-4 py-4">
+            <div className="grid flex-1 auto-rows-min gap-6 px-4">
               <div className="space-y-2">
-                <Label>Lançamentos Futuros</Label>
+                <Label>Lançamentos futuros</Label>
                 <Tabs value={draftViewMode} onValueChange={(value) => setDraftViewMode(value as FluxoViewMode)}>
-                  <TabsList className="grid w-full grid-cols-1 h-auto sm:grid-cols-3">
-                    <TabsTrigger value="TODAS">Todas</TabsTrigger>
-                    <TabsTrigger value="A_RECEBER">A receber</TabsTrigger>
-                    <TabsTrigger value="A_PAGAR">A pagar</TabsTrigger>
+                  <TabsList className="grid h-auto w-full grid-cols-3">
+                    <TabsTrigger value="TODAS" className="px-2 text-xs sm:text-sm">
+                      Todas
+                    </TabsTrigger>
+                    <TabsTrigger value="A_RECEBER" className="px-2 text-xs sm:text-sm">
+                      A receber
+                    </TabsTrigger>
+                    <TabsTrigger value="A_PAGAR" className="px-2 text-xs sm:text-sm">
+                      A pagar
+                    </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -179,7 +196,7 @@ export default function SearchFilter({
                   id="fluxo-search"
                   value={draftSearch}
                   onChange={(e) => setDraftSearch(e.target.value)}
-                  placeholder="Buscar na descricao"
+                  placeholder="Buscar na descrição"
                 />
               </div>
 
@@ -197,7 +214,7 @@ export default function SearchFilter({
                     <SelectValue
                       placeholder={
                         draftViewMode !== "TODAS"
-                          ? lockedTipoLabel || "Tipo definido pela visualizacao"
+                          ? lockedTipoLabel || "Tipo definido pela visualização"
                           : "Todos"
                       }
                     />
@@ -206,20 +223,23 @@ export default function SearchFilter({
                     <SelectItem value="TODOS">Todos</SelectItem>
                     <SelectItem value={Tipo_transacao.RECEITA}>Receitas</SelectItem>
                     <SelectItem value={Tipo_transacao.DESPESA}>Despesas</SelectItem>
-                    <SelectItem value={Tipo_transacao.DEPOSITO}>Depositos</SelectItem>
+                    <SelectItem value={Tipo_transacao.DEPOSITO}>Depósitos</SelectItem>
                     <SelectItem value={Tipo_transacao.SAQUE}>Saques</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Periodo</Label>
+                <Label>Período</Label>
                 <Popover open={openRange} onOpenChange={setOpenRange}>
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
                       variant="outline"
-                      className={cn("w-full justify-between text-left font-normal", !range?.from && "text-muted-foreground")}
+                      className={cn(
+                        "w-full justify-between text-left font-normal",
+                        !range?.from && "text-muted-foreground",
+                      )}
                     >
                       <span className="truncate">{periodLabel}</span>
                       <CalendarIcon className="ml-2 h-4 w-4 shrink-0 opacity-70" />
@@ -266,11 +286,11 @@ export default function SearchFilter({
                 </Popover>
               </div>
 
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={clearFilters}>
+              <div className="mt-2 flex justify-between gap-2">
+                <Button type="button" variant="outline" className="w-30" onClick={clearFilters}>
                   Limpar
                 </Button>
-                <Button type="button" className="flex-1" onClick={applyFilters}>
+                <Button type="button" className="w-30" onClick={applyFilters}>
                   Aplicar
                 </Button>
               </div>

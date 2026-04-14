@@ -197,8 +197,8 @@ export default function FinancialTable({
             </CardDescription>
           </div>
 
-          <div className="flex flex-col gap-2 sm:items-end">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <SearchFilter
                 renderOnlyTrigger
                 pagination={pagination}
@@ -222,7 +222,13 @@ export default function FinancialTable({
                     : undefined
                 }
               />
-              <ExportTransactionsButton search={search} tipo={tipo} dateFrom={dateFrom} dateTo={dateTo} />
+              <ExportTransactionsButton
+                search={search}
+                tipo={tipo}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                className="h-9 w-full hover:cursor-pointer sm:w-auto"
+              />
 
             <TransactionDialog
               open={isOpen}
@@ -232,7 +238,7 @@ export default function FinancialTable({
             >
               <Button
                 size="sm"
-                className="w-full whitespace-nowrap hover:cursor-pointer sm:w-auto"
+                className="h-9 w-full whitespace-nowrap hover:cursor-pointer sm:w-auto"
                 onClick={() => setSelectedTransactionId(undefined)}
               >
                 <Plus className="h-4 w-4" />
