@@ -38,6 +38,9 @@ import { Pagination, Tipo_transacao, Transaction } from "../types";
 import { getCategoryIcon, getTypeColor } from "../utils";
 import { ExportTransactionsButton } from "./ExportTransactionsButton";
 import ConculidoAlert from "./concluidoAlert";
+import SearchFilter from "./searchFilter";
+
+type FluxoViewMode = "TODAS" | "A_RECEBER" | "A_PAGAR";
 
 interface FinancialTableProps {
   dateTo: string;
@@ -51,10 +54,20 @@ interface FinancialTableProps {
     dateFrom?: string,
     dateTo?: string,
     tipo?: Tipo_transacao | "",
+    pendente?: boolean | "",
   ) => void;
   search: string;
+  dateSearch: string;
   tipo: Tipo_transacao | "";
+  rawTipo: Tipo_transacao | "";
+  pendenteFilter?: boolean | "";
+  viewMode?: FluxoViewMode;
   isLoading: boolean;
+  setSearch: (value: string) => void;
+  setTipo: (value: Tipo_transacao | "") => void;
+  setDateFrom: (value: string) => void;
+  setDateTo: (value: string) => void;
+  setViewMode: (value: FluxoViewMode) => void;
   handleGetStatusCounter: () => void;
 }
 
@@ -63,8 +76,17 @@ export default function FinancialTable({
   pagination,
   handleGetTransactions,
   search,
+  dateSearch,
   tipo,
+  rawTipo,
+  pendenteFilter = "",
+  viewMode = "TODAS",
   isLoading,
+  setSearch,
+  setTipo,
+  setDateFrom,
+  setDateTo,
+  setViewMode,
   handleGetStatusCounter,
   dateTo,
   dateFrom,
@@ -102,7 +124,7 @@ export default function FinancialTable({
       }
     } finally {
       setLoadingPago(false);
-      handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
+      handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo, pendenteFilter);
     }
   };
 
@@ -118,7 +140,7 @@ export default function FinancialTable({
       const response = await axios.delete(`/api/transaction/${id}`, {});
       if (response.status === 204) {
         toast("Transação deletada!");
-        handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
+        handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo, pendenteFilter);
         handleGetStatusCounter();
       } else {
         toast.warning(`Status inesperado: ${response.status}`);
@@ -139,17 +161,32 @@ export default function FinancialTable({
   const limitUid = React.useId();
   const limitListboxId = `${limitUid}-limit-listbox`;
 
+  const title =
+    viewMode === "A_RECEBER"
+      ? "Contas a Receber"
+      : viewMode === "A_PAGAR"
+      ? "Contas a Pagar"
+      : "Lista de Transações";
+
   return (
     <Card className="">
       <CardHeader className="border-b-2 pb-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle className="text-lg font-medium">Lista de Transações</CardTitle>
+            <CardTitle className="text-lg font-medium">{title}</CardTitle>
             <CardDescription className="flex flex-col">
               <button
                 type="button"
                 onClick={() => {
-                  handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo);
+                  handleGetTransactions(
+                    pagination.page,
+                    pagination.limit,
+                    search,
+                    dateFrom,
+                    dateTo,
+                    tipo,
+                    pendenteFilter,
+                  );
                   handleGetStatusCounter();
                 }}
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
@@ -160,8 +197,32 @@ export default function FinancialTable({
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
-            <ExportTransactionsButton search={search} tipo={tipo} dateFrom={dateFrom} dateTo={dateTo} />
+          <div className="flex flex-col gap-2 sm:items-end">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <SearchFilter
+                renderOnlyTrigger
+                pagination={pagination}
+                handleGetTransactions={handleGetTransactions}
+                tipo={rawTipo}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                setSearch={setSearch}
+                search={dateSearch}
+                setTipo={setTipo}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                setDateFrom={setDateFrom}
+                setDateTo={setDateTo}
+                disableTipo={viewMode !== "TODAS"}
+                lockedTipoLabel={
+                  viewMode === "A_RECEBER"
+                    ? "Somente receitas pendentes"
+                    : viewMode === "A_PAGAR"
+                    ? "Somente despesas pendentes"
+                    : undefined
+                }
+              />
+              <ExportTransactionsButton search={search} tipo={tipo} dateFrom={dateFrom} dateTo={dateTo} />
 
             <TransactionDialog
               open={isOpen}
@@ -171,13 +232,14 @@ export default function FinancialTable({
             >
               <Button
                 size="sm"
-                className="hover:cursor-pointer whitespace-nowrap"
+                className="w-full whitespace-nowrap hover:cursor-pointer sm:w-auto"
                 onClick={() => setSelectedTransactionId(undefined)}
               >
                 <Plus className="h-4 w-4" />
                 Transação
               </Button>
             </TransactionDialog>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -332,7 +394,9 @@ export default function FinancialTable({
               variant="outline"
               size="icon"
               className="hover:cursor-pointer"
-              onClick={() => handleGetTransactions(1, pagination.limit, search, dateFrom, dateTo, tipo)}
+              onClick={() =>
+                handleGetTransactions(1, pagination.limit, search, dateFrom, dateTo, tipo, pendenteFilter)
+              }
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -343,7 +407,15 @@ export default function FinancialTable({
               size="icon"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetTransactions(pagination.page - 1, pagination.limit, search, dateFrom, dateTo, tipo)
+                handleGetTransactions(
+                  pagination.page - 1,
+                  pagination.limit,
+                  search,
+                  dateFrom,
+                  dateTo,
+                  tipo,
+                  pendenteFilter,
+                )
               }
               disabled={pagination.page === 1}
             >
@@ -359,7 +431,15 @@ export default function FinancialTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetTransactions(pagination.page + 1, pagination.limit, search, dateFrom, dateTo, tipo)
+                handleGetTransactions(
+                  pagination.page + 1,
+                  pagination.limit,
+                  search,
+                  dateFrom,
+                  dateTo,
+                  tipo,
+                  pendenteFilter,
+                )
               }
               disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
@@ -371,7 +451,15 @@ export default function FinancialTable({
               variant="outline"
               size="icon"
               onClick={() =>
-                handleGetTransactions(pagination.totalPages, pagination.limit, search, dateFrom, dateTo, tipo)
+                handleGetTransactions(
+                  pagination.totalPages,
+                  pagination.limit,
+                  search,
+                  dateFrom,
+                  dateTo,
+                  tipo,
+                  pendenteFilter,
+                )
               }
               disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >

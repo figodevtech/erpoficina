@@ -6,6 +6,8 @@ import Cards from "./components/cards";
 import SearchFilter from "./components/searchFilter";
 import FinancialTable from "./components/financialTable";
 
+type FluxoViewMode = "TODAS" | "A_RECEBER" | "A_PAGAR";
+
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,13 +25,15 @@ export default function FinanceiroPage() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [viewMode, setViewMode] = useState<FluxoViewMode>("TODAS");
   const handleGetTransactions = async (
     pageNumber?: number,
     limit?: number,
     search?: string,
     dateFrom?: string,
     dateTo?: string,
-    tipo?: Tipo_transacao | ""
+    tipo?: Tipo_transacao | "",
+    pendente?: boolean | ""
   ) => {
     setIsLoading(true);
     try {
@@ -39,6 +43,7 @@ export default function FinanceiroPage() {
           limit: pagination.limit,
           search: search || undefined,
           tipo: tipo,
+          pendente: pendente === "" ? undefined : pendente,
           dateFrom: dateFrom,
           dateTo: dateTo,
         },
@@ -81,12 +86,36 @@ export default function FinanceiroPage() {
     }
   };
 
-  useEffect(() => {
-    handleGetTransactions( pagination.page, pagination.limit, search,dateFrom, dateTo, tipo,);
-  }, [tipo, search, dateFrom, dateTo]);
+  const effectiveTipo =
+    viewMode === "A_RECEBER"
+      ? Tipo_transacao.RECEITA
+      : viewMode === "A_PAGAR"
+      ? Tipo_transacao.DESPESA
+      : tipo;
+
+  const effectivePendente =
+    viewMode === "TODAS" ? "" : true;
 
   useEffect(() => {
-    handleGetTransactions(1, pagination.limit);
+    handleGetTransactions(
+      1,
+      pagination.limit,
+      search,
+      dateFrom,
+      dateTo,
+      effectiveTipo,
+      effectivePendente,
+    );
+  }, [tipo, search, dateFrom, dateTo, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== "TODAS" && tipo) {
+      setTipo("");
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    handleGetTransactions(1, pagination.limit, search, dateFrom, dateTo, effectiveTipo, effectivePendente);
     handleGetStatusCounter();
   }, []);
 
@@ -94,25 +123,22 @@ export default function FinanceiroPage() {
     <div className="p-y-4 space-y-4">
       {/* <Header /> */}
       <Cards isLoadingStatus={isLoadingStatus} statusInfo={statusInfo} />
-      <SearchFilter
-        pagination={pagination}
-        handleGetTransactions={handleGetTransactions}
-        tipo={tipo}
-        setSearch={setSearch}
-        search={search}
-        setTipo={setTipo}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        setDateFrom={setDateFrom}
-        setDateTo={setDateTo}
-      />
       <FinancialTable
         dateFrom={dateFrom}
         dateTo={dateTo}
         handleGetStatusCounter={handleGetStatusCounter}
         isLoading={isLoading}
         search={search}
-        tipo={tipo}
+        tipo={effectiveTipo}
+        pendenteFilter={effectivePendente}
+        viewMode={viewMode}
+        rawTipo={tipo}
+        setTipo={setTipo}
+        setSearch={setSearch}
+        dateSearch={search}
+        setDateFrom={setDateFrom}
+        setDateTo={setDateTo}
+        setViewMode={setViewMode}
         handleGetTransactions={handleGetTransactions}
         pagination={pagination}
         transactions={transactions}
