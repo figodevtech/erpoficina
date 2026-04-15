@@ -8,7 +8,8 @@ import type { ClienteRow, EmpresaRow, NFeItem } from "@/lib/nfe/types";
 export const runtime = "nodejs";
 
 type BodyRequest = {
-  itens: number[]; // array de produtoid selecionados no diálogo
+  itens: number[];
+  observacoesFiscais?: string | null;
 };
 
 // Extrai o osId direto da URL: /api/nfe/de-os/95/gerar-rascunho
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1) Criar cabeçalho da NF-e (igual à rota /api/nfe/de-os/[id])
+    // 1) Criar cabeçalho da NF-e
     const { data: criarData, error: criarError } = await supabaseAdmin.rpc(
       "criar_nfe_de_os",
       {
@@ -415,12 +416,17 @@ export async function POST(req: Request) {
 
     const destinatario = mapClienteToDestinatario(cliente, empresa);
 
+    const observacoesFiscais = body.observacoesFiscais
+      ? body.observacoesFiscais.slice(0, 500)
+      : undefined;
+
     const { xml: xmlRascunho, chave } = buildNFePreviewXml(
       empresa,
       Number(nfe.numero),
       Number(nfe.serie),
       itens,
-      destinatario
+      destinatario,
+      { observacoesFiscais }
     );
 
     console.log(

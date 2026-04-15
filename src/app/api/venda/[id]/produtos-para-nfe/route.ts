@@ -87,7 +87,7 @@ export async function GET(
     // 1) garantir que venda existe
     const { data: venda, error: vendaError } = await supabaseAdmin
       .from("venda")
-      .select("id")
+      .select("id, observacoes_fiscais")
       .eq("id", vendaId)
       .maybeSingle();
 
@@ -188,6 +188,7 @@ export async function GET(
     return NextResponse.json({
       ok: true,
       vendaId,
+      observacoes_fiscais: venda.observacoes_fiscais ?? null,
       itens: resposta,
     });
   } catch (e: any) {

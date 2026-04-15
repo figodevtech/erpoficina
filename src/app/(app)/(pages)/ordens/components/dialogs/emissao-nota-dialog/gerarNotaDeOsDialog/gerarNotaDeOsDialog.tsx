@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -58,6 +61,7 @@ type ListarProdutosOsResponse = {
   ok: boolean;
   message?: string;
   osId?: number;
+  observacoes_fiscais?: string | null;
   itens: OsProdutoParaNfeBase[];
 };
 
@@ -65,6 +69,7 @@ type ListarProdutosVendaResponse = {
   ok: boolean;
   message?: string;
   vendaId?: number;
+  observacoes_fiscais?: string | null;
   itens: OsProdutoParaNfeBase[];
 };
 
@@ -175,6 +180,9 @@ export function GerarNotaDeOsDialog({
   const [salvando, setSalvando] = useState(false);
   const [itens, setItens] = useState<OsProdutoParaNfe[] | null>(null);
   const [selecionados, setSelecionados] = useState<number[]>([]);
+  const [emitirComObs, setEmitirComObs] = useState(false);
+  const [obsCarregadas, setObsCarregadas] = useState<string | null>(null);
+  const [obsEditavel, setObsEditavel] = useState("");
 
   const origem = osId ? "OS" : vendaId ? "VENDA" : null;
   const origemId = osId ?? vendaId ?? null;
@@ -215,10 +223,18 @@ export function GerarNotaDeOsDialog({
         toast.error(msg);
         setItens([]);
         setSelecionados([]);
+        setObsCarregadas(null);
+        setObsEditavel("");
+        setEmitirComObs(false);
         return;
       }
 
       const listaBase = (json as any).itens ?? [];
+      const obsRaw: string | null = (json as any).observacoes_fiscais ?? null;
+
+      setObsCarregadas(obsRaw);
+      setObsEditavel(obsRaw ?? "");
+      setEmitirComObs(!!obsRaw);
 
       const listaComValidacao: OsProdutoParaNfe[] = listaBase.map((item: any) => {
         const { ok, erros } = validarProdutoParaNfe(item);
@@ -242,6 +258,9 @@ export function GerarNotaDeOsDialog({
       toast.error(e?.message || "Erro ao carregar produtos.");
       setItens([]);
       setSelecionados([]);
+      setObsCarregadas(null);
+      setObsEditavel("");
+      setEmitirComObs(false);
     } finally {
       setCarregandoItens(false);
     }
@@ -362,6 +381,9 @@ export function GerarNotaDeOsDialog({
         },
         body: JSON.stringify({
           itens: selecionados,
+          ...(emitirComObs && obsEditavel.trim()
+            ? { observacoesFiscais: obsEditavel.trim().slice(0, 500) }
+            : {}),
         }),
       });
 
@@ -620,6 +642,55 @@ export function GerarNotaDeOsDialog({
                     );
                   })}
                 </div>
+              </section>
+
+              <section className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <Label
+                      htmlFor="switch-obs-fiscais"
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      Emitir com observações fiscais
+                    </Label>
+                    {!obsCarregadas && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Esta {origem === "VENDA" ? "venda" : "OS"} não possui observações fiscais cadastradas.
+                      </p>
+                    )}
+                    {obsCarregadas && !emitirComObs && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Observações fiscais encontradas — ative para incluir na NF-e.
+                      </p>
+                    )}
+                  </div>
+                  <Switch
+                    id="switch-obs-fiscais"
+                    checked={emitirComObs}
+                    onCheckedChange={(v) => {
+                      setEmitirComObs(v);
+                      if (v && !obsEditavel) setObsEditavel(obsCarregadas ?? "");
+                    }}
+                  />
+                </div>
+
+                {emitirComObs && (
+                  <div className="space-y-1.5">
+                    <Textarea
+                      id="textarea-obs-fiscais"
+                      value={obsEditavel}
+                      onChange={(e) =>
+                        setObsEditavel(e.target.value.slice(0, 500))
+                      }
+                      placeholder="Digite as observações fiscais que serão incluídas na NF-e..."
+                      className="min-h-[80px] text-sm resize-none"
+                      maxLength={500}
+                    />
+                    <p className="text-[11px] text-muted-foreground text-right">
+                      {obsEditavel.length}/500 caracteres
+                    </p>
+                  </div>
+                )}
               </section>
 
               <section className="rounded-lg border p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

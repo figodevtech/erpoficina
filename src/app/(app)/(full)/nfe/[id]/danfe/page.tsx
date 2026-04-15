@@ -201,6 +201,7 @@ type ParsedNFe = {
     vNF: number;
   };
   itens: ItemDisplay[];
+  infCpl?: string;
 };
 
 function textFrom(el: Element | Document | null | undefined, tag: string): string {
@@ -456,6 +457,10 @@ function parseNFeXml(xml: string): ParsedNFe {
     });
   }
 
+  // ------- INFORMAÇÕES ADICIONAIS (infCpl) -------
+  const infAdicNode = infNFe.getElementsByTagName("infAdic")[0] as Element | undefined;
+  const infCpl = infAdicNode ? textFrom(infAdicNode, "infCpl") || undefined : undefined;
+
   return {
     ide,
     emitente: {
@@ -475,6 +480,7 @@ function parseNFeXml(xml: string): ParsedNFe {
     },
     totais,
     itens,
+    infCpl,
   };
 }
 
@@ -1321,6 +1327,11 @@ export default async function DanfePage({ params }: PageProps) {
             {/* Informações complementares */}
             <div className="border-box" style={{ padding: "2px 3px" }}>
               <div className="block-title">INFORMAÇÕES COMPLEMENTARES</div>
+              {parsed?.infCpl && (
+                <div className="small-text" style={{ marginTop: 2, fontWeight: 600 }}>
+                  {parsed.infCpl}
+                </div>
+              )}
               <div className="small-text" style={{ marginTop: 2 }}>
                 Versão de visualização do DANFE gerada pelo sistema. Para fins
                 fiscais, prevalece o XML da NF-e autorizado pela SEFAZ.

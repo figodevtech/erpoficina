@@ -50,6 +50,7 @@ export interface IdeOptions {
   tpNF?: 0 | 1;
   natOp?: string;
   indFinal?: 0 | 1;
+  observacoesFiscais?: string | null;
 }
 
 export function criarIdeParaEmpresa(
@@ -276,12 +277,27 @@ export function buildNFePreviewXml(
     '</detPag>' +
     '</pag>';
 
+  const natOpText = options?.natOp
+    ? `NF-e de ${options.natOp.toLowerCase()}.`
+    : 'NF-e de venda de mercadoria.';
+
+  const obsRaw = (options?.observacoesFiscais ?? '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .trim();
+  const obsSanitized = obsRaw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .slice(0, 500);
+
+  const infCplText = obsSanitized
+    ? `${natOpText} ${obsSanitized}`
+    : natOpText;
+
   const infAdicXml =
     '<infAdic>' +
-    `<infCpl>${options?.natOp
-      ? `NF-e de ${options.natOp.toLowerCase()}.`
-      : 'NF-e de venda de mercadoria.'
-    }</infCpl>` +
+    `<infCpl>${infCplText}</infCpl>` +
     '</infAdic>';
 
   const infRespTec =

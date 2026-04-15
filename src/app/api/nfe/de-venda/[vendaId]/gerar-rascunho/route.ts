@@ -7,7 +7,8 @@ import type { ClienteRow, EmpresaRow, NFeItem } from "@/lib/nfe/types";
 export const runtime = "nodejs";
 
 type BodyRequest = {
-  itens: number[]; // array de produtoid selecionados
+  itens: number[];
+  observacoesFiscais?: string | null;
 };
 
 // Extrai o vendaId direto da URL: /api/nfe/de-venda/123/gerar-rascunho
@@ -33,6 +34,7 @@ function toNumberOrNull(v: unknown): number | null {
 type VendaRow = {
   id: number;
   clienteid: number;
+  observacoes_fiscais?: string | null;
 };
 
 export async function POST(req: Request) {
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
     // 0) buscar venda (cliente)
     const { data: venda, error: vendaError } = await supabaseAdmin
       .from("venda")
-      .select("id, clienteid")
+      .select("id, clienteid, observacoes_fiscais")
       .eq("id", vendaId)
       .maybeSingle<VendaRow>();
 
@@ -373,12 +375,17 @@ export async function POST(req: Request) {
 
     const destinatario = mapClienteToDestinatario(cliente, empresa);
 
+    const observacoesFiscais = body.observacoesFiscais
+      ? body.observacoesFiscais.slice(0, 500)
+      : undefined;
+
     const { xml: xmlRascunho, chave } = buildNFePreviewXml(
       empresa,
       Number(nfe.numero),
       Number(nfe.serie),
       itensXml,
-      destinatario
+      destinatario,
+      { observacoesFiscais }
     );
 
     // 8) Gravar XML de rascunho em xml_assinado e chave

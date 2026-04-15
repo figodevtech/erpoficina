@@ -110,7 +110,7 @@ export async function GET(req: Request) {
     // 1) Garantir que a OS existe
     const { data: os, error: osError } = await supabaseAdmin
       .from("ordemservico")
-      .select("id")
+      .select("id, observacoes_fiscais")
       .eq("id", idOs)
       .maybeSingle();
 
@@ -218,6 +218,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       osId: idOs,
+      observacoes_fiscais: os.observacoes_fiscais ?? null,
       itens: resposta,
     });
   } catch (e: any) {
