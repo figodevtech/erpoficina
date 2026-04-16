@@ -18,6 +18,7 @@ import DialogClienteCompras from "./dialogs/dialog-cliente-compras";
 import DialogProdutoCompras from "./dialogs/dialog-produto-compras";
 import DialogComissaoRealizador from "./dialogs/dialog-comissao-realizador";
 import DialogVendasUsuario from "./dialogs/dialog-vendas-usuario";
+import DialogComissaoSetor from "./dialogs/dialog-comissao-setor";
 
 export function ReportsGrid() {
 
@@ -89,6 +90,7 @@ export function ReportsGrid() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DialogVendasUsuario/>
           <DialogComissaoRealizador/>
+          <DialogComissaoSetor/>
         </div>
       </Card>
 
