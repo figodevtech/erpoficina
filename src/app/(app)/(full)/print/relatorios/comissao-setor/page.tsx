@@ -351,10 +351,12 @@ export default async function PrintComissaoSetorPage({ searchParams }: PageProps
       <script
         dangerouslySetInnerHTML={{
           __html: `
-            const btn = document.getElementById('btn-imprimir');
-            if (btn) {
-               btn.addEventListener('click', () => { window.print(); });
-            }
+            document.addEventListener('click', function(e) {
+              const target = e.target;
+              if (target && target.closest('#btn-imprimir')) {
+                window.print();
+              }
+            });
           `
         }}
       />
