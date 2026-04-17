@@ -75,14 +75,11 @@ export default function CustomerSelect({
         },
       });
       if (response.status === 200) {
-        // console.log(response)
         const { data } = response;
         setCustomerItems(data.data);
         setPagination(data.pagination);
-        console.log("Clientes carregados:", data.data);
       }
-    } catch (error) {
-      console.log("Erro ao buscar clientes:", error);
+    } catch {
     } finally {
       setIsLoading(false);
     }
@@ -168,7 +165,6 @@ export default function CustomerSelect({
                   <TableRow
                     className="hover:cursor-pointer"
                     onClick={() => {
-                      console.log("Selectionado", c);
                       if (OnSelect) {
                         OnSelect(c);
                       }

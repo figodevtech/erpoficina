@@ -148,6 +148,7 @@ export default function RegisterContent({
   setSelectedTransactionId,
   newTransaction,
   setNewTransaction,
+  dialogOpen,
   selectedCustomer,
   osId,
   vendaId,
@@ -196,13 +197,10 @@ export default function RegisterContent({
     try {
       const response = await axios.get("/api/banks", {});
       if (response.status === 200) {
-        // console.log(response)
         const { data } = response;
         setBanks(data.data);
-        console.log("Bancos carregados:", data.data);
       }
-    } catch (error) {
-      console.log("Erro ao buscar bancos:", error);
+    } catch {
     } finally {
       setIsLoadingBanks(false);
     }
@@ -329,17 +327,43 @@ export default function RegisterContent({
       return;
     }
     setPagoPeloMesmo(true);
-  }, [canUseMesmoCliente, osId, vendaId]);
+    void (async () => {
+      const transactionCustomer = await buscarClienteMesmo();
+      if (!transactionCustomer?.id) return;
 
-  useEffect(() => {
-    if (!canUseMesmoCliente) return;
-    void buscarClienteMesmo();
-  }, [canUseMesmoCliente, osId, vendaId]);
+      setSelectedCustomer(transactionCustomer);
+      setNewTransaction((prev) => ({
+        ...prev,
+        cliente_id: transactionCustomer.id,
+        nomepagador: transactionCustomer.nome,
+        cpfcnpjpagador: transactionCustomer.cpfcnpj,
+      }));
+    })();
+  }, [canUseMesmoCliente, osId, vendaId, setNewTransaction, setSelectedCustomer]);
 
   useEffect(() => {
     if (!pagoPeloMesmo) return;
     void aplicarClienteMesmo();
-  }, [clienteMesmoCache, pagoPeloMesmo, osId, vendaId]);
+  }, [pagoPeloMesmo]);
+
+  useEffect(() => {
+    if (!dialogOpen || !canUseMesmoCliente) return;
+
+    setPagoPeloMesmo(true);
+
+    void (async () => {
+      const transactionCustomer = await buscarClienteMesmo();
+      if (!transactionCustomer?.id) return;
+
+      setSelectedCustomer(transactionCustomer);
+      setNewTransaction((prev) => ({
+        ...prev,
+        cliente_id: transactionCustomer.id,
+        nomepagador: transactionCustomer.nome,
+        cpfcnpjpagador: transactionCustomer.cpfcnpj,
+      }));
+    })();
+  }, [dialogOpen, canUseMesmoCliente, osId, vendaId, setNewTransaction, setSelectedCustomer]);
 
   const handleCreateTransaction = async () => {
     setIsSubmitting(true);
@@ -391,7 +415,9 @@ export default function RegisterContent({
         }));
       }
 
-      const response = await axios.post("/api/transaction/os", {
+      const endpoint = osId ? "/api/transaction/os" : "/api/transaction";
+
+      const response = await axios.post(endpoint, {
         newTransaction: {
           ...newTransaction,
           data: parcelasDetalhadas[0]?.dataVencimento ?? newTransaction.data,
@@ -437,18 +463,10 @@ export default function RegisterContent({
   };
 
   useEffect(() => {
-    console.log("nova: ", newTransaction);
-  }, [newTransaction]);
-
-  useEffect(() => {
-    console.log("osId:", osId);
-    console.log("vendaId:", vendaId);
-
     handleGetBanks();
   }, []);
 
   useEffect(() => {
-    console.log("mudou");
     setNewTransaction({
       ...newTransaction,
       valorLiquido: newTransaction.valor,

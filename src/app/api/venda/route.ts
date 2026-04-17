@@ -62,6 +62,8 @@ const VENDA_SELECT = `
   updatedat,
   created_by,
   criador:created_by ( id, nome ),
+  vendedor,
+  comissao_venda_percent_aplicada,
   canal,
   status_entrega,
   codigo_rastreio,
@@ -365,8 +367,6 @@ export async function POST(req: Request) {
     const body = (await req.json()) as VendaPostBody;
 
     body.created_by = session.user.id;
-
-    console.log("Criando venda com body:", body);
     // Validação básica no backend
     if (
       !body ||
@@ -433,6 +433,7 @@ export async function POST(req: Request) {
         .from("venda")
         .update({
           forma_pagamento: body.formaPagamento || null,
+          vendedor: session.user.id,
           updatedat: new Date().toISOString(),
         })
         .eq("id", vendaId);
@@ -441,7 +442,26 @@ export async function POST(req: Request) {
         console.error("Venda criada, mas erro ao salvar forma_pagamento:", formaPagamentoError);
         return NextResponse.json(
           {
-            error: "Venda criada, mas ocorreu um erro ao salvar a forma de pagamento.",
+            error: "Venda criada, mas ocorreu um erro ao salvar os dados do vendedor/forma de pagamento.",
+            vendaId,
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      const { error: vendedorError } = await supabaseAdmin
+        .from("venda")
+        .update({
+          vendedor: session.user.id,
+          updatedat: new Date().toISOString(),
+        })
+        .eq("id", vendaId);
+
+      if (vendedorError) {
+        console.error("Venda criada, mas erro ao salvar vendedor:", vendedorError);
+        return NextResponse.json(
+          {
+            error: "Venda criada, mas ocorreu um erro ao salvar o vendedor.",
             vendaId,
           },
           { status: 500 }

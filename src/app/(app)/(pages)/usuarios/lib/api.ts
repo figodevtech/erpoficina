@@ -22,6 +22,7 @@ export type Usuario = {
   // novos campos
   salario?: number | null;
   comissao_percent?: number | null;
+  comissao_venda_percent?: number | null;
   data_admissao?: string | null;
   data_demissao?: string | null;
 };
@@ -35,6 +36,7 @@ export type UsuarioPayload = {
 
   salario?: number | null;
   comissao_percent?: number | null;
+  comissao_venda_percent?: number | null;
   data_admissao?: string | null;
   data_demissao?: string | null;
 };
@@ -69,6 +71,8 @@ export async function buscarUsuarios(): Promise<Usuario[]> {
     const salarioNorm = u.salario ?? u.salario_valor ?? null;
 
     const comissaoNorm = u.comissao_percent ?? u.comissaoPercent ?? u.comissao ?? null;
+    const comissaoVendaNorm =
+      u.comissao_venda_percent ?? u.comissaoVendaPercent ?? u.comissao_venda ?? null;
 
     const admissaoNorm = u.data_admissao ?? u.dataAdmissao ?? null;
 
@@ -89,6 +93,8 @@ export async function buscarUsuarios(): Promise<Usuario[]> {
 
       salario: salarioNorm != null ? Number(salarioNorm) : null,
       comissao_percent: comissaoNorm != null ? Number(comissaoNorm) : null,
+      comissao_venda_percent:
+        comissaoVendaNorm != null ? Number(comissaoVendaNorm) : null,
       data_admissao: admissaoNorm ? String(admissaoNorm) : null,
       data_demissao: demissaoNorm ? String(demissaoNorm) : null,
     } as Usuario;
@@ -113,6 +119,7 @@ export async function criarUsuario(payload: UsuarioPayload) {
       // novos campos (precisa tratar no backend / banco)
       salario: payload.salario ?? null,
       comissao_percent: payload.comissao_percent ?? null,
+      comissao_venda_percent: payload.comissao_venda_percent ?? null,
       data_admissao: payload.data_admissao ?? null,
       data_demissao: payload.data_demissao ?? null,
     }),
@@ -143,6 +150,7 @@ export async function atualizarUsuario(id: string | number, payload: UsuarioPayl
       // novos campos (precisa tratar no backend / banco)
       salario: payload.salario ?? null,
       comissao_percent: payload.comissao_percent ?? null,
+      comissao_venda_percent: payload.comissao_venda_percent ?? null,
       data_admissao: payload.data_admissao ?? null,
       data_demissao: payload.data_demissao ?? null,
     }),

@@ -3,9 +3,9 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/** Campos graváveis em transacao */
 const WRITABLE_FIELDS = new Set([
   "ordemservicoid",
+  "vendaid",
   "descricao",
   "valor",
   "valorLiquido",
@@ -22,140 +22,165 @@ const WRITABLE_FIELDS = new Set([
 
 const FORTALEZA_OFFSET = "-03:00";
 
-// Converte "YYYY-MM-DD" 00:00 (Fortaleza) -> ISO UTC
+const TRANSACAO_FIELDS =
+  "id, descricao, valor, valorLiquido, pendente, data, ordemservicoid, vendaid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
+
+const BANCO_FIELDS =
+  "id, titulo, tipo, agencia, contanumero, proprietario, valorinicial, empresa_id, created_at, updated_at";
+
 function localDayStartToUtcIso(dateStr: string) {
   return new Date(`${dateStr}T00:00:00${FORTALEZA_OFFSET}`).toISOString();
 }
 
-// Converte início do dia seguinte local -> ISO UTC
 function localNextDayStartToUtcIso(dateStr: string) {
-  const d = new Date(`${dateStr}T00:00:00${FORTALEZA_OFFSET}`);
-  return new Date(d.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const day = new Date(`${dateStr}T00:00:00${FORTALEZA_OFFSET}`);
+  return new Date(day.getTime() + 24 * 60 * 60 * 1000).toISOString();
 }
 
-/** Campos retornados no select padrão (transacao) */
-const TRANSACAO_FIELDS =
-  "id, descricao, valor, valorLiquido, pendente, data, ordemservicoid, metodopagamento, categoria, tipo, cliente_id, banco_id, created_at, updated_at";
-
-/** Campos do banco (bancoconta) alinhados ao que você precisa no front */
-const BANCO_FIELDS =
-  "id, titulo, tipo, agencia, contanumero, proprietario, valorinicial, empresa_id, created_at, updated_at";
-
-/* ========================= Helpers ========================= */
-
-function toNullIfEmpty(v: unknown) {
-  return typeof v === "string" && v.trim() === "" ? null : v;
+function toNullIfEmpty(value: unknown) {
+  return typeof value === "string" && value.trim() === "" ? null : value;
 }
 
-function toNumberOrNull(v: any) {
-  if (v == null || (typeof v === "string" && v.trim() === "")) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+function toNumberOrNull(value: any) {
+  if (value == null || (typeof value === "string" && value.trim() === "")) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toDateISOStringOrNull(v: any) {
-  if (v == null || (typeof v === "string" && v.trim() === "")) return null;
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d.toISOString();
+function toDateISOStringOrNull(value: any) {
+  if (value == null || (typeof value === "string" && value.trim() === "")) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-function parseBooleanParam(v: string | null): boolean | null {
-  if (v == null) return null;
-  const s = v.trim().toLowerCase();
-  if (s === "true" || s === "1" || s === "yes") return true;
-  if (s === "false" || s === "0" || s === "no") return false;
+function parseBooleanParam(value: string | null): boolean | null {
+  if (value == null) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
+  if (normalized === "false" || normalized === "0" || normalized === "no") return false;
   return null;
 }
 
-/**
- * Saneia e valida payload de transacao:
- * - strings vazias -> null
- * - valor (real), banco_id (bigint), cliente_id (int) -> number
- * - data (timestamp tz) -> ISO string
- * - no POST (strict=true) exige obrigatórios
- */
+function moneyToCents(value: string | number | null | undefined): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") return Math.round(value * 100);
+  const normalized = value.replace(",", ".").trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
+}
+
+function centsToNumber(cents: number): number {
+  return Number((cents / 100).toFixed(2));
+}
+
+function brl(cents: number): string {
+  return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
+}
+
+function distributeNetByGross(grossCentsList: number[], totalNetCents: number) {
+  const grossTotal = grossCentsList.reduce((acc, value) => acc + value, 0);
+  if (grossTotal <= 0) return grossCentsList.map(() => 0);
+
+  let allocated = 0;
+
+  return grossCentsList.map((gross, index) => {
+    if (index === grossCentsList.length - 1) {
+      return totalNetCents - allocated;
+    }
+
+    const proportional = Math.floor((gross * totalNetCents) / grossTotal);
+    allocated += proportional;
+    return proportional;
+  });
+}
+
+function sanitizeParcelasDetalhadas(raw: any) {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((parcela, index) => {
+    const valor = toNumberOrNull(parcela?.valor);
+    const data = toDateISOStringOrNull(parcela?.data);
+
+    if (valor == null || valor <= 0) {
+      throw new Error(`Valor inválido na parcela ${index + 1}.`);
+    }
+
+    if (!data) {
+      throw new Error(`Data inválida na parcela ${index + 1}.`);
+    }
+
+    return { valor, data };
+  });
+}
+
 function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
-  const out: Record<string, any> = {};
+  const output: Record<string, any> = {};
 
   for (const key of Object.keys(body ?? {})) {
     if (!WRITABLE_FIELDS.has(key)) continue;
 
     switch (key) {
-      case "valor": {
-        out[key] = toNumberOrNull(body[key]);
-        break;
-      }
-      case "valorLiquido": {
-        out[key] = toNumberOrNull(body[key]);
-        break;
-      }
+      case "valor":
+      case "valorLiquido":
       case "banco_id": {
-        out[key] = toNumberOrNull(body[key]);
+        output[key] = toNumberOrNull(body[key]);
         break;
       }
-      case "cliente_id": {
-        const n = toNumberOrNull(body[key]);
-        out[key] = n == null ? null : Math.trunc(n);
+      case "cliente_id":
+      case "ordemservicoid":
+      case "vendaid": {
+        const parsed = toNumberOrNull(body[key]);
+        output[key] = parsed == null ? null : Math.trunc(parsed);
         break;
       }
       case "data": {
-        out[key] = toDateISOStringOrNull(body[key]);
+        output[key] = toDateISOStringOrNull(body[key]);
         break;
       }
       case "pendente": {
-        const pb = parseBooleanParam(String(body[key]));
-        out[key] = pb ?? body[key]; // mantém compatibilidade se vier boolean já tipado
+        const parsed = parseBooleanParam(String(body[key]));
+        output[key] = parsed ?? body[key];
         break;
       }
       default: {
-        out[key] = toNullIfEmpty(body[key]);
+        output[key] = toNullIfEmpty(body[key]);
       }
     }
   }
 
   if (strict) {
     const required = ["descricao", "valor", "data", "metodopagamento", "categoria", "tipo"];
-    const missing = required.filter((k) => out[k] == null);
+    const missing = required.filter((key) => output[key] == null);
+
     if (missing.length) {
       throw new Error(`Campos obrigatórios ausentes: ${missing.join(", ")}`);
     }
   }
 
   const nowIso = new Date().toISOString();
-  if (strict) out.created_at = nowIso;
-  out.updated_at = nowIso;
+  if (strict) output.created_at = nowIso;
+  if (output.pendente == null) output.pendente = false;
+  output.updated_at = nowIso;
 
-  return out;
+  return output;
 }
-
-/* ========================= GET (lista paginada + filtros) ========================= */
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
-
     const limitRaw = searchParams.get("limit") ?? searchParams.get("pageSize") ?? "20";
-    // ✅ permite o dashboard pedir 1000
     const limit = Math.min(Math.max(Number(limitRaw), 1), 1000);
+    const search = (searchParams.get("search") ?? searchParams.get("q") ?? "").trim().slice(0, 200);
 
-    const q = (searchParams.get("search") ?? searchParams.get("q") ?? "").trim().slice(0, 200);
-
-    // Filtros opcionais
     const tipo = (searchParams.get("tipo") ?? "").trim();
     const categoria = (searchParams.get("categoria") ?? "").trim();
     const ordemservicoid = searchParams.get("ordemservicoid");
     const vendaid = searchParams.get("vendaid");
-
     const metodo = (searchParams.get("metodo") ?? searchParams.get("metodopagamento") ?? "").trim();
     const bancoId = toNumberOrNull(searchParams.get("bancoId"));
     const clienteId = toNumberOrNull(searchParams.get("clienteId"));
-
-    // ✅ pendente boolean real
     const pendenteBool = parseBooleanParam(searchParams.get("pendente"));
-
-    // Intervalo de datas (inclusive)
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
@@ -175,7 +200,7 @@ export async function GET(req: Request) {
       .order("id", { ascending: false })
       .range(from, to);
 
-    if (q) query = query.ilike("descricao", `%${q}%`);
+    if (search) query = query.ilike("descricao", `%${search}%`);
     if (ordemservicoid) query = query.eq("ordemservicoid", ordemservicoid);
     if (vendaid) query = query.eq("vendaid", vendaid);
     if (tipo) query = query.eq("tipo", tipo);
@@ -183,10 +208,7 @@ export async function GET(req: Request) {
     if (metodo) query = query.eq("metodopagamento", metodo);
     if (bancoId != null) query = query.eq("banco_id", bancoId);
     if (clienteId != null) query = query.eq("cliente_id", clienteId);
-
-    // ✅ agora funciona com pendente=false
     if (pendenteBool !== null) query = query.eq("pendente", pendenteBool);
-
     if (dateFrom) query = query.gte("data", localDayStartToUtcIso(dateFrom));
     if (dateTo) query = query.lt("data", localNextDayStartToUtcIso(dateTo));
 
@@ -196,7 +218,6 @@ export async function GET(req: Request) {
     const items = data ?? [];
     const total = count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
-    const pageCount = items.length;
 
     return NextResponse.json({
       data: items,
@@ -205,12 +226,12 @@ export async function GET(req: Request) {
         page,
         limit,
         totalPages,
-        pageCount,
+        pageCount: items.length,
         hasPrevPage: page > 1,
         hasNextPage: page * limit < total,
       },
       filters: {
-        search: q,
+        search,
         tipo: tipo || null,
         categoria: categoria || null,
         metodopagamento: metodo || null,
@@ -221,18 +242,14 @@ export async function GET(req: Request) {
         dateTo: dateTo ?? null,
       },
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Erro ao listar transações" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || "Erro ao listar transações" }, { status: 500 });
   }
 }
-
-/* ========================= POST (criar transacao) ========================= */
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as any;
-
-    // Aceita payload bruto ou { newTransaction: {...} }
     const json = body?.newTransaction && typeof body.newTransaction === "object" ? body.newTransaction : body;
 
     if (!json || typeof json !== "object") {
@@ -240,17 +257,119 @@ export async function POST(req: Request) {
     }
 
     const payload = sanitizeTransacaoPayload(json, { strict: true });
+    const parcelasDetalhadas = sanitizeParcelasDetalhadas(body?.parcelasDetalhadas);
+    const hasParcelamento = parcelasDetalhadas.length > 1;
+    const totalParcelas = hasParcelamento ? parcelasDetalhadas.length : 1;
+    const isReceita = typeof payload.tipo === "string" && payload.tipo.toUpperCase() === "RECEITA";
+
+    let vendaId: number | null = null;
+    let vendaTotalCents: number | null = null;
+    let preSumCents: number | null = null;
+
+    const valorTotalCents = moneyToCents(payload.valor as any);
+    if (valorTotalCents == null || valorTotalCents <= 0) {
+      return NextResponse.json({ error: "O valor da transação deve ser maior que zero." }, { status: 400 });
+    }
+
+    const parcelasGrossCents = hasParcelamento
+      ? parcelasDetalhadas.map((parcela) => moneyToCents(parcela.valor as any) ?? 0)
+      : [valorTotalCents];
+    const totalNovoValorCents = parcelasGrossCents.reduce((acc, value) => acc + value, 0);
+
+    if (hasParcelamento && totalNovoValorCents !== valorTotalCents) {
+      return NextResponse.json(
+        { error: "A soma das parcelas deve ser igual ao valor total informado." },
+        { status: 400 }
+      );
+    }
+
+    if (payload.vendaid != null && isReceita) {
+      vendaId = Number(payload.vendaid);
+
+      const { data: venda, error: vendaErr } = await supabaseAdmin
+        .from("venda")
+        .select("id, valortotal, status")
+        .eq("id", vendaId)
+        .maybeSingle();
+
+      if (vendaErr) {
+        return NextResponse.json({ error: "Erro ao buscar a venda vinculada." }, { status: 500 });
+      }
+
+      if (!venda) {
+        return NextResponse.json({ error: "Venda não encontrada." }, { status: 404 });
+      }
+
+      vendaTotalCents = moneyToCents(venda.valortotal as any);
+      if (vendaTotalCents == null || vendaTotalCents <= 0) {
+        return NextResponse.json({ error: "A venda não possui valor válido para validação." }, { status: 409 });
+      }
+
+      if (totalNovoValorCents > vendaTotalCents) {
+        return NextResponse.json(
+          {
+            error: `Pagamento único (${brl(totalNovoValorCents)}) ultrapassa o valor da venda (${brl(vendaTotalCents)}).`,
+          },
+          { status: 409 }
+        );
+      }
+
+      const { data: transacoes, error: txErr } = await supabaseAdmin
+        .from("transacao")
+        .select("valor")
+        .eq("vendaid", vendaId)
+        .eq("tipo", "RECEITA");
+
+      if (txErr) {
+        return NextResponse.json({ error: "Erro ao somar pagamentos existentes da venda." }, { status: 500 });
+      }
+
+      preSumCents =
+        transacoes?.reduce((acc, transacao) => {
+          const cents = moneyToCents(transacao.valor as any) ?? 0;
+          return acc + cents;
+        }, 0) ?? 0;
+
+      const novoTotal = preSumCents + totalNovoValorCents;
+      if (novoTotal > vendaTotalCents) {
+        const restante = vendaTotalCents - preSumCents;
+        return NextResponse.json(
+          {
+            error: `A soma dos pagamentos ultrapassa o valor da venda. Restante permitido: ${brl(Math.max(restante, 0))}.`,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    const valorLiquidoTotalCents = moneyToCents(payload.valorLiquido as any) ?? valorTotalCents;
+    const parcelasNetCents = hasParcelamento
+      ? distributeNetByGross(parcelasGrossCents, valorLiquidoTotalCents)
+      : [valorLiquidoTotalCents];
+    const baseDescricao = String(payload.descricao ?? "").trim();
+    const rowsToInsert = (hasParcelamento ? parcelasDetalhadas : [{ valor: payload.valor, data: payload.data }]).map(
+      (_, index) => ({
+        ...payload,
+        descricao:
+          totalParcelas > 1
+            ? `${baseDescricao} - Parcela ${index + 1}/${totalParcelas}`
+            : baseDescricao,
+        valor: centsToNumber(parcelasGrossCents[index] ?? 0),
+        valorLiquido: centsToNumber(parcelasNetCents[index] ?? parcelasGrossCents[index] ?? 0),
+        data: hasParcelamento ? parcelasDetalhadas[index]?.data : payload.data,
+        pendente: hasParcelamento ? Boolean(payload.pendente) : payload.pendente,
+      })
+    );
 
     const { data, error } = await supabaseAdmin
       .from("transacao")
-      .insert(payload)
+      .insert(rowsToInsert)
       .select(
         `
         ${TRANSACAO_FIELDS},
         banco:bancoconta!transacao_banco_id_fkey ( ${BANCO_FIELDS} )
         `
-      )
-      .single();
+      );
 
     if (error) {
       if ((error as any).code === "23503") {
@@ -264,8 +383,8 @@ export async function POST(req: Request) {
             error: isBanco
               ? "Conta bancária (banco_id) inexistente."
               : isCliente
-              ? "Cliente (cliente_id) inexistente."
-              : "Referência inválida: banco_id/cliente_id.",
+                ? "Cliente (cliente_id) inexistente."
+                : "Referência inválida: banco_id/cliente_id.",
           },
           { status: 409 }
         );
@@ -274,10 +393,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: (error as any).message ?? "Erro ao criar transação." }, { status: 500 });
     }
 
-    return NextResponse.json({ data, id: data.id }, { status: 201 });
-  } catch (e: any) {
-    const msg = e?.message ?? "Erro ao criar transação. Verifique os campos obrigatórios e os tipos.";
-    const isBadReq = msg.includes("Campos obrigatórios ausentes") || msg.toLowerCase().includes("obrigatório");
-    return NextResponse.json({ error: msg }, { status: isBadReq ? 400 : 500 });
+    const createdRows = data ?? [];
+    const createdPayload = createdRows.length === 1 ? createdRows[0] : createdRows;
+
+    if (vendaId != null && preSumCents != null && vendaTotalCents != null) {
+      const novoTotal = preSumCents + totalNovoValorCents;
+      if (novoTotal === vendaTotalCents) {
+        const { error: updateErr } = await supabaseAdmin
+          .from("venda")
+          .update({
+            status: "FINALIZADA",
+            updatedat: new Date().toISOString(),
+          })
+          .eq("id", vendaId);
+
+        if (updateErr) {
+          console.error("Falha ao atualizar status da venda:", updateErr);
+        }
+      }
+    }
+
+    return NextResponse.json(
+      { data: createdPayload, id: createdRows[0]?.id, count: createdRows.length },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    const message = error?.message ?? "Erro ao criar transação. Verifique os campos obrigatórios e os tipos.";
+    const isBadRequest =
+      message.includes("Campos obrigatórios ausentes") ||
+      message.toLowerCase().includes("obrigatório") ||
+      message.toLowerCase().includes("inválido");
+
+    return NextResponse.json({ error: message }, { status: isBadRequest ? 400 : 500 });
   }
 }

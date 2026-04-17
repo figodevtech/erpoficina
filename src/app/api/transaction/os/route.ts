@@ -167,6 +167,7 @@ function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
 
   const nowIso = new Date().toISOString();
   if (strict) out.created_at = nowIso;
+  if (out.pendente == null) out.pendente = false;
   out.updated_at = nowIso;
 
   return out;
@@ -279,8 +280,6 @@ export async function POST(req: Request) {
 
     // Aceita payload bruto ou { newTransaction: {...} }
     const json = body?.newTransaction && typeof body.newTransaction === "object" ? body.newTransaction : body;
-
-    console.log(json);
 
     if (!json || typeof json !== "object") {
       return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
@@ -549,3 +548,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: isBadReq ? 400 : 500 });
   }
 }
+

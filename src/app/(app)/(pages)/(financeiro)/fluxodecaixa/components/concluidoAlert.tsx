@@ -25,8 +25,7 @@ export default function ConculidoAlert({children, handleSetConcluido, isAlertOpe
       <AlertDialogTrigger asChild>
         {children}
       </AlertDialogTrigger>
-      <AlertDialogContent
-      onFocusOutside={()=>console.log("teste")}>
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
           <AlertDialogDescription>
@@ -41,3 +40,4 @@ export default function ConculidoAlert({children, handleSetConcluido, isAlertOpe
     </AlertDialog>
   )
 }
+

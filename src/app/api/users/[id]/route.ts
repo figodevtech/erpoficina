@@ -112,6 +112,9 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       // novos campos (aceita variações)
       salario: salarioRaw,
       comissao_percent: comissaoRaw,
+      comissao_venda_percent: comissaoVendaRaw,
+      comissaoVendaPercent,
+      comissao_venda,
       comissaoPercent,
       comissao,
       data_admissao: admissaoRaw,
@@ -154,12 +157,22 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     // 4) novos campos (normalizados)
     const salario = parseNumberOrNull(salarioRaw);
     const comissao_percent = parseNumberOrNull(comissaoRaw ?? comissaoPercent ?? comissao);
+    const comissao_venda_percent = parseNumberOrNull(
+      comissaoVendaRaw ?? comissaoVendaPercent ?? comissao_venda
+    );
     const data_admissao = parseDateOrNull(admissaoRaw ?? dataAdmissao);
     const data_demissao = parseDateOrNull(demissaoRaw ?? dataDemissao);
 
     if (salario != null && salario < 0) throw new Error("Salário não pode ser negativo.");
     if (comissao_percent != null && (comissao_percent < 0 || comissao_percent > 100)) {
       throw new Error("Comissão deve estar entre 0 e 100.");
+    }
+
+    if (
+      comissao_venda_percent != null &&
+      (comissao_venda_percent < 0 || comissao_venda_percent > 100)
+    ) {
+      throw new Error("Comissão de venda deve estar entre 0 e 100.");
     }
 
     // 5) update usuario
@@ -178,6 +191,13 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       typeof comissao !== "undefined"
     ) {
       updatePayload.comissao_percent = comissao_percent;
+    }
+    if (
+      typeof comissaoVendaRaw !== "undefined" ||
+      typeof comissaoVendaPercent !== "undefined" ||
+      typeof comissao_venda !== "undefined"
+    ) {
+      updatePayload.comissao_venda_percent = comissao_venda_percent;
     }
     if (typeof admissaoRaw !== "undefined" || typeof dataAdmissao !== "undefined")
       updatePayload.data_admissao = data_admissao;

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Usuario } from "../lib/api";
 import { buscarComissaoUsuario, type ComissaoUsuarioResumo } from "../lib/api";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -84,7 +84,6 @@ function DatePickerField({
 }
 
 function monthLabel(yyyymm: string) {
-  // "2025-12" -> "dez/2025"
   const [y, m] = yyyymm.split("-").map((x) => Number(x));
   if (!y || !m) return yyyymm;
   const d = new Date(y, m - 1, 1);
@@ -93,22 +92,18 @@ function monthLabel(yyyymm: string) {
 
 export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
   const [tab, setTab] = useState<"perfil" | "comissao">("perfil");
-
   const [dateFrom, setDateFrom] = useState(() => {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     return formatDateToYYYYMMDD(start);
   });
-
   const [dateTo, setDateTo] = useState(() => formatDateToYYYYMMDD(new Date()));
-
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [resumo, setResumo] = useState<ComissaoUsuarioResumo | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    if (!usuario?.id) return;
+    if (!open || !usuario?.id) return;
 
     let alive = true;
 
@@ -136,6 +131,7 @@ export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
   }, [open, usuario?.id, dateFrom, dateTo]);
 
   const comissaoPercent = usuario?.comissao_percent ?? 0;
+  const comissaoVendaPercent = usuario?.comissao_venda_percent ?? 0;
 
   const info = useMemo(() => {
     if (!usuario) return null;
@@ -147,10 +143,11 @@ export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
       status: usuario.ativo ? "Ativo" : "Inativo",
       salario: usuario.salario != null ? brl.format(usuario.salario) : "—",
       comissao: `${Number(comissaoPercent || 0)}%`,
+      comissaoVenda: `${Number(comissaoVendaPercent || 0)}%`,
       admissao: usuario.data_admissao ? usuario.data_admissao : "—",
       demissao: usuario.data_demissao ? usuario.data_demissao : "—",
     };
-  }, [usuario, comissaoPercent]);
+  }, [usuario, comissaoPercent, comissaoVendaPercent]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,7 +161,7 @@ export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
         ) : (
           <Tabs
             value={tab}
-            onValueChange={(v) => setTab(v as any)}
+            onValueChange={(v) => setTab(v as "perfil" | "comissao")}
             className="w-full sm:flex-1 sm:min-h-0 sm:flex sm:flex-col"
           >
             <TabsList className="shrink-0 grid w-full grid-cols-2 mb-2">
@@ -206,11 +203,16 @@ export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
                   </div>
 
                   <div className="rounded-md border p-3">
-                    <p className="text-xs text-muted-foreground">Comissão</p>
+                    <p className="text-xs text-muted-foreground">Comissão de serviços</p>
                     <p className="text-sm font-medium">{info.comissao}</p>
                   </div>
 
                   <div className="rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">Comissão de venda</p>
+                    <p className="text-sm font-medium">{info.comissaoVenda}</p>
+                  </div>
+
+                  <div className="rounded-md border p-3 sm:col-span-2">
                     <p className="text-xs text-muted-foreground">Vínculo</p>
                     <p className="text-sm">
                       Admissão: <span className="font-medium">{info.admissao}</span>
@@ -240,7 +242,7 @@ export function DetalhesUsuarioDialog({ open, onOpenChange, usuario }: Props) {
 
                 {loading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando comissão…
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando comissão...
                   </div>
                 ) : null}
 

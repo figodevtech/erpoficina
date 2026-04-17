@@ -62,6 +62,7 @@ const VENDA_SELECT = `
   updatedat,
   created_by,
   criador:created_by ( id, nome ),
+  comissao_venda_percent_aplicada,
   desconto_tipo,
   desconto_valor,
   observacoes_fiscais,

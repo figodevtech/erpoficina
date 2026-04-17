@@ -48,6 +48,7 @@ async function carregarUsuarios(opts?: { onlyActive?: boolean; q?: string }) {
         "ativo",
         "salario",
         "comissao_percent",
+        "comissao_venda_percent",
         "data_admissao",
         "data_demissao",
         "perfil:perfilid(id,nome)",
@@ -79,6 +80,7 @@ async function carregarUsuarios(opts?: { onlyActive?: boolean; q?: string }) {
 
     salario: u.salario as number | null,
     comissao_percent: u.comissao_percent as number | null,
+    comissao_venda_percent: u.comissao_venda_percent as number | null,
     data_admissao: u.data_admissao as string | null,
     data_demissao: u.data_demissao as string | null,
 
@@ -134,6 +136,9 @@ export async function POST(req: Request) {
     // novos campos
     const salario = parseNumberOrNull(body.salario);
     const comissao_percent = parseNumberOrNull(body.comissao_percent ?? body.comissaoPercent ?? body.comissao);
+    const comissao_venda_percent = parseNumberOrNull(
+      body.comissao_venda_percent ?? body.comissaoVendaPercent ?? body.comissao_venda
+    );
     const data_admissao = parseDateOrNull(body.data_admissao ?? body.dataAdmissao);
     const data_demissao = parseDateOrNull(body.data_demissao ?? body.dataDemissao);
 
@@ -142,6 +147,13 @@ export async function POST(req: Request) {
     if (salario != null && salario < 0) throw new Error("Salário não pode ser negativo.");
     if (comissao_percent != null && (comissao_percent < 0 || comissao_percent > 100)) {
       throw new Error("Comissão deve estar entre 0 e 100.");
+    }
+
+    if (
+      comissao_venda_percent != null &&
+      (comissao_venda_percent < 0 || comissao_venda_percent > 100)
+    ) {
+      throw new Error("Comissão de venda deve estar entre 0 e 100.");
     }
 
     let resolvedPerfilId: number | null = null;
@@ -175,6 +187,7 @@ export async function POST(req: Request) {
         perfilid: resolvedPerfilId,
         salario,
         comissao_percent,
+        comissao_venda_percent,
         data_admissao,
         data_demissao,
       },
@@ -194,6 +207,7 @@ export async function POST(req: Request) {
         ativo,
         salario,
         comissao_percent,
+        comissao_venda_percent,
         data_admissao,
         data_demissao,
 

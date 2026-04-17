@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Perfil, Setor, Usuario, UsuarioPayload } from "../lib/api";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, CalendarIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -93,7 +92,6 @@ function DatePickerField({
   );
 }
 
-// ---- Salário BRL (sem lib externa) ----
 const brlFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -106,55 +104,49 @@ function formatBRLFromNumber(v: number | null) {
   return brlFormatter.format(v);
 }
 
-// “R$ 1.234,56” -> 1234.56
 function parseBRLStringToNumber(raw: string) {
-  const digits = raw.replace(/\D/g, ""); // pega só números (centavos)
+  const digits = raw.replace(/\D/g, "");
   const cents = parseInt(digits || "0", 10);
   return cents / 100;
 }
 
+function clampPercent(raw: string) {
+  if (!raw) return "";
+  const n = Number(raw);
+  if (Number.isNaN(n)) return "";
+  return String(Math.min(100, Math.max(0, n)));
+}
+
 export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setores, onSave }: Props) {
   const [tab, setTab] = useState<"dados" | "financeiro" | "vinculo">("dados");
-
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [perfilid, setPerfilid] = useState("");
   const [setorid, setSetorid] = useState("");
   const [ativo, setAtivo] = useState(true);
-
-  // salário: guarda como string formatada (BRL)
   const [salario, setSalario] = useState("");
   const [comissao, setComissao] = useState("");
-
+  const [comissaoVenda, setComissaoVenda] = useState("");
   const [dataAdmissao, setDataAdmissao] = useState("");
   const [dataDemissao, setDataDemissao] = useState("");
-
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!usuario) return;
 
     setTab("dados");
-
     setNome(usuario.nome ?? "");
     setEmail(usuario.email ?? "");
 
-    // ✅ normaliza ids (setorId/perfilId também)
     const perfilIdFromUser = (usuario as any).perfilid ?? (usuario as any).perfilId ?? usuario.perfil?.id ?? null;
     const setorIdFromUser = (usuario as any).setorid ?? (usuario as any).setorId ?? usuario.setor?.id ?? null;
 
     setPerfilid(perfilIdFromUser != null ? String(perfilIdFromUser) : "");
     setSetorid(setorIdFromUser != null ? String(setorIdFromUser) : "");
-
     setAtivo(usuario.ativo ?? true);
-
-    // salário formatado BRL
     setSalario(formatBRLFromNumber(usuario.salario ?? null));
-
-    // comissão
     setComissao(usuario.comissao_percent != null ? String(usuario.comissao_percent) : "");
-
-    // datas
+    setComissaoVenda(usuario.comissao_venda_percent != null ? String(usuario.comissao_venda_percent) : "");
     setDataAdmissao(toDateInput(usuario.data_admissao));
     setDataDemissao(toDateInput(usuario.data_demissao));
   }, [usuario]);
@@ -171,10 +163,13 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
     const c = comissao.trim() ? Number(comissao) : 0;
     if (Number.isNaN(c) || c < 0 || c > 100) return false;
 
+    const cv = comissaoVenda.trim() ? Number(comissaoVenda) : 0;
+    if (Number.isNaN(cv) || cv < 0 || cv > 100) return false;
+
     if (salarioNumber != null && (Number.isNaN(salarioNumber) || salarioNumber < 0)) return false;
 
     return true;
-  }, [usuario, nome, email, comissao, salarioNumber]);
+  }, [usuario, nome, email, comissao, comissaoVenda, salarioNumber]);
 
   const handleSave = async () => {
     if (!usuario || !canSave || saving) return;
@@ -187,22 +182,15 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
         perfilid: perfilid ? Number(perfilid) : null,
         setorid: setorid ? Number(setorid) : null,
         ativo,
-
         salario: salarioNumber,
         comissao_percent: comissao.trim() ? Number(comissao) : null,
+        comissao_venda_percent: comissaoVenda.trim() ? Number(comissaoVenda) : null,
         data_admissao: dataAdmissao || null,
         data_demissao: dataDemissao || null,
       });
     } finally {
       setSaving(false);
     }
-  };
-
-  const clampPercent = (raw: string) => {
-    if (!raw) return "";
-    const n = Number(raw);
-    if (Number.isNaN(n)) return "";
-    return String(Math.min(100, Math.max(0, n)));
   };
 
   return (
@@ -215,7 +203,7 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
         {!usuario ? null : (
           <Tabs
             value={tab}
-            onValueChange={(v) => setTab(v as any)}
+            onValueChange={(v) => setTab(v as "dados" | "financeiro" | "vinculo")}
             className="w-full sm:flex-1 sm:min-h-0 sm:flex sm:flex-col"
           >
             <TabsList className="shrink-0 grid w-full grid-cols-3 mb-2">
@@ -294,13 +282,25 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Comissão (%)</Label>
+                  <Label>Comissão de serviços (%)</Label>
                   <Input
                     type="number"
                     inputMode="decimal"
                     placeholder="0"
                     value={comissao}
                     onChange={(e) => setComissao(clampPercent(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">De 0 a 100.</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Comissão de venda (%)</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={comissaoVenda}
+                    onChange={(e) => setComissaoVenda(clampPercent(e.target.value))}
                   />
                   <p className="text-xs text-muted-foreground">De 0 a 100.</p>
                 </div>
@@ -322,7 +322,7 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
           <Button onClick={handleSave} disabled={!canSave || saving || !usuario}>
             {saving ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando…
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
               </>
             ) : (
               "Salvar"

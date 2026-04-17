@@ -43,15 +43,11 @@ export default function AssistentePagamento (){
         },
       });
       if (response.status === 200) {
-        // console.log(response)
-        console.log(response)
         const { data } = response;
         setOrdens(data.items);
         setPagination({...pagination, limit:data.limit, page: data.page, totalPages:data.totalPages, total: data.total});
-        console.log("Ordens carregadas:", data.items);
       }
-    } catch (error) {
-      console.log("Erro ao buscar Ordens:", error);
+    } catch {
     } finally {
       setIsLoading(false);
     }

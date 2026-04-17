@@ -3,14 +3,13 @@
 import { useMemo, useState } from "react";
 import type { Perfil, Setor } from "../lib/api";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, CalendarIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -24,11 +23,11 @@ type Payload = {
   perfilid?: number | null;
   setorid?: number | null;
   ativo?: boolean;
-
   salario?: number | null;
   comissao_percent?: number | null;
-  data_admissao?: string | null; // YYYY-MM-DD
-  data_demissao?: string | null; // YYYY-MM-DD
+  comissao_venda_percent?: number | null;
+  data_admissao?: string | null;
+  data_demissao?: string | null;
 };
 
 type Props = {
@@ -39,7 +38,6 @@ type Props = {
   onCreate: (payload: Payload) => void | Promise<void>;
 };
 
-// ---------- helpers (datas) ----------
 function parseYYYYMMDDToDate(v?: string | null) {
   if (!v) return undefined;
   const s = String(v).includes("T") ? String(v).slice(0, 10) : String(v);
@@ -73,7 +71,6 @@ function DatePickerField({
   return (
     <div className="grid gap-2">
       <Label>{label}</Label>
-
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -100,7 +97,6 @@ function DatePickerField({
   );
 }
 
-// ---------- helpers (salário BRL) ----------
 const brlFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -113,7 +109,6 @@ function formatBRLFromNumber(v: number | null) {
   return brlFormatter.format(v);
 }
 
-// “R$ 1.234,56” -> 1234.56 (digita só números; trabalha por centavos)
 function parseBRLStringToNumber(raw: string) {
   const digits = raw.replace(/\D/g, "");
   const cents = parseInt(digits || "0", 10);
@@ -129,20 +124,16 @@ const clampPercent = (raw: string) => {
 
 export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCreate }: Props) {
   const [tab, setTab] = useState<"dados" | "financeiro" | "vinculo">("dados");
-
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [perfilid, setPerfilid] = useState("");
   const [setorid, setSetorid] = useState("");
   const [ativo, setAtivo] = useState(true);
-
-  // salário formatado (string BRL)
   const [salario, setSalario] = useState("");
   const [comissao, setComissao] = useState("");
-
+  const [comissaoVenda, setComissaoVenda] = useState("");
   const [dataAdmissao, setDataAdmissao] = useState("");
   const [dataDemissao, setDataDemissao] = useState("");
-
   const [saving, setSaving] = useState(false);
 
   const salarioNumber = useMemo(() => {
@@ -156,10 +147,13 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
     const c = comissao.trim() ? Number(comissao) : 0;
     if (Number.isNaN(c) || c < 0 || c > 100) return false;
 
+    const cv = comissaoVenda.trim() ? Number(comissaoVenda) : 0;
+    if (Number.isNaN(cv) || cv < 0 || cv > 100) return false;
+
     if (salarioNumber != null && (Number.isNaN(salarioNumber) || salarioNumber < 0)) return false;
 
     return true;
-  }, [nome, email, comissao, salarioNumber]);
+  }, [nome, email, comissao, comissaoVenda, salarioNumber]);
 
   const handleSave = async () => {
     if (!canSave || saving) return;
@@ -172,9 +166,9 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
         perfilid: perfilid ? Number(perfilid) : null,
         setorid: setorid ? Number(setorid) : null,
         ativo,
-
         salario: salarioNumber,
         comissao_percent: comissao.trim() ? Number(comissao) : null,
+        comissao_venda_percent: comissaoVenda.trim() ? Number(comissaoVenda) : null,
         data_admissao: dataAdmissao || null,
         data_demissao: dataDemissao || null,
       });
@@ -187,6 +181,7 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
       setAtivo(true);
       setSalario("");
       setComissao("");
+      setComissaoVenda("");
       setDataAdmissao("");
       setDataDemissao("");
     } finally {
@@ -203,7 +198,7 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
 
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as any)}
+          onValueChange={(v) => setTab(v as "dados" | "financeiro" | "vinculo")}
           className="w-full sm:flex-1 sm:min-h-0 sm:flex sm:flex-col"
         >
           <TabsList className="shrink-0 grid w-full grid-cols-3 mb-2">
@@ -282,7 +277,7 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
               </div>
 
               <div className="grid gap-2">
-                <Label>Comissão (%)</Label>
+                <Label>Comissão de serviços (%)</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -294,6 +289,22 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
                 />
                 <p className="text-xs text-muted-foreground">
                   0 a 100. Aplicada sobre o valor dos serviços executados.
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Comissão de venda (%)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
+                  min={0}
+                  max={100}
+                  value={comissaoVenda}
+                  onChange={(e) => setComissaoVenda(clampPercent(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  0 a 100. Aplicada sobre o valor das vendas realizadas no PDV.
                 </p>
               </div>
             </TabsContent>
@@ -313,7 +324,7 @@ export function CriarUsuarioDialog({ open, onOpenChange, perfis, setores, onCrea
           <Button onClick={handleSave} disabled={!canSave || saving}>
             {saving ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando…
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
               </>
             ) : (
               "Salvar"

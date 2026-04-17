@@ -52,9 +52,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
       if (response.status === 200) {
         setVenda(response.data.data);
       }
-      console.log("venda:", response);
     } catch (error) {
-      console.log("Erro ao buscar Venda:", error);
       toast.error("Não foi possível carregar a Venda");
     } finally {
       setIsLoadingOs(false);
@@ -79,7 +77,6 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
         setPagination(data.pagination);
       }
     } catch (error) {
-      console.log("Erro ao buscar Transações:", error);
       toast.error("Não foi possível carregar as transações");
     } finally {
       setIsLoading(false);
@@ -373,3 +370,4 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     </DialogContent>
   );
 }
+

@@ -43,15 +43,11 @@ export default function AssistentePagamentoVendas (){
         },
       });
       if (response.status === 200) {
-        // console.log(response)
-        console.log(response)
         const { data } = response;
         setVendas(data.data);
         setPagination({...pagination, limit:data.pagination.limit, page: data.pagination.page, totalPages:data.pagination.totalPages, total: data.pagination.total});
-        console.log("Vendas carregadas:", data.data);
       }
-    } catch (error) {
-      console.log("Erro ao buscar vendas:", error);
+    } catch {
     } finally {
       setIsLoading(false);
     }

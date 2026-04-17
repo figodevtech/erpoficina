@@ -76,6 +76,7 @@ export interface VendaComItens {
   updatedat: string | null;
   created_by: string | null; // uuid
   criador?: { id: string; nome?: string | null } | null;
+  comissao_venda_percent_aplicada?: number | null;
   desconto_tipo: string | null;
   desconto_valor: number;
   forma_pagamento?: string | null;

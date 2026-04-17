@@ -87,7 +87,6 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         setItensServico(response.data.itensServico ?? []);
       }
     } catch (error) {
-      console.log("Erro ao buscar Ordem:", error);
       toast.error("Não foi possível carregar a OS");
     } finally {
       setHasLoadedOnce(true);
@@ -113,7 +112,6 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         setPagination(data.pagination);
       }
     } catch (error) {
-      console.log("Erro ao buscar Transações:", error);
       toast.error("Não foi possível carregar as transações");
     } finally {
       setIsLoading(false);
@@ -468,3 +466,4 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     </DialogContent>
   );
 }
+

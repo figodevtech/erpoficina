@@ -140,7 +140,6 @@ export default function EditContent({
         setBanks(response.data.data);
       }
     } catch (error) {
-      console.log("Erro ao buscar bancos:", error);
     } finally {
       setIsLoadingBanks(false);
     }
@@ -159,7 +158,6 @@ export default function EditContent({
         });
       }
     } catch (error) {
-      console.log("Erro ao buscar transacao:", error);
     } finally {
       setIsLoadingTransaction(false);
     }
@@ -534,3 +532,4 @@ export default function EditContent({
     </Content>
   );
 }
+

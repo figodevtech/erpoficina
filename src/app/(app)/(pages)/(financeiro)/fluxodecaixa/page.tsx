@@ -49,14 +49,11 @@ export default function FinanceiroPage() {
         },
       });
       if (response.status === 200) {
-        // console.log(response)
         const { data } = response;
         setTransactions(data.data);
         setPagination(data.pagination);
-        console.log("Transações carregadas:", data.data);
       }
     } catch (error) {
-      console.log("Erro ao buscar Transações:", error);
     } finally {
       setIsLoading(false);
     }
@@ -70,17 +67,13 @@ export default function FinanceiroPage() {
         params: { offset: -1 },
       });
       if (response.status === 200 && response2.status === 200) {
-        // console.log(response)
         setStatusInfo({
           ...statusInfo,
           mesAtual: response.data,
           mesAnterior: response2.data,
         });
-        console.log("Status Carregado, mês atual:", response.data);
-        console.log("Status Carregado, mês anterior:", response2.data);
       }
     } catch (error) {
-      console.log("Erro ao buscar Status:", error);
     } finally {
       setIsLoadingStatus(false);
     }
@@ -146,3 +139,4 @@ export default function FinanceiroPage() {
     </div>
   );
 }
+
