@@ -38,6 +38,13 @@ import {
   DrawerFooter,
   DrawerClose,
 } from "@/components/ui/drawer"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 
 interface Produto {
@@ -101,6 +108,16 @@ interface Venda {
     id: string
     nome: string
   } | null
+  vendedor: string | null
+  vendedor_rel?: {
+    id: string
+    nome: string
+  } | null
+  updated_by: string | null
+  editor?: {
+    id: string
+    nome: string
+  } | null
   desconto_tipo: string | null
   desconto_valor: number
   sub_total: number
@@ -144,7 +161,27 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentTab, setCurrentTab] = useState<string>("Geral")
+  const [users, setUsers] = useState<Array<{ id: string; nome: string | null; email?: string }>>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
   const isDesktop = useMediaQuery("(min-width: 768px)")
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setLoadingUsers(true)
+        const response = await fetch("/api/users?ativos=1", { cache: "no-store" })
+        const data = await response.json().catch(() => ({}))
+        if (response.ok && Array.isArray(data?.users)) {
+          setUsers(data.users)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar usuários:", error)
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+    loadUsers()
+  }, [])
 
   const fetchVenda = useCallback(async () => {
     if (!vendaId) return
@@ -191,6 +228,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
         },
         body: JSON.stringify({
           observacoesFiscais: venda.observacoes_fiscais,
+          vendedor: venda.vendedor,
         }),
       })
 
@@ -358,6 +396,11 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                                     <div>
                                         <p className="text-muted-foreground">Atualizado em</p>
                                         <p className="font-medium">{formatDate(venda.updatedat)}</p>
+                                        {venda.editor?.nome && (
+                                          <p className="text-xs text-muted-foreground mt-0.5">
+                                            por {venda.editor.nome}
+                                          </p>
+                                        )}
                                     </div>
                                 )}
                                 {venda.created_by && (
@@ -366,6 +409,29 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                                         <p className="font-medium">{venda.criador?.nome || venda.created_by}</p>
                                     </div>
                                 )}
+                                <div>
+                                    <p className="text-muted-foreground">Vendedor / Responsável</p>
+                                    {loadingUsers ? (
+                                      <p className="font-medium text-muted-foreground text-sm mt-2">Carregando...</p>
+                                    ) : (
+                                      <Select
+                                        value={venda.vendedor || "unassigned"}
+                                        onValueChange={(val) => handleChange("vendedor", val === "unassigned" ? null : val)}
+                                      >
+                                        <SelectTrigger className="w-full mt-1">
+                                          <SelectValue placeholder="Selecione um vendedor" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="unassigned">Sem vendedor</SelectItem>
+                                          {users.map((u) => (
+                                            <SelectItem key={u.id} value={u.id}>
+                                              {u.nome || u.email || u.id}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                </div>
                                 <div>
                                     <p className="text-muted-foreground">Status</p>
                                     <Badge variant="outline" className={statusColors[venda.status] + " mt-1"}>

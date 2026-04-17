@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { auth } from "@/lib/auth";
 
 type Status =
   | "ORCAMENTO"
@@ -61,7 +62,11 @@ const VENDA_SELECT = `
   createdat,
   updatedat,
   created_by,
+  vendedor,
+  updated_by,
   criador:created_by ( id, nome ),
+  vendedor_rel:vendedor ( id, nome ),
+  editor:updated_by ( id, nome ),
   desconto_tipo,
   desconto_valor,
   observacoes_fiscais,
@@ -115,6 +120,7 @@ type VendaPatchBody = {
   valorTotal?: number;
   dataVenda?: string | null; // ISO string
   observacoesFiscais?: string | null;
+  vendedor?: string | null;
 };
 
 type ParamsCtx = { params: Promise<{ id: string }> };
@@ -200,6 +206,9 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
 
+    const session = await auth();
+    const userId = session?.user?.id;
+
     const vendaId = parsed.id as number;
     const body = (await req.json().catch(() => null)) as VendaPatchBody | null;
 
@@ -225,6 +234,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       valorTotal,
       dataVenda,
       observacoesFiscais,
+      vendedor,
     } = body;
 
     if (
@@ -241,7 +251,8 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       subTotal === undefined &&
       valorTotal === undefined &&
       dataVenda === undefined &&
-      observacoesFiscais === undefined
+      observacoesFiscais === undefined &&
+      vendedor === undefined
     ) {
       return NextResponse.json(
         {
@@ -357,8 +368,10 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     if (valorTotal !== undefined) updatePayload.valortotal = valorTotal;
     if (dataVenda !== undefined) updatePayload.datavenda = dataVenda;
     if (observacoesFiscais !== undefined) updatePayload.observacoes_fiscais = observacoesFiscais;
+    if (vendedor !== undefined) updatePayload.vendedor = vendedor;
 
     updatePayload.updatedat = new Date().toISOString();
+    if (userId) updatePayload.updated_by = userId;
 
     const { data, error } = await supabaseAdmin
       .from("venda")

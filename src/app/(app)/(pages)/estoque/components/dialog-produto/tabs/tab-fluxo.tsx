@@ -61,7 +61,7 @@ export function TabFluxo({ produto }: { produto: Produto }) {
                 <TableRow key={e.id} className="hover:cursor-pointer text-center">
                   <TableCell>{e.id}</TableCell>
                   <TableCell>{formatDate(e.created_at)}</TableCell>
-                  <TableCell>{e.entradainfo.fornecedor.nomerazaosocial}</TableCell>
+                  <TableCell>{e.entradainfo?.fornecedor?.nomerazaosocial || "Não informado"}</TableCell>
                   <TableCell className="text-green-600 font-bold">+ {e.quantidade}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -72,8 +72,10 @@ export function TabFluxo({ produto }: { produto: Produto }) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
                         <Button onClick={()=>{
-                          setSelectedEntradaId(e.entradainfo.id)
-                          setOpenDialogEntradaGeral(true)
+                          if (e.entradainfo?.id) {
+                            setSelectedEntradaId(e.entradainfo.id)
+                            setOpenDialogEntradaGeral(true)
+                          }
                         }} variant={"ghost"} className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer">
                           <Edit className="-ml-1 -mr-1 h-4 w-4" />
                           <span>Editar</span>
@@ -83,7 +85,9 @@ export function TabFluxo({ produto }: { produto: Produto }) {
                           <span>Cancelar Entrada</span>
                         </Button>
                         <Button onClick={()=>{
-                          setNfeDialogEntradaId(e.entradainfo.id)
+                          if (e.entradainfo?.id) {
+                            setNfeDialogEntradaId(e.entradainfo.id)
+                          }
                         }} variant={"ghost"} className="size-full flex justify-start gap-5 px-0 rounded-sm py-2 hover:cursor-pointer">
                           <Receipt className="-ml-1 -mr-1 h-4 w-4 text-emerald-500" />
                           <span>Emitir Nota</span>

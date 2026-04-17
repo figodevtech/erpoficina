@@ -19,6 +19,7 @@ import DialogProdutoCompras from "./dialogs/dialog-produto-compras";
 import DialogComissaoRealizador from "./dialogs/dialog-comissao-realizador";
 import DialogVendasUsuario from "./dialogs/dialog-vendas-usuario";
 import DialogComissaoSetor from "./dialogs/dialog-comissao-setor";
+import DialogVendasSetor from "./dialogs/dialog-vendas-setor";
 
 export function ReportsGrid() {
 
@@ -91,6 +92,7 @@ export function ReportsGrid() {
           <DialogVendasUsuario/>
           <DialogComissaoRealizador/>
           <DialogComissaoSetor/>
+          <DialogVendasSetor/>
         </div>
       </Card>
 

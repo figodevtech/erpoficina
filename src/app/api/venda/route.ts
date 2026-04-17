@@ -40,6 +40,7 @@ type VendaItemInput = {
 type VendaPostBody = {
   clienteId: number;
   created_by: string; // uuid
+  vendedor: string; // uuid
   status: string; // enum_status_venda, ex: 'ABERTA', 'FINALIZADA', etc.
   formaPagamento?: string | null;
   descontoTipo?: string | null; // enum_tipo_desconto_venda
@@ -61,7 +62,11 @@ const VENDA_SELECT = `
   createdat,
   updatedat,
   created_by,
+  vendedor,
+  updated_by,
   criador:created_by ( id, nome ),
+  vendedor_rel:vendedor ( id, nome ),
+  editor:updated_by ( id, nome ),
   canal,
   status_entrega,
   codigo_rastreio,
@@ -365,6 +370,9 @@ export async function POST(req: Request) {
     const body = (await req.json()) as VendaPostBody;
 
     body.created_by = session.user.id;
+    if (!body.vendedor) {
+      body.vendedor = session.user.id;
+    }
 
     console.log("Criando venda com body:", body);
     // Validação básica no backend
