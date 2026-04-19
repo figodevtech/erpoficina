@@ -171,7 +171,8 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
     }
 
     const vTotal = toNum(venda.valortotal) || 0;
-    const cNome = venda.cliente ? venda.cliente.nomerazaosocial : "Cliente Desconhecido";
+    const cInfo = Array.isArray(venda.cliente) ? venda.cliente[0] : venda.cliente;
+    const cNome = cInfo?.nomerazaosocial ? cInfo.nomerazaosocial : "Cliente Desconhecido";
     const percent = toNum(venda.comissao_venda_percent_aplicada) || 0;
     const vComissao = (vTotal * percent) / 100;
 
