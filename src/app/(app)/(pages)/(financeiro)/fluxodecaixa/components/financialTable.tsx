@@ -161,16 +161,18 @@ export default function FinancialTable({
   const limitUid = React.useId();
   const limitListboxId = `${limitUid}-limit-listbox`;
 
+
+
   const title =
     viewMode === "A_RECEBER"
       ? "Contas a Receber"
       : viewMode === "A_PAGAR"
-      ? "Contas a Pagar"
-      : "Lista de Transações";
+        ? "Contas a Pagar"
+        : "Lista de Transações";
 
   return (
     <Card className="">
-      <CardHeader className="border-b-2 pb-4">
+      <CardHeader className="border-b-2">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-lg font-medium">{title}</CardTitle>
@@ -218,8 +220,8 @@ export default function FinancialTable({
                   viewMode === "A_RECEBER"
                     ? "Somente receitas pendentes"
                     : viewMode === "A_PAGAR"
-                    ? "Somente despesas pendentes"
-                    : undefined
+                      ? "Somente despesas pendentes"
+                      : undefined
                 }
               />
               <ExportTransactionsButton
@@ -230,37 +232,62 @@ export default function FinancialTable({
                 className="h-9 w-full hover:cursor-pointer sm:w-auto"
               />
 
-            <TransactionDialog
-              open={isOpen}
-              setOpen={setIsOpen}
-              selectedTransactionId={selectedTransactionId}
-              setSelectedTransactionId={setSelectedTransactionId}
-            >
-              <Button
-                size="sm"
-                className="h-9 w-full whitespace-nowrap hover:cursor-pointer sm:w-auto"
-                onClick={() => setSelectedTransactionId(undefined)}
+              <TransactionDialog
+                open={isOpen}
+                setOpen={setIsOpen}
+                selectedTransactionId={selectedTransactionId}
+                setSelectedTransactionId={setSelectedTransactionId}
               >
-                <Plus className="h-4 w-4" />
-                Transação
-              </Button>
-            </TransactionDialog>
+                <Button
+                  size="sm"
+                  className="h-9 w-full whitespace-nowrap hover:cursor-pointer sm:w-auto"
+                  onClick={() => setSelectedTransactionId(undefined)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Transação
+                </Button>
+              </TransactionDialog>
             </div>
           </div>
         </div>
+        <div className="w-full flex items-center justify-center">
+          <div className="inline-flex h-10 items-center justify-center rounded-md rounded-b-none bg-muted p-1 text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === "A_PAGAR" ? "TODAS" : "A_PAGAR")}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm rounded-b-none px-3 py-1.5 text-sm font-medium transition-all cursor-pointer ${
+                viewMode === "A_PAGAR"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "hover:bg-background/50 hover:text-foreground"
+              }`}
+            >
+              A Pagar
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === "A_RECEBER" ? "TODAS" : "A_RECEBER")}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm rounded-b-none px-3 py-1.5 text-sm font-medium transition-all cursor-pointer ${
+                viewMode === "A_RECEBER"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "hover:bg-background/50 hover:text-foreground"
+              }`}
+            >
+              A Receber
+            </button>
+          </div>
+        </div>
+
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
         {/* barra superior de loading */}
         <div
-          className={`${
-            isLoading && "opacity-100"
-          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${isLoading && "opacity-100"
+            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
-              isLoading && "animate-slideIn"
-            }`}
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${isLoading && "animate-slideIn"
+              }`}
           />
         </div>
 

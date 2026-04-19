@@ -92,7 +92,8 @@ export async function GET(req: Request) {
       const nomeVendedor = uId === "SEM_VENDEDOR" ? "Sem Vendedor Vinculado" : (vinfo?.nome || vinfo?.email || "Usuário Desconhecido");
 
       const vTotal = toNum(venda.valortotal);
-      const cNome = venda.cliente ? venda.cliente.nomerazaosocial : "Cliente Desconhecido";
+      const cInfo = Array.isArray(venda.cliente) ? venda.cliente[0] : venda.cliente;
+      const cNome = cInfo?.nomerazaosocial ? cInfo.nomerazaosocial : "Cliente Desconhecido";
       const dataVendaStr = venda.datavenda ? format(new Date(venda.datavenda), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
       const percent = toNum(venda.comissao_venda_percent_aplicada);
       const vComissao = (vTotal * percent) / 100;
