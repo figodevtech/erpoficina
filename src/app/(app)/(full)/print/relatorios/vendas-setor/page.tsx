@@ -63,6 +63,7 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
       status, 
       datavenda, 
       valortotal,
+      comissao_venda_percent_aplicada,
       cliente:cliente ( id, nomerazaosocial ),
       vendedor:vendedor ( id, nome, email, setorid )
     `)
@@ -112,6 +113,8 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
     cliente: string;
     dataVenda: string;
     valorTotal: number;
+    percentualComissao: number;
+    valorComissao: number;
   };
 
   type VendedorResult = {
@@ -119,6 +122,7 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
     nome: string;
     itens: VendaItem[];
     subtotalVenda: number;
+    subtotalComissao: number;
   };
 
   type SetorResult = {
@@ -126,6 +130,7 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
     nome: string;
     vendedores: VendedorResult[];
     totalVenda: number;
+    totalComissao: number;
   };
 
   let mapGrpSetor = new Map<string, SetorResult>();
@@ -146,7 +151,8 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
         setorId: sId,
         nome: sId === idSemSetor ? "Sem Setor" : (mapSetorNome.get(sId) || "Setor Oculto"),
         vendedores: [],
-        totalVenda: 0
+        totalVenda: 0,
+        totalComissao: 0
       });
     }
 
@@ -158,23 +164,30 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
         userId: uId,
         nome: uId === "SEM_VENDEDOR" ? "Sem Vendedor Vinculado" : (vinfo?.nome || vinfo?.email || "Usuário Desconhecido"),
         itens: [],
-        subtotalVenda: 0
+        subtotalVenda: 0,
+        subtotalComissao: 0
       };
       setorObj.vendedores.push(vendedorObj);
     }
 
     const vTotal = toNum(venda.valortotal) || 0;
     const cNome = venda.cliente ? venda.cliente.nomerazaosocial : "Cliente Desconhecido";
+    const percent = toNum(venda.comissao_venda_percent_aplicada) || 0;
+    const vComissao = (vTotal * percent) / 100;
 
     vendedorObj.itens.push({
       vendaId: Number(venda.id),
       cliente: cNome,
       dataVenda: venda.datavenda ? format(new Date(venda.datavenda), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—",
-      valorTotal: vTotal
+      valorTotal: vTotal,
+      percentualComissao: percent,
+      valorComissao: vComissao
     });
 
     vendedorObj.subtotalVenda += vTotal;
+    vendedorObj.subtotalComissao += vComissao;
     setorObj.totalVenda += vTotal;
+    setorObj.totalComissao += vComissao;
   }
 
   // Filtrar setores sem vendas
@@ -185,6 +198,7 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
   setoresExibicao.forEach(s => s.vendedores.sort((a, b) => a.nome.localeCompare(b.nome)));
 
   let totalGeral = setoresExibicao.reduce((acc, s) => acc + s.totalVenda, 0);
+  let totalGeralComissao = setoresExibicao.reduce((acc, s) => acc + s.totalComissao, 0);
 
   return (
     <div className="bg-neutral-200 text-black min-h-screen py-10 print:py-0 print:bg-white flex flex-col items-center">
@@ -227,26 +241,34 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
         <div className="space-y-8">
           {setoresExibicao.map((setor) => (
             <div key={setor.setorId} className="border border-gray-300 rounded overflow-hidden">
-              <div className="bg-gray-100 px-4 py-2 border-b border-gray-300 flex justify-between font-bold text-base uppercase">
+              <div className="bg-gray-100 px-4 py-2 border-b border-gray-300 flex justify-between items-center font-bold text-base uppercase">
                 <span>Setor | {setor.nome}</span>
-                <span>{fmtMoney(setor.totalVenda)}</span>
+                <div className="text-right text-sm leading-tight">
+                  <span className="block text-gray-500 font-medium text-xs">Vendas: {fmtMoney(setor.totalVenda)}</span>
+                  <span className="block text-green-700">Comissão: {fmtMoney(setor.totalComissao)}</span>
+                </div>
               </div>
 
               <div className="p-4 space-y-6">
                 {setor.vendedores.map((vendedor) => (
                   <div key={vendedor.userId} className="pl-2 border-l-4 border-gray-400">
-                    <div className="flex justify-between font-semibold text-sm mb-2 text-gray-800">
+                    <div className="flex justify-between items-end font-semibold text-sm mb-2 text-gray-800 border-b border-gray-200 pb-1">
                       <span>Vendedor: {vendedor.nome}</span>
-                      <span>Subtotal de Vendas: {fmtMoney(vendedor.subtotalVenda)}</span>
+                      <div className="text-right text-xs">
+                        <span className="mr-4 text-gray-500">Subtotal Vendas: {fmtMoney(vendedor.subtotalVenda)}</span>
+                        <span className="text-green-700">Subtotal Comissões: {fmtMoney(vendedor.subtotalComissao)}</span>
+                      </div>
                     </div>
 
                     <table className="w-full text-xs text-left mb-2">
                       <thead>
                         <tr className="border-b border-gray-200 uppercase text-gray-600">
-                          <th className="py-1 w-20 text-center">Venda #</th>
+                          <th className="py-1 w-16 text-center">Venda #</th>
                           <th className="py-1">Cliente</th>
-                          <th className="py-1 w-40">Data da Venda</th>
-                          <th className="py-1 text-right w-32">Valor Total (R$)</th>
+                          <th className="py-1 w-32">Data da Venda</th>
+                          <th className="py-1 text-right w-24">Valor (R$)</th>
+                          <th className="py-1 text-right w-20">Comis. (%)</th>
+                          <th className="py-1 text-right w-24">Comissão (R$)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -256,6 +278,10 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
                             <td className="py-1 truncate max-w-[200px]" title={item.cliente}>{item.cliente}</td>
                             <td className="py-1 text-gray-600">{item.dataVenda}</td>
                             <td className="py-1 text-right font-medium text-gray-900">{fmtMoney(item.valorTotal)}</td>
+                            <td className="py-1 text-right text-gray-600">
+                              {item.percentualComissao.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%
+                            </td>
+                            <td className="py-1 text-right font-medium text-gray-900">{fmtMoney(item.valorComissao)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -270,7 +296,10 @@ export default async function PrintVendasSetorPage({ searchParams }: PageProps) 
         {/* Total Geral */}
         <div className="mt-8 border-t-2 border-black pt-4 flex justify-between items-center text-lg font-bold">
           <span>TOTAL GERAL:</span>
-          <span>{fmtMoney(totalGeral)}</span>
+          <div className="text-right">
+            <span className="block text-sm text-gray-500 font-medium uppercase leading-tight">Vendas: {fmtMoney(totalGeral)}</span>
+            <span className="block text-green-700 uppercase leading-tight">Comissões: {fmtMoney(totalGeralComissao)}</span>
+          </div>
         </div>
       </div>
 

@@ -65,12 +65,9 @@ const VENDA_SELECT = `
   vendedor,
   updated_by,
   criador:created_by ( id, nome ),
-<<<<<<< HEAD
   comissao_venda_percent_aplicada,
-=======
   vendedor_rel:vendedor ( id, nome ),
   editor:updated_by ( id, nome ),
->>>>>>> bbca99a5c6640b9c0f50ec324c362b769a6f2e4e
   desconto_tipo,
   desconto_valor,
   observacoes_fiscais,

@@ -33,6 +33,7 @@ import {
   Package,
   MoreHorizontal,
   FileText,
+  Pencil,
 } from "lucide-react";
 import {
   Select,
@@ -471,8 +472,8 @@ export default function VendasDataTable({
                             setOpenDetails(true);
                           }}
                         >
-                          <EyeIcon className="h-4 w-4" />
-                          Visualizar
+                          <Pencil className="h-4 w-4" />
+                          Editar
                         </DropdownMenuItem>
 
                         {p.status === "ORCAMENTO" && (

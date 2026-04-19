@@ -36,6 +36,7 @@ export async function GET(req: Request) {
         status, 
         datavenda, 
         valortotal,
+        comissao_venda_percent_aplicada,
         cliente:cliente ( id, nomerazaosocial ),
         vendedor:vendedor ( id, nome, email, setorid )
       `)
@@ -93,6 +94,8 @@ export async function GET(req: Request) {
       const vTotal = toNum(venda.valortotal);
       const cNome = venda.cliente ? venda.cliente.nomerazaosocial : "Cliente Desconhecido";
       const dataVendaStr = venda.datavenda ? format(new Date(venda.datavenda), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
+      const percent = toNum(venda.comissao_venda_percent_aplicada);
+      const vComissao = (vTotal * percent) / 100;
 
       dataExcel.push({
         "Setor": nomeSetor,
@@ -102,6 +105,8 @@ export async function GET(req: Request) {
         "Data Venda": dataVendaStr,
         "Status": venda.status,
         "Valor Total": vTotal,
+        "Comissão (%)": percent,
+        "Comissão (R$)": vComissao,
       });
     }
 
