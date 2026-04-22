@@ -110,6 +110,11 @@ export function criarIdeParaEmpresa(
   return { ide, cNF, chave, id };
 }
 
+function isPisCofinsTributado(cst?: string | number | null): boolean {
+  const value = String(cst ?? '').padStart(2, '0');
+  return ['01', '02'].includes(value);
+}
+
 /**
  * Monta o XML completo da NFe (sem assinatura).
  *
@@ -215,11 +220,11 @@ export function buildNFePreviewXml(
 
       const aliqPis = Number(item.aliquotaPis ?? 0);
       const vBCPis = vProd;
-      const vPIS = (vBCPis * aliqPis) / 100;
+      const vPIS = isPisCofinsTributado(item.cstPis) ? (vBCPis * aliqPis) / 100 : 0;
 
       const aliqCofins = Number(item.aliquotaCofins ?? 0);
       const vBCCofins = vProd;
-      const vCOFINS = (vBCCofins * aliqCofins) / 100;
+      const vCOFINS = isPisCofinsTributado(item.cstCofins) ? (vBCCofins * aliqCofins) / 100 : 0;
 
       acc.vProd += vProd;
       acc.vBC += vBCIcms;
