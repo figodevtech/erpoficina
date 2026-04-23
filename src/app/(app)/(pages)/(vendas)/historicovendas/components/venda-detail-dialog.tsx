@@ -15,6 +15,7 @@ import {
   Truck,
   FileText,
   Upload,
+  Save,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { VendaCanal, VendaStatusEntrega, vendaStatus } from "../types"
@@ -121,6 +122,7 @@ interface Venda {
   desconto_tipo: string | null
   desconto_valor: number
   sub_total: number
+  observacoes?: string | null
   observacoes_fiscais?: string | null
   itens: VendaProduto[]
 }
@@ -227,6 +229,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          observacoes: venda.observacoes,
           observacoesFiscais: venda.observacoes_fiscais,
           vendedor: venda.vendedor,
         }),
@@ -440,6 +443,22 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                                 </div>
                             </div>
                         </div>
+
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Observações (Internas)</h3>
+                          </div>
+                          <div className="space-y-2">
+                            <Textarea
+                              id="observacoes"
+                              placeholder="Digite observações internas da venda..."
+                              className="min-h-[120px] resize-none"
+                              value={venda.observacoes || ""}
+                              onChange={(e) => handleChange("observacoes", e.target.value)}
+                            />
+                          </div>
+                        </div>
                       </TabsContent>
 
                       <TabsContent value="Entrega" className="m-0 space-y-6">
@@ -555,7 +574,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                   <Button
                     type="button"
                     disabled={isSubmitting || loading || !venda}
-                    className="hover:cursor-pointer min-w-[120px]"
+                    className="hover:cursor-pointer min-w-[100px]"
                     onClick={handleUpdateVenda}
                   >
                     {isSubmitting ? (
@@ -565,7 +584,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                       </>
                     ) : (
                       <>
-                        <Upload className="h-4 w-4 mr-2" />
+                        <Save className="h-4 w-4" />
                         Salvar
                       </>
                     )}

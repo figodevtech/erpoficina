@@ -80,6 +80,7 @@ const VENDA_SELECT = `
   danfe_url,
   desconto_tipo,
   desconto_valor,
+  observacoes,
   observacoes_fiscais,
   forma_pagamento,
   sub_total,

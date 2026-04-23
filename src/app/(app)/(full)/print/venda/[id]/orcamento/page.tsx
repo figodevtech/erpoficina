@@ -1,9 +1,10 @@
-import { notFound } from "next/navigation";
+﻿import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "../../../../components/PrintButton";
+import { ObservacoesToggle } from "../../../../components/ObservacoesToggle";
 import { FileText, Power, ShoppingCart, User } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { formatCep } from "@/app/(app)/(pages)/clientes/components/customerDialogRegister/utils";
@@ -102,6 +103,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
       desconto_tipo,
       desconto_valor,
       sub_total,
+      observacoes,
       valortotal,
       cliente:clienteid (
         id,
@@ -231,6 +233,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
           min-height:var(--a4h);
         }
         @media print{
+          .venda-observacoes{ display:block !important; }
           html, body{ margin:0 !important; padding:0 !important; background:#fff !important; }
           .no-print{ display:none !important; }
           .os-print-root{ padding:0 !important; background:none !important; min-height:auto !important; }
@@ -293,6 +296,8 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
         .col-unit, .col-sub{ width:110px; text-align:right; font-weight:700; }
         .rodape{ margin-top:auto; display:grid; grid-template-columns:1fr 320px; gap:10px; padding-top:8px; }
         .observacoes-box{ border:1px solid var(--border); background:var(--soft-bg); border-radius:var(--radius); padding:10px; }
+        .venda-observacoes{ display:none; }
+        html[data-os-observacoes="1"] .venda-observacoes{ display:block; }
         .obs-titulo{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--brand-primary); margin-bottom:6px; }
         .obs-texto{ font-size:10px; line-height:1.45; color:var(--muted); }
         .totais-box{ border:1px solid var(--brand-primary); background:linear-gradient(135deg, rgba(37,99,235,.08), #fff); border-radius:var(--radius); padding:12px; }
@@ -324,6 +329,14 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
           <PrintButton />
         </div>
       </div>
+
+      {Boolean(venda.observacoes) && (
+        <div className="toolbar no-print">
+          <div className="flex flex-row items-center gap-1">
+            <ObservacoesToggle />
+          </div>
+        </div>
+      )}
 
       <div className="folha">
         <div className="header-os">
@@ -467,15 +480,16 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
           </div>
 
           <div className="rodape">
-            <div className="observacoes-box">
-              <div className="obs-titulo">
-                <FileText className="w-4 h-4 inline mr-1" />
-                Observações
-              </div>
-              <div className="obs-texto">
-                Este orçamento foi salvo no PDV e pode ser convertido em venda
-                posteriormente conforme o fluxo operacional.
-              </div>
+            <div>
+              {venda.observacoes ? (
+                <div className="observacoes-box venda-observacoes">
+                  <div className="obs-titulo">
+                    <FileText className="w-4 h-4 inline mr-1" />
+                    Observações
+                  </div>
+                  <div className="obs-texto">{venda.observacoes}</div>
+                </div>
+              ) : null}
             </div>
 
             <div className="totais-box">
@@ -500,3 +514,4 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
     </div>
   );
 }
+

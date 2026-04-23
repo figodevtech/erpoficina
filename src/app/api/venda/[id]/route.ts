@@ -70,6 +70,7 @@ const VENDA_SELECT = `
   editor:updated_by ( id, nome ),
   desconto_tipo,
   desconto_valor,
+  observacoes,
   observacoes_fiscais,
   forma_pagamento,
   sub_total,
@@ -120,6 +121,7 @@ type VendaPatchBody = {
   subTotal?: number;
   valorTotal?: number;
   dataVenda?: string | null; // ISO string
+  observacoes?: string | null;
   observacoesFiscais?: string | null;
   vendedor?: string | null;
 };
@@ -234,6 +236,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       subTotal,
       valorTotal,
       dataVenda,
+      observacoes,
       observacoesFiscais,
       vendedor,
     } = body;
@@ -252,6 +255,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       subTotal === undefined &&
       valorTotal === undefined &&
       dataVenda === undefined &&
+      observacoes === undefined &&
       observacoesFiscais === undefined &&
       vendedor === undefined
     ) {
@@ -368,6 +372,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     if (subTotal !== undefined) updatePayload.sub_total = subTotal;
     if (valorTotal !== undefined) updatePayload.valortotal = valorTotal;
     if (dataVenda !== undefined) updatePayload.datavenda = dataVenda;
+    if (observacoes !== undefined) updatePayload.observacoes = observacoes;
     if (observacoesFiscais !== undefined) updatePayload.observacoes_fiscais = observacoesFiscais;
     if (vendedor !== undefined) updatePayload.vendedor = vendedor;
 
