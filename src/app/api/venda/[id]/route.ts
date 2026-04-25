@@ -158,6 +158,33 @@ function toInt(v: unknown): number | null {
   return Math.trunc(n);
 }
 
+async function resolveUsuarioInternoId(session: any): Promise<string | null> {
+  const directId = (session?.user as any)?.id as string | undefined;
+  const email = (session?.user?.email as string | undefined) ?? null;
+
+  if (directId) {
+    const byId = await supabaseAdmin
+      .from("usuario")
+      .select("id")
+      .eq("id", directId)
+      .maybeSingle();
+
+    if (byId.data?.id) return String(byId.data.id);
+  }
+
+  if (email) {
+    const byEmail = await supabaseAdmin
+      .from("usuario")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (byEmail.data?.id) return String(byEmail.data.id);
+  }
+
+  return null;
+}
+
 /* ========================= GET /api/venda/[id] ========================= */
 
 export async function GET(req: NextRequest, ctx: ParamsCtx) {
@@ -210,7 +237,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     }
 
     const session = await auth();
-    const userId = session?.user?.id;
+    const usuarioInternoId = await resolveUsuarioInternoId(session);
 
     const vendaId = parsed.id as number;
     const body = (await req.json().catch(() => null)) as VendaPatchBody | null;
@@ -377,7 +404,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     if (vendedor !== undefined) updatePayload.vendedor = vendedor;
 
     updatePayload.updatedat = new Date().toISOString();
-    if (userId) updatePayload.updated_by = userId;
+    if (usuarioInternoId) updatePayload.updated_by = usuarioInternoId;
 
     const { data, error } = await supabaseAdmin
       .from("venda")

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Calendar,
@@ -14,8 +13,8 @@ import {
   AlertCircle,
   Truck,
   FileText,
-  Upload,
   Save,
+  Search,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { VendaCanal, VendaStatusEntrega, vendaStatus } from "../types"
@@ -47,6 +46,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import CustomerSelect from "@/app/(app)/components/customerSelect"
+import type { Customer } from "@/app/(app)/(pages)/clientes/types"
 
 interface Produto {
   id: number
@@ -146,7 +147,7 @@ const statusColors: Record<vendaStatus, string> = {
 }
 
 const statusLabels: Record<vendaStatus, string> = {
-  ORCAMENTO: "Orçamento",
+  ORCAMENTO: "Orcamento",
   ABERTA: "Aberta",
   PAGAMENTO: "Pagamento",
   PENDENTE: "Pendente",
@@ -157,11 +158,20 @@ const statusLabels: Record<vendaStatus, string> = {
   CANCELADO: "Cancelada",
 }
 
+const TAB_ITEMS = [
+  { value: "Geral", label: "Geral", icon: User },
+  { value: "Entrega", label: "Entrega", icon: Truck },
+  { value: "Financeiro", label: "Financeiro", icon: ShoppingCart },
+  { value: "Produtos", label: "Produtos", icon: Package },
+  { value: "Fiscal", label: "Fiscal", icon: FileText },
+] as const
+
 export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetailsDialogProps) {
   const [venda, setVenda] = useState<Venda | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [openCustomerSelect, setOpenCustomerSelect] = useState(false)
   const [currentTab, setCurrentTab] = useState<string>("Geral")
   const [users, setUsers] = useState<Array<{ id: string; nome: string | null; email?: string }>>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
@@ -176,8 +186,8 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
         if (response.ok && Array.isArray(data?.users)) {
           setUsers(data.users)
         }
-      } catch (error) {
-        console.error("Erro ao carregar usuários:", error)
+      } catch (fetchError) {
+        console.error("Erro ao carregar usuarios:", fetchError)
       } finally {
         setLoadingUsers(false)
       }
@@ -229,6 +239,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          clienteId: venda.clienteid,
           observacoes: venda.observacoes,
           observacoesFiscais: venda.observacoes_fiscais,
           vendedor: venda.vendedor,
@@ -241,9 +252,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
       }
 
       toast.success("Sucesso!", { description: "Venda atualizada com sucesso.", duration: 2000 })
-      
-      // Trigger full loading state
-      setVenda(null) 
+      setVenda(null)
       await fetchVenda()
     } catch (err) {
       console.error("Erro ao atualizar venda:", err)
@@ -257,12 +266,26 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
     setVenda((prev) => (prev ? { ...prev, [field]: value } : null))
   }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
+  const handleCustomerSelect = (customer: Customer) => {
+    setVenda((prev) =>
+      prev
+        ? {
+            ...prev,
+            clienteid: customer.id,
+            cliente: {
+              id: customer.id,
+              nomerazaosocial: customer.nomerazaosocial,
+            },
+          }
+        : prev,
+    )
+  }
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
     }).format(value)
-  }
 
   const formatDate = (date: string | null) => {
     if (!date) return "N/A"
@@ -275,184 +298,222 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
     }).format(new Date(date))
   }
 
-  const formatQuantity = (qty: number) => {
-    return new Intl.NumberFormat("pt-BR", {
+  const formatQuantity = (qty: number) =>
+    new Intl.NumberFormat("pt-BR", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(qty)
-  }
 
-  const tabTheme =
-    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+  const showFullLoading = (loading || isSubmitting) && !venda
 
-  const showFullLoading = (loading || isSubmitting) && !venda;
-  
-  const Content = isDesktop ? DialogContent : DrawerContent;
-  const Header = isDesktop ? DialogHeader : DrawerHeader;
-  const Title = isDesktop ? DialogTitle : DrawerTitle;
-  const Description = isDesktop ? DialogDescription : DrawerDescription;
-  const Footer = isDesktop ? DialogFooter : DrawerFooter;
-  const Close = isDesktop ? DialogClose : DrawerClose;
+  const Content = isDesktop ? DialogContent : DrawerContent
+  const Header = isDesktop ? DialogHeader : DrawerHeader
+  const Title = isDesktop ? DialogTitle : DrawerTitle
+  const Description = isDesktop ? DialogDescription : DrawerDescription
+  const Footer = isDesktop ? DialogFooter : DrawerFooter
+  const Close = isDesktop ? DialogClose : DrawerClose
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <Content className={
-        isDesktop
-          ? `h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0 sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0`
-          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
-      }>
+      <Content
+        className={
+          isDesktop
+            ? "h-svh w-[100dvw] max-w-[100dvw] min-w-0 overflow-hidden p-0 sm:max-h-[850px] sm:max-w-[1100px] sm:min-w-0 sm:w-[95vw]"
+            : "mt-0 flex h-[100dvh] min-h-dvh max-h-none flex-col rounded-none"
+        }
+      >
         <div className="flex h-full min-h-0 min-w-0 flex-col">
           {showFullLoading ? (
-            <div className="flex flex-1 flex-col justify-center items-center">
+            <div className="flex flex-1 flex-col items-center justify-center">
               <Header className="hidden">
-                <Title></Title>
-                <Description></Description>
+                <Title />
+                <Description />
               </Header>
-              <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
-              <span className="text-primary mt-3 text-sm font-medium animate-pulse">
-                {isSubmitting ? "Salvando alterações..." : "Buscando dados da venda..."}
+              <div className="size-8 animate-spin rounded-t-full border-t-2 border-primary" />
+              <span className="mt-3 animate-pulse text-sm font-medium text-primary">
+                {isSubmitting ? "Salvando alteracoes..." : "Buscando dados da venda..."}
               </span>
             </div>
           ) : (
             <>
-              <Header className={isDesktop ? "shrink-0 px-6 py-4 border-b-1" : "shrink-0 px-4 py-2"}>
-                <Title className={isDesktop ? "text-sm sm:text-lg pr-4" : ""}>
+              <Header className={isDesktop ? "shrink-0 border-b px-6 py-4" : "shrink-0 px-4 py-2"}>
+                <Title className={isDesktop ? "pr-4 text-sm sm:text-lg" : ""}>
                   {venda ? `Venda #${venda.id}` : "Venda"}
                 </Title>
                 <Description>
-                  {venda ? "Detalhes completos da transação" : error ? "Erro ao carregar dados" : "Carregando..."}
+                  {venda ? "Detalhes completos da transacao" : error ? "Erro ao carregar dados" : "Carregando..."}
                 </Description>
               </Header>
 
-              <div className="flex-1 min-h-0 min-w-0 relative">
+              <div className="relative flex-1 min-h-0 min-w-0">
                 {error && !venda ? (
                   <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                    <div className="rounded-full bg-destructive/10 p-3 mb-4">
+                    <div className="mb-4 rounded-full bg-destructive/10 p-3">
                       <AlertCircle className="h-8 w-8 text-destructive" />
                     </div>
                     <p className="font-semibold text-destructive">Erro ao carregar venda</p>
                     <p className="text-sm text-muted-foreground">{error}</p>
-                    <Button variant="outline" className="mt-4" onClick={() => fetchVenda()}>Tentar novamente</Button>
+                    <Button variant="outline" className="mt-4" onClick={() => fetchVenda()}>
+                      Tentar novamente
+                    </Button>
                   </div>
                 ) : venda ? (
                   <Tabs
                     value={currentTab}
+                    onValueChange={setCurrentTab}
                     defaultValue="Geral"
-                    className="flex h-full flex-col min-h-0 overflow-hidden"
+                    className="flex h-full min-h-0 flex-col overflow-hidden"
                   >
-                    <div className="shrink-0 sticky top-0 z-10 mt-4">
+                    <div className="sticky top-0 z-10 mt-4 shrink-0">
                       <div className={isDesktop ? "overflow-x-auto px-6 pb-2" : "overflow-x-auto px-4 pb-2"}>
-                        <TabsList className="w-max justify-start bg-transparent">
-                          <TabsTrigger onClick={() => setCurrentTab("Geral")} value="Geral" className={"hover:cursor-pointer" + tabTheme}>
-                            Geral
-                          </TabsTrigger>
-                          <TabsTrigger onClick={() => setCurrentTab("Entrega")} value="Entrega" className={"hover:cursor-pointer" + tabTheme}>
-                            Entrega
-                          </TabsTrigger>
-                          <TabsTrigger onClick={() => setCurrentTab("Financeiro")} value="Financeiro" className={"hover:cursor-pointer" + tabTheme}>
-                            Financeiro
-                          </TabsTrigger>
-                          <TabsTrigger onClick={() => setCurrentTab("Produtos")} value="Produtos" className={"hover:cursor-pointer" + tabTheme}>
-                            Produtos
-                          </TabsTrigger>
-                          <TabsTrigger onClick={() => setCurrentTab("Fiscal")} value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
-                            Fiscal
-                          </TabsTrigger>
+                        <TabsList className="h-auto min-w-full justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
+                          {TAB_ITEMS.map((tab) => {
+                            const Icon = tab.icon
+                            return (
+                              <TabsTrigger
+                                key={tab.value}
+                                value={tab.value}
+                                className="group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <Icon className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                                  {tab.label}
+                                </span>
+                              </TabsTrigger>
+                            )
+                          })}
                         </TabsList>
                       </div>
                     </div>
 
-                    <ScrollArea className="flex-1 px-6 py-4">
+                    <div className="flex-1 overflow-y-auto px-6 py-4">
                       <TabsContent value="Geral" className="m-0 space-y-6">
                         <div className="grid gap-4 md:grid-cols-2">
-                            <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                                <div className="rounded-full bg-primary/10 p-2">
-                                    <User className="h-4 w-4 text-primary" />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-xs font-medium text-muted-foreground">Cliente</p>
-                                    <p className="text-sm font-semibold leading-tight">{venda.cliente.nomerazaosocial}</p>
-                                    <p className="text-xs text-muted-foreground">ID: {venda.cliente.id}</p>
-                                </div>
+                          <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                            <div className="rounded-full bg-primary/10 p-2">
+                              <User className="h-4 w-4 text-primary" />
                             </div>
-                            <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                                <div className="rounded-full bg-primary/10 p-2">
-                                    <Calendar className="h-4 w-4 text-primary" />
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <p className="text-xs font-medium text-muted-foreground">Cliente</p>
+                                  <p className="text-sm font-semibold leading-tight">{venda.cliente.nomerazaosocial}</p>
+                                  <p className="text-xs text-muted-foreground">ID: {venda.cliente.id}</p>
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-xs font-medium text-muted-foreground">Data da Venda</p>
-                                    <p className="text-sm font-semibold">{formatDate(venda.datavenda)}</p>
-                                </div>
+                                <CustomerSelect
+                                  open={openCustomerSelect}
+                                  setOpen={setOpenCustomerSelect}
+                                  OnSelect={handleCustomerSelect}
+                                >
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                    disabled={isSubmitting || loading}
+                                  >
+                                    <Search className="h-4 w-4" />
+                                    Alterar cliente
+                                  </Button>
+                                </CustomerSelect>
+                              </div>
                             </div>
+                          </div>
+                          <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                            <div className="rounded-full bg-primary/10 p-2">
+                              <Calendar className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <p className="text-xs font-medium text-muted-foreground">Data da Venda</p>
+                              <p className="text-sm font-semibold">{formatDate(venda.datavenda)}</p>
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="rounded-lg bg-muted/30 p-4">
-                            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Informações do Sistema</h3>
-                            <div className="grid gap-3 text-xs sm:grid-cols-2">
-                                {venda.createdat && (
-                                    <div>
-                                        <p className="text-muted-foreground">Criado em</p>
-                                        <p className="font-medium">{formatDate(venda.createdat)}</p>
-                                    </div>
-                                )}
-                                {venda.updatedat && (
-                                    <div>
-                                        <p className="text-muted-foreground">Atualizado em</p>
-                                        <p className="font-medium">{formatDate(venda.updatedat)}</p>
-                                        {venda.editor?.nome && (
-                                          <p className="text-xs text-muted-foreground mt-0.5">
-                                            por {venda.editor.nome}
-                                          </p>
-                                        )}
-                                    </div>
-                                )}
-                                {venda.created_by && (
-                                    <div>
-                                        <p className="text-muted-foreground">Criado por</p>
-                                        <p className="font-medium">{venda.criador?.nome || venda.created_by}</p>
-                                    </div>
-                                )}
-                                <div>
-                                    <p className="text-muted-foreground">Vendedor / Responsável</p>
-                                    {loadingUsers ? (
-                                      <p className="font-medium text-muted-foreground text-sm mt-2">Carregando...</p>
-                                    ) : (
-                                      <Select
-                                        value={venda.vendedor || "unassigned"}
-                                        onValueChange={(val) => handleChange("vendedor", val === "unassigned" ? null : val)}
-                                      >
-                                        <SelectTrigger className="w-full mt-1">
-                                          <SelectValue placeholder="Selecione um vendedor" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="unassigned">Sem vendedor</SelectItem>
-                                          {users.map((u) => (
-                                            <SelectItem key={u.id} value={u.id}>
-                                              {u.nome || u.email || u.id}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Status</p>
-                                    <Badge variant="outline" className={statusColors[venda.status] + " mt-1"}>
-                                        {statusLabels[venda.status]}
-                                    </Badge>
-                                </div>
+                        <div className="rounded-xl border bg-muted/20 p-4">
+                          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Informacoes do Sistema
+                          </h3>
+
+                          
+                          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                            <div className="rounded-lg border bg-background/80 p-3">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Status
+                              </p>
+                              <Badge variant="outline" className={statusColors[venda.status] + " mt-2"}>
+                                {statusLabels[venda.status]}
+                              </Badge>
                             </div>
+                           
+                            {venda.updatedat && (
+                              <div className="rounded-lg border bg-background/80 p-3">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  Atualizado em
+                                </p>
+                                <p className="mt-1 text-sm font-medium">{formatDate(venda.updatedat)}</p>
+                                {venda.editor?.nome && (
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    por {venda.editor.nome}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {venda.created_by && (
+                              <div className="rounded-lg border bg-background/80 p-3">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  Criado por
+                                </p>
+                                <p className="mt-1 text-sm font-medium">{venda.criador?.nome || venda.created_by}</p>
+                              </div>
+                            )}
+                            <div className="rounded-lg border bg-background/80 p-3 sm:col-span-2 xl:col-span-1">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Vendedor / Responsavel
+                              </p>
+                              {loadingUsers ? (
+                                <p className="mt-2 text-sm font-medium text-muted-foreground">Carregando...</p>
+                              ) : (
+                                <Select
+                                  value={venda.vendedor || "unassigned"}
+                                  onValueChange={(val) => handleChange("vendedor", val === "unassigned" ? null : val)}
+                                >
+                                  <SelectTrigger className="mt-2 h-9 w-full">
+                                    <SelectValue placeholder="Selecione um vendedor" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="unassigned">Sem vendedor</SelectItem>
+                                    {users.map((u) => (
+                                      <SelectItem key={u.id} value={u.id}>
+                                        {u.nome || u.email || u.id}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                             {venda.createdat && (
+                              <div className="rounded-lg border bg-background/80 p-3">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  Criado em
+                                </p>
+                                <p className="mt-1 text-sm font-medium">{formatDate(venda.createdat)}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         <div className="space-y-4">
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Observações (Internas)</h3>
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                              Observacoes internas
+                            </h3>
                           </div>
                           <div className="space-y-2">
                             <Textarea
                               id="observacoes"
-                              placeholder="Digite observações internas da venda..."
+                              placeholder="Digite observacoes internas da venda..."
                               className="min-h-[120px] resize-none"
                               value={venda.observacoes || ""}
                               onChange={(e) => handleChange("observacoes", e.target.value)}
@@ -465,36 +526,42 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                         {venda.canal === "ONLINE" ? (
                           <div className="space-y-6">
                             <div className="grid gap-4 md:grid-cols-2">
-                                <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                                    <div className="rounded-full bg-primary/10 p-2">
-                                        <Package className="h-4 w-4 text-primary" />
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-xs font-medium text-muted-foreground">Entrega</p>
-                                        <p className="text-sm font-semibold">{venda.status_entrega ?? "Não iniciada"}</p>
-                                        {venda.ultimo_evento_rastreio && (
-                                            <p className="text-xs text-muted-foreground">Rastreio: {venda.ultimo_evento_rastreio}</p>
-                                        )}
-                                    </div>
+                              <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                                <div className="rounded-full bg-primary/10 p-2">
+                                  <Package className="h-4 w-4 text-primary" />
                                 </div>
-                                <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
-                                    <div className="rounded-full bg-primary/10 p-2">
-                                        <Hash className="h-4 w-4 text-primary" />
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-xs font-medium text-muted-foreground">Código de rastreio</p>
-                                        <p className="text-sm font-semibold leading-tight">{venda.codigo_rastreio ?? "Não informado"}</p>
-                                        {venda.transportadora_rastreio && (
-                                            <p className="text-xs text-muted-foreground">Transportadora: {venda.transportadora_rastreio}</p>
-                                        )}
-                                    </div>
+                                <div className="flex-1 space-y-1">
+                                  <p className="text-xs font-medium text-muted-foreground">Entrega</p>
+                                  <p className="text-sm font-semibold">{venda.status_entrega ?? "Nao iniciada"}</p>
+                                  {venda.ultimo_evento_rastreio && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Rastreio: {venda.ultimo_evento_rastreio}
+                                    </p>
+                                  )}
                                 </div>
+                              </div>
+                              <div className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                                <div className="rounded-full bg-primary/10 p-2">
+                                  <Hash className="h-4 w-4 text-primary" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <p className="text-xs font-medium text-muted-foreground">Codigo de rastreio</p>
+                                  <p className="text-sm font-semibold leading-tight">
+                                    {venda.codigo_rastreio ?? "Nao informado"}
+                                  </p>
+                                  {venda.transportadora_rastreio && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Transportadora: {venda.transportadora_rastreio}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ) : (
                           <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
                             <Truck className="h-12 w-12 opacity-20" />
-                            <p>Esta é uma venda de PDV (presencial). Não possui dados de entrega.</p>
+                            <p>Esta e uma venda de PDV (presencial). Nao possui dados de entrega.</p>
                           </div>
                         )}
                       </TabsContent>
@@ -514,21 +581,25 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                           <Separator className="my-2" />
                           <div className="flex items-center justify-between">
                             <span className="text-base font-semibold">Valor Total</span>
-                            <span className="text-xl font-bold text-primary">{formatCurrency(venda.valortotal)}</span>
+                            <span className="text-xl font-bold text-primary">
+                              {formatCurrency(venda.valortotal)}
+                            </span>
                           </div>
                         </div>
                       </TabsContent>
 
                       <TabsContent value="Produtos" className="m-0 space-y-6">
                         <div className="space-y-3">
-                          {venda.itens.map((item, index) => (
+                          {venda.itens.map((item) => (
                             <div key={item.id} className="rounded-lg border bg-card p-4">
                               <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
                                   <p className="font-semibold leading-tight">{item.produto.titulo}</p>
-                                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                    <span>{formatQuantity(item.quantidade)} {item.produto.unidade}</span>
-                                    <span>•</span>
+                                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>
+                                      {formatQuantity(item.quantidade)} {item.produto.unidade}
+                                    </span>
+                                    <span>-</span>
                                     <span>{formatCurrency(item.valor_total / item.quantidade)} / unid.</span>
                                   </div>
                                 </div>
@@ -545,13 +616,17 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                         <div className="space-y-4">
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Observações Fiscais</h3>
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                              Observacoes fiscais
+                            </h3>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="observacoes_fiscais">Observações livres para nota fiscal e impostos</Label>
+                            <Label htmlFor="observacoes_fiscais">
+                              Observacoes livres para nota fiscal e impostos
+                            </Label>
                             <Textarea
                               id="observacoes_fiscais"
-                              placeholder="Ex: Venda com benefício fiscal, isenção de IPI, etc..."
+                              placeholder="Ex: Venda com beneficio fiscal, isencao de IPI, etc..."
                               className="min-h-[150px] resize-none"
                               value={venda.observacoes_fiscais || ""}
                               onChange={(e) => handleChange("observacoes_fiscais", e.target.value)}
@@ -559,27 +634,27 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                           </div>
                         </div>
                       </TabsContent>
-                    </ScrollArea>
+                    </div>
                   </Tabs>
                 ) : null}
               </div>
 
               <Footer className={isDesktop ? "px-6 py-4" : "px-4 py-4"}>
-                <div className="flex justify-end gap-2 w-full">
+                <div className="flex w-full justify-end gap-2">
                   <Close asChild>
-                    <Button className="hover:cursor-pointer" variant={"outline"}>
+                    <Button className="hover:cursor-pointer" variant="outline">
                       Cancelar
                     </Button>
                   </Close>
                   <Button
                     type="button"
                     disabled={isSubmitting || loading || !venda}
-                    className="hover:cursor-pointer min-w-[100px]"
+                    className="min-w-[100px] hover:cursor-pointer"
                     onClick={handleUpdateVenda}
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
                         Salvando...
                       </>
                     ) : (
