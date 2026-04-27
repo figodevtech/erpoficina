@@ -102,11 +102,7 @@ export function ProductDialogLayout({
                   }
                 >
                   <TabsList
-                    className={
-                      isDesktop
-                        ? "grid w-full auto-cols-fr grid-flow-col gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm"
-                        : "flex h-auto w-max justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm"
-                    }
+                    className="h-auto min-w-full justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm"
                   >
                     {tabs}
                   </TabsList>
@@ -166,7 +162,7 @@ export function ProductDialogLayout({
               <DialogShellTitle>{title}</DialogShellTitle>
               {description ? <DialogShellDescription>{description}</DialogShellDescription> : null}
             </DialogShellHeader>
-            <div className="flex flex-1 min-h-0 items-center justify-center">
+            <div className="flex flex-1 min-h-0 flex-col relative">
               {children}
             </div>
           </>

@@ -562,7 +562,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                               <TabsTrigger
                                 key={tab.value}
                                 value={tab.value}
-                                className="group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                                className="group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                               >
                                 <span className="flex items-center gap-2">
                                   <Icon className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />

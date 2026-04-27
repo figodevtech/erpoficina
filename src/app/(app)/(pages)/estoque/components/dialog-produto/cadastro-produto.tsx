@@ -1,6 +1,7 @@
 "use client";
 
 import { TabsTrigger } from "@/components/ui/tabs";
+import { Package, FileText, Boxes, Image as ImageIcon } from "lucide-react";
 import { Save, Upload } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
@@ -49,7 +50,7 @@ export default function CadastroProduto({
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
 
   const tabTheme =
-    " flex-1 justify-center h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm";
+    " group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   const handleChange = (field: keyof Produto, value: any) => {
     setNewProduct({ ...newProduct, [field]: value });
@@ -165,34 +166,30 @@ export default function CadastroProduto({
       currentTab={currentTab}
       tabs={
         <>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Geral")}
-            value="Geral"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Geral
-          </TabsTrigger>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Fiscal")}
-            value="Fiscal"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Fiscal
-          </TabsTrigger>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Estoque")}
-            value="Estoque"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Estoque
-          </TabsTrigger>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Imagens")}
-            value="Imagens"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Imagens
-          </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Geral")} value="Geral" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <Package className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Geral
+              </span>
+            </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Fiscal")} value="Fiscal" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Fiscal
+              </span>
+            </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Estoque")} value="Estoque" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <Boxes className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Estoque
+              </span>
+            </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Imagens")} value="Imagens" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <ImageIcon className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Imagens
+              </span>
+            </TabsTrigger>
         </>
       }
     >

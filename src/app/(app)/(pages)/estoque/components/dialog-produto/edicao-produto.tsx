@@ -1,7 +1,7 @@
 "use client";
 
 import { TabsTrigger } from "@/components/ui/tabs";
-import { Upload } from "lucide-react";
+import { Upload, Package, Store, Image as ImageIcon, FileText, Boxes, ShoppingCart, ClipboardList, ArrowRightLeft } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Produto } from "../../types";
@@ -100,33 +100,57 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct, isDesktop
   }, [productId]);
 
   const tabTheme =
-    " flex-1 justify-center h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm";
+    " group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   const tabs = (
     <>
       <TabsTrigger onClick={()=>setCurrentTab("Geral")} value="Geral" className={"hover:cursor-pointer" + tabTheme}>
-        Geral
+        <span className="flex items-center gap-2">
+          <Package className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          Geral
+        </span>
       </TabsTrigger>
       <TabsTrigger onClick={()=>setCurrentTab("MarketPlace")} value="MarketPlace" className={"hover:cursor-pointer" + tabTheme}>
-        MarketPlace
+        <span className="flex items-center gap-2">
+          <Store className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          MarketPlace
+        </span>
       </TabsTrigger>
       <TabsTrigger onClick={()=>setCurrentTab("Imagens")} value="Imagens" className={"hover:cursor-pointer" + tabTheme}>
-        Imagens
+        <span className="flex items-center gap-2">
+          <ImageIcon className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          Imagens
+        </span>
       </TabsTrigger>
       <TabsTrigger onClick={()=>setCurrentTab("Fiscal")} value="Fiscal" className={"hover:cursor-pointer" + tabTheme}>
-        Fiscal
+        <span className="flex items-center gap-2">
+          <FileText className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          Fiscal
+        </span>
       </TabsTrigger>
       <TabsTrigger onClick={()=>setCurrentTab("Estoque")} value="Estoque" className={"hover:cursor-pointer" + tabTheme}>
-        Estoque
+        <span className="flex items-center gap-2">
+          <Boxes className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          Estoque
+        </span>
       </TabsTrigger>
       <TabsTrigger onClick={()=>setCurrentTab("Vendas")} value="Vendas" className={"hover:cursor-pointer" + tabTheme}>
-        Vendas
+        <span className="flex items-center gap-2">
+          <ShoppingCart className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          Vendas
+        </span>
       </TabsTrigger>
       <TabsTrigger onClick={()=>setCurrentTab("Ordens")} value="Ordens" className={"hover:cursor-pointer" + tabTheme}>
-        Ordens
+        <span className="flex items-center gap-2">
+          <ClipboardList className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          Ordens
+        </span>
       </TabsTrigger>
       <TabsTrigger onClick={()=>setCurrentTab("Fluxo")} value="Fluxo" className={"hover:cursor-pointer" + tabTheme}>
-        Entradas
+        <span className="flex items-center gap-2">
+          <ArrowRightLeft className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+          Entradas
+        </span>
       </TabsTrigger>
     </>
   );
