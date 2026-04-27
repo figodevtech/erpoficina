@@ -17,9 +17,14 @@ export interface Veiculo {
   ano?: number,
   cor?: string,
   kmatual?: number,
-  tipo?: Veiculo_tipos
+  tipo?: Veiculo_tipos,
+  chassi?: string,
+  ano_modelo?: number,
+  versao?: string,
+  fipe?: number,
+  combustivel?: string,
+  transmissao?: string,
   ordens?: Ordem[]
-  
 }
 
 export interface Pagination {

@@ -40,7 +40,7 @@ export async function GET(_request: Request, ctx: Ctx) {
     const { data, error } = await supabase
       .from("veiculo")
       .select(`
-        id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo,
+        id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, chassi, ano_modelo, versao, fipe, combustivel, transmissao,
         cliente:cliente (
           nomerazaosocial,
           cpfcnpj,
@@ -163,6 +163,50 @@ export async function PUT(request: Request, ctx: Ctx) {
       patch.tipo = String(v.tipo).trim();
     }
 
+    // chassi
+    if (v.chassi !== undefined) {
+      patch.chassi = v.chassi === null ? null : String(v.chassi).trim();
+    }
+
+    // ano_modelo
+    if (v.ano_modelo !== undefined) {
+      if (v.ano_modelo === null) patch.ano_modelo = null;
+      else {
+        const ano_modelo = Number(v.ano_modelo);
+        if (!Number.isInteger(ano_modelo) || ano_modelo < 1900 || ano_modelo > 3000) {
+          return respostaJSON({ error: "Campo 'ano_modelo' inválido." }, 400);
+        }
+        patch.ano_modelo = ano_modelo;
+      }
+    }
+
+    // versao
+    if (v.versao !== undefined) {
+      patch.versao = v.versao === null ? null : String(v.versao).trim();
+    }
+
+    // fipe
+    if (v.fipe !== undefined) {
+      if (v.fipe === null) patch.fipe = null;
+      else {
+        const fipe = Number(v.fipe);
+        if (Number.isNaN(fipe) || fipe < 0) {
+          return respostaJSON({ error: "Campo 'fipe' inválido." }, 400);
+        }
+        patch.fipe = fipe;
+      }
+    }
+
+    // combustivel
+    if (v.combustivel !== undefined) {
+      patch.combustivel = v.combustivel === null ? null : String(v.combustivel).trim();
+    }
+
+    // transmissao
+    if (v.transmissao !== undefined) {
+      patch.transmissao = v.transmissao === null ? null : String(v.transmissao).trim();
+    }
+
     // clienteId (aceita clienteId ou clienteid dentro do selectedVeiculo)
     const rawClienteId = v.clienteId ?? v.clienteid;
     if (rawClienteId !== undefined) {
@@ -187,7 +231,7 @@ export async function PUT(request: Request, ctx: Ctx) {
       .update(patch)
       .eq("id", id)
       .select(
-        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo"
+        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, chassi, ano_modelo, versao, fipe, combustivel, transmissao"
       )
       .single();
 

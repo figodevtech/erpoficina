@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("veiculo")
       .select(
-        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, cliente: cliente( nomerazaosocial, cpfcnpj, email, telefone )",
+        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, chassi, ano_modelo, versao, fipe, combustivel, transmissao, cliente: cliente( nomerazaosocial, cpfcnpj, email, telefone )",
         { count: "exact" }
       )
       .order("modelo", { ascending: true })
@@ -131,6 +131,15 @@ export async function POST(request: Request) {
     const cor = v?.cor === null || v?.cor === undefined ? null : String(v.cor).trim();
     const tipo = v?.tipo ? String(v.tipo).trim() : undefined;
 
+    const chassi = v?.chassi === null || v?.chassi === undefined ? null : String(v.chassi).trim();
+    const ano_modelo =
+      v?.ano_modelo === null || v?.ano_modelo === undefined || v?.ano_modelo === "" ? null : Number(v.ano_modelo);
+    const versao = v?.versao === null || v?.versao === undefined ? null : String(v.versao).trim();
+    const fipe =
+      v?.fipe === null || v?.fipe === undefined || v?.fipe === "" ? null : Number(v.fipe);
+    const combustivel = v?.combustivel === null || v?.combustivel === undefined ? null : String(v.combustivel).trim();
+    const transmissao = v?.transmissao === null || v?.transmissao === undefined ? null : String(v.transmissao).trim();
+
     if (!Number.isInteger(clienteId) || clienteId <= 0) {
       return respostaJSON(
         { error: "Campo 'clienteId' (ou 'clienteid') é obrigatório e deve ser inteiro > 0." },
@@ -156,13 +165,19 @@ export async function POST(request: Request) {
       ano,
       cor,
       kmatual,
+      chassi,
+      ano_modelo,
+      versao,
+      fipe,
+      combustivel,
+      transmissao,
     };
     if (tipo) payload.tipo = tipo;
 
     const { data, error } = await supabase
       .from("veiculo")
       .insert(payload)
-      .select("id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo")
+      .select("id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, chassi, ano_modelo, versao, fipe, combustivel, transmissao")
       .single();
 
     if (error) throw error;

@@ -81,6 +81,8 @@ export default function RegisterContent({
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [loadingMarcas, setLoadingMarcas] = useState(false);
   const [loadingModelos, setLoadingModelos] = useState(false);
+  const [errorMarcas, setErrorMarcas] = useState(false);
+  const [errorModelos, setErrorModelos] = useState(false);
   const [open1, setOpen1] = useState(false);
   const [open2, setOpen2] = useState(false);
   const { cores, errorCores, loadingCores } = useVeiculosCores();
@@ -94,6 +96,7 @@ export default function RegisterContent({
     if (!novoVeiculo.tipo) return;
 
     setLoadingMarcas(true);
+    setErrorMarcas(false);
     try {
       const response = await axios.get(
         `https://brasilapi.com.br/api/fipe/marcas/v1/${String(
@@ -104,8 +107,9 @@ export default function RegisterContent({
         setMarcas(response.data);
       }
     } catch (error) {
+      setErrorMarcas(true);
       if (isAxiosError(error)) {
-        toast("Erro", { description: error.response?.data?.error });
+        toast("FIPE indisponível", { description: "Por favor, digite a marca manualmente." });
       }
       console.log(error);
     } finally {
@@ -117,10 +121,10 @@ export default function RegisterContent({
     if (!novoVeiculo.marcaId || !novoVeiculo.tipo) return;
 
     setLoadingModelos(true);
+    setErrorModelos(false);
     try {
       const response = await axios.get(
-        `https://brasilapi.com.br/api/fipe/veiculos/v1/${novoVeiculo.tipo.toLowerCase()}/${
-          novoVeiculo.marcaId
+        `https://brasilapi.com.br/api/fipe/veiculos/v1/${novoVeiculo.tipo.toLowerCase()}/${novoVeiculo.marcaId
         }`
       );
       if (response.status === 200) {
@@ -128,8 +132,9 @@ export default function RegisterContent({
         setModelos(response.data);
       }
     } catch (error) {
+      setErrorModelos(true);
       if (isAxiosError(error)) {
-        toast("Erro", { description: error.response?.data?.error });
+        toast("FIPE indisponível", { description: "Por favor, digite o modelo manualmente." });
       }
       console.log(error);
     } finally {
@@ -177,24 +182,12 @@ export default function RegisterContent({
   }, [clienteId]);
 
   useEffect(() => {
-    if (isOpen && clienteId && novoVeiculo.tipo) {
-      handleGetMarcas();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, novoVeiculo.tipo, clienteId]);
-
-  useEffect(() => {
     if (isOpen && novoVeiculo.tipo) {
       handleGetMarcas();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, novoVeiculo.tipo]);
 
-  useEffect(() => {
-    if (isOpen && clienteId && novoVeiculo.tipo && novoVeiculo.marcaId) {
-      handleGetModelos();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, novoVeiculo.tipo, clienteId, novoVeiculo.marcaId]);
   useEffect(() => {
     if (isOpen && novoVeiculo.tipo && novoVeiculo.marcaId) {
       handleGetModelos();
@@ -250,30 +243,6 @@ export default function RegisterContent({
                 </SelectContent>
               </Select>
             </div>
-            {!clienteId && (
-
-            <div className="space-y-2 w-full">
-              <Label htmlFor="tipo" className="text-sm sm:text-base">
-                Cliente proprietário
-              </Label>
-              <div className="flex flex-row items-center gap-1">
-                <Input
-                  className="w-full"
-                  value={novoVeiculo?.cliente?.nomerazaosocial || ""}
-                  disabled={true}
-                />
-                <div
-                  onClick={() => setOpenCustomer(true)}
-                  className="flex items-center hover:cursor-pointer p-1.5 rounded-full bg-muted"
-                >
-                  <Search className="w-4 h-4 text-primary" />
-                </div>
-              </div>
-            </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="placa" className="text-sm sm:text-base">
                 Placa *
@@ -294,191 +263,209 @@ export default function RegisterContent({
                 autoCapitalize="characters"
               />
             </div>
+            {!clienteId && (
+
+              <div className="space-y-2 w-full">
+                <Label htmlFor="tipo" className="text-sm sm:text-base">
+                  Cliente proprietário
+                </Label>
+                <div className="flex flex-row items-center gap-1">
+                  <Input
+                    className="w-full"
+                    value={novoVeiculo?.cliente?.nomerazaosocial || ""}
+                    disabled={true}
+                  />
+                  <div
+                    onClick={() => setOpenCustomer(true)}
+                    className="flex items-center hover:cursor-pointer p-1.5 rounded-full bg-muted"
+                  >
+                    <Search className="w-4 h-4 text-primary" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+
 
             <div className="space-y-2">
               <Label htmlFor="marca" className="text-sm sm:text-base">
                 Marca *
               </Label>
 
-              <Popover open={open2} onOpenChange={setOpen2}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="marca"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open2}
-                    className="w-[200px] justify-between text-xs"
-                    disabled={loadingMarcas || !novoVeiculo.tipo}
+              {errorMarcas ? (
+                <Input
+                  id="marca"
+                  value={novoVeiculo.marca || ""}
+                  onChange={(e) => handleInputChange("marca", e.target.value.toUpperCase())}
+                  placeholder="Ex.: CHEVROLET"
+                />
+              ) : (
+                <Popover open={open2} onOpenChange={setOpen2}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="marca"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open2}
+                      className="w-[200px] justify-between text-xs"
+                      disabled={loadingMarcas || !novoVeiculo.tipo}
+                    >
+                      {loadingMarcas
+                        ? "Carregando..."
+                        : novoVeiculo.marca
+                          ? novoVeiculo.marca
+                          : "Selecione..."}
+                      <ChevronsUpDown className="opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                    className="w-[200px] p-0"
+                    onWheelCapture={(e) => e.stopPropagation()}
                   >
-                    {loadingMarcas
-                      ? "Carregando..."
-                      : novoVeiculo.marca
-                      ? novoVeiculo.marca
-                      : "Selecione..."}
-                    <ChevronsUpDown className="opacity-50" />
-                  </Button>
-                </PopoverTrigger>
+                    <Command>
+                      <CommandInput
+                        placeholder="Buscar marca..."
+                        className="h-9 text-base"
+                      />
+                      <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
+                        <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
 
-                <PopoverContent
-                onWheel={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="w-[200px] p-0"
-                  onWheelCapture={(e) => e.stopPropagation()}
-                >
-                  <Command>
-                    <CommandInput
-                      placeholder="Buscar marca..."
-                      className="h-9 text-base"
-                    />
-                    <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                      <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
-
-                      <CommandGroup>
-                        {marcas.map((m) => (
-                          <CommandItem
-                            className="hover:cursor-pointer"
-                            key={m.valor}
-                            value={m.nome} // ajuda a busca pelo nome
-                            onSelect={() => {
-                              setNovoVeiculo({
-                                ...novoVeiculo,
-                                marcaId: m.valor,
-                                marca: m.nome.toUpperCase(),
-                                modelo: "",
-                              });
-                              setOpen2(false);
-                            }}
-                          >
-                            {m.nome.toUpperCase()}
-                            <Check
-                              className={cn(
-                                "ml-auto",
-                                novoVeiculo.marcaId === m.valor
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="modelo" className="text-sm sm:text-base">
-                Modelo *
-              </Label>
-              <Popover open={open1} onOpenChange={setOpen1}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="modelo"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open1}
-                    className="w-[400px] justify-between text-xs"
-                    disabled={
-                      loadingModelos ||
-                      !novoVeiculo.tipo ||
-                      !novoVeiculo.marcaId
-                    }
-                  >
-                    {loadingModelos
-                      ? "Carregando..."
-                      : novoVeiculo.modelo
-                      ? novoVeiculo.modelo
-                      : "Selecione..."}
-                    <ChevronsUpDown className="opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent
-                onWheel={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="w-[400px] p-0"
-                  onWheelCapture={(e) => e.stopPropagation()}
-                >
-                  <Command>
-                    <CommandInput
-                      placeholder="Buscar modelo..."
-                      className="h-9 text-base"
-                    />
-                    <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                      <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
-
-                      <CommandGroup>
-                        {modelos.map((m, i) => (
-                          <CommandItem
-                            className="hover:cursor-pointer text-xs"
-                            key={i}
-                            value={m.modelo} // ajuda a busca pelo nome
-                            onSelect={() => {
-                              setNovoVeiculo({
-                                ...novoVeiculo,
-                                modelo: m.modelo.toUpperCase(),
-                              });
-                              setOpen1(false);
-                            }}
-                          >
-                            {m.modelo.toUpperCase()}
-                            <Check
-                              className={cn(
-                                "ml-auto",
-                                novoVeiculo.modelo === m.modelo.toUpperCase()
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                        <CommandGroup>
+                          {marcas.map((m) => (
+                            <CommandItem
+                              className="hover:cursor-pointer"
+                              key={m.valor}
+                              value={m.nome} // ajuda a busca pelo nome
+                              onSelect={() => {
+                                setNovoVeiculo({
+                                  ...novoVeiculo,
+                                  marcaId: m.valor,
+                                  marca: m.nome.toUpperCase(),
+                                  modelo: "",
+                                });
+                                setOpen2(false);
+                              }}
+                            >
+                              {m.nome.toUpperCase()}
+                              <Check
+                                className={cn(
+                                  "ml-auto",
+                                  novoVeiculo.marcaId === m.valor
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="cor" className="text-sm sm:text-base">
-                Cor
+              <Label htmlFor="modelo" className="text-sm sm:text-base">
+                Modelo *
               </Label>
-              <Select
-                value={novoVeiculo.cor || ""}
-                onValueChange={(value) =>
-                  setNovoVeiculo({ ...novoVeiculo, cor: value })
-                }
-              >
-                <SelectTrigger className="w-full" disabled={loadingCores}>
-                  <SelectValue
-                    placeholder={
-                      loadingCores ? "Carregando..." : "Selecione a cor"
-                    }
-                  ></SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {cores.map((c) => (
-                    <SelectItem
-                      className="hover:cursor-pointer"
-                      key={c.id}
-                      value={c.nome}
+              {errorModelos || errorMarcas ? (
+                <Input
+                  id="modelo"
+                  value={novoVeiculo.modelo || ""}
+                  onChange={(e) => handleInputChange("modelo", e.target.value.toUpperCase())}
+                  placeholder="Ex.: ONIX 1.0"
+                />
+              ) : (
+                <Popover open={open1} onOpenChange={setOpen1}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="modelo"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open1}
+                      className="w-[400px] justify-between text-xs"
+                      disabled={
+                        loadingModelos ||
+                        !novoVeiculo.tipo ||
+                        !novoVeiculo.marcaId
+                      }
                     >
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* <Input
-                id="cor"
-                value={novoVeiculo.cor || ""}
-                onChange={(e) => handleInputChange("cor", e.target.value)}
-                placeholder="Ex.: Prata"
-              /> */}
+                      {loadingModelos
+                        ? "Carregando..."
+                        : novoVeiculo.modelo
+                          ? novoVeiculo.modelo
+                          : "Selecione..."}
+                      <ChevronsUpDown className="opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                    className="w-[400px] p-0"
+                    onWheelCapture={(e) => e.stopPropagation()}
+                  >
+                    <Command>
+                      <CommandInput
+                        placeholder="Buscar modelo..."
+                        className="h-9 text-base"
+                      />
+                      <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
+                        <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
+
+                        <CommandGroup>
+                          {modelos.map((m, i) => (
+                            <CommandItem
+                              className="hover:cursor-pointer text-xs"
+                              key={i}
+                              value={m.modelo} // ajuda a busca pelo nome
+                              onSelect={() => {
+                                setNovoVeiculo({
+                                  ...novoVeiculo,
+                                  modelo: m.modelo.toUpperCase(),
+                                });
+                                setOpen1(false);
+                              }}
+                            >
+                              {m.modelo.toUpperCase()}
+                              <Check
+                                className={cn(
+                                  "ml-auto",
+                                  novoVeiculo.modelo === m.modelo.toUpperCase()
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
 
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="versao" className="text-sm sm:text-base">
+                Versão
+              </Label>
+              <Input
+                className="w-full"
+                id="versao"
+                value={novoVeiculo.versao || ""}
+                onChange={(e) => handleInputChange("versao", e.target.value.toUpperCase())}
+                placeholder="Ex.: LTZ"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="ano" className="text-sm sm:text-base">
                 Ano
@@ -486,27 +473,111 @@ export default function RegisterContent({
               <Input
                 id="ano"
                 inputMode="numeric"
-                className="w-30"
+                className="w-full"
                 maxLength={4}
                 value={novoVeiculo.ano || ""}
                 onChange={(e) => handleInputChange("ano", e.target.value)}
                 placeholder="Ex.: 2019"
               />
             </div>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="ano_modelo" className="text-sm sm:text-base">
+                Ano Modelo
+              </Label>
+              <Input
+                id="ano_modelo"
+                inputMode="numeric"
+                className="w-full"
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                maxLength={4}
+                value={novoVeiculo.ano_modelo || ""}
+                onChange={(e) => handleInputChange("ano_modelo", e.target.value)}
+                placeholder="Ex.: 2020"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="kmatual" className="text-sm sm:text-base">
                 KM atual
               </Label>
               <Input
-                className="w-30"
+                className="w-full"
                 id="kmatual"
                 inputMode="numeric"
                 value={novoVeiculo.kmatual || ""}
                 onChange={(e) => handleInputChange("kmatual", e.target.value)}
                 placeholder="Ex.: 85000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="chassi" className="text-sm sm:text-base">
+                Chassi
+              </Label>
+              <Input
+                className="w-full"
+                id="chassi"
+                value={novoVeiculo.chassi || ""}
+                onChange={(e) => handleInputChange("chassi", e.target.value.toUpperCase())}
+                placeholder="Ex.: 9BW..."
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+
+            <div className="space-y-2">
+              <Label htmlFor="combustivel" className="text-sm sm:text-base">
+                Combustível
+              </Label>
+              <Select
+                value={novoVeiculo.combustivel || ""}
+                onValueChange={(value) => handleInputChange("combustivel", value)}
+              >
+                <SelectTrigger className="w-full" id="combustivel">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FLEX">FLEX</SelectItem>
+                  <SelectItem value="GASOLINA">GASOLINA</SelectItem>
+                  <SelectItem value="ETANOL">ETANOL</SelectItem>
+                  <SelectItem value="DIESEL">DIESEL</SelectItem>
+                  <SelectItem value="GNV">GNV</SelectItem>
+                  <SelectItem value="ELETRICO">ELÉTRICO</SelectItem>
+                  <SelectItem value="HIBRIDO">HÍBRIDO</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transmissao" className="text-sm sm:text-base">
+                Transmissão
+              </Label>
+              <Select
+                value={novoVeiculo.transmissao || ""}
+                onValueChange={(value) => handleInputChange("transmissao", value)}
+              >
+                <SelectTrigger className="w-full" id="transmissao">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MANUAL">MANUAL</SelectItem>
+                  <SelectItem value="AUTOMATICA">AUTOMÁTICA</SelectItem>
+                  <SelectItem value="AUTOMATIZADA">AUTOMATIZADA</SelectItem>
+                  <SelectItem value="CVT">CVT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fipe" className="text-sm sm:text-base">
+                FIPE (R$)
+              </Label>
+              <Input
+                className="w-full"
+                id="fipe"
+                inputMode="numeric"
+                value={novoVeiculo.fipe || ""}
+                onChange={(e) => handleInputChange("fipe", e.target.value)}
+                placeholder="Ex.: 50000"
               />
             </div>
           </div>

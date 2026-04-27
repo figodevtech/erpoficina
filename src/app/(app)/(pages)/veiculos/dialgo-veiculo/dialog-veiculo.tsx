@@ -76,7 +76,7 @@ export function VeiculoDialog({
           setSelectedVeiculo(undefined);
           setNovoVeiculo({
             tipo: Veiculo_tipos.CARROS,
-            
+            ...(clienteId ? { clienteid: clienteId } : {})
           });
         }
 
