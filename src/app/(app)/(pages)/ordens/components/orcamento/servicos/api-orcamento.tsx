@@ -85,6 +85,7 @@ export async function carregarItensDaOSAPI(osId: number) {
   const servicos: ItemServico[] = (j?.servicos ?? []).map((s: any) => ({
     servicoid: Number(s.servicoid),
     descricao: String(s.descricao ?? ""),
+    descricaoServico: s.descricaoServico ?? null,
     quantidade: toNum(s.quantidade ?? 1),
     precounitario: toNum(s.precounitario ?? 0),
     subtotal: toNum(s.subtotal ?? toNum(s.quantidade ?? 1) * toNum(s.precounitario ?? 0)),
@@ -112,6 +113,7 @@ export async function salvarOrcamentoAPI(
     })),
     servicos: itensServico.map((s) => ({
       servicoid: s.servicoid,
+      descricao: s.descricaoServico ?? null,
       quantidade: s.quantidade,
       precounitario: s.precounitario,
       subtotal: s.subtotal,

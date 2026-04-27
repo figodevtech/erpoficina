@@ -49,7 +49,7 @@ export default function CadastroProduto({
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
 
   const tabTheme =
-    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+    " flex-1 justify-center h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm";
 
   const handleChange = (field: keyof Produto, value: any) => {
     setNewProduct({ ...newProduct, [field]: value });
@@ -150,7 +150,12 @@ export default function CadastroProduto({
   return (
     <ProductDialogLayout
       isDesktop={isDesktop}
-      title="Cadastro de Produtos"
+      title={
+        <>
+          Produto
+          <span className="ml-1 text-xs font-light text-muted-foreground sm:text-sm">| Novo</span>
+        </>
+      }
       description="Preencha dados para registrar um novo produto"
       defaultTab="Geral"
       submitLabel2="Salvar e Continuar"

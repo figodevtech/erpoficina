@@ -100,7 +100,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct, isDesktop
   }, [productId]);
 
   const tabTheme =
-    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+    " flex-1 justify-center h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm";
 
   const tabs = (
     <>
@@ -134,14 +134,16 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct, isDesktop
   return (
     <ProductDialogLayout
       title={
-        selectedProduct
-          ? `Produto #${(selectedProduct as any).id} - ${(selectedProduct as any).titulo}`
-          : `Produto #${productId}`
+        <>
+          {selectedProduct ? `Produto #${(selectedProduct as any).id}` : `Produto #${productId}`}
+          <span className="ml-1 text-xs font-light text-muted-foreground sm:text-sm">| Edição</span>
+        </>
       }
       description="Preencha dados para editar um produto"
       isDesktop={isDesktop}
       defaultTab="Geral"
-            currentTab={currentTab}
+      currentTab={currentTab}
+      loading={isLoading}
 
       submitLabel="Salvar"
       submitIcon={<Upload className="h-4 w-4" />}

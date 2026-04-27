@@ -25,6 +25,7 @@ export type ItemProduto = {
 export type ItemServico = {
   servicoid: number;
   descricao: string;
+  descricaoServico?: string | null;
   quantidade: number;
   precounitario: number;
   subtotal: number;

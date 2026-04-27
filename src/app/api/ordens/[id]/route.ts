@@ -333,6 +333,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         `
           ordemservicoid,
           servicoid,
+          descricao,
           quantidade,
           precounitario,
           subtotal,
@@ -377,6 +378,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     const itensServico = (serv_res.data ?? []).map((r: any) => ({
       ordemservicoid: osId,
       servicoid: Number(r.servicoid),
+      descricaoServico: r.descricao ?? null,
       quantidade: toNum(r.quantidade),
       precounitario: toNum(r.precounitario),
       subtotal: toNum(r.subtotal),

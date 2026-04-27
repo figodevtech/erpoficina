@@ -33,6 +33,7 @@ export type OrdemEditFormProps = {
   defaultValues: { id: number } | null;
   exposeSubmit?: (fn: () => void) => void;
   onSavingChange?: (saving: boolean) => void;
+  onInitialLoadingChange?: (loading: boolean) => void;
   onClose?: () => void;
 };
 
@@ -51,7 +52,13 @@ function resolvePecaLacre(src: any): string {
   return src?.lacre ?? src?.peca?.lacre ?? "";
 }
 
-export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onClose }: OrdemEditFormProps) {
+export function OrdemEditForm({
+  defaultValues,
+  exposeSubmit,
+  onSavingChange,
+  onInitialLoadingChange,
+  onClose,
+}: OrdemEditFormProps) {
   const osId = defaultValues?.id ?? null;
 
   const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
@@ -224,6 +231,11 @@ export function OrdemEditForm({ defaultValues, exposeSubmit, onSavingChange, onC
     onSavingChange?.(saving);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saving]);
+
+  useEffect(() => {
+    onInitialLoadingChange?.(initialLoading);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoading]);
 
   const veiculoOptions = useMemo(
     () =>

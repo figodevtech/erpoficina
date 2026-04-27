@@ -1,9 +1,8 @@
-// src/app/(app)/(pages)/ordens/components/orcamento/orcamento-dialog.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Loader2, Link as LinkIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DialogShell } from "../dialogs/dialog-shell";
 import { OrcamentoForm } from "./orcamento-form";
 import type { OrcamentoFormHandle } from "./tipos";
@@ -34,18 +33,19 @@ export function OrcamentoDialog({
 
   const [salvando, setSalvando] = useState(false);
   const [gerandoLink, setGerandoLink] = useState(false);
-
-  // NOVO: loading inicial dos dados do orçamento (itens da OS)
   const [carregandoDados, setCarregandoDados] = useState(false);
 
   const numero = useMemo(
     () => osSelecionada?.numero ?? (osSelecionada?.id != null ? String(osSelecionada.id) : "—"),
-    [osSelecionada]
+    [osSelecionada],
   );
 
   const clienteNome = useMemo(
-    () => (typeof osSelecionada?.cliente === "string" ? osSelecionada.cliente : osSelecionada?.cliente?.nome ?? ""),
-    [osSelecionada]
+    () =>
+      typeof osSelecionada?.cliente === "string"
+        ? osSelecionada.cliente
+        : osSelecionada?.cliente?.nome ?? "",
+    [osSelecionada],
   );
 
   const veiculoStr = useMemo(() => {
@@ -65,13 +65,11 @@ export function OrcamentoDialog({
       cliente: clienteNome || undefined,
       veiculo: veiculoStr || undefined,
     }),
-    [osSelecionada, numero, clienteNome, veiculoStr]
+    [osSelecionada, numero, clienteNome, veiculoStr],
   );
 
-  // Ao abrir/trocar OS, assume "carregando" até o form avisar que terminou
   useEffect(() => {
-    if (!open) return;
-    if (!ordemServico.id) return;
+    if (!open || !ordemServico.id) return;
     setCarregandoDados(true);
   }, [open, ordemServico.id]);
 
@@ -82,24 +80,22 @@ export function OrcamentoDialog({
     setSalvando(true);
     try {
       if (onSalvarOrcamento) {
-        await onSalvarOrcamento(); // importante: se falhar, deve dar throw para NÃO fechar
+        await onSalvarOrcamento();
       } else {
-        await formRef.current?.salvarOrcamento(); // com a mudança abaixo, dá throw em erro
+        await formRef.current?.salvarOrcamento();
       }
 
-      onOpenChange(false); // fecha ao salvar com sucesso
+      onOpenChange(false);
     } finally {
       setSalvando(false);
     }
   }
 
   async function handleGerarLink() {
-    if (!onGerarLinkAprovacao) return;
-    if (busy) return;
+    if (!onGerarLinkAprovacao || busy) return;
 
     setGerandoLink(true);
     try {
-      // salva antes de gerar link
       if (onSalvarOrcamento) {
         await onSalvarOrcamento();
       } else {
@@ -107,8 +103,6 @@ export function OrcamentoDialog({
       }
 
       await onGerarLinkAprovacao();
-      // opcional: pode fechar aqui também, se quiser:
-      // onOpenChange(false);
     } finally {
       setGerandoLink(false);
     }
@@ -118,17 +112,19 @@ export function OrcamentoDialog({
     <DialogShell
       open={open}
       onOpenChange={(v) => {
-        if (busy) return; // impede fechar enquanto carrega/salva/gera link
+        if (busy) return;
         onOpenChange(v);
       }}
-      title={`Orçamento • OS ${numero}`}
+      title="Orçamento"
+      titleSuffix={`OS #${numero}`}
       description={[clienteNome, veiculoStr].filter(Boolean).join(" • ")}
+      loading={carregandoDados}
       footer={
-        <div className="w-full flex flex-col sm:flex-row gap-3 items-end sm:items-center justify-between">
+        <div className="flex w-full flex-col items-end justify-between gap-3 sm:flex-row sm:items-center">
           <div className="text-right sm:text-left">
-            <div className="text-xs sm:text-sm text-muted-foreground">Total Geral</div>
-            <div className="text-xl sm:text-2xl font-bold">{money(totalGeral)}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
+            <div className="text-xs text-muted-foreground sm:text-sm">Total Geral</div>
+            <div className="text-xl font-bold sm:text-2xl">{money(totalGeral)}</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
               {money(totalProdutos)} em produtos • {money(totalServicos)} em serviços
             </div>
           </div>
@@ -138,39 +134,39 @@ export function OrcamentoDialog({
               {salvando ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando…
+                  Salvando...
                 </>
               ) : (
                 "Salvar orçamento"
               )}
             </Button>
 
-            {onGerarLinkAprovacao && (
+            {onGerarLinkAprovacao ? (
               <Button onClick={handleGerarLink} disabled={busy}>
                 {gerandoLink ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Gerando link…
+                    Gerando link...
                   </>
                 ) : (
                   <>
                     <LinkIcon className="mr-2 h-4 w-4" />
-                    Salvar & gerar link
+                    Salvar e gerar link
                   </>
                 )}
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
       }
     >
       <div className="relative min-h-[360px]">
-        {(carregandoDados) && (
-          <div className="flex min-h-[360px] flex-col items-center justify-center">
-            <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin" />
-            <span className="text-primary">Carregando</span>
+        {carregandoDados ? (
+          <div className="flex min-h-[360px] flex-col items-center justify-center gap-3">
+            <div className="size-8 animate-spin rounded-full border-t-2 border-primary" />
+            <span className="text-sm font-medium text-primary">Carregando</span>
           </div>
-        )}
+        ) : null}
 
         <div className={carregandoDados ? "hidden" : undefined}>
           <OrcamentoForm

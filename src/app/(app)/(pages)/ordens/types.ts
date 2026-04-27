@@ -37,7 +37,7 @@ export type Peca = {
   id: number;
   titulo: string;
   descricao: string;
-
+  lacre?: string | null;
 }
 
 export type Ordem = {

@@ -257,19 +257,19 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
                 <p className="text-sm">Nenhum anexo vinculado.</p>
               </div>
             ) : (
-              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {anexos.map((anexo) => (
                   <div key={anexo.id} className="overflow-hidden rounded-lg border bg-card">
                     {isImageAnexo(anexo) ? (
                       <a href={anexo.url} target="_blank" rel="noreferrer" className="block">
-                        <img src={anexo.url} alt={anexo.nome} className="h-36 w-full object-cover" />
+                        <img src={anexo.url} alt={anexo.nome} className="h-28 w-full object-cover" />
                       </a>
                     ) : (
-                      <div className="flex h-36 items-center justify-center bg-muted/40">
-                        <FileText className="h-10 w-10 text-muted-foreground/50" />
+                      <div className="flex h-28 items-center justify-center bg-muted/40">
+                        <FileText className="h-8 w-8 text-muted-foreground/50" />
                       </div>
                     )}
-                    <div className="space-y-2 p-4">
+                    <div className="space-y-2 p-3">
                       <Badge variant="secondary" className="w-fit">
                         {getVendaAnexoCategoriaLabel(anexo.categoria)}
                       </Badge>

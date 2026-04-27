@@ -15,9 +15,10 @@ type Props = {
 
 export function TabEstoque({ mode, produto, onChange }: Props) {
   return (
-    <TabsContent value="Estoque" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-10 space-y-2">
-      <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <TabsContent value="Estoque" className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 md:px-6 md:py-6">
+      <div className="space-y-4">
+        <div className="rounded-lg border bg-card p-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="estoque">{mode === "edit" ? "Estoque (Qtd) *" : "Estoque Inicial (Qtd) *"}</Label>
             <Input
@@ -42,11 +43,12 @@ export function TabEstoque({ mode, produto, onChange }: Props) {
               maxLength={9}
             />
           </div>
+          </div>
         </div>
 
         <Separator />
 
-        <div className="text-xs text-muted-foreground">
+        <div className="rounded-lg border bg-card p-4 text-xs text-muted-foreground">
           <span>Regra de estoque:</span>
           <ul className="mt-2 list-disc list-inside">
             <li>

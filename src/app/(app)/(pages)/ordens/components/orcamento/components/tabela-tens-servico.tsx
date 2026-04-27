@@ -1,13 +1,14 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
 import { ItemServico } from "../tipos";
-import { CampoQuantidade } from "./campo-quantidade";
 import { CampoPreco } from "./campo-preco";
+import { CampoQuantidade } from "./campo-quantidade";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -29,7 +30,7 @@ export function TabelaItensServico({
         </Badge>
       </div>
 
-      <div className="rounded-md border overflow-hidden">
+      <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -51,7 +52,21 @@ export function TabelaItensServico({
             ) : (
               itens.map((it, i) => (
                 <TableRow key={`${it.servicoid}-${i}`}>
-                  <TableCell className="pr-4">{it.descricao}</TableCell>
+                  <TableCell className="pr-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="min-w-0 flex-1 font-medium">{it.descricao}</p>
+                      <Input
+                        value={it.descricaoServico ?? ""}
+                        onChange={(e) =>
+                          onAtualizar(i, {
+                            descricaoServico: e.target.value.trim() ? e.target.value : null,
+                          })
+                        }
+                        placeholder="Descrição do serviço (opcional)"
+                        className="h-7 w-full text-xs sm:w-[230px]"
+                      />
+                    </div>
+                  </TableCell>
 
                   <TableCell className="text-center">
                     <CampoQuantidade

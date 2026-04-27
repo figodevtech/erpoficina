@@ -55,10 +55,11 @@ export function TabGeral({
   return (
     <TabsContent
       value="Geral"
-      className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-10  space-y-2"
+      className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 md:px-6 md:py-6"
     >
-      <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-8 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-4">
+      <div className="space-y-4">
+        <div className="rounded-lg border bg-card p-4">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <div className="flex flex-nowrap space-x-2">
             <Label htmlFor="status_estoque">Status do Estoque:</Label>
             {ESTOQUE_STATUS_BADGES.filter(
@@ -127,8 +128,10 @@ export function TabGeral({
               </SelectContent>
             </Select>
           </div>
+          </div>
         </div>
 
+        <div className="rounded-lg border bg-card p-4 space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <Label htmlFor="titulo">Título *</Label>
@@ -169,7 +172,7 @@ export function TabGeral({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <Label htmlFor="fabricante">Fabricante</Label>
@@ -236,7 +239,7 @@ export function TabGeral({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="precovenda">Valor de Venda (Unitário)</Label>
             <ValueInput
@@ -273,6 +276,7 @@ export function TabGeral({
             onChange={(tags) => onChange("referencia", tags.join(" "))}
             placeholder="Ex: P-001 P-002"
           />
+        </div>
         </div>
 
         {showDates ? (
