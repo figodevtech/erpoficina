@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -52,6 +52,11 @@ import {
 import { Button } from "@/components/ui/button"
 import CustomerSelect from "@/app/(app)/components/customerSelect"
 import type { Customer } from "@/app/(app)/(pages)/clientes/types"
+import {
+  VENDA_ANEXO_CATEGORIAS,
+  getVendaAnexoCategoriaLabel,
+  type VendaAnexoCategoria,
+} from "@/lib/venda-anexo-categorias"
 
 interface Produto {
   id: number
@@ -108,8 +113,10 @@ type VendaAnexo = {
   url: string
   path: string
   descricao?: string | null
+  categoria: VendaAnexoCategoria
   createdat?: string | null
 }
+const MAX_ANEXOS_POR_VENDA = 5
 
 interface Venda {
   id: number
@@ -207,6 +214,8 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
   const [loadingAnexos, setLoadingAnexos] = useState(false)
   const [uploadingAnexo, setUploadingAnexo] = useState(false)
   const [deletingAnexoId, setDeletingAnexoId] = useState<number | null>(null)
+  const [anexoCategoria, setAnexoCategoria] =
+    useState<VendaAnexoCategoria>("COMPROVANTE_PAGAMENTO")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const isDesktop = useMediaQuery("(min-width: 768px)")
 
@@ -300,6 +309,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
             url: String(item.url ?? ""),
             path: String(item.path ?? ""),
             descricao: item.descricao ?? null,
+            categoria: (item.categoria ?? "OUTROS") as VendaAnexoCategoria,
             createdat: item.createdat ?? null,
           }))
         : []
@@ -378,17 +388,24 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
         : prev,
     )
   }
-
   const handleAnexoChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ""
     if (!file || !vendaId) return
+
+    if (anexos.length >= MAX_ANEXOS_POR_VENDA) {
+      toast.error("Limite de anexos atingido", {
+        description: `Esta venda aceita no máximo ${MAX_ANEXOS_POR_VENDA} anexos.`,
+      })
+      return
+    }
 
     setUploadingAnexo(true)
 
     try {
       const formData = new FormData()
       formData.append("file", file)
+      formData.append("categoria", anexoCategoria)
 
       const response = await fetch(`/api/venda/${vendaId}/anexos`, {
         method: "POST",
@@ -400,7 +417,11 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
         throw new Error(data?.error || "Erro ao anexar arquivo")
       }
 
-      toast.success("Anexo enviado", { description: "Comprovante adicionado à venda." })
+      toast.success("Anexo enviado", {
+        description: file.type.startsWith("image/")
+          ? "Imagem otimizada e anexo adicionado à venda."
+          : "Anexo adicionado à venda.",
+      })
       await fetchAnexos()
     } catch (err) {
       console.error("Erro ao anexar arquivo:", err)
@@ -459,7 +480,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
     }).format(qty)
 
   const formatFileSize = (value?: number | null) => {
-    if (!value) return "Tamanho não informado"
+    if (!value) return "Tamanho nÃ£o informado"
     if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
     return `${(value / (1024 * 1024)).toFixed(1)} MB`
   }
@@ -816,9 +837,6 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                             </h3>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="observacoes_fiscais">
-                              Observacoes livres para nota fiscal e impostos
-                            </Label>
                             <Textarea
                               id="observacoes_fiscais"
                               placeholder="Ex: Venda com beneficio fiscal, isencao de IPI, etc..."
@@ -837,34 +855,58 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                               <div className="flex items-center gap-2">
                                 <Paperclip className="h-4 w-4 text-muted-foreground" />
                                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Comprovantes de pagamento
+                                  Anexos da venda
                                 </h3>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Anexe imagem ou PDF relacionado a esta venda.
+                                Anexe imagem ou PDF relacionado a esta venda, com categoria definida. Imagens são otimizadas automaticamente.
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {anexos.length}/{MAX_ANEXOS_POR_VENDA} anexos utilizados.
                               </p>
                             </div>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              className="hidden"
-                              accept="image/*,application/pdf"
-                              onChange={handleAnexoChange}
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="gap-2"
-                              disabled={uploadingAnexo || loadingAnexos}
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              {uploadingAnexo ? (
-                                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
-                              ) : (
-                                <Upload className="h-4 w-4" />
-                              )}
-                              {uploadingAnexo ? "Enviando..." : "Adicionar anexo"}
-                            </Button>
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[280px]">
+                              <Select
+                                value={anexoCategoria}
+                                onValueChange={(value) => setAnexoCategoria(value as VendaAnexoCategoria)}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Categoria do anexo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {VENDA_ANEXO_CATEGORIAS.map((categoria) => (
+                                    <SelectItem key={categoria.value} value={categoria.value}>
+                                      {categoria.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                accept="image/*,application/pdf"
+                                onChange={handleAnexoChange}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="gap-2"
+                                disabled={uploadingAnexo || loadingAnexos || anexos.length >= MAX_ANEXOS_POR_VENDA}
+                                onClick={() => fileInputRef.current?.click()}
+                              >
+                                {uploadingAnexo ? (
+                                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
+                                ) : (
+                                  <Upload className="h-4 w-4" />
+                                )}
+                                {uploadingAnexo
+                                  ? "Enviando..."
+                                  : anexos.length >= MAX_ANEXOS_POR_VENDA
+                                    ? "Limite atingido"
+                                    : "Adicionar anexo"}
+                              </Button>
+                            </div>
                           </div>
 
                           {loadingAnexos ? (
@@ -875,27 +917,30 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                           ) : anexos.length === 0 ? (
                             <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center text-muted-foreground">
                               <Paperclip className="h-10 w-10 opacity-25" />
-                              <p className="text-sm">Nenhum comprovante anexado.</p>
+                              <p className="text-sm">Nenhum anexo vinculado.</p>
                             </div>
                           ) : (
-                            <div className="grid gap-3 md:grid-cols-2">
-                              {anexos.map((anexo) => (
-                                <div key={anexo.id} className="overflow-hidden rounded-lg border bg-card">
-                                  {isImageAnexo(anexo) ? (
-                                    <a href={anexo.url} target="_blank" rel="noreferrer" className="block">
-                                      <img
-                                        src={anexo.url}
-                                        alt={anexo.nome}
-                                        className="h-40 w-full object-cover"
-                                      />
-                                    </a>
-                                  ) : (
-                                    <div className="flex h-40 items-center justify-center bg-muted/40">
-                                      <FileText className="h-12 w-12 text-muted-foreground/50" />
-                                    </div>
-                                  )}
-                                  <div className="space-y-3 p-4">
+                              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                {anexos.map((anexo) => (
+                                  <div key={anexo.id} className="overflow-hidden rounded-lg border bg-card">
+                                    {isImageAnexo(anexo) ? (
+                                      <a href={anexo.url} target="_blank" rel="noreferrer" className="block">
+                                        <img
+                                          src={anexo.url}
+                                          alt={anexo.nome}
+                                          className="h-32 w-full object-cover"
+                                        />
+                                      </a>
+                                    ) : (
+                                      <div className="flex h-32 items-center justify-center bg-muted/40">
+                                        <FileText className="h-10 w-10 text-muted-foreground/50" />
+                                      </div>
+                                    )}
+                                    <div className="space-y-2 p-3">
                                     <div className="min-w-0 space-y-1">
+                                      <Badge variant="secondary" className="mb-1">
+                                        {getVendaAnexoCategoriaLabel(anexo.categoria)}
+                                      </Badge>
                                       <p className="truncate text-sm font-semibold" title={anexo.nome}>
                                         {anexo.nome}
                                       </p>

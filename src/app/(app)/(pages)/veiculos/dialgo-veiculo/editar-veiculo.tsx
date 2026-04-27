@@ -147,15 +147,19 @@ export default function EditContent({
   const handleGetMarcas = async (tipo: string) => {
     setLoadingMarcas(true);
     try {
-      const response = await axios.get<Marca[]>(
-        `https://brasilapi.com.br/api/fipe/marcas/v1/${String(
-          tipo
-        ).toLowerCase()}`
-      );
-      if (response.status === 200) setMarcas(response.data);
+      const response = await axios.get("/api/fipe/veiculos", {
+        params: { tipo: String(tipo).toLowerCase() },
+      });
+      if (response.status === 200) {
+        setMarcas(Array.isArray(response.data?.marcas) ? response.data.marcas : []);
+      }
     } catch (error) {
-      if (isAxiosError(error))
-        toast.error("Erro", { description: error.response?.data?.error });
+      if (isAxiosError(error)) {
+        toast.error("Erro ao carregar marcas", {
+          description: error.response?.data?.error || error.message,
+        });
+      }
+      setMarcas([]);
     } finally {
       setLoadingMarcas(false);
     }
@@ -164,15 +168,22 @@ export default function EditContent({
   const handleGetModelos = async (tipo: string, marcaId: number) => {
     setLoadingModelos(true);
     try {
-      const response = await axios.get<Modelo[]>(
-        `https://brasilapi.com.br/api/fipe/veiculos/v1/${String(
-          tipo
-        ).toLowerCase()}/${marcaId}`
-      );
-      if (response.status === 200) setModelos(response.data);
+      const response = await axios.get("/api/fipe/veiculos", {
+        params: {
+          tipo: String(tipo).toLowerCase(),
+          marcaId,
+        },
+      });
+      if (response.status === 200) {
+        setModelos(Array.isArray(response.data?.modelos) ? response.data.modelos : []);
+      }
     } catch (error) {
-      if (isAxiosError(error))
-        toast.error("Erro", { description: error.response?.data?.error });
+      if (isAxiosError(error)) {
+        toast.error("Erro ao carregar modelos", {
+          description: error.response?.data?.error || error.message,
+        });
+      }
+      setModelos([]);
     } finally {
       setLoadingModelos(false);
     }
@@ -645,6 +656,21 @@ export default function EditContent({
                       }
                       placeholder="Ex.: 85000"
                       disabled={disabledForm}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="chassi" className="text-sm sm:text-base">
+                      Chassi
+                    </Label>
+                    <Input
+                      id="chassi"
+                      value={selectedVeiculo?.chassi || ""}
+                      onChange={(e) =>
+                        handleInputChange("chassi", e.target.value.toUpperCase())
+                      }
+                      placeholder="Ex.: 9BWZZZ377VT004251"
+                      disabled={disabledForm}
+                      autoCapitalize="characters"
                     />
                   </div>
                 </div>

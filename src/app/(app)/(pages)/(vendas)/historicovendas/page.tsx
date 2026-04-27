@@ -10,6 +10,7 @@ import {
   VendaStatusMetricsData,
 } from "./types";
 import VendasDataTable from "./components/vendas-data-table";
+import { PaymentListFilters } from "../../(financeiro)/components/payments-filter-sheet";
 
 function formatMonthFromDate(date: Date): string {
   const year = date.getFullYear();
@@ -37,31 +38,43 @@ export default function HistoricoVendas() {
     totalPages: 0,
   });
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<PaymentListFilters>({
+    cliente: "",
+    notaNumero: "",
+  });
 
   const handleGetVendas = async (
     pageNumber?: number,
     limit?: number,
     searchText?: string,
-    statusValue?: vendaStatus | "TODOS"
+    statusValue?: vendaStatus | "TODOS",
+    listFilters?: PaymentListFilters,
   ) => {
     setIsLoading(true);
     try {
+      const activeFilters = listFilters ?? filters;
       const response = await axios.get("/api/venda", {
         params: {
           page: pageNumber || 1,
           limit: pagination.limit,
           search: searchText || undefined,
           status: statusValue || "TODOS",
+          cliente: activeFilters.cliente || "",
+          notaNumero: activeFilters.notaNumero || "",
+          dateFrom: activeFilters.dataInicio
+            ? activeFilters.dataInicio.toISOString().slice(0, 10)
+            : "",
+          dateTo: activeFilters.dataFim
+            ? activeFilters.dataFim.toISOString().slice(0, 10)
+            : "",
         },
       });
       if (response.status === 200) {
         const { data } = response;
         setVendas(data.data);
         setPagination(data.pagination);
-        console.log("Vendas carregadas:", data.data);
       }
     } catch (error) {
-      console.log("Erro ao buscar Vendas:", error);
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +113,8 @@ export default function HistoricoVendas() {
         statusCounts={data}
       />
       <VendasDataTable
+        filters={filters}
+        setFilters={setFilters}
         handleGetVendas={handleGetVendas}
         isLoading={isLoading}
         isOpen={isOpen}

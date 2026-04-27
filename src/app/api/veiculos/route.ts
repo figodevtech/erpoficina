@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("veiculo")
       .select(
-        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, cliente: cliente( nomerazaosocial, cpfcnpj, email, telefone )",
+        "id, clienteid, placa, placa_formatada, chassi, modelo, marca, ano, cor, kmatual, tipo, cliente: cliente( nomerazaosocial, cpfcnpj, email, telefone )",
         { count: "exact" }
       )
       .order("modelo", { ascending: true })
@@ -117,6 +117,7 @@ export async function POST(request: Request) {
     const clienteId = Number(clienteIdRaw);
 
     const placa = typeof v?.placa === "string" ? normalizarPlaca(v.placa) : "";
+    const chassi = v?.chassi === null || v?.chassi === undefined ? null : String(v.chassi).trim().toUpperCase();
     const modelo = typeof v?.modelo === "string" ? v.modelo.trim() : "";
     const marca = typeof v?.marca === "string" ? v.marca.trim() : "";
 
@@ -151,6 +152,7 @@ export async function POST(request: Request) {
     const payload: any = {
       clienteid: clienteId,
       placa,
+      chassi,
       modelo,
       marca,
       ano,
@@ -162,7 +164,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from("veiculo")
       .insert(payload)
-      .select("id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo")
+      .select("id, clienteid, placa, placa_formatada, chassi, modelo, marca, ano, cor, kmatual, tipo")
       .single();
 
     if (error) throw error;

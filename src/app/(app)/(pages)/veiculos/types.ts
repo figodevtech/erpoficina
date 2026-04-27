@@ -11,6 +11,7 @@ export interface Veiculo {
   clienteid?: number,
   cliente?: Customer,
   placa?: string,
+  chassi?: string,
   modelo?: string,
   marca?: string,
   marcaId?: number,

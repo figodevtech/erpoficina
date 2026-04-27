@@ -40,7 +40,7 @@ export async function GET(_request: Request, ctx: Ctx) {
     const { data, error } = await supabase
       .from("veiculo")
       .select(`
-        id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo,
+        id, clienteid, placa, placa_formatada, chassi, modelo, marca, ano, cor, kmatual, tipo,
         cliente:cliente (
           nomerazaosocial,
           cpfcnpj,
@@ -112,6 +112,11 @@ export async function PUT(request: Request, ctx: Ctx) {
         return respostaJSON({ error: "Campo 'modelo' inválido." }, 400);
 
       patch.modelo = modelo;
+    }
+
+    // chassi
+    if (v.chassi !== undefined) {
+      patch.chassi = v.chassi === null ? null : String(v.chassi).trim().toUpperCase();
     }
 
     // marca
@@ -187,7 +192,7 @@ export async function PUT(request: Request, ctx: Ctx) {
       .update(patch)
       .eq("id", id)
       .select(
-        "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo"
+        "id, clienteid, placa, placa_formatada, chassi, modelo, marca, ano, cor, kmatual, tipo"
       )
       .single();
 

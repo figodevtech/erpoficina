@@ -1,14 +1,20 @@
-export const runtime = "nodejs";
+﻿export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  VENDA_ANEXO_CATEGORIA_VALUES,
+  type VendaAnexoCategoria,
+} from "@/lib/venda-anexo-categorias";
 
 type Params = { id: string };
 
 const BUCKET = "venda_anexos";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_ANEXOS_POR_VENDA = 5;
+const VENDA_ANEXO_CATEGORIAS_SET = new Set(VENDA_ANEXO_CATEGORIA_VALUES);
 
 function sanitizeFileName(name: string) {
   return (name || "anexo")
@@ -29,6 +35,10 @@ function extFromFile(file: File) {
   if (type === "image/jpeg") return "jpg";
   if (type === "image/webp") return "webp";
   return "bin";
+}
+
+function isImageFile(file: File) {
+  return String(file.type || "").toLowerCase().startsWith("image/");
 }
 
 async function parseId(context: { params: Promise<Params> }) {
@@ -60,7 +70,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<Params> 
     const vendaId = await parseId(context);
     const { data, error } = await supabaseAdmin
       .from("vendaanexo")
-      .select("id, vendaid, nome, tipo, tamanho, url, path, descricao, createdat")
+      .select("id, vendaid, nome, tipo, tamanho, url, path, descricao, categoria, createdat")
       .eq("vendaid", vendaId)
       .order("createdat", { ascending: false });
 
@@ -68,7 +78,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<Params> 
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ items: data ?? [] }, { status: 200 });
+    return NextResponse.json({ items: data ?? [], maxAnexos: MAX_ANEXOS_POR_VENDA }, { status: 200 });
   } catch (error: any) {
     console.error("GET /api/venda/[id]/anexos", error);
     return NextResponse.json({ error: error?.message ?? "Erro ao listar anexos." }, { status: 500 });
@@ -87,12 +97,34 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
     if (venda.error) throw venda.error;
     if (!venda.data) return NextResponse.json({ error: "Venda não encontrada." }, { status: 404 });
 
+    const { count, error: countError } = await supabaseAdmin
+      .from("vendaanexo")
+      .select("id", { count: "exact", head: true })
+      .eq("vendaid", vendaId);
+
+    if (countError) throw countError;
+    if ((count ?? 0) >= MAX_ANEXOS_POR_VENDA) {
+      return NextResponse.json(
+        { error: `Limite de ${MAX_ANEXOS_POR_VENDA} anexos por venda atingido.` },
+        { status: 400 },
+      );
+    }
+
     const form = await req.formData();
     const file = form.get("file");
     const descricao = String(form.get("descricao") ?? "").trim() || null;
+    const categoriaRaw = String(form.get("categoria") ?? "OUTROS").trim().toUpperCase();
+    const categoria = VENDA_ANEXO_CATEGORIAS_SET.has(categoriaRaw as VendaAnexoCategoria)
+      ? (categoriaRaw as VendaAnexoCategoria)
+      : "OUTROS";
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: "Envie um arquivo em 'file'." }, { status: 400 });
+    }
+
+    const fileType = String(file.type || "").toLowerCase();
+    if (fileType !== "application/pdf" && !isImageFile(file)) {
+      return NextResponse.json({ error: "Tipo de arquivo inválido. Envie imagem ou PDF." }, { status: 400 });
     }
 
     if (typeof file.size === "number" && file.size > MAX_FILE_SIZE) {
@@ -100,21 +132,34 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
     }
 
     const originalName = sanitizeFileName(file.name);
-    const ext = extFromFile(file);
+    let ext = extFromFile(file);
+    let contentType = file.type || "application/octet-stream";
+    let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+
+    if (isImageFile(file)) {
+      const { default: sharp } = await import("sharp");
+      buffer = await sharp(buffer)
+        .rotate()
+        .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toBuffer();
+      ext = "webp";
+      contentType = "image/webp";
+    }
+
     const path = `venda/${vendaId}/anexos/${randomUUID()}.${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
 
     await ensureBucket();
 
     const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(path, buffer, {
-      contentType: file.type || "application/octet-stream",
+      contentType,
       upsert: false,
     });
 
     if (uploadError) {
       return NextResponse.json(
         { error: `Falha ao enviar anexo (bucket: ${BUCKET}): ${uploadError.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -129,13 +174,14 @@ export async function POST(req: NextRequest, context: { params: Promise<Params> 
       .insert({
         vendaid: vendaId,
         nome: originalName,
-        tipo: file.type || null,
-        tamanho: typeof file.size === "number" ? file.size : null,
+        tipo: contentType,
+        tamanho: buffer.length,
         url: publicUrl,
         path,
         descricao,
+        categoria,
       })
-      .select("id, vendaid, nome, tipo, tamanho, url, path, descricao, createdat")
+      .select("id, vendaid, nome, tipo, tamanho, url, path, descricao, categoria, createdat")
       .single();
 
     if (insertError) {

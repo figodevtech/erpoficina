@@ -1,34 +1,10 @@
 "use client";
 
-import type React from "react";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Check, ChevronsUpDown, Search, Upload } from "lucide-react";
-import {
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useEffect, useMemo, useState } from "react";
 import axios, { isAxiosError } from "axios";
-import { toast } from "sonner";
-import { Veiculo, Veiculo_tipos } from "../types";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { BadgePlus, CarFront, Check, ChevronsUpDown, Loader2, Search, Save } from "lucide-react";
+import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -37,27 +13,69 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
-import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { Veiculo, Veiculo_tipos } from "../types";
 
 function somenteAlphaNumMaiusculo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 function formatarPlacaParaExibicao(valorSemFormatacao: string) {
-  const v = somenteAlphaNumMaiusculo(valorSemFormatacao).slice(0, 7); // placa tem 7 chars
-  if (v.length <= 3) return v;
-  return `${v.slice(0, 3)}-${v.slice(3)}`;
+  const valor = somenteAlphaNumMaiusculo(valorSemFormatacao).slice(0, 7);
+  if (valor.length <= 3) return valor;
+  return `${valor.slice(0, 3)}-${valor.slice(3)}`;
 }
 
-interface Marca {
+function normalizarTextoBusca(valor: string) {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+type Marca = {
   nome: string;
   valor: number;
-}
-interface Modelo {
+};
+
+type Modelo = {
   modelo: string;
-}
+};
+
+type VeiculoPlacaLookup = {
+  placa: string;
+  marca: string | null;
+  modelo: string | null;
+  ano: number | null;
+  cor: string | null;
+  chassi: string | null;
+  tipo: Veiculo_tipos | null;
+};
 
 interface RegisterContentProps {
   novoVeiculo: Veiculo;
@@ -77,63 +95,143 @@ export default function RegisterContent({
   isOpen,
 }: RegisterContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLookingUpPlate, setIsLookingUpPlate] = useState(false);
   const [marcas, setMarcas] = useState<Marca[]>([]);
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [loadingMarcas, setLoadingMarcas] = useState(false);
   const [loadingModelos, setLoadingModelos] = useState(false);
-  const [open1, setOpen1] = useState(false);
-  const [open2, setOpen2] = useState(false);
-  const { cores, errorCores, loadingCores } = useVeiculosCores();
+  const [openModelo, setOpenModelo] = useState(false);
+  const [openMarca, setOpenMarca] = useState(false);
   const [openCustomer, setOpenCustomer] = useState(false);
+  const [marcaPendente, setMarcaPendente] = useState<string | null>(null);
+  const [modeloPendente, setModeloPendente] = useState<string | null>(null);
+  const { cores, loadingCores } = useVeiculosCores();
 
-  const handleInputChange = (field: keyof Veiculo, value: string) => {
-    setNovoVeiculo({ ...novoVeiculo, [field]: value });
+  const placaNormalizada = useMemo(
+    () => somenteAlphaNumMaiusculo(novoVeiculo.placa || "").slice(0, 7),
+    [novoVeiculo.placa]
+  );
+
+  const podeBuscarPlaca = placaNormalizada.length === 7;
+
+  const aplicarAtualizacao = (patch: Partial<Veiculo>) => {
+    setNovoVeiculo({
+      ...novoVeiculo,
+      ...patch,
+    });
   };
 
-  const handleGetMarcas = async () => {
-    if (!novoVeiculo.tipo) return;
+  const atualizarTipo = (tipo: Veiculo_tipos) => {
+    setMarcaPendente(null);
+    setModeloPendente(null);
+    setMarcas([]);
+    setModelos([]);
+    setOpenMarca(false);
+    setOpenModelo(false);
+    aplicarAtualizacao({
+      tipo,
+      marcaId: undefined,
+      marca: "",
+      modelo: "",
+    });
+  };
 
+  const handleGetMarcas = async (tipo: Veiculo_tipos) => {
     setLoadingMarcas(true);
     try {
-      const response = await axios.get(
-        `https://brasilapi.com.br/api/fipe/marcas/v1/${String(
-          novoVeiculo.tipo
-        ).toLowerCase()}`
-      );
-      if (response.status === 200) {
-        setMarcas(response.data);
-      }
+      const response = await axios.get("/api/fipe/veiculos", {
+        params: { tipo: String(tipo).toLowerCase() },
+      });
+      setMarcas(Array.isArray(response.data?.marcas) ? response.data.marcas : []);
     } catch (error) {
+      setMarcas([]);
       if (isAxiosError(error)) {
-        toast("Erro", { description: error.response?.data?.error });
+        toast.error("Erro ao carregar marcas", {
+          description: error.response?.data?.error || error.message,
+        });
       }
-      console.log(error);
     } finally {
       setLoadingMarcas(false);
     }
   };
 
-  const handleGetModelos = async () => {
-    if (!novoVeiculo.marcaId || !novoVeiculo.tipo) return;
-
+  const handleGetModelos = async (tipo: Veiculo_tipos, marcaId: number) => {
     setLoadingModelos(true);
     try {
-      const response = await axios.get(
-        `https://brasilapi.com.br/api/fipe/veiculos/v1/${novoVeiculo.tipo.toLowerCase()}/${
-          novoVeiculo.marcaId
-        }`
-      );
-      if (response.status === 200) {
-        console.log(response.data);
-        setModelos(response.data);
-      }
+      const response = await axios.get("/api/fipe/veiculos", {
+        params: {
+          tipo: String(tipo).toLowerCase(),
+          marcaId,
+        },
+      });
+      setModelos(Array.isArray(response.data?.modelos) ? response.data.modelos : []);
     } catch (error) {
+      setModelos([]);
       if (isAxiosError(error)) {
-        toast("Erro", { description: error.response?.data?.error });
+        toast.error("Erro ao carregar modelos", {
+          description: error.response?.data?.error || error.message,
+        });
       }
-      console.log(error);
     } finally {
       setLoadingModelos(false);
+    }
+  };
+
+  const handleBuscarPorPlaca = async () => {
+    if (!podeBuscarPlaca) {
+      toast.error("Placa inválida", {
+        description: "Informe uma placa com 7 caracteres para consultar.",
+      });
+      return;
+    }
+
+    setIsLookingUpPlate(true);
+    try {
+      const response = await axios.get<{ data: VeiculoPlacaLookup }>("/api/veiculos/placa", {
+        params: { placa: placaNormalizada },
+      });
+
+      const lookup = response.data?.data;
+      if (!lookup) {
+        throw new Error("Nenhum dado retornado para a placa informada.");
+      }
+
+      const corNormalizada = lookup.cor
+        ? cores.find(
+            (cor) =>
+              normalizarTextoBusca(cor.nome) === normalizarTextoBusca(lookup.cor || "")
+          )?.nome ?? lookup.cor
+        : novoVeiculo.cor;
+
+      setMarcaPendente(lookup.marca ? normalizarTextoBusca(lookup.marca) : null);
+      setModeloPendente(lookup.modelo ? normalizarTextoBusca(lookup.modelo) : null);
+
+      aplicarAtualizacao({
+        placa: lookup.placa || placaNormalizada,
+        tipo: lookup.tipo ?? novoVeiculo.tipo,
+        marcaId: undefined,
+        marca: lookup.marca?.toUpperCase() || novoVeiculo.marca || "",
+        modelo: lookup.modelo?.toUpperCase() || novoVeiculo.modelo || "",
+        ano: lookup.ano ?? novoVeiculo.ano,
+        cor: corNormalizada || "",
+        chassi: lookup.chassi?.toUpperCase() || novoVeiculo.chassi || "",
+      });
+
+      toast.success("Dados preenchidos", {
+        description: "As informações do veículo foram carregadas a partir da placa.",
+      });
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Não foi possível consultar a placa", {
+          description: error.response?.data?.error || error.message,
+        });
+      } else if (error instanceof Error) {
+        toast.error("Não foi possível consultar a placa", {
+          description: error.message,
+        });
+      }
+    } finally {
+      setIsLookingUpPlate(false);
     }
   };
 
@@ -145,24 +243,20 @@ export default function RegisterContent({
       });
 
       if (response.status === 201) {
-        toast.success("Sucesso!", {
+        toast.success("Sucesso", {
           description: "Veículo cadastrado.",
           duration: 2000,
         });
-        console.log(response);
-        if (setSelectedVeiculoId) {
-          setSelectedVeiculoId(response.data.data.id);
-        }
 
+        setSelectedVeiculoId?.(response.data.data.id);
         onRegister?.(response.data.data);
       }
     } catch (error) {
       if (isAxiosError(error)) {
         toast.error("Erro", {
-          description: error.response?.data.error,
+          description: error.response?.data?.error || error.message,
           duration: 2000,
         });
-        console.log(error);
       }
     } finally {
       setIsSubmitting(false);
@@ -170,374 +264,399 @@ export default function RegisterContent({
   };
 
   useEffect(() => {
-    if (clienteId) {
-      setNovoVeiculo({ ...novoVeiculo, clienteid: clienteId });
-    }
+    if (!clienteId) return;
+    aplicarAtualizacao({ clienteid: clienteId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId]);
 
   useEffect(() => {
-    if (isOpen && clienteId && novoVeiculo.tipo) {
-      handleGetMarcas();
-    }
+    if (!isOpen || !novoVeiculo.tipo) return;
+    handleGetMarcas(novoVeiculo.tipo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, novoVeiculo.tipo, clienteId]);
-
-  useEffect(() => {
-    if (isOpen && novoVeiculo.tipo) {
-      handleGetMarcas();
-    }
   }, [isOpen, novoVeiculo.tipo]);
 
   useEffect(() => {
-    if (isOpen && clienteId && novoVeiculo.tipo && novoVeiculo.marcaId) {
-      handleGetModelos();
-    }
+    if (!marcas.length || !marcaPendente) return;
+
+    const marcaEncontrada = marcas.find(
+      (marca) => normalizarTextoBusca(marca.nome) === marcaPendente
+    );
+
+    if (!marcaEncontrada) return;
+
+    aplicarAtualizacao({
+      marcaId: marcaEncontrada.valor,
+      marca: marcaEncontrada.nome.toUpperCase(),
+    });
+    setMarcaPendente(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, novoVeiculo.tipo, clienteId, novoVeiculo.marcaId]);
+  }, [marcas, marcaPendente]);
+
   useEffect(() => {
-    if (isOpen && novoVeiculo.tipo && novoVeiculo.marcaId) {
-      handleGetModelos();
-    }
+    if (!isOpen || !novoVeiculo.tipo || !novoVeiculo.marcaId) return;
+    handleGetModelos(novoVeiculo.tipo, novoVeiculo.marcaId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, novoVeiculo.tipo, novoVeiculo.marcaId]);
 
-  const marcaSelecionada = marcas.find((m) => m.valor === novoVeiculo.marcaId);
+  useEffect(() => {
+    if (!modelos.length || !modeloPendente) return;
+
+    const modeloEncontrado = modelos.find(
+      (modelo) => normalizarTextoBusca(modelo.modelo) === modeloPendente
+    );
+
+    if (!modeloEncontrado) return;
+
+    aplicarAtualizacao({
+      modelo: modeloEncontrado.modelo.toUpperCase(),
+    });
+    setModeloPendente(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelos, modeloPendente]);
 
   return (
-    <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <DialogContent className="h-svh min-w-screen overflow-hidden p-0 sm:h-auto sm:max-h-[860px] sm:min-w-0 sm:max-w-[980px]">
       <div className="flex h-full min-h-0 flex-col">
-        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          <DialogTitle>Cadastro de Veículo</DialogTitle>
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
+          <DialogTitle className="flex items-center gap-2">
+            <BadgePlus className="h-5 w-5 text-primary" />
+            Cadastro de Veículo
+          </DialogTitle>
           <DialogDescription>
-            Preencha os dados para registrar um novo veículo
+            Preencha os dados abaixo para registrar um novo veículo.
           </DialogDescription>
         </DialogHeader>
+
         <CustomerSelect
           open={openCustomer}
           setOpen={setOpenCustomer}
-          OnSelect={(c) =>
-            setNovoVeiculo({ ...novoVeiculo, clienteid: c.id, cliente: c })
+          OnSelect={(cliente) =>
+            aplicarAtualizacao({ clienteid: cliente.id, cliente })
           }
         />
 
-        <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-          {/* Tipo */}
-          <div className="flex flex-row items-center gap-4">
-            <div className="space-y-2 text-nowrap">
-              <Label htmlFor="tipo" className="text-sm sm:text-base">
-                Tipo de Veículo *
-              </Label>
-              <Select
-                value={(novoVeiculo.tipo as unknown as string) || ""}
-                onValueChange={(value: Veiculo_tipos) =>
-                  handleInputChange("tipo", value)
-                }
-              >
-                <SelectTrigger className="h-10 sm:h-11">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(Veiculo_tipos).map((tipo, i) => (
-                    <SelectItem
-                      className="hover:cursor-pointer"
-                      key={i}
-                      value={tipo}
-                    >
-                      {tipo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {!clienteId && (
+        <div className="min-h-0 flex-1 overflow-auto bg-muted/5 px-6 py-6">
+          <div className="space-y-6">
+            <section className="rounded-xl border bg-background p-4">
+              <div className="mb-4 flex items-center gap-2">
+                <CarFront className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Identificação
+                </h3>
+              </div>
 
-            <div className="space-y-2 w-full">
-              <Label htmlFor="tipo" className="text-sm sm:text-base">
-                Cliente proprietário
-              </Label>
-              <div className="flex flex-row items-center gap-1">
-                <Input
-                  className="w-full"
-                  value={novoVeiculo?.cliente?.nomerazaosocial || ""}
-                  disabled={true}
-                />
-                <div
-                  onClick={() => setOpenCustomer(true)}
-                  className="flex items-center hover:cursor-pointer p-1.5 rounded-full bg-muted"
-                >
-                  <Search className="w-4 h-4 text-primary" />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label htmlFor="tipo">Tipo de veículo *</Label>
+                  <Select
+                    value={(novoVeiculo.tipo as string) || ""}
+                    onValueChange={(value: Veiculo_tipos) => atualizarTipo(value)}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(Veiculo_tipos).map((tipo) => (
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          key={tipo}
+                          value={tipo}
+                        >
+                          {tipo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {!clienteId && (
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Cliente proprietário</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        className="w-full"
+                        value={novoVeiculo.cliente?.nomerazaosocial || ""}
+                        disabled
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => setOpenCustomer(true)}
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="placa">Placa *</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="placa"
+                      value={formatarPlacaParaExibicao(placaNormalizada)}
+                      onChange={(e) => {
+                        aplicarAtualizacao({
+                          placa: somenteAlphaNumMaiusculo(e.target.value).slice(0, 7),
+                        });
+                      }}
+                      maxLength={8}
+                      placeholder="ABC-1D23 ou ABC-1234"
+                      autoCapitalize="characters"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0"
+                      disabled={isLookingUpPlate || !podeBuscarPlaca}
+                      onClick={handleBuscarPorPlaca}
+                    >
+                      {isLookingUpPlate ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                      Buscar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Marca *</Label>
+                  <Popover open={openMarca} onOpenChange={setOpenMarca}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openMarca}
+                        className="h-10 w-full justify-between text-xs"
+                        disabled={loadingMarcas || !novoVeiculo.tipo}
+                      >
+                        {loadingMarcas
+                          ? "Carregando..."
+                          : novoVeiculo.marca || "Selecione a marca"}
+                        <ChevronsUpDown className="opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <Command>
+                        <CommandInput placeholder="Buscar marca..." className="h-9 text-base" />
+                        <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
+                          <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
+                          <CommandGroup>
+                            {marcas.map((marca) => (
+                              <CommandItem
+                                className="hover:cursor-pointer"
+                                key={marca.valor}
+                                value={marca.nome}
+                                onSelect={() => {
+                                  setMarcaPendente(null);
+                                  setModeloPendente(null);
+                                  setModelos([]);
+                                  aplicarAtualizacao({
+                                    marcaId: marca.valor,
+                                    marca: marca.nome.toUpperCase(),
+                                    modelo: "",
+                                  });
+                                  setOpenMarca(false);
+                                }}
+                              >
+                                {marca.nome.toUpperCase()}
+                                <Check
+                                  className={cn(
+                                    "ml-auto",
+                                    novoVeiculo.marcaId === marca.valor
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Modelo *</Label>
+                  <Popover open={openModelo} onOpenChange={setOpenModelo}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openModelo}
+                        className="h-10 w-full justify-between text-xs"
+                        disabled={loadingModelos || !novoVeiculo.tipo || !novoVeiculo.marcaId}
+                      >
+                        {loadingModelos
+                          ? "Carregando..."
+                          : novoVeiculo.modelo || "Selecione o modelo"}
+                        <ChevronsUpDown className="opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <Command>
+                        <CommandInput placeholder="Buscar modelo..." className="h-9 text-base" />
+                        <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
+                          <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {modelos.map((modelo, index) => (
+                              <CommandItem
+                                className="hover:cursor-pointer text-xs"
+                                key={`${modelo.modelo}-${index}`}
+                                value={modelo.modelo}
+                                onSelect={() => {
+                                  setModeloPendente(null);
+                                  aplicarAtualizacao({
+                                    modelo: modelo.modelo.toUpperCase(),
+                                  });
+                                  setOpenModelo(false);
+                                }}
+                              >
+                                {modelo.modelo.toUpperCase()}
+                                <Check
+                                  className={cn(
+                                    "ml-auto",
+                                    novoVeiculo.modelo === modelo.modelo.toUpperCase()
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
-            </div>
-            )}
-          </div>
+            </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="placa" className="text-sm sm:text-base">
-                Placa *
-              </Label>
-              <Input
-                id="placa"
-                value={formatarPlacaParaExibicao(novoVeiculo.placa || "")}
-                onChange={(e) => {
-                  const digitado = e.target.value;
-                  const semHifen = somenteAlphaNumMaiusculo(digitado).slice(
-                    0,
-                    7
-                  );
-                  setNovoVeiculo({ ...novoVeiculo, placa: semHifen });
-                }}
-                maxLength={8} // 3 + hífen + 4
-                placeholder="ABC-1D23 ou ABC-1234"
-                autoCapitalize="characters"
-              />
-            </div>
+            <section className="rounded-xl border bg-background p-4">
+              <div className="mb-4 flex items-center gap-2">
+                <CarFront className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Detalhes do veículo
+                </h3>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="marca" className="text-sm sm:text-base">
-                Marca *
-              </Label>
-
-              <Popover open={open2} onOpenChange={setOpen2}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="marca"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open2}
-                    className="w-[200px] justify-between text-xs"
-                    disabled={loadingMarcas || !novoVeiculo.tipo}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cor">Cor</Label>
+                  <Select
+                    value={novoVeiculo.cor || ""}
+                    onValueChange={(value) => aplicarAtualizacao({ cor: value })}
                   >
-                    {loadingMarcas
-                      ? "Carregando..."
-                      : novoVeiculo.marca
-                      ? novoVeiculo.marca
-                      : "Selecione..."}
-                    <ChevronsUpDown className="opacity-50" />
-                  </Button>
-                </PopoverTrigger>
+                    <SelectTrigger className="h-10 w-full" disabled={loadingCores}>
+                      <SelectValue
+                        placeholder={loadingCores ? "Carregando..." : "Selecione a cor"}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cores.map((cor) => (
+                        <SelectItem
+                          className="hover:cursor-pointer"
+                          key={cor.id}
+                          value={cor.nome}
+                        >
+                          {cor.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <PopoverContent
-                onWheel={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="w-[200px] p-0"
-                  onWheelCapture={(e) => e.stopPropagation()}
-                >
-                  <Command>
-                    <CommandInput
-                      placeholder="Buscar marca..."
-                      className="h-9 text-base"
-                    />
-                    <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                      <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
-
-                      <CommandGroup>
-                        {marcas.map((m) => (
-                          <CommandItem
-                            className="hover:cursor-pointer"
-                            key={m.valor}
-                            value={m.nome} // ajuda a busca pelo nome
-                            onSelect={() => {
-                              setNovoVeiculo({
-                                ...novoVeiculo,
-                                marcaId: m.valor,
-                                marca: m.nome.toUpperCase(),
-                                modelo: "",
-                              });
-                              setOpen2(false);
-                            }}
-                          >
-                            {m.nome.toUpperCase()}
-                            <Check
-                              className={cn(
-                                "ml-auto",
-                                novoVeiculo.marcaId === m.valor
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="modelo" className="text-sm sm:text-base">
-                Modelo *
-              </Label>
-              <Popover open={open1} onOpenChange={setOpen1}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="modelo"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open1}
-                    className="w-[400px] justify-between text-xs"
-                    disabled={
-                      loadingModelos ||
-                      !novoVeiculo.tipo ||
-                      !novoVeiculo.marcaId
+                <div className="space-y-2">
+                  <Label htmlFor="ano">Ano</Label>
+                  <Input
+                    id="ano"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={novoVeiculo.ano ?? ""}
+                    onChange={(e) =>
+                      aplicarAtualizacao({
+                        ano: e.target.value === "" ? undefined : Number(e.target.value),
+                      })
                     }
-                  >
-                    {loadingModelos
-                      ? "Carregando..."
-                      : novoVeiculo.modelo
-                      ? novoVeiculo.modelo
-                      : "Selecione..."}
-                    <ChevronsUpDown className="opacity-50" />
-                  </Button>
-                </PopoverTrigger>
+                    placeholder="Ex.: 2019"
+                  />
+                </div>
 
-                <PopoverContent
-                onWheel={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="w-[400px] p-0"
-                  onWheelCapture={(e) => e.stopPropagation()}
-                >
-                  <Command>
-                    <CommandInput
-                      placeholder="Buscar modelo..."
-                      className="h-9 text-base"
-                    />
-                    <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                      <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
-
-                      <CommandGroup>
-                        {modelos.map((m, i) => (
-                          <CommandItem
-                            className="hover:cursor-pointer text-xs"
-                            key={i}
-                            value={m.modelo} // ajuda a busca pelo nome
-                            onSelect={() => {
-                              setNovoVeiculo({
-                                ...novoVeiculo,
-                                modelo: m.modelo.toUpperCase(),
-                              });
-                              setOpen1(false);
-                            }}
-                          >
-                            {m.modelo.toUpperCase()}
-                            <Check
-                              className={cn(
-                                "ml-auto",
-                                novoVeiculo.modelo === m.modelo.toUpperCase()
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cor" className="text-sm sm:text-base">
-                Cor
-              </Label>
-              <Select
-                value={novoVeiculo.cor || ""}
-                onValueChange={(value) =>
-                  setNovoVeiculo({ ...novoVeiculo, cor: value })
-                }
-              >
-                <SelectTrigger className="w-full" disabled={loadingCores}>
-                  <SelectValue
-                    placeholder={
-                      loadingCores ? "Carregando..." : "Selecione a cor"
+                <div className="space-y-2">
+                  <Label htmlFor="kmatual">KM atual</Label>
+                  <Input
+                    id="kmatual"
+                    inputMode="numeric"
+                    value={novoVeiculo.kmatual ?? ""}
+                    onChange={(e) =>
+                      aplicarAtualizacao({
+                        kmatual: e.target.value === "" ? undefined : Number(e.target.value),
+                      })
                     }
-                  ></SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {cores.map((c) => (
-                    <SelectItem
-                      className="hover:cursor-pointer"
-                      key={c.id}
-                      value={c.nome}
-                    >
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* <Input
-                id="cor"
-                value={novoVeiculo.cor || ""}
-                onChange={(e) => handleInputChange("cor", e.target.value)}
-                placeholder="Ex.: Prata"
-              /> */}
-            </div>
+                    placeholder="Ex.: 85000"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="ano" className="text-sm sm:text-base">
-                Ano
-              </Label>
-              <Input
-                id="ano"
-                inputMode="numeric"
-                className="w-30"
-                maxLength={4}
-                value={novoVeiculo.ano || ""}
-                onChange={(e) => handleInputChange("ano", e.target.value)}
-                placeholder="Ex.: 2019"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="kmatual" className="text-sm sm:text-base">
-                KM atual
-              </Label>
-              <Input
-                className="w-30"
-                id="kmatual"
-                inputMode="numeric"
-                value={novoVeiculo.kmatual || ""}
-                onChange={(e) => handleInputChange("kmatual", e.target.value)}
-                placeholder="Ex.: 85000"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="chassi">Chassi</Label>
+                  <Input
+                    id="chassi"
+                    value={novoVeiculo.chassi || ""}
+                    onChange={(e) =>
+                      aplicarAtualizacao({ chassi: e.target.value.toUpperCase() })
+                    }
+                    placeholder="Ex.: 9BWZZZ377VT004251"
+                    autoCapitalize="characters"
+                  />
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4">
-          <div className="flex sm:flex-row gap-3 sm:gap-4">
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
+          <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" className="sm:min-w-[120px]">
+                Cancelar
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
               form="register-form"
               disabled={isSubmitting}
               onClick={handleCreateVeiculo}
-              className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+              className="sm:min-w-[110px]"
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Cadastrando...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Cadastrar Veículo
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar
                 </>
               )}
             </Button>
-            <DialogClose asChild>
-              <Button className="hover:cursor-pointer" variant={"outline"}>
-                Cancelar
-              </Button>
-            </DialogClose>
           </div>
         </DialogFooter>
       </div>
