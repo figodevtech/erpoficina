@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,6 +15,10 @@ import {
   FileText,
   Save,
   Search,
+  Paperclip,
+  Upload,
+  ExternalLink,
+  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { VendaCanal, VendaStatusEntrega, vendaStatus } from "../types"
@@ -88,11 +92,32 @@ interface Cliente {
   nomerazaosocial: string
 }
 
+type CategoriaVenda = {
+  id: number
+  nome: string
+  descricao?: string | null
+  ativo?: boolean | null
+}
+
+type VendaAnexo = {
+  id: number
+  vendaid: number
+  nome: string
+  tipo?: string | null
+  tamanho?: number | null
+  url: string
+  path: string
+  descricao?: string | null
+  createdat?: string | null
+}
+
 interface Venda {
   id: number
   clienteid: number
   cliente: Cliente
   status: vendaStatus
+  categoriavendaid?: number | null
+  categoria_venda?: CategoriaVenda | null
   canal: VendaCanal
   status_entrega?: VendaStatusEntrega | null
   codigo_rastreio?: string | null
@@ -164,6 +189,7 @@ const TAB_ITEMS = [
   { value: "Financeiro", label: "Financeiro", icon: ShoppingCart },
   { value: "Produtos", label: "Produtos", icon: Package },
   { value: "Fiscal", label: "Fiscal", icon: FileText },
+  { value: "Anexos", label: "Anexos", icon: Paperclip },
 ] as const
 
 export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetailsDialogProps) {
@@ -175,6 +201,13 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
   const [currentTab, setCurrentTab] = useState<string>("Geral")
   const [users, setUsers] = useState<Array<{ id: string; nome: string | null; email?: string }>>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [categoriasVenda, setCategoriasVenda] = useState<CategoriaVenda[]>([])
+  const [loadingCategoriasVenda, setLoadingCategoriasVenda] = useState(false)
+  const [anexos, setAnexos] = useState<VendaAnexo[]>([])
+  const [loadingAnexos, setLoadingAnexos] = useState(false)
+  const [uploadingAnexo, setUploadingAnexo] = useState(false)
+  const [deletingAnexoId, setDeletingAnexoId] = useState<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const isDesktop = useMediaQuery("(min-width: 768px)")
 
   useEffect(() => {
@@ -193,6 +226,33 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
       }
     }
     loadUsers()
+  }, [])
+
+  useEffect(() => {
+    const loadCategoriasVenda = async () => {
+      try {
+        setLoadingCategoriasVenda(true)
+        const response = await fetch("/api/tipos/categorias-venda?ativo=true", { cache: "no-store" })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data?.error || "Erro ao carregar categorias de venda")
+
+        const items: CategoriaVenda[] = Array.isArray(data?.items)
+          ? data.items.map((c: any) => ({
+              id: Number(c.id),
+              nome: String(c.nome ?? ""),
+              descricao: c.descricao ?? null,
+              ativo: typeof c.ativo === "boolean" ? c.ativo : true,
+            }))
+          : []
+
+        setCategoriasVenda(items)
+      } catch (fetchError) {
+        console.error("Erro ao carregar categorias de venda:", fetchError)
+      } finally {
+        setLoadingCategoriasVenda(false)
+      }
+    }
+    loadCategoriasVenda()
   }, [])
 
   const fetchVenda = useCallback(async () => {
@@ -218,14 +278,51 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
     }
   }, [vendaId])
 
+  const fetchAnexos = useCallback(async () => {
+    if (!vendaId) return
+    setLoadingAnexos(true)
+
+    try {
+      const response = await fetch(`/api/venda/${vendaId}/anexos`, { cache: "no-store" })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Erro ao carregar anexos")
+      }
+
+      const items: VendaAnexo[] = Array.isArray(data?.items)
+        ? data.items.map((item: any) => ({
+            id: Number(item.id),
+            vendaid: Number(item.vendaid),
+            nome: String(item.nome ?? "Anexo"),
+            tipo: item.tipo ?? null,
+            tamanho: typeof item.tamanho === "number" ? item.tamanho : Number(item.tamanho ?? 0) || null,
+            url: String(item.url ?? ""),
+            path: String(item.path ?? ""),
+            descricao: item.descricao ?? null,
+            createdat: item.createdat ?? null,
+          }))
+        : []
+
+      setAnexos(items)
+    } catch (err) {
+      console.error("Erro ao carregar anexos:", err)
+      toast.error("Erro", { description: err instanceof Error ? err.message : "Erro ao carregar anexos" })
+    } finally {
+      setLoadingAnexos(false)
+    }
+  }, [vendaId])
+
   useEffect(() => {
     if (open && vendaId) {
       fetchVenda()
+      fetchAnexos()
     } else if (!open) {
       setVenda(null)
+      setAnexos([])
       setCurrentTab("Geral")
     }
-  }, [open, vendaId, fetchVenda])
+  }, [open, vendaId, fetchVenda, fetchAnexos])
 
   const handleUpdateVenda = async () => {
     if (!venda || !vendaId) return
@@ -243,6 +340,7 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
           observacoes: venda.observacoes,
           observacoesFiscais: venda.observacoes_fiscais,
           vendedor: venda.vendedor,
+          categoriaVendaId: venda.categoriavendaid ?? null,
         }),
       })
 
@@ -281,6 +379,62 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
     )
   }
 
+  const handleAnexoChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (!file || !vendaId) return
+
+    setUploadingAnexo(true)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch(`/api/venda/${vendaId}/anexos`, {
+        method: "POST",
+        body: formData,
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Erro ao anexar arquivo")
+      }
+
+      toast.success("Anexo enviado", { description: "Comprovante adicionado à venda." })
+      await fetchAnexos()
+    } catch (err) {
+      console.error("Erro ao anexar arquivo:", err)
+      toast.error("Erro", { description: err instanceof Error ? err.message : "Erro ao anexar arquivo" })
+    } finally {
+      setUploadingAnexo(false)
+    }
+  }
+
+  const handleDeleteAnexo = async (anexoId: number) => {
+    if (!vendaId) return
+
+    setDeletingAnexoId(anexoId)
+
+    try {
+      const response = await fetch(`/api/venda/${vendaId}/anexos/${anexoId}`, {
+        method: "DELETE",
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Erro ao excluir anexo")
+      }
+
+      toast.success("Anexo removido")
+      setAnexos((prev) => prev.filter((anexo) => anexo.id !== anexoId))
+    } catch (err) {
+      console.error("Erro ao excluir anexo:", err)
+      toast.error("Erro", { description: err instanceof Error ? err.message : "Erro ao excluir anexo" })
+    } finally {
+      setDeletingAnexoId(null)
+    }
+  }
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -304,7 +458,21 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
       maximumFractionDigits: 2,
     }).format(qty)
 
+  const formatFileSize = (value?: number | null) => {
+    if (!value) return "Tamanho não informado"
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const isImageAnexo = (anexo: VendaAnexo) => String(anexo.tipo ?? "").startsWith("image/")
+
   const showFullLoading = (loading || isSubmitting) && !venda
+
+  const categoriaVendaOptions = venda?.categoria_venda
+    ? categoriasVenda.some((c) => c.id === venda.categoria_venda?.id)
+      ? categoriasVenda
+      : [...categoriasVenda, venda.categoria_venda]
+    : categoriasVenda
 
   const Content = isDesktop ? DialogContent : DrawerContent
   const Header = isDesktop ? DialogHeader : DrawerHeader
@@ -444,6 +612,33 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                               <Badge variant="outline" className={statusColors[venda.status] + " mt-2"}>
                                 {statusLabels[venda.status]}
                               </Badge>
+                            </div>
+                            <div className="rounded-lg border bg-background/80 p-3">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Categoria de venda
+                              </p>
+                              {loadingCategoriasVenda ? (
+                                <p className="mt-2 text-sm font-medium text-muted-foreground">Carregando...</p>
+                              ) : (
+                                <Select
+                                  value={venda.categoriavendaid ? String(venda.categoriavendaid) : "uncategorized"}
+                                  onValueChange={(val) =>
+                                    handleChange("categoriavendaid", val === "uncategorized" ? null : Number(val))
+                                  }
+                                >
+                                  <SelectTrigger className="mt-2 h-9 w-full">
+                                    <SelectValue placeholder="Selecione uma categoria" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="uncategorized">Sem categoria</SelectItem>
+                                    {categoriaVendaOptions.map((categoria) => (
+                                      <SelectItem key={categoria.id} value={String(categoria.id)}>
+                                        {categoria.nome}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                             </div>
                            
                             {venda.updatedat && (
@@ -632,6 +827,111 @@ export function VendaDetailsDialog({ vendaId, open, onOpenChange }: VendaDetails
                               onChange={(e) => handleChange("observacoes_fiscais", e.target.value)}
                             />
                           </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="Anexos" className="m-0 space-y-6">
+                        <div className="space-y-4">
+                          <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Comprovantes de pagamento
+                                </h3>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Anexe imagem ou PDF relacionado a esta venda.
+                              </p>
+                            </div>
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              className="hidden"
+                              accept="image/*,application/pdf"
+                              onChange={handleAnexoChange}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="gap-2"
+                              disabled={uploadingAnexo || loadingAnexos}
+                              onClick={() => fileInputRef.current?.click()}
+                            >
+                              {uploadingAnexo ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
+                              ) : (
+                                <Upload className="h-4 w-4" />
+                              )}
+                              {uploadingAnexo ? "Enviando..." : "Adicionar anexo"}
+                            </Button>
+                          </div>
+
+                          {loadingAnexos ? (
+                            <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-lg border text-muted-foreground">
+                              <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+                              <p className="text-sm">Carregando anexos...</p>
+                            </div>
+                          ) : anexos.length === 0 ? (
+                            <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center text-muted-foreground">
+                              <Paperclip className="h-10 w-10 opacity-25" />
+                              <p className="text-sm">Nenhum comprovante anexado.</p>
+                            </div>
+                          ) : (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {anexos.map((anexo) => (
+                                <div key={anexo.id} className="overflow-hidden rounded-lg border bg-card">
+                                  {isImageAnexo(anexo) ? (
+                                    <a href={anexo.url} target="_blank" rel="noreferrer" className="block">
+                                      <img
+                                        src={anexo.url}
+                                        alt={anexo.nome}
+                                        className="h-40 w-full object-cover"
+                                      />
+                                    </a>
+                                  ) : (
+                                    <div className="flex h-40 items-center justify-center bg-muted/40">
+                                      <FileText className="h-12 w-12 text-muted-foreground/50" />
+                                    </div>
+                                  )}
+                                  <div className="space-y-3 p-4">
+                                    <div className="min-w-0 space-y-1">
+                                      <p className="truncate text-sm font-semibold" title={anexo.nome}>
+                                        {anexo.nome}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {formatFileSize(anexo.tamanho)}
+                                        {anexo.createdat ? ` - ${formatDate(anexo.createdat)}` : ""}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-2">
+                                      <Button type="button" variant="outline" size="sm" asChild>
+                                        <a href={anexo.url} target="_blank" rel="noreferrer" className="gap-2">
+                                          <ExternalLink className="h-4 w-4" />
+                                          Abrir
+                                        </a>
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-2 text-destructive hover:text-destructive"
+                                        disabled={deletingAnexoId === anexo.id}
+                                        onClick={() => handleDeleteAnexo(anexo.id)}
+                                      >
+                                        {deletingAnexoId === anexo.id ? (
+                                          <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-destructive" />
+                                        ) : (
+                                          <Trash2 className="h-4 w-4" />
+                                        )}
+                                        Remover
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </TabsContent>
                     </div>

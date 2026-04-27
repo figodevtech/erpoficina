@@ -73,13 +73,22 @@ interface CartItem {
 
 type DiscountType = "FIXO" | "PORCENTAGEM";
 type PaymentMethod = "CREDITO" | "DEBITO" | "DINHEIRO" | "PIX" | "NAO_INFORMAR";
+type CategoriaVenda = {
+  id: number;
+  nome: string;
+  descricao?: string | null;
+  ativo?: boolean | null;
+};
 
 export function POSSystem() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoriasVenda, setCategoriasVenda] = useState<CategoriaVenda[]>([]);
+  const [loadingCategoriasVenda, setLoadingCategoriasVenda] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("TODOS");
+  const [selectedSaleCategoryId, setSelectedSaleCategoryId] = useState<number | null>(null);
   const [creatingVenda, setCreatingVenda] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
@@ -122,6 +131,37 @@ export function POSSystem() {
     };
 
     fetchProdutos();
+  }, []);
+
+  useEffect(() => {
+    const fetchCategoriasVenda = async () => {
+      try {
+        setLoadingCategoriasVenda(true);
+        const response = await axios.get("/api/tipos/categorias-venda", {
+          params: { ativo: "true" },
+        });
+        const items = Array.isArray(response.data?.items)
+          ? response.data.items.map((categoria: any) => ({
+              id: Number(categoria.id),
+              nome: String(categoria.nome ?? ""),
+              descricao: categoria.descricao ?? null,
+              ativo: typeof categoria.ativo === "boolean" ? categoria.ativo : true,
+            }))
+          : [];
+        setCategoriasVenda(items);
+      } catch (error) {
+        if (isAxiosError(error)) {
+          toast.error("Falha ao buscar categorias de venda", {
+            description: error.response?.data?.error || error.message,
+          });
+        }
+        setCategoriasVenda([]);
+      } finally {
+        setLoadingCategoriasVenda(false);
+      }
+    };
+
+    fetchCategoriasVenda();
   }, []);
 
   const ALL = "TODOS";
@@ -252,6 +292,7 @@ console.log(cart)
       status: "ORCAMENTO",
       descontoTipo: discountType,
       descontoValor: discountAmount > 0 ? discountAmount : null,
+      categoriaVendaId: selectedSaleCategoryId,
       subTotal: subtotal,
       valorTotal: total,
       formaPagamento: null,
@@ -273,6 +314,7 @@ console.log(cart)
       setCart([]);
       setDiscount(0);
       setDiscountType(null);
+      setSelectedSaleCategoryId(null);
       setSelectedCustomer(undefined);
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -316,6 +358,7 @@ console.log(cart)
       status: "PAGAMENTO", // enum_status_venda
       descontoTipo: discountType,
       descontoValor: discountAmount > 0 ? discountAmount : null,
+      categoriaVendaId: selectedSaleCategoryId,
       subTotal: subtotal,
       valorTotal: total,
       formaPagamento:
@@ -341,6 +384,7 @@ console.log(cart)
       setCart([]);
       setDiscount(0);
       setDiscountType(null);
+      setSelectedSaleCategoryId(null);
       setPaymentMethod(null);
       setSelectedCustomer(undefined);
     } catch (error: any) {
@@ -790,6 +834,33 @@ console.log(cart)
 
                     {/* Totals */}
                     <div className="border-t border-border pt-4 space-y-2">
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">
+                          Categoria de venda
+                        </span>
+                        <Select
+                          value={selectedSaleCategoryId ? String(selectedSaleCategoryId) : "uncategorized"}
+                          onValueChange={(value) =>
+                            setSelectedSaleCategoryId(value === "uncategorized" ? null : Number(value))
+                          }
+                          disabled={loadingCategoriasVenda}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue
+                              placeholder={loadingCategoriasVenda ? "Carregando..." : "Selecione uma categoria"}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="uncategorized">Sem categoria</SelectItem>
+                            {categoriasVenda.map((categoria) => (
+                              <SelectItem key={categoria.id} value={String(categoria.id)}>
+                                {categoria.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <span className="text-xs text-muted-foreground">

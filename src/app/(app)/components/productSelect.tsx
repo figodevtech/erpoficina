@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import axios from "axios";
 import { ReactNode, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 import {
   BadgeCheck,
@@ -44,6 +45,11 @@ import formatarEmReal from "@/utils/formatarEmReal";
 import { DialogProduto } from "../(pages)/estoque/components/dialog-produto/dialog-produto";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+function hasPermission(user: any, permission: string) {
+  const permissoes = Array.isArray(user?.permissoes) ? user.permissoes : [];
+  return permissoes.map((p: any) => String(p).trim().toUpperCase()).includes(permission);
+}
+
 interface ProductSelectProps {
   children?: ReactNode;
   OnSelect?: (value: Produto) => void;
@@ -56,6 +62,8 @@ export default function ProductSelect({
   setOpen,
   open,
 }: ProductSelectProps) {
+  const { data: session } = useSession();
+  const canCreateProduct = hasPermission(session?.user, "ESTOQUE_ACESSO");
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -143,25 +151,29 @@ export default function ProductSelect({
                   className="pl-10"
                 />
               </div>
-              <Button
-                onClick={() => setOpenProduto(true)}
-                className="hover:cursor-pointer text-xs"
-                variant={"outline"}
-              >
-                <Plus /> Novo
-              </Button>
-              <DialogProduto
-                isOpen={openProduto}
-                setIsOpen={(open) => {
-                  if (!open) {
-                    setSelectedProductId(undefined);
-                    handleGetProducts(1, pagination.limit, "");
-                  }
-                  setOpenProduto(open);
-                }}
-                productId={selectedProductId}
-                setSelectedProductId={setSelectedProductId}
-              />
+              {canCreateProduct && (
+                <>
+                  <Button
+                    onClick={() => setOpenProduto(true)}
+                    className="hover:cursor-pointer text-xs"
+                    variant={"outline"}
+                  >
+                    <Plus /> Novo
+                  </Button>
+                  <DialogProduto
+                    isOpen={openProduto}
+                    setIsOpen={(open) => {
+                      if (!open) {
+                        setSelectedProductId(undefined);
+                        handleGetProducts(1, pagination.limit, "");
+                      }
+                      setOpenProduto(open);
+                    }}
+                    productId={selectedProductId}
+                    setSelectedProductId={setSelectedProductId}
+                  />
+                </>
+              )}
             </div>
 
             <div

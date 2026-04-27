@@ -46,6 +46,13 @@ const VENDA_SELECT = `
     telefone
   ),
   status,
+  categoriavendaid,
+  categoria_venda:categoriavendaid (
+    id,
+    nome,
+    descricao,
+    ativo
+  ),
   canal,
   status_entrega,
   codigo_rastreio,
@@ -124,6 +131,7 @@ type VendaPatchBody = {
   observacoes?: string | null;
   observacoesFiscais?: string | null;
   vendedor?: string | null;
+  categoriaVendaId?: number | null;
 };
 
 type ParamsCtx = { params: Promise<{ id: string }> };
@@ -266,6 +274,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       observacoes,
       observacoesFiscais,
       vendedor,
+      categoriaVendaId,
     } = body;
 
     if (
@@ -284,7 +293,8 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
       dataVenda === undefined &&
       observacoes === undefined &&
       observacoesFiscais === undefined &&
-      vendedor === undefined
+      vendedor === undefined &&
+      categoriaVendaId === undefined
     ) {
       return NextResponse.json(
         {
@@ -402,6 +412,17 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
     if (observacoes !== undefined) updatePayload.observacoes = observacoes;
     if (observacoesFiscais !== undefined) updatePayload.observacoes_fiscais = observacoesFiscais;
     if (vendedor !== undefined) updatePayload.vendedor = vendedor;
+    if (categoriaVendaId !== undefined) {
+      if (categoriaVendaId === null) {
+        updatePayload.categoriavendaid = null;
+      } else {
+        const idCategoriaVenda = Number(categoriaVendaId);
+        if (!Number.isFinite(idCategoriaVenda) || idCategoriaVenda <= 0) {
+          return NextResponse.json({ error: "categoriaVendaId inválido." }, { status: 400 });
+        }
+        updatePayload.categoriavendaid = Math.trunc(idCategoriaVenda);
+      }
+    }
 
     updatePayload.updatedat = new Date().toISOString();
     if (usuarioInternoId) updatePayload.updated_by = usuarioInternoId;

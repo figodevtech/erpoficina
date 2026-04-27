@@ -164,27 +164,25 @@ export function OrcamentoDialog({
         </div>
       }
     >
-      <div className="relative">
+      <div className="relative min-h-[360px]">
         {(carregandoDados) && (
-          <div className="flex items-center justify-center bg-background/70">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                {salvando ? "Salvando orçamento..." : "Carregando orçamento..."}
-              </span>
-            </div>
+          <div className="flex min-h-[360px] flex-col items-center justify-center">
+            <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin" />
+            <span className="text-primary">Carregando</span>
           </div>
         )}
 
-        <OrcamentoForm
-          ref={formRef}
-          ordemServico={ordemServico}
-          onLoadingChange={setCarregandoDados}
-          onTotaisChange={({ totalProdutos, totalServicos }) => {
-            setTotalProdutos(totalProdutos || 0);
-            setTotalServicos(totalServicos || 0);
-          }}
-        />
+        <div className={carregandoDados ? "hidden" : undefined}>
+          <OrcamentoForm
+            ref={formRef}
+            ordemServico={ordemServico}
+            onLoadingChange={setCarregandoDados}
+            onTotaisChange={({ totalProdutos, totalServicos }) => {
+              setTotalProdutos(totalProdutos || 0);
+              setTotalServicos(totalServicos || 0);
+            }}
+          />
+        </div>
       </div>
     </DialogShell>
   );
