@@ -58,7 +58,7 @@ import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
 
 interface TabelaVeiculosProps {
-  selectedTipo?: Veiculo_tipos; 
+  selectedTipo?: Veiculo_tipos;
   isLoading: boolean;
   veiculos: Veiculo[];
   pagination: Pagination;
@@ -68,12 +68,12 @@ interface TabelaVeiculosProps {
     limit?: number,
     search?: string,
     tipo?: Veiculo_tipos
-    
+
   ) => void;
 }
 
 export default function TabelaVeiculos({
-  handleGetVehicles, 
+  handleGetVehicles,
   isLoading,
   veiculos,
   pagination,
@@ -87,13 +87,13 @@ export default function TabelaVeiculos({
   const [transferindo, setTransferindo] = useState(false);
 
 
-  const handleVehicleTransfer = async ( novoDonoId: number) => {
+  const handleVehicleTransfer = async (novoDonoId: number) => {
 
-    toast(<div className="flex felx-row gap-1 items-center"><Loader2 className="w-3 h-3 animate-spin"/><span>Transferindo veículo...</span> </div>);
+    toast(<div className="flex felx-row gap-1 items-center"><Loader2 className="w-3 h-3 animate-spin" /><span>Transferindo veículo...</span> </div>);
     setTransferindo(true)
     try {
       const response = await axios.post(`/api/veiculos/${veiculoTransferId}/transferencia`, {
-          novoDonoId: novoDonoId,
+        novoDonoId: novoDonoId,
       });
       if (response.status === 200) {
         toast.success("Veículo transferido com sucesso!");
@@ -103,8 +103,8 @@ export default function TabelaVeiculos({
       if (isAxiosError(error)) {
         toast.error("Erro ao transferir veículo", { description: error.response?.data.error });
       }
-    }finally{
-          setTransferindo(false)
+    } finally {
+      setTransferindo(false)
 
     }
   };
@@ -113,23 +113,23 @@ export default function TabelaVeiculos({
     <Card>
       <VeiculoDialog
 
-      isOpen={openVeiculo}
-      setIsOpen={(open)=>{
-        setOpenVeiculo(open);
-        if(!open){
-          setSelectedVeiculoId(undefined);
-          handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo);
-        }
-      }}
-      veiculoId={veiculoId}
-      setSelectedVeiculoId={setSelectedVeiculoId}
-      onRegister={()=>handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo)}
+        isOpen={openVeiculo}
+        setIsOpen={(open) => {
+          setOpenVeiculo(open);
+          if (!open) {
+            setSelectedVeiculoId(undefined);
+            handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo);
+          }
+        }}
+        veiculoId={veiculoId}
+        setSelectedVeiculoId={setSelectedVeiculoId}
+        onRegister={() => handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo)}
       />
       <CustomerSelect
-                open={openCustomerSelect}
-                setOpen={setOpenCustomerSelect}
-                OnSelect={(c)=> handleVehicleTransfer(c.id)}
-              />
+        open={openCustomerSelect}
+        setOpen={setOpenCustomerSelect}
+        OnSelect={(c) => handleVehicleTransfer(c.id)}
+      />
       <CardHeader className="border-b-2 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -148,27 +148,25 @@ export default function TabelaVeiculos({
           </div>
 
           <div className="flex items-center gap-2">
-            
-                <Button onClick={()=> setOpenVeiculo(true)} variant={"outline"} size={"sm"} className="cursor-pointer text-xs">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo Veículo
-                </Button>
 
-                
+            <Button onClick={() => setOpenVeiculo(true)} variant={"outline"} size={"sm"} className="cursor-pointer text-xs">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Veículo
+            </Button>
+
+
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
         <div
-          className={`${
-            isLoading && " opacity-100"
-          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${isLoading && " opacity-100"
+            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${
-              isLoading && "animate-slideIn "
-            }`}
+            className={`w-1/2 bg-primary h-full absolute left-0 rounded-lg -translate-x-[100%] ${isLoading && "animate-slideIn "
+              }`}
           />
         </div>
 
@@ -198,10 +196,9 @@ export default function TabelaVeiculos({
 
                   <TableCell className="text-center">{v.placa ?? "-"}</TableCell>
 
-                  <TableCell className="text-center">{`${v.marca ?? "-"} / ${
-                    v.modelo ?? "-"
-                  }`}</TableCell>
-                  <TableCell className="text-center">{v.ano ?? "-"}</TableCell>
+                  <TableCell className="text-center">{`${v.marca ?? "-"} / ${`${v.modelo ?? ""} ${v.versao ?? ""}`.trim() || "-"
+                    }`}</TableCell>
+                  <TableCell className="text-center">{`${v.ano ?? "-"}/${v.ano_modelo ?? "-"}`}</TableCell>
                   <TableCell className="text-center">{v.cliente?.nomerazaosocial ?? "-"}</TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -214,26 +211,25 @@ export default function TabelaVeiculos({
                         </Button>
                       </DropdownMenuTrigger>
 
-                      {/* ✅ DropdownMenuItem no lugar de Button */}
                       <DropdownMenuContent align="center">
                         <DropdownMenuItem
-                        className="hover:cursor-pointer"
-                        onClick={()=>{setSelectedVeiculoId(v.id); setOpenVeiculo(true);}}
+                          className="hover:cursor-pointer"
+                          onClick={() => { setSelectedVeiculoId(v.id); setOpenVeiculo(true); }}
                           disabled={!canAct}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                      <DropdownMenuItem
-                                  onClick={() => {setOpenCustomerSelect(true); setVeiculoTransferId(v?.id)}}
-                                  className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
-                                >
-                                  <ArrowLeftRight />
-                                  Transferir Propriedade
-                                </DropdownMenuItem>
-                       
                         <DropdownMenuItem
-                        className="hover:cursor-pointer"
+                          onClick={() => { setOpenCustomerSelect(true); setVeiculoTransferId(v?.id) }}
+                          className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
+                        >
+                          <ArrowLeftRight />
+                          Transferir Propriedade
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          className="hover:cursor-pointer"
                           variant="destructive"
                         >
                           <Trash2Icon className="mr-2 h-4 w-4" />
@@ -253,9 +249,8 @@ export default function TabelaVeiculos({
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span className="ml-1 hidden sm:block">de {pagination?.total}</span>
             <Loader
-              className={`w-4 h-full animate-spin transition-all opacity-0 ${
-                isLoading && "opacity-100"
-              }`}
+              className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"
+                }`}
             />
           </div>
 
@@ -265,7 +260,7 @@ export default function TabelaVeiculos({
               size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetVehicles(1, pagination?.limit, search, )
+                handleGetVehicles(1, pagination?.limit, search,)
               }
               disabled={pagination.page === 1}
             >

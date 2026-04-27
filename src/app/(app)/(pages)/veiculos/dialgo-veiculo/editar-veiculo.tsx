@@ -48,6 +48,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
+import { useFipe } from "./useFipe";
+import ValueInput from "../../(financeiro)/fluxodecaixa/components/transactionDialog/valueInput";
 
 function somenteAlphaNumMaiusculo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -59,17 +61,8 @@ function formatarPlacaParaExibicao(valorSemFormatacao: string) {
   return `${v.slice(0, 3)}-${v.slice(3)}`;
 }
 
-interface Marca {
-  nome: string;
-  valor: number;
-}
-interface Modelo {
-  modelo: string;
-}
-
 interface GetVeiculoResponse {
   veiculo: Veiculo & {
-    // pelo seu exemplo, vem um objeto cliente junto
     cliente?: { id: number; cpfcnpj: string; nomerazaosocial: string };
     placa_formatada?: string;
   };
@@ -81,6 +74,17 @@ interface EditContentProps {
   onUpdated?: (v: Veiculo) => void;
 }
 
+const handleCombustivelFromAno = (anoStr: string) => {
+  const s = anoStr.toUpperCase();
+  if (s.includes("GASOLINA")) return "GASOLINA";
+  if (s.includes("ALCOOL") || s.includes("ETANOL")) return "ETANOL";
+  if (s.includes("DIESEL")) return "DIESEL";
+  if (s.includes("ELETRICO") || s.includes("ELÉTRICO")) return "ELETRICO";
+  if (s.includes("HIBRIDO") || s.includes("HÍBRIDO")) return "HIBRIDO";
+  if (s.includes("FLEX")) return "FLEX";
+  return null;
+};
+
 export default function EditContent({
   veiculoId,
   isOpen,
@@ -88,17 +92,12 @@ export default function EditContent({
 }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingVeiculo, setIsLoadingVeiculo] = useState(false);
+  const [loadingPlaca, setLoadingPlaca] = useState(false);
 
-  const [marcas, setMarcas] = useState<Marca[]>([]);
-  const [modelos, setModelos] = useState<Modelo[]>([]);
-  const [loadingMarcas, setLoadingMarcas] = useState(false);
-  const [loadingModelos, setLoadingModelos] = useState(false);
-  const [errorMarcas, setErrorMarcas] = useState(false);
-  const [errorModelos, setErrorModelos] = useState(false);
   const [openCustomer, setOpenCustomer] = useState(false);
-
   const [openMarca, setOpenMarca] = useState(false);
   const [openModelo, setOpenModelo] = useState(false);
+  const [openVersao, setOpenVersao] = useState(false);
 
   const [selectedVeiculo, setSelectedVeiculo] = useState<
     (Veiculo & { marcaId?: number }) | undefined
@@ -106,11 +105,89 @@ export default function EditContent({
 
   const { cores, loadingCores } = useVeiculosCores();
 
+  const {
+    marcasFipe,
+    modelosRaw,
+    anosFipe,
+    loadingMarcas,
+    loadingModelos,
+    loadingAnos,
+    loadingPrice,
+    fetchBrands,
+    fetchModels,
+    fetchYears,
+    fetchYearsByBrand,
+    fetchModelsByBrandAndYear,
+    fetchPrice,
+  } = useFipe();
+
   const handleInputChange = (field: keyof Veiculo, value: any) => {
     setSelectedVeiculo((prev) => {
       if (!prev) return prev;
       return { ...prev, [field]: value };
     });
+  };
+
+  const handleBuscarPlaca = async () => {
+    if (!selectedVeiculo?.placa || selectedVeiculo.placa.length < 7) return;
+
+    setLoadingPlaca(true);
+    const toastId = toast.loading("Consultando placa...");
+    try {
+      const response = await axios.get(`/api/veiculos/consulta-placa/${selectedVeiculo.placa}`);
+      const data = response.data;
+      
+      let combustivelRaw = "";
+      if (typeof data.extra?.combustivel === "string") {
+        combustivelRaw = data.extra.combustivel;
+      } else if (data.extra?.combustivel && typeof data.extra.combustivel === "object") {
+        combustivelRaw = data.extra.combustivel.descricao || data.extra.combustivel.nome || "";
+      }
+
+      let combustivelMapped = combustivelRaw || "";
+      if (combustivelMapped.toUpperCase().includes("FLEX") || combustivelMapped.toUpperCase().includes("ALCOOL / GASOLINA")) combustivelMapped = "FLEX";
+      else if (combustivelMapped.toUpperCase().includes("GASOLINA")) combustivelMapped = "GASOLINA";
+      else if (combustivelMapped.toUpperCase().includes("ALCOOL") || combustivelMapped.toUpperCase().includes("ETANOL")) combustivelMapped = "ETANOL";
+      else if (combustivelMapped.toUpperCase().includes("DIESEL")) combustivelMapped = "DIESEL";
+      else if (combustivelMapped.toUpperCase().includes("HIBRIDO") || combustivelMapped.toUpperCase().includes("HÍBRIDO")) combustivelMapped = "HIBRIDO";
+      else if (combustivelMapped.toUpperCase().includes("ELETRICO") || combustivelMapped.toUpperCase().includes("ELÉTRICO")) combustivelMapped = "ELETRICO";
+
+      const rawMarca = data.MARCA || data.marca || "";
+      let cleanedMarca = rawMarca.toUpperCase();
+      if (cleanedMarca.includes(" - ")) cleanedMarca = cleanedMarca.split(" - ")[1];
+      if (cleanedMarca.includes("/")) cleanedMarca = cleanedMarca.split("/")[0];
+      cleanedMarca = cleanedMarca.trim();
+
+      const rawModelo = data.SUBMODELO || data.MODELO || data.modelo || "";
+      const cleanedModelo = rawModelo.split(" ")[0].toUpperCase().trim();
+
+      const anoFabricacao = data.ano || data.extra?.ano_fabricacao || "";
+      const anoModelo = data.anoModelo || data.extra?.ano_modelo || "";
+
+      setSelectedVeiculo((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          marca: cleanedMarca || prev.marca,
+          modelo: cleanedModelo || prev.modelo,
+          versao: undefined,
+          ano: anoFabricacao ? parseInt(String(anoFabricacao)) : prev.ano,
+          ano_modelo: anoModelo ? parseInt(String(anoModelo)) : prev.ano_modelo,
+          chassi: data.extra?.chassi || data.chassi || prev.chassi,
+          cor: data.cor?.toUpperCase() || prev.cor,
+          combustivel: combustivelMapped || prev.combustivel,
+          fipe: undefined
+        };
+      });
+
+      toast.success("Placa consultada", { id: toastId, description: "Dados do veículo preenchidos." });
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.response?.data?.error || "Erro ao consultar a placa.";
+      toast.error("Erro na consulta", { id: toastId, description: msg });
+    } finally {
+      setLoadingPlaca(false);
+    }
   };
 
   const handleGetVeiculo = async () => {
@@ -123,8 +200,6 @@ export default function EditContent({
       );
       if (response.status === 200) {
         const v = response.data.veiculo;
-
-        // garantia: placa no state sem hífen e com 7 chars
         const placaNormalizada = somenteAlphaNumMaiusculo(
           String(v.placa ?? "")
         ).slice(0, 7);
@@ -132,7 +207,6 @@ export default function EditContent({
         setSelectedVeiculo({
           ...v,
           placa: placaNormalizada,
-          // marcaId vai ser preenchido depois (quando carregarmos as marcas)
         });
       }
     } catch (error) {
@@ -146,50 +220,11 @@ export default function EditContent({
     }
   };
 
-  const handleGetMarcas = async (tipo: string) => {
-    setLoadingMarcas(true);
-    setErrorMarcas(false);
-    try {
-      const response = await axios.get<Marca[]>(
-        `https://brasilapi.com.br/api/fipe/marcas/v1/${String(
-          tipo
-        ).toLowerCase()}`
-      );
-      if (response.status === 200) setMarcas(response.data);
-    } catch (error) {
-      setErrorMarcas(true);
-      if (isAxiosError(error))
-        toast.error("FIPE indisponível", { description: "Por favor, digite a marca manualmente." });
-    } finally {
-      setLoadingMarcas(false);
-    }
-  };
-
-  const handleGetModelos = async (tipo: string, marcaId: number) => {
-    setLoadingModelos(true);
-    setErrorModelos(false);
-    try {
-      const response = await axios.get<Modelo[]>(
-        `https://brasilapi.com.br/api/fipe/veiculos/v1/${String(
-          tipo
-        ).toLowerCase()}/${marcaId}`
-      );
-      if (response.status === 200) setModelos(response.data);
-    } catch (error) {
-      setErrorModelos(true);
-      if (isAxiosError(error))
-        toast.error("FIPE indisponível", { description: "Por favor, digite o modelo manualmente." });
-    } finally {
-      setLoadingModelos(false);
-    }
-  };
-
   const handleUpdateVeiculo = async () => {
     if (!selectedVeiculo?.id) return;
 
     setIsSubmitting(true);
     try {
-      // Ajuste aqui se seu endpoint/método for diferente:
       const response = await axios.put(`/api/veiculos/${selectedVeiculo.id}`, {
         selectedVeiculo,
       });
@@ -200,7 +235,6 @@ export default function EditContent({
           duration: 2000,
         });
 
-        // se seu endpoint retornar o veículo atualizado, você pode usar response.data.veiculo
         handleGetVeiculo();
         onUpdated?.(selectedVeiculo);
       }
@@ -223,50 +257,125 @@ export default function EditContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, veiculoId]);
 
-  // 2) Quando tiver tipo, buscar marcas
+  // FIPE Cascade for Editing
+  // Fetch Brands when Tipo is available
   useEffect(() => {
-    if (!isOpen) return;
-    if (!selectedVeiculo?.tipo) return;
-
-    handleGetMarcas(String(selectedVeiculo.tipo));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, selectedVeiculo?.tipo]);
-
-  // 3) Quando marcas carregarem, tentar resolver marcaId pelo nome vindo do veículo
-  useEffect(() => {
-    if (!selectedVeiculo?.marca) return;
-    if (!marcas.length) return;
-
-    // match por nome (case-insensitive)
-    const alvo = String(selectedVeiculo.marca).trim().toLowerCase();
-    const achada = marcas.find((m) => m.nome.trim().toLowerCase() === alvo);
-
-    if (achada && selectedVeiculo.marcaId !== achada.valor) {
-      setSelectedVeiculo((prev) =>
-        prev ? { ...prev, marcaId: achada.valor } : prev
-      );
+    if (isOpen && selectedVeiculo?.tipo) {
+      fetchBrands(String(selectedVeiculo.tipo));
     }
-  }, [marcas, selectedVeiculo?.marca, selectedVeiculo?.marcaId]);
+  }, [isOpen, selectedVeiculo?.tipo, fetchBrands]);
 
-  // 4) Quando tiver tipo + marcaId, buscar modelos
+  // Fetch both generic models and years when Marca is selected (supports both flows)
   useEffect(() => {
-    if (!isOpen) return;
-    if (!selectedVeiculo?.tipo) return;
-    if (!selectedVeiculo?.marcaId) return;
+    if (isOpen && selectedVeiculo?.tipo && selectedVeiculo?.marca) {
+      const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+      if (m) {
+        // Fetch generic models only if a year is NOT selected
+        if (!selectedVeiculo.ano_modelo) {
+          fetchModels(String(selectedVeiculo.tipo), m.code);
+        }
+        // Always fetch years for the brand to allow year selection
+        if (anosFipe.length === 0) {
+          fetchYearsByBrand(String(selectedVeiculo.tipo), m.code);
+        }
+      }
+    }
+  }, [isOpen, selectedVeiculo?.tipo, selectedVeiculo?.marca, marcasFipe, fetchModels, fetchYearsByBrand]);
 
-    handleGetModelos(
-      String(selectedVeiculo.tipo),
-      Number(selectedVeiculo.marcaId)
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, selectedVeiculo?.tipo, selectedVeiculo?.marcaId]);
+  const selectedYearCode = useMemo(() => {
+    return anosFipe.find(a => {
+      const anoMatch = a.name.match(/\d+/);
+      const aAno = anoMatch ? Number(anoMatch[0]) : null;
+      const aCombustivel = handleCombustivelFromAno(a.name);
+      return aAno === selectedVeiculo?.ano_modelo && (!selectedVeiculo?.combustivel || aCombustivel === selectedVeiculo.combustivel);
+    })?.code;
+  }, [anosFipe, selectedVeiculo?.ano_modelo, selectedVeiculo?.combustivel]);
+
+  // Flow 2: Fetch specific models when Ano is selected
+  useEffect(() => {
+    if (isOpen && selectedVeiculo?.tipo && selectedVeiculo?.marca && selectedVeiculo?.ano_modelo && selectedYearCode) {
+      const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+      if (m) {
+        fetchModelsByBrandAndYear(String(selectedVeiculo.tipo), m.code, selectedYearCode);
+      }
+    }
+  }, [isOpen, selectedVeiculo?.tipo, selectedVeiculo?.marca, selectedVeiculo?.ano_modelo, selectedYearCode, marcasFipe, fetchModelsByBrandAndYear]);
+
+  const extractModeloBase = (name: string) => name.trim().split(" ")[0].toUpperCase();
+
+  const modelosOptions = useMemo(() => Array.from(
+    new Set(modelosRaw.map((m) => extractModeloBase(m.name)))
+  ).sort(), [modelosRaw]);
+
+  const versoesOptions = useMemo(() => modelosRaw
+    .filter(
+      (m) =>
+        selectedVeiculo?.modelo &&
+        (m.name.toUpperCase().startsWith(selectedVeiculo.modelo.toUpperCase() + " ") ||
+          m.name.toUpperCase() === selectedVeiculo.modelo.toUpperCase())
+    )
+    .map((m) => {
+      let v = m.name.substring(selectedVeiculo!.modelo!.length).trim();
+      if (!v) v = "Standard";
+      return { code: m.code, name: v.toUpperCase(), originalName: m.name };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name)), [modelosRaw, selectedVeiculo?.modelo]);
+
+  // Cleanup: Clear modelo and versao if they are no longer valid after a list update (e.g., brand or year change)
+  useEffect(() => {
+    if (isOpen && selectedVeiculo?.modelo && !loadingModelos && modelosOptions.length > 0) {
+      if (!modelosOptions.includes(selectedVeiculo.modelo.toUpperCase())) {
+        setSelectedVeiculo(prev => prev ? { ...prev, modelo: "", versao: "", fipe: undefined } : prev);
+      }
+    }
+  }, [isOpen, modelosOptions, loadingModelos, selectedVeiculo?.modelo, selectedVeiculo, setSelectedVeiculo]);
+
+  const selectedVersaoCode = useMemo(() => {
+    return versoesOptions.find((v) => v.name === selectedVeiculo?.versao?.toUpperCase())?.code;
+  }, [versoesOptions, selectedVeiculo?.versao]);
+
+  // Flow 1: Fetch specific years when Versao is selected
+  useEffect(() => {
+    if (isOpen && selectedVeiculo?.tipo && selectedVeiculo?.marca && selectedVeiculo?.modelo && selectedVeiculo?.versao && selectedVersaoCode) {
+      const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+      if (m) {
+        fetchYears(String(selectedVeiculo.tipo), m.code, selectedVersaoCode);
+      }
+    }
+  }, [isOpen, selectedVeiculo?.tipo, selectedVeiculo?.marca, selectedVeiculo?.modelo, selectedVeiculo?.versao, marcasFipe, selectedVersaoCode, fetchYears]);
+
+
+
+  const isOffline = !!selectedVeiculo?.tipo && !loadingMarcas && marcasFipe.length === 0;
+
+  const handleBuscarFipe = async () => {
+    if (!selectedVeiculo?.ano_modelo || !selectedVeiculo?.tipo || !selectedVeiculo?.marca || !selectedVeiculo?.versao || !selectedVeiculo?.modelo) return;
+    const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+    const selectedVersao = versoesOptions.find((v) => v.name === selectedVeiculo.versao?.toUpperCase());
+
+    const y = anosFipe.find(a => {
+      const anoMatch = a.name.match(/\d+/);
+      const aAno = anoMatch ? Number(anoMatch[0]) : null;
+      const aCombustivel = handleCombustivelFromAno(a.name);
+      return aAno === selectedVeiculo.ano_modelo && (!selectedVeiculo.combustivel || aCombustivel === selectedVeiculo.combustivel);
+    });
+
+    if (m && selectedVersao && y) {
+      const data = await fetchPrice(String(selectedVeiculo.tipo), m.code, selectedVersao.code, y.code);
+      if (data && data.price) {
+        const num = Number(data.price.replace(/[^\d,]/g, "").replace(",", "."));
+        if (!isNaN(num)) handleInputChange("fipe", num);
+      } else {
+        toast.error("Erro na busca", { description: "Não foi possível resgatar o valor FIPE." });
+      }
+    } else {
+      toast.error("Dados incompletos", { description: "Selecione o ano FIPE correspondente." });
+    }
+  };
+
+
 
   const disabledForm = isLoadingVeiculo || !selectedVeiculo;
-
-  const marcaSelecionada = useMemo(() => {
-    if (!selectedVeiculo?.marcaId) return undefined;
-    return marcas.find((m) => m.valor === selectedVeiculo.marcaId);
-  }, [marcas, selectedVeiculo?.marcaId]);
 
   if (isLoadingVeiculo) {
     return (
@@ -333,7 +442,6 @@ export default function EditContent({
                     <Select
                       value={(selectedVeiculo?.tipo as unknown as string) || ""}
                       onValueChange={(value: Veiculo_tipos) => {
-                        // ao trocar o tipo, resetar marca/modelo para evitar inconsistência
                         setSelectedVeiculo((prev) => {
                           if (!prev) return prev;
                           return {
@@ -341,6 +449,10 @@ export default function EditContent({
                             tipo: value as any,
                             marca: "",
                             modelo: "",
+                            versao: "",
+                            ano_modelo: undefined,
+                            fipe: undefined,
+                            combustivel: "",
                             marcaId: undefined,
                           };
                         });
@@ -367,25 +479,38 @@ export default function EditContent({
                     <Label htmlFor="placa" className="text-sm sm:text-base">
                       Placa *
                     </Label>
-                    <Input
-                      id="placa"
-                      value={formatarPlacaParaExibicao(
-                        selectedVeiculo?.placa || ""
-                      )}
-                      onChange={(e) => {
-                        const digitado = e.target.value;
-                        const semHifen = somenteAlphaNumMaiusculo(
-                          digitado
-                        ).slice(0, 7);
-                        setSelectedVeiculo((prev) =>
-                          prev ? { ...prev, placa: semHifen } : prev
-                        );
-                      }}
-                      maxLength={8}
-                      placeholder="ABC-1D23 ou ABC-1234"
-                      autoCapitalize="characters"
-                      disabled={disabledForm}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="placa"
+                        className="w-full uppercase"
+                        value={formatarPlacaParaExibicao(
+                          selectedVeiculo?.placa || ""
+                        )}
+                        onChange={(e) => {
+                          const digitado = e.target.value;
+                          const semHifen = somenteAlphaNumMaiusculo(
+                            digitado
+                          ).slice(0, 7);
+                          setSelectedVeiculo((prev) =>
+                            prev ? { ...prev, placa: semHifen } : prev
+                          );
+                        }}
+                        maxLength={8}
+                        placeholder="ABC-1D23"
+                        autoCapitalize="characters"
+                        disabled={disabledForm}
+                      />
+                      <Button
+                        variant="outline"
+                        type="button"
+                        size="icon"
+                        onClick={handleBuscarPlaca}
+                        disabled={disabledForm || loadingPlaca || !selectedVeiculo?.placa || selectedVeiculo.placa.length < 7}
+                        title="Buscar dados da Placa"
+                      >
+                        <Search className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2 w-full">
                     <Label htmlFor="tipo" className="text-sm sm:text-base">
@@ -413,14 +538,26 @@ export default function EditContent({
                     <Label htmlFor="marca" className="text-sm sm:text-base">
                       Marca *
                     </Label>
-
-                    {errorMarcas ? (
+                    {isOffline ? (
                       <Input
                         id="marca"
                         value={selectedVeiculo?.marca || ""}
-                        onChange={(e) => handleInputChange("marca", e.target.value.toUpperCase())}
-                        placeholder="Ex.: CHEVROLET"
+                        onChange={(e) => {
+                          setSelectedVeiculo((prev) => {
+                            if (!prev) return prev;
+                            return {
+                              ...prev,
+                              marca: e.target.value.toUpperCase(),
+                              modelo: "",
+                              versao: "",
+                              ano_modelo: undefined,
+                              fipe: undefined,
+                              combustivel: "",
+                            };
+                          });
+                        }}
                         disabled={disabledForm}
+                        placeholder="Ex.: CHEVROLET"
                       />
                     ) : (
                       <Popover open={openMarca} onOpenChange={setOpenMarca}>
@@ -430,12 +567,8 @@ export default function EditContent({
                             variant="outline"
                             role="combobox"
                             aria-expanded={openMarca}
-                            className="w-[200px] justify-between text-xs"
-                            disabled={
-                              disabledForm ||
-                              loadingMarcas ||
-                              !selectedVeiculo?.tipo
-                            }
+                            className="w-full justify-between text-xs"
+                            disabled={disabledForm || loadingMarcas || !selectedVeiculo?.tipo}
                           >
                             {loadingMarcas
                               ? "Carregando..."
@@ -459,33 +592,34 @@ export default function EditContent({
                               className="h-9 text-base"
                             />
                             <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                              <CommandEmpty>
-                                Nenhuma marca encontrada.
-                              </CommandEmpty>
+                              <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
                               <CommandGroup>
-                                {marcas.map((m) => (
+                                {marcasFipe.map((m) => (
                                   <CommandItem
                                     className="hover:cursor-pointer"
-                                    key={m.valor}
-                                    value={m.nome}
+                                    key={m.code}
+                                    value={m.name}
                                     onSelect={() => {
                                       setSelectedVeiculo((prev) => {
                                         if (!prev) return prev;
                                         return {
                                           ...prev,
-                                          marcaId: m.valor,
-                                          marca: m.nome.toUpperCase(),
+                                          marca: m.name.toUpperCase(),
                                           modelo: "",
+                                          versao: "",
+                                          ano_modelo: undefined,
+                                          fipe: undefined,
+                                          combustivel: "",
                                         };
                                       });
                                       setOpenMarca(false);
                                     }}
                                   >
-                                    {m.nome.toUpperCase()}
+                                    {m.name.toUpperCase()}
                                     <Check
                                       className={cn(
                                         "ml-auto",
-                                        selectedVeiculo?.marcaId === m.valor
+                                        selectedVeiculo?.marca === m.name.toUpperCase()
                                           ? "opacity-100"
                                           : "opacity-0"
                                       )}
@@ -505,14 +639,26 @@ export default function EditContent({
                     <Label htmlFor="modelo" className="text-sm sm:text-base">
                       Modelo *
                     </Label>
-
-                    {errorModelos || errorMarcas ? (
+                    {isOffline ? (
                       <Input
                         id="modelo"
                         value={selectedVeiculo?.modelo || ""}
-                        onChange={(e) => handleInputChange("modelo", e.target.value.toUpperCase())}
-                        placeholder="Ex.: ONIX 1.0"
+                        onChange={(e) => {
+                          setSelectedVeiculo((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  modelo: e.target.value.toUpperCase(),
+                                  versao: "",
+                                  ano_modelo: undefined,
+                                  fipe: undefined,
+                                  combustivel: "",
+                                }
+                              : prev
+                          );
+                        }}
                         disabled={disabledForm}
+                        placeholder="Ex.: ONIX"
                       />
                     ) : (
                       <Popover open={openModelo} onOpenChange={setOpenModelo}>
@@ -522,13 +668,8 @@ export default function EditContent({
                             variant="outline"
                             role="combobox"
                             aria-expanded={openModelo}
-                            className="w-[400px] justify-between text-xs"
-                            disabled={
-                              disabledForm ||
-                              loadingModelos ||
-                              !selectedVeiculo?.tipo ||
-                              !selectedVeiculo?.marcaId
-                            }
+                            className="w-full justify-between text-xs"
+                            disabled={disabledForm || loadingModelos || !selectedVeiculo?.tipo || !selectedVeiculo?.marca}
                           >
                             {loadingModelos
                               ? "Carregando..."
@@ -552,34 +693,32 @@ export default function EditContent({
                               className="h-9 text-base"
                             />
                             <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
-                              <CommandEmpty>
-                                Nenhum modelo encontrado.
-                              </CommandEmpty>
-
+                              <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
                               <CommandGroup>
-                                {modelos.map((m, i) => (
+                                {modelosOptions.map((m, i) => (
                                   <CommandItem
                                     className="hover:cursor-pointer text-xs"
                                     key={i}
-                                    value={m.modelo}
+                                    value={m}
                                     onSelect={() => {
                                       setSelectedVeiculo((prev) =>
                                         prev
                                           ? {
                                             ...prev,
-                                            modelo: m.modelo.toUpperCase(),
+                                            modelo: m.toUpperCase(),
+                                            versao: "",
+                                            fipe: undefined,
                                           }
                                           : prev
                                       );
                                       setOpenModelo(false);
                                     }}
                                   >
-                                    {m.modelo.toUpperCase()}
+                                    {m.toUpperCase()}
                                     <Check
                                       className={cn(
                                         "ml-auto",
-                                        selectedVeiculo?.modelo ===
-                                          m.modelo.toUpperCase()
+                                        selectedVeiculo?.modelo === m.toUpperCase()
                                           ? "opacity-100"
                                           : "opacity-0"
                                       )}
@@ -592,11 +731,6 @@ export default function EditContent({
                         </PopoverContent>
                       </Popover>
                     )}
-
-                    {/* Dica rápida pra debug: */}
-                    {/* <div className="text-xs opacity-60">
-                    marcaId resolvida: {marcaSelecionada?.valor ?? "-"}
-                  </div> */}
                   </div>
 
                   {/* Versão */}
@@ -604,31 +738,102 @@ export default function EditContent({
                     <Label htmlFor="versao" className="text-sm sm:text-base">
                       Versão
                     </Label>
-                    <Input
-                      className="w-full"
-                      id="versao"
-                      value={selectedVeiculo?.versao || ""}
-                      onChange={(e) =>
-                        handleInputChange("versao", e.target.value.toUpperCase())
-                      }
-                      placeholder="Ex.: LTZ"
-                      disabled={disabledForm}
-                    />
+                    {isOffline ? (
+                      <Input
+                        id="versao"
+                        value={selectedVeiculo?.versao || ""}
+                        onChange={(e) => {
+                          setSelectedVeiculo((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  versao: e.target.value.toUpperCase(),
+                                  ano_modelo: undefined,
+                                  fipe: undefined,
+                                  combustivel: "",
+                                }
+                              : prev
+                          );
+                        }}
+                        disabled={disabledForm}
+                        placeholder="Ex.: 1.0 MT"
+                      />
+                    ) : (
+                      <Popover open={openVersao} onOpenChange={setOpenVersao}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="versao"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openVersao}
+                            className="w-full justify-between text-xs truncate"
+                            disabled={disabledForm || !selectedVeiculo?.modelo || modelosRaw.length === 0}
+                          >
+                            {selectedVeiculo?.versao ? selectedVeiculo.versao : "Selecione..."}
+                            <ChevronsUpDown className="opacity-50 shrink-0" />
+                          </Button>
+                        </PopoverTrigger>
+
+                        <PopoverContent
+                          onWheel={(e) => e.stopPropagation()}
+                          onTouchMove={(e) => e.stopPropagation()}
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                          className="w-[400px] p-0"
+                          onWheelCapture={(e) => e.stopPropagation()}
+                        >
+                          <Command>
+                            <CommandInput placeholder="Buscar versão..." className="h-9 text-base" />
+                            <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
+                              <CommandEmpty>Nenhuma versão encontrada.</CommandEmpty>
+                              <CommandGroup>
+                                {versoesOptions.map((v, i) => (
+                                  <CommandItem
+                                    className="hover:cursor-pointer text-xs"
+                                    key={i}
+                                    value={v.name}
+                                    onSelect={() => {
+                                      setSelectedVeiculo((prev) =>
+                                        prev
+                                          ? {
+                                            ...prev,
+                                            versao: v.name.toUpperCase(),
+                                            ano_modelo: prev.versao && prev.versao !== v.name.toUpperCase() ? undefined : prev.ano_modelo,
+                                            fipe: undefined,
+                                            combustivel: "",
+                                          }
+                                          : prev
+                                      );
+                                      setOpenVersao(false);
+                                    }}
+                                  >
+                                    {v.name.toUpperCase()}
+                                    <Check
+                                      className={cn(
+                                        "ml-auto",
+                                        selectedVeiculo?.versao === v.name.toUpperCase() ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   </div>
 
                   {/* Ano */}
                   <div className="space-y-2">
                     <Label htmlFor="ano" className="text-sm sm:text-base">
-                      Ano
+                      Ano de Fabricação
                     </Label>
                     <Input
                       id="ano"
                       inputMode="numeric"
                       className="w-full"
                       maxLength={4}
-                      value={
-                        selectedVeiculo?.ano ? String(selectedVeiculo.ano) : ""
-                      }
+                      value={selectedVeiculo?.ano ? String(selectedVeiculo.ano) : ""}
                       onChange={(e) => handleInputChange("ano", e.target.value)}
                       placeholder="Ex.: 2019"
                       disabled={disabledForm}
@@ -640,22 +845,64 @@ export default function EditContent({
                     <Label htmlFor="ano_modelo" className="text-sm sm:text-base">
                       Ano Modelo
                     </Label>
-                    <Input
-                      className="w-full"
-                      id="ano_modelo"
-                      inputMode="numeric"
-                      maxLength={4}
-                      value={
-                        selectedVeiculo?.ano_modelo
-                          ? String(selectedVeiculo.ano_modelo)
-                          : ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange("ano_modelo", e.target.value)
-                      }
-                      placeholder="Ex.: 2020"
-                      disabled={disabledForm}
-                    />
+                    {isOffline ? (
+                      <Input
+                        id="ano_modelo"
+                        type="number"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={selectedVeiculo?.ano_modelo ? String(selectedVeiculo.ano_modelo) : ""}
+                        onChange={(e) => handleInputChange("ano_modelo", parseInt(e.target.value) || null)}
+                        placeholder="Ex.: 2020"
+                        disabled={disabledForm}
+                      />
+                    ) : (
+                      <Select
+                        value={selectedVeiculo?.ano_modelo ? (
+                          anosFipe.find(a => {
+                            const anoMatch = a.name.match(/\d+/);
+                            const aAno = anoMatch ? Number(anoMatch[0]) : null;
+                            const aCombustivel = handleCombustivelFromAno(a.name);
+                            return aAno === selectedVeiculo.ano_modelo && (!selectedVeiculo.combustivel || aCombustivel === selectedVeiculo.combustivel);
+                          })?.code || 
+                          anosFipe.find(a => {
+                            const anoMatch = a.name.match(/\d+/);
+                            const aAno = anoMatch ? Number(anoMatch[0]) : null;
+                            return aAno === selectedVeiculo.ano_modelo;
+                          })?.code || ""
+                        ) : ""}
+                        onValueChange={(code) => {
+                          const y = anosFipe.find(a => a.code === code);
+                          if (y) {
+                            const anoMatch = y.name.match(/\d+/);
+                            const ano = anoMatch ? Number(anoMatch[0]) : null;
+                            const combustivel = handleCombustivelFromAno(y.name);
+                            setSelectedVeiculo(prev => prev ? {
+                              ...prev,
+                              ano_modelo: ano || undefined,
+                              combustivel: combustivel || prev.combustivel,
+                              fipe: undefined
+                            } : prev);
+                          }
+                        }}
+                        disabled={disabledForm || loadingAnos || !selectedVeiculo?.marca || anosFipe.length === 0}
+                      >
+                        <SelectTrigger className="w-full" id="ano_modelo">
+                          <SelectValue placeholder={loadingAnos ? "Buscando..." : "Selecione"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {anosFipe.map(a => {
+                            let displayName = a.name;
+                            if (displayName.includes("32000")) {
+                              displayName = displayName.replace("32000", "Zero KM");
+                            }
+                            return (
+                              <SelectItem key={a.code} value={a.code}>{displayName}</SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
 
                   {/* KM atual */}
@@ -751,19 +998,19 @@ export default function EditContent({
                     <Label htmlFor="fipe" className="text-sm sm:text-base">
                       FIPE (R$)
                     </Label>
-                    <Input
-                      className="w-full"
-                      id="fipe"
-                      inputMode="numeric"
-                      value={
-                        selectedVeiculo?.fipe
-                          ? String(selectedVeiculo.fipe)
-                          : ""
-                      }
-                      onChange={(e) => handleInputChange("fipe", e.target.value)}
-                      placeholder="Ex.: 50000"
-                      disabled={disabledForm}
-                    />
+                    <div className="flex gap-2">
+                      <ValueInput
+                        price={selectedVeiculo?.fipe || 0}
+                        setPrice={(value: number) => handleInputChange("fipe", value)}
+                      />
+                      <Button
+                        variant="secondary"
+                        onClick={handleBuscarFipe}
+                        disabled={isOffline || disabledForm || loadingPrice || !selectedVeiculo?.ano_modelo || !selectedVeiculo?.versao}
+                      >
+                        {loadingPrice ? "Buscando..." : "Buscar"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
