@@ -61,6 +61,31 @@ function formatarPlacaParaExibicao(valorSemFormatacao: string) {
   return `${v.slice(0, 3)}-${v.slice(3)}`;
 }
 
+function normalizarTextoBusca(valor: string) {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim();
+}
+
+function marcaCompativel(nomeFipe: string, marca: string) {
+  const fipe = normalizarTextoBusca(nomeFipe);
+  const alvo = normalizarTextoBusca(marca);
+  if (!alvo) return false;
+  if (fipe === alvo) return true;
+  if ((alvo === "VW" || alvo === "VOLKSWAGEN") && (fipe.includes("VW") || fipe.includes("VOLKSWAGEN"))) return true;
+  if ((alvo === "GM" || alvo === "CHEVROLET") && (fipe.includes("GM") || fipe.includes("CHEVROLET"))) return true;
+  if ((alvo === "M BENZ" || alvo === "MERCEDES BENZ") && fipe.includes("MERCEDES")) return true;
+  return fipe.split(" ").includes(alvo);
+}
+
+function encontrarMarcaFipe<T extends { name: string; code: string }>(marcas: T[], marca?: string) {
+  if (!marca) return undefined;
+  return marcas.find((m) => marcaCompativel(m.name, marca));
+}
+
 interface GetVeiculoResponse {
   veiculo: Veiculo & {
     cliente?: { id: number; cpfcnpj: string; nomerazaosocial: string };
@@ -119,6 +144,8 @@ export default function EditContent({
     fetchYearsByBrand,
     fetchModelsByBrandAndYear,
     fetchPrice,
+    setModelosRaw,
+    setAnosFipe,
   } = useFipe();
 
   const handleInputChange = (field: keyof Veiculo, value: any) => {
@@ -136,7 +163,7 @@ export default function EditContent({
     try {
       const response = await axios.get(`/api/veiculos/consulta-placa/${selectedVeiculo.placa}`);
       const data = response.data;
-      
+
       let combustivelRaw = "";
       if (typeof data.extra?.combustivel === "string") {
         combustivelRaw = data.extra.combustivel;
@@ -157,28 +184,40 @@ export default function EditContent({
       if (cleanedMarca.includes(" - ")) cleanedMarca = cleanedMarca.split(" - ")[1];
       if (cleanedMarca.includes("/")) cleanedMarca = cleanedMarca.split("/")[0];
       cleanedMarca = cleanedMarca.trim();
+      const marcaFipe = encontrarMarcaFipe(marcasFipe, cleanedMarca);
 
       const rawModelo = data.SUBMODELO || data.MODELO || data.modelo || "";
       const cleanedModelo = rawModelo.split(" ")[0].toUpperCase().trim();
 
       const anoFabricacao = data.ano || data.extra?.ano_fabricacao || "";
       const anoModelo = data.anoModelo || data.extra?.ano_modelo || "";
+      const marcaSelecionada = marcaFipe?.name.toUpperCase() || cleanedMarca || selectedVeiculo.marca;
+      const anoModeloNumero = anoModelo ? parseInt(String(anoModelo)) : selectedVeiculo.ano_modelo;
 
       setSelectedVeiculo((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
-          marca: cleanedMarca || prev.marca,
+          marca: marcaSelecionada,
           modelo: cleanedModelo || prev.modelo,
           versao: undefined,
           ano: anoFabricacao ? parseInt(String(anoFabricacao)) : prev.ano,
-          ano_modelo: anoModelo ? parseInt(String(anoModelo)) : prev.ano_modelo,
+          ano_modelo: anoModeloNumero,
           chassi: data.extra?.chassi || data.chassi || prev.chassi,
           cor: data.cor?.toUpperCase() || prev.cor,
-          combustivel: combustivelMapped || prev.combustivel,
+          combustivel: combustivelMapped || "",
           fipe: undefined
         };
       });
+      setModelosRaw([]);
+      setAnosFipe([]);
+      const marcaParaBusca = marcaFipe || encontrarMarcaFipe(marcasFipe, marcaSelecionada);
+      if (selectedVeiculo.tipo && marcaParaBusca) {
+        await Promise.all([
+          fetchModels(String(selectedVeiculo.tipo), marcaParaBusca.code),
+          fetchYearsByBrand(String(selectedVeiculo.tipo), marcaParaBusca.code),
+        ]);
+      }
 
       toast.success("Placa consultada", { id: toastId, description: "Dados do veículo preenchidos." });
     } catch (error: any) {
@@ -268,21 +307,20 @@ export default function EditContent({
   // Fetch both generic models and years when Marca is selected (supports both flows)
   useEffect(() => {
     if (isOpen && selectedVeiculo?.tipo && selectedVeiculo?.marca) {
-      const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+      const m = encontrarMarcaFipe(marcasFipe, selectedVeiculo.marca);
       if (m) {
-        // Fetch generic models only if a year is NOT selected
-        if (!selectedVeiculo.ano_modelo) {
+        // Without fuel, a plate-provided model year is only a hint.
+        if (!selectedVeiculo.ano_modelo || !selectedVeiculo.combustivel) {
           fetchModels(String(selectedVeiculo.tipo), m.code);
         }
-        // Always fetch years for the brand to allow year selection
-        if (anosFipe.length === 0) {
-          fetchYearsByBrand(String(selectedVeiculo.tipo), m.code);
-        }
+        // Always refresh years for the selected brand to avoid stale options.
+        fetchYearsByBrand(String(selectedVeiculo.tipo), m.code);
       }
     }
   }, [isOpen, selectedVeiculo?.tipo, selectedVeiculo?.marca, marcasFipe, fetchModels, fetchYearsByBrand]);
 
   const selectedYearCode = useMemo(() => {
+    if (!selectedVeiculo?.ano_modelo || !selectedVeiculo?.combustivel) return undefined;
     return anosFipe.find(a => {
       const anoMatch = a.name.match(/\d+/);
       const aAno = anoMatch ? Number(anoMatch[0]) : null;
@@ -294,7 +332,7 @@ export default function EditContent({
   // Flow 2: Fetch specific models when Ano is selected
   useEffect(() => {
     if (isOpen && selectedVeiculo?.tipo && selectedVeiculo?.marca && selectedVeiculo?.ano_modelo && selectedYearCode) {
-      const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+      const m = encontrarMarcaFipe(marcasFipe, selectedVeiculo.marca);
       if (m) {
         fetchModelsByBrandAndYear(String(selectedVeiculo.tipo), m.code, selectedYearCode);
       }
@@ -337,7 +375,7 @@ export default function EditContent({
   // Flow 1: Fetch specific years when Versao is selected
   useEffect(() => {
     if (isOpen && selectedVeiculo?.tipo && selectedVeiculo?.marca && selectedVeiculo?.modelo && selectedVeiculo?.versao && selectedVersaoCode) {
-      const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+      const m = encontrarMarcaFipe(marcasFipe, selectedVeiculo.marca);
       if (m) {
         fetchYears(String(selectedVeiculo.tipo), m.code, selectedVersaoCode);
       }
@@ -350,7 +388,11 @@ export default function EditContent({
 
   const handleBuscarFipe = async () => {
     if (!selectedVeiculo?.ano_modelo || !selectedVeiculo?.tipo || !selectedVeiculo?.marca || !selectedVeiculo?.versao || !selectedVeiculo?.modelo) return;
-    const m = marcasFipe.find((x) => x.name.toUpperCase() === selectedVeiculo.marca?.toUpperCase());
+    if (!selectedVeiculo.combustivel) {
+      toast.error("Dados incompletos", { description: "Selecione o ano/combustivel FIPE correspondente." });
+      return;
+    }
+    const m = encontrarMarcaFipe(marcasFipe, selectedVeiculo.marca);
     const selectedVersao = versoesOptions.find((v) => v.name === selectedVeiculo.versao?.toUpperCase());
 
     const y = anosFipe.find(a => {
@@ -456,6 +498,8 @@ export default function EditContent({
                             marcaId: undefined,
                           };
                         });
+                        setModelosRaw([]);
+                        setAnosFipe([]);
                       }}
                       disabled={disabledForm}
                     >
@@ -555,6 +599,8 @@ export default function EditContent({
                               combustivel: "",
                             };
                           });
+                          setModelosRaw([]);
+                          setAnosFipe([]);
                         }}
                         disabled={disabledForm}
                         placeholder="Ex.: CHEVROLET"
@@ -612,6 +658,8 @@ export default function EditContent({
                                           combustivel: "",
                                         };
                                       });
+                                      setModelosRaw([]);
+                                      setAnosFipe([]);
                                       setOpenMarca(false);
                                     }}
                                   >
@@ -647,13 +695,13 @@ export default function EditContent({
                           setSelectedVeiculo((prev) =>
                             prev
                               ? {
-                                  ...prev,
-                                  modelo: e.target.value.toUpperCase(),
-                                  versao: "",
-                                  ano_modelo: undefined,
-                                  fipe: undefined,
-                                  combustivel: "",
-                                }
+                                ...prev,
+                                modelo: e.target.value.toUpperCase(),
+                                versao: "",
+                                ano_modelo: undefined,
+                                fipe: undefined,
+                                combustivel: "",
+                              }
                               : prev
                           );
                         }}
@@ -746,12 +794,12 @@ export default function EditContent({
                           setSelectedVeiculo((prev) =>
                             prev
                               ? {
-                                  ...prev,
-                                  versao: e.target.value.toUpperCase(),
-                                  ano_modelo: undefined,
-                                  fipe: undefined,
-                                  combustivel: "",
-                                }
+                                ...prev,
+                                versao: e.target.value.toUpperCase(),
+                                ano_modelo: undefined,
+                                fipe: undefined,
+                                combustivel: "",
+                              }
                               : prev
                           );
                         }}
@@ -797,9 +845,7 @@ export default function EditContent({
                                           ? {
                                             ...prev,
                                             versao: v.name.toUpperCase(),
-                                            ano_modelo: prev.versao && prev.versao !== v.name.toUpperCase() ? undefined : prev.ano_modelo,
                                             fipe: undefined,
-                                            combustivel: "",
                                           }
                                           : prev
                                       );
@@ -858,17 +904,12 @@ export default function EditContent({
                       />
                     ) : (
                       <Select
-                        value={selectedVeiculo?.ano_modelo ? (
+                        value={selectedVeiculo?.ano_modelo && selectedVeiculo?.combustivel ? (
                           anosFipe.find(a => {
                             const anoMatch = a.name.match(/\d+/);
                             const aAno = anoMatch ? Number(anoMatch[0]) : null;
                             const aCombustivel = handleCombustivelFromAno(a.name);
-                            return aAno === selectedVeiculo.ano_modelo && (!selectedVeiculo.combustivel || aCombustivel === selectedVeiculo.combustivel);
-                          })?.code || 
-                          anosFipe.find(a => {
-                            const anoMatch = a.name.match(/\d+/);
-                            const aAno = anoMatch ? Number(anoMatch[0]) : null;
-                            return aAno === selectedVeiculo.ano_modelo;
+                            return aAno === selectedVeiculo.ano_modelo && aCombustivel === selectedVeiculo.combustivel;
                           })?.code || ""
                         ) : ""}
                         onValueChange={(code) => {

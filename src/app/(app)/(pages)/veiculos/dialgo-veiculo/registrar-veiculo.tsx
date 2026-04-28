@@ -53,6 +53,31 @@ function formatarPlacaParaExibicao(valorSemFormatacao: string) {
   return `${v.slice(0, 3)}-${v.slice(3)}`;
 }
 
+function normalizarTextoBusca(valor: string) {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim();
+}
+
+function marcaCompativel(nomeFipe: string, marca: string) {
+  const fipe = normalizarTextoBusca(nomeFipe);
+  const alvo = normalizarTextoBusca(marca);
+  if (!alvo) return false;
+  if (fipe === alvo) return true;
+  if ((alvo === "VW" || alvo === "VOLKSWAGEN") && (fipe.includes("VW") || fipe.includes("VOLKSWAGEN"))) return true;
+  if ((alvo === "GM" || alvo === "CHEVROLET") && (fipe.includes("GM") || fipe.includes("CHEVROLET"))) return true;
+  if ((alvo === "M BENZ" || alvo === "MERCEDES BENZ") && fipe.includes("MERCEDES")) return true;
+  return fipe.split(" ").includes(alvo);
+}
+
+function encontrarMarcaFipe<T extends { name: string; code: string }>(marcas: T[], marca?: string) {
+  if (!marca) return undefined;
+  return marcas.find((m) => marcaCompativel(m.name, marca));
+}
+
 interface RegisterContentProps {
   novoVeiculo: Veiculo;
   setNovoVeiculo: (value: Veiculo) => void;
@@ -103,6 +128,8 @@ export default function RegisterContent({
     fetchYearsByBrand,
     fetchModelsByBrandAndYear,
     fetchPrice,
+    setModelosRaw,
+    setAnosFipe,
   } = useFipe();
 
   const handleInputChange = (field: keyof Veiculo, value: string | number | null) => {
@@ -117,7 +144,7 @@ export default function RegisterContent({
     try {
       const response = await axios.get(`/api/veiculos/consulta-placa/${novoVeiculo.placa}`);
       const data = response.data;
-      
+
       let combustivelRaw = "";
       if (typeof data.extra?.combustivel === "string") {
         combustivelRaw = data.extra.combustivel;
@@ -138,25 +165,37 @@ export default function RegisterContent({
       if (cleanedMarca.includes(" - ")) cleanedMarca = cleanedMarca.split(" - ")[1];
       if (cleanedMarca.includes("/")) cleanedMarca = cleanedMarca.split("/")[0];
       cleanedMarca = cleanedMarca.trim();
+      const marcaFipe = encontrarMarcaFipe(marcasFipe, cleanedMarca);
 
       const rawModelo = data.SUBMODELO || data.MODELO || data.modelo || "";
       const cleanedModelo = rawModelo.split(" ")[0].toUpperCase().trim();
 
       const anoFabricacao = data.ano || data.extra?.ano_fabricacao || "";
       const anoModelo = data.anoModelo || data.extra?.ano_modelo || "";
+      const marcaSelecionada = marcaFipe?.name.toUpperCase() || cleanedMarca || novoVeiculo.marca;
+      const anoModeloNumero = anoModelo ? parseInt(String(anoModelo)) : novoVeiculo.ano_modelo;
 
       setNovoVeiculo({
         ...novoVeiculo,
-        marca: cleanedMarca || novoVeiculo.marca,
+        marca: marcaSelecionada,
         modelo: cleanedModelo || novoVeiculo.modelo,
         versao: undefined,
         ano: anoFabricacao ? parseInt(String(anoFabricacao)) : novoVeiculo.ano,
-        ano_modelo: anoModelo ? parseInt(String(anoModelo)) : novoVeiculo.ano_modelo,
+        ano_modelo: anoModeloNumero,
         chassi: data.extra?.chassi || data.chassi || novoVeiculo.chassi,
         cor: data.cor?.toUpperCase() || novoVeiculo.cor,
-        combustivel: combustivelMapped || novoVeiculo.combustivel,
+        combustivel: combustivelMapped || "",
         fipe: undefined
       });
+      setModelosRaw([]);
+      setAnosFipe([]);
+      const marcaParaBusca = marcaFipe || encontrarMarcaFipe(marcasFipe, marcaSelecionada);
+      if (novoVeiculo.tipo && marcaParaBusca) {
+        await Promise.all([
+          fetchModels(String(novoVeiculo.tipo), marcaParaBusca.code),
+          fetchYearsByBrand(String(novoVeiculo.tipo), marcaParaBusca.code),
+        ]);
+      }
 
       toast.success("Placa consultada", { id: toastId, description: "Dados do veículo preenchidos." });
     } catch (error: any) {
@@ -187,8 +226,10 @@ export default function RegisterContent({
   };
 
   useEffect(() => {
-    if (clienteId) setNovoVeiculo({ ...novoVeiculo, clienteid: clienteId });
-  }, [clienteId, novoVeiculo, setNovoVeiculo]);
+    if (clienteId && novoVeiculo.clienteid !== clienteId) {
+      setNovoVeiculo({ ...novoVeiculo, clienteid: clienteId });
+    }
+  }, [clienteId, novoVeiculo.clienteid, setNovoVeiculo]);
 
   // FIPE Cascade
   useEffect(() => {
@@ -200,21 +241,20 @@ export default function RegisterContent({
   // Fetch both generic models and years when Marca is selected (supports both flows)
   useEffect(() => {
     if (isOpen && novoVeiculo.tipo && novoVeiculo.marca) {
-      const m = marcasFipe.find((x) => x.name.toUpperCase() === novoVeiculo.marca?.toUpperCase());
+      const m = encontrarMarcaFipe(marcasFipe, novoVeiculo.marca);
       if (m) {
-        // Fetch generic models only if a year is NOT selected
-        if (!novoVeiculo.ano_modelo) {
+        // Without fuel, a plate-provided model year is only a hint.
+        if (!novoVeiculo.ano_modelo || !novoVeiculo.combustivel) {
           fetchModels(String(novoVeiculo.tipo), m.code);
         }
-        // Always fetch years for the brand to allow year selection
-        if (anosFipe.length === 0) {
-          fetchYearsByBrand(String(novoVeiculo.tipo), m.code);
-        }
+        // Always refresh years for the selected brand to avoid stale options.
+        fetchYearsByBrand(String(novoVeiculo.tipo), m.code);
       }
     }
   }, [isOpen, novoVeiculo.tipo, novoVeiculo.marca, marcasFipe, fetchModels, fetchYearsByBrand]);
 
   const selectedYearCode = useMemo(() => {
+    if (!novoVeiculo.ano_modelo || !novoVeiculo.combustivel) return undefined;
     return anosFipe.find(a => {
       const anoMatch = a.name.match(/\d+/);
       const aAno = anoMatch ? Number(anoMatch[0]) : null;
@@ -226,7 +266,7 @@ export default function RegisterContent({
   // Flow 2: Fetch specific models when Ano is selected
   useEffect(() => {
     if (isOpen && novoVeiculo.tipo && novoVeiculo.marca && novoVeiculo.ano_modelo && selectedYearCode) {
-      const m = marcasFipe.find((x) => x.name.toUpperCase() === novoVeiculo.marca?.toUpperCase());
+      const m = encontrarMarcaFipe(marcasFipe, novoVeiculo.marca);
       if (m) {
         fetchModelsByBrandAndYear(String(novoVeiculo.tipo), m.code, selectedYearCode);
       }
@@ -269,7 +309,7 @@ export default function RegisterContent({
   // Flow 1: Fetch specific years when Versao is selected
   useEffect(() => {
     if (isOpen && novoVeiculo.tipo && novoVeiculo.marca && novoVeiculo.modelo && novoVeiculo.versao && selectedVersaoCode) {
-      const m = marcasFipe.find((x) => x.name.toUpperCase() === novoVeiculo.marca?.toUpperCase());
+      const m = encontrarMarcaFipe(marcasFipe, novoVeiculo.marca);
       if (m) {
         fetchYears(String(novoVeiculo.tipo), m.code, selectedVersaoCode);
       }
@@ -282,7 +322,11 @@ export default function RegisterContent({
 
   const handleBuscarFipe = async () => {
     if (!novoVeiculo.ano_modelo || !novoVeiculo.tipo || !novoVeiculo.marca || !novoVeiculo.versao || !novoVeiculo.modelo) return;
-    const m = marcasFipe.find((x) => x.name.toUpperCase() === novoVeiculo.marca?.toUpperCase());
+    if (!novoVeiculo.combustivel) {
+      toast.error("Dados incompletos", { description: "Selecione o ano/combustivel FIPE correspondente." });
+      return;
+    }
+    const m = encontrarMarcaFipe(marcasFipe, novoVeiculo.marca);
     const selectedVersao = versoesOptions.find((v) => v.name === novoVeiculo.versao?.toUpperCase());
 
     const y = anosFipe.find(a => {
@@ -333,6 +377,8 @@ export default function RegisterContent({
                 value={(novoVeiculo.tipo as unknown as string) || ""}
                 onValueChange={(value: Veiculo_tipos) => {
                   setNovoVeiculo({ ...novoVeiculo, tipo: value, marca: "", modelo: "", versao: "", ano_modelo: undefined, fipe: undefined, combustivel: "" });
+                  setModelosRaw([]);
+                  setAnosFipe([]);
                 }}
               >
                 <SelectTrigger className="h-10 sm:h-11">
@@ -428,6 +474,8 @@ export default function RegisterContent({
                       fipe: undefined,
                       combustivel: ""
                     });
+                    setModelosRaw([]);
+                    setAnosFipe([]);
                   }}
                   placeholder="Ex.: CHEVROLET"
                 />
@@ -482,6 +530,8 @@ export default function RegisterContent({
                                   fipe: undefined,
                                   combustivel: ""
                                 });
+                                setModelosRaw([]);
+                                setAnosFipe([]);
                                 setOpen2(false);
                               }}
                             >
@@ -632,8 +682,6 @@ export default function RegisterContent({
                                 setNovoVeiculo({
                                   ...novoVeiculo,
                                   versao: v.name.toUpperCase(),
-                                  ano_modelo: novoVeiculo.versao && novoVeiculo.versao !== v.name.toUpperCase() ? undefined : novoVeiculo.ano_modelo,
-                                  combustivel: "",
                                   fipe: undefined,
                                 });
                                 setOpenVersao(false);
@@ -685,51 +733,46 @@ export default function RegisterContent({
                   placeholder="Ex.: 2020"
                 />
               ) : (
-                  <Select
-                    value={novoVeiculo.ano_modelo ? (
-                      anosFipe.find(a => {
-                        const anoMatch = a.name.match(/\d+/);
-                        const aAno = anoMatch ? Number(anoMatch[0]) : null;
-                        const aCombustivel = handleCombustivelFromAno(a.name);
-                        return aAno === novoVeiculo.ano_modelo && (!novoVeiculo.combustivel || aCombustivel === novoVeiculo.combustivel);
-                      })?.code || 
-                      anosFipe.find(a => {
-                        const anoMatch = a.name.match(/\d+/);
-                        const aAno = anoMatch ? Number(anoMatch[0]) : null;
-                        return aAno === novoVeiculo.ano_modelo;
-                      })?.code || ""
-                    ) : ""}
-                    onValueChange={(code) => {
-                      const y = anosFipe.find(a => a.code === code);
-                      if (y) {
-                        const anoMatch = y.name.match(/\d+/);
-                        const ano = anoMatch ? Number(anoMatch[0]) : null;
-                        const combustivel = handleCombustivelFromAno(y.name);
-                        setNovoVeiculo({
-                          ...novoVeiculo,
-                          ano_modelo: ano || undefined,
-                          combustivel: combustivel || novoVeiculo.combustivel,
-                          fipe: undefined
-                        });
+                <Select
+                  value={novoVeiculo.ano_modelo && novoVeiculo.combustivel ? (
+                    anosFipe.find(a => {
+                      const anoMatch = a.name.match(/\d+/);
+                      const aAno = anoMatch ? Number(anoMatch[0]) : null;
+                      const aCombustivel = handleCombustivelFromAno(a.name);
+                      return aAno === novoVeiculo.ano_modelo && aCombustivel === novoVeiculo.combustivel;
+                    })?.code || ""
+                  ) : ""}
+                  onValueChange={(code) => {
+                    const y = anosFipe.find(a => a.code === code);
+                    if (y) {
+                      const anoMatch = y.name.match(/\d+/);
+                      const ano = anoMatch ? Number(anoMatch[0]) : null;
+                      const combustivel = handleCombustivelFromAno(y.name);
+                      setNovoVeiculo({
+                        ...novoVeiculo,
+                        ano_modelo: ano || undefined,
+                        combustivel: combustivel || novoVeiculo.combustivel,
+                        fipe: undefined
+                      });
+                    }
+                  }}
+                  disabled={loadingAnos || !novoVeiculo.marca || anosFipe.length === 0}
+                >
+                  <SelectTrigger className="w-full" id="ano_modelo">
+                    <SelectValue placeholder={loadingAnos ? "Buscando..." : "Selecione"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {anosFipe.map(a => {
+                      let displayName = a.name;
+                      if (displayName.includes("32000")) {
+                        displayName = displayName.replace("32000", "Zero KM");
                       }
-                    }}
-                    disabled={loadingAnos || !novoVeiculo.marca || anosFipe.length === 0}
-                  >
-                    <SelectTrigger className="w-full" id="ano_modelo">
-                      <SelectValue placeholder={loadingAnos ? "Buscando..." : "Selecione"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {anosFipe.map(a => {
-                        let displayName = a.name;
-                        if (displayName.includes("32000")) {
-                          displayName = displayName.replace("32000", "Zero KM");
-                        }
-                        return (
-                          <SelectItem key={a.code} value={a.code}>{displayName}</SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                      return (
+                        <SelectItem key={a.code} value={a.code}>{displayName}</SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               )}
             </div>
             <div className="space-y-2">
