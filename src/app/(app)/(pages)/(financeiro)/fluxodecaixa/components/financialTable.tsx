@@ -255,22 +255,20 @@ export default function FinancialTable({
             <button
               type="button"
               onClick={() => setViewMode(viewMode === "A_PAGAR" ? "TODAS" : "A_PAGAR")}
-              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm rounded-b-none px-3 py-1.5 text-sm font-medium transition-all cursor-pointer ${
-                viewMode === "A_PAGAR"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:bg-background/50 hover:text-foreground"
-              }`}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm rounded-b-none px-3 py-1.5 text-sm font-medium transition-all cursor-pointer ${viewMode === "A_PAGAR"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "hover:bg-background/50 hover:text-foreground"
+                }`}
             >
               A Pagar
             </button>
             <button
               type="button"
               onClick={() => setViewMode(viewMode === "A_RECEBER" ? "TODAS" : "A_RECEBER")}
-              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm rounded-b-none px-3 py-1.5 text-sm font-medium transition-all cursor-pointer ${
-                viewMode === "A_RECEBER"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:bg-background/50 hover:text-foreground"
-              }`}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm rounded-b-none px-3 py-1.5 text-sm font-medium transition-all cursor-pointer ${viewMode === "A_RECEBER"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "hover:bg-background/50 hover:text-foreground"
+                }`}
             >
               A Receber
             </button>
@@ -321,6 +319,7 @@ export default function FinancialTable({
                     <div className="rounded-full p-2 bg-primary/50">{getCategoryIcon(t.categoria)}</div>
                     <div className="flex flex-col items-start">
                       {t.descricao}
+                      {t.nomepagador && <span className="text-xs text-muted-foreground">{t.nomepagador}</span>}
                       <span className="text-xs text-muted-foreground">ID: {t.id}</span>
                       <span className="text-xs text-muted-foreground md:hidden">
                         {t.banco?.titulo ?? "Sem banco"} - {t.metodopagamento}
