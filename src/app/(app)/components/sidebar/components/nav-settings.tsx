@@ -92,6 +92,8 @@ function NavSettingsCollapsibleItem({ item }: { item: Item & { items: NonNullabl
 export function NavSettings({ items }: { items: Item[] }) {
   const pathname = usePathname();
 
+  if (items.length === 0) return null;
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Ajustes</SidebarGroupLabel>

@@ -92,6 +92,8 @@ function NavMainCollapsibleItem({ item }: { item: Item & { items: NonNullable<It
 export function NavMain({ items }: { items: Item[] }) {
   const pathname = usePathname();
 
+  if (items.length === 0) return null;
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Módulos</SidebarGroupLabel>

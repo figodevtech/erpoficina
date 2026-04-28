@@ -16,6 +16,7 @@ import DateTimeBadge from "../components/date-time-badge";
 import { useConfig } from "./config-context";
 
 const routeTitles: Record<string, string> = {
+  "/execucao": "Execução de Ordens",
   "/": "Início",
   "/usuarios": "Gerenciamento de Usuários",
   "/estoque": "Gerenciamento de Estoque",
@@ -43,6 +44,7 @@ function humanize(path: string) {
   if (!seg) return "Início";
 
   const dic: Record<string, string> = {
+    execucao: "Execução de Ordens",
     ordens: "Ordens de Serviço",
     assistentepagamento: "Assistente de Pagamento",
     fluxodecaixa: "Fluxo de Caixa",
@@ -214,4 +216,3 @@ export default function ClientAppShell({
     </SidebarProvider>
   );
 }
-

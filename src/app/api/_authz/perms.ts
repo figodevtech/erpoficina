@@ -1,31 +1,13 @@
 // app/api/_authz/perms.ts
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+export { PERMS, type Permission } from "./permission-constants";
+import { PERMS, type Permission } from "./permission-constants";
 
 /**
  * Mapa centralizado de permissões (mesmo nome que está no banco).
  * Mantemos tudo em CAIXA ALTA e tipado.
  */
-export const PERMS = {
-  DASHBOARD: "DASHBOARD_ACESSO",
-  CLIENTES: "CLIENTES_ACESSO",
-  ORDENS: "ORDENS_ACESSO",
-  ESTOQUE: "ESTOQUE_ACESSO",
-  FINANCEIRO: "FINANCEIRO_ACESSO",
-  RELATORIOS: "RELATORIOS_ACESSO",
-
-  CONFIG: "CONFIG_ACESSO",
-  USUARIOS: "USUARIOS_ACESSO",
-
-  ACOMPANHAMENTO: "ACOMPANHAMENTO_ACESSO",
-
-  VENDAS: "VENDAS_ACESSO",
-
-  VEICULOS: "VEICULOS_ACESSO",
-} as const;
-
-export type Permission = (typeof PERMS)[keyof typeof PERMS];
-
 /**
  * Lê as permissões do usuário logado (por perfil) e retorna como Set em caixa alta.
  * Faz fallback por email se necessário.
@@ -194,5 +176,12 @@ export async function hasVeiculosAccess() {
 }
 export async function requireVeiculosAccess() {
   return requirePerm(PERMS.VEICULOS);
+}
+
+export async function hasExecucaoOSAccess() {
+  return hasPerm(PERMS.EXECUCAO_OS);
+}
+export async function requireExecucaoOSAccess() {
+  return requirePerm(PERMS.EXECUCAO_OS);
 }
 

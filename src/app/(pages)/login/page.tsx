@@ -4,6 +4,7 @@ import { getQuoteOfTheDay } from "@/lib/quotes";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ForceLogout } from "./components/force-logout";
+import { getDefaultRouteForPerms } from "@/app/api/_authz/default-route";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,7 +22,7 @@ export default async function LoginPage({
 
   // Quando o usuário foi bloqueado, a página de login deve derrubar a sessão em vez de redirecionar.
   if (session && reason !== "inactive") {
-    redirect("/dashboard");
+    redirect(getDefaultRouteForPerms((session.user as any)?.permissoes));
   }
 
   return (

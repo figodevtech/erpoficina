@@ -29,7 +29,6 @@ import {
 } from "@/components/ui/sidebar";
 
 import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 import {
@@ -47,7 +46,6 @@ import { toast } from "sonner";
 
 export function NavUser({ user }: { user: { nome: string; email: string } }) {
   const { isMobile } = useSidebar();
-  const router = useRouter();
 
   // --- Modal Alterar Senha
   const [pwdOpen, setPwdOpen] = useState(false);
@@ -57,15 +55,8 @@ export function NavUser({ user }: { user: { nome: string; email: string } }) {
   const [savingPwd, setSavingPwd] = useState(false);
 
   const handleLogout = async () => {
-    try {
-      try {
-        await supabase.auth.signOut();
-      } catch {}
-      await signOut({ redirect: false });
-    } finally {
-      // Force hard reload to clear client-side caches (Router Cache, etc.)
-      window.location.href = "/login";
-    }
+    void supabase.auth.signOut().catch(() => {});
+    await signOut({ callbackUrl: "/login", redirect: true });
   };
 
   const openChangePwd = () => {

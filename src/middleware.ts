@@ -2,7 +2,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
-import { PERMS, type Permission } from "@/app/api/_authz/perms";
+import { PERMS, type Permission } from "@/app/api/_authz/permission-constants";
+import { getDefaultRouteForPerms } from "@/app/api/_authz/default-route";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
@@ -60,6 +61,7 @@ function isPublicApi(pathname: string) {
  * Regras por prefixo -> permissÃ£o necessÃ¡ria
  */
 const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
+  { prefix: "/execucao", perm: PERMS.EXECUCAO_OS },
   { prefix: "/dashboard", perm: PERMS.DASHBOARD },
   { prefix: "/clientes", perm: PERMS.CLIENTES },
   { prefix: "/ordens", perm: PERMS.ORDENS },
@@ -96,6 +98,19 @@ function hasPermFromSession(user: any, perm: string) {
     : [];
   const normalized = perms.map((p) => String(p).trim().toUpperCase());
   return normalized.includes(String(perm).trim().toUpperCase());
+}
+
+function getSessionPerms(user: any) {
+  const perms: string[] = Array.isArray(user?.permissoes) ? user.permissoes : [];
+  return perms.map((p) => String(p).trim().toUpperCase()).filter(Boolean);
+}
+
+function isExecutorOnly(user: any) {
+  const perms = getSessionPerms(user);
+  if (!perms.includes(PERMS.EXECUCAO_OS)) return false;
+
+  const appPerms = Object.values(PERMS).map((p) => String(p).toUpperCase());
+  return perms.every((p) => p === PERMS.EXECUCAO_OS || !appPerms.includes(p));
 }
 
 export default auth(async (req: NextRequest & { auth?: any }) => {
@@ -213,7 +228,32 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     // âŒ NÃ£o Ã© root
     if (pathname.startsWith("/root")) {
       // Se tentar acessar /root sendo comum, joga para /dashboard
-      return NextResponse.redirect(new URL("/dashboard", nextUrl), {
+      return NextResponse.redirect(new URL(getDefaultRouteForPerms((user as any)?.permissoes), nextUrl), {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+  }
+
+  const executorOnly = isExecutorOnly(user);
+  if (executorOnly) {
+    const allowedExecutorPath =
+      pathname === "/execucao" ||
+      pathname.startsWith("/execucao/") ||
+      pathname.startsWith("/api/execucao") ||
+      pathname.startsWith("/api/tipos/setores") ||
+      pathname.startsWith("/api/auth") ||
+      pathname.startsWith("/api/config") ||
+      pathname === "/nao-autorizado";
+
+    if (!allowedExecutorPath) {
+      if (isApi) {
+        return NextResponse.json(
+          { error: "FORBIDDEN" },
+          { status: 403, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+
+      return NextResponse.redirect(new URL("/execucao", nextUrl), {
         headers: { "Cache-Control": "no-store" },
       });
     }
@@ -230,7 +270,11 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
           { status: 403, headers: { "Cache-Control": "no-store" } },
         );
       }
-      return NextResponse.redirect(new URL("/nao-autorizado", nextUrl), {
+
+      const fallbackPath = getDefaultRouteForPerms((user as any)?.permissoes);
+      const targetPath = fallbackPath !== pathname ? fallbackPath : "/nao-autorizado";
+
+      return NextResponse.redirect(new URL(targetPath, nextUrl), {
         headers: { "Cache-Control": "no-store" },
       });
     }

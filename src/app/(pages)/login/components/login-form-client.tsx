@@ -71,7 +71,8 @@ export function LoginFormClient() {
       }
 
       toast.success("Login efetuado!");
-      router.push("/dashboard");
+      router.replace("/");
+      router.refresh();
     } catch (e: any) {
       toast.error(e?.message || "Falha de login.");
     } finally {
