@@ -12,9 +12,8 @@ import {
   Save,
   AlertCircle,
   FileText,
-  CreditCard,
   Package,
-  AppWindow
+  Search
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,9 +23,16 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { Config } from "../../type";
 
+type UsoConsultasPlaca = {
+  limite: number;
+  usadas: number;
+  mes: string;
+};
+
 export default function ConfigGeralPage() {
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [usoConsultasPlaca, setUsoConsultasPlaca] = useState<UsoConsultasPlaca | null>(null);
 
   const { register, handleSubmit, setValue, watch, reset } = useForm<Partial<Config>>({
     defaultValues: {
@@ -43,12 +49,26 @@ export default function ConfigGeralPage() {
   const carregarConfig = useCallback(async () => {
     setCarregando(true);
     try {
-      const response = await fetch("/api/config", { cache: "no-store" });
+      const [response, empresaResponse] = await Promise.all([
+        fetch("/api/config", { cache: "no-store" }),
+        fetch("/api/config/empresa", { cache: "no-store" }),
+      ]);
       const data = await response.json();
+      const empresaData = await empresaResponse.json().catch(() => ({}));
       if (response.ok && data.config) {
         reset(data.config);
       } else {
         toast.error("Erro ao carregar configurações");
+      }
+      if (empresaResponse.ok && empresaData?.empresa) {
+        const empresa = empresaData.empresa;
+        setUsoConsultasPlaca({
+          limite: Number(empresa.placa_consulta_limite_mensal ?? 0),
+          usadas: Number(empresa.placa_consulta_qtd_mes ?? 0),
+          mes: empresa.placa_consulta_mes ?? "",
+        });
+      } else {
+        setUsoConsultasPlaca(null);
       }
     } catch (error) {
       console.error(error);
@@ -96,6 +116,11 @@ export default function ConfigGeralPage() {
     );
   }
 
+  const limitePlacas = usoConsultasPlaca?.limite ?? 0;
+  const usadasPlacas = usoConsultasPlaca?.usadas ?? 0;
+  const percentualPlacas =
+    limitePlacas > 0 ? Math.min(100, Math.round((usadasPlacas / limitePlacas) * 100)) : 100;
+
   return (
     <div className="container mx-auto py-8 max-w-5xl space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -125,6 +150,47 @@ export default function ConfigGeralPage() {
       <Separator />
 
       <div className="grid gap-6">
+        <Card className="overflow-hidden border-primary/10 shadow-sm p-0">
+          <CardHeader className="bg-primary/5 py-4">
+            <div className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
+              <CardTitle>Consultas de placa</CardTitle>
+            </div>
+            <CardDescription>Uso mensal da API de placas.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 py-6">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <span className="text-xs text-muted-foreground">Usadas no mes</span>
+                <p className="mt-1 text-2xl font-semibold">{usoConsultasPlaca ? usadasPlacas : "-"}</p>
+              </div>
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <span className="text-xs text-muted-foreground">Limite mensal</span>
+                <p className="mt-1 text-2xl font-semibold">{usoConsultasPlaca ? limitePlacas : "-"}</p>
+              </div>
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <span className="text-xs text-muted-foreground">Mes vigente</span>
+                <p className="mt-1 text-2xl font-semibold">{usoConsultasPlaca?.mes || "-"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{usoConsultasPlaca ? `${usadasPlacas}/${limitePlacas}` : "Sem dados"}</span>
+                <span>{usoConsultasPlaca ? `${percentualPlacas}%` : "-"}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: usoConsultasPlaca ? `${percentualPlacas}%` : "0%" }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ao virar o mes, o contador e reiniciado automaticamente na proxima consulta.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
         {/* MÓDULO FISCAL */}
         <Card className="overflow-hidden border-primary/10 shadow-sm p-0">
           <CardHeader className="bg-primary/5 py-4">

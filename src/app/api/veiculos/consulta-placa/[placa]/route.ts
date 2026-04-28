@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
 import axios from "axios";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function normalizarPlaca(valor: string) {
   return valor.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
+
+type LimiteConsultaPlaca = {
+  permitido: boolean;
+  empresa_id: number;
+  limite: number;
+  usadas: number;
+  mes: string;
+};
 
 export async function GET(
   request: Request,
@@ -36,10 +48,54 @@ export async function GET(
   }
 
   try {
+    const { data: limiteRaw, error: limiteError } = await supabaseAdmin
+      .rpc("registrar_consulta_placa_empresa", { p_empresa_id: null })
+      .maybeSingle();
+    const limite = limiteRaw as LimiteConsultaPlaca | null;
+
+    if (limiteError) {
+      console.error("Erro ao registrar consulta de placa:", limiteError);
+      return NextResponse.json(
+        { error: "Falha ao verificar limite mensal de consultas de placa" },
+        { status: 500 }
+      );
+    }
+
+    if (!limite) {
+      return NextResponse.json(
+        { error: "Empresa nao configurada para controle de consultas de placa" },
+        { status: 500 }
+      );
+    }
+
+    if (!limite.permitido) {
+      return NextResponse.json(
+        {
+          error: `Limite mensal de consultas de placa atingido (${limite.usadas}/${limite.limite}).`,
+          limiteConsultasPlaca: {
+            limite: limite.limite,
+            usadas: limite.usadas,
+            mes: limite.mes,
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     const url = `https://wdapi2.com.br/consulta/${placaNormalizada}/${token}`;
     const response = await axios.get(url);
 
-    return NextResponse.json(response.data, { status: 200 });
+    return NextResponse.json(
+      {
+        ...response.data,
+        limiteConsultasPlaca: {
+          limite: limite.limite,
+          usadas: limite.usadas,
+          mes: limite.mes,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error("Erro ao consultar API de placas:", error.message);
     if (axios.isAxiosError(error) && error.response) {

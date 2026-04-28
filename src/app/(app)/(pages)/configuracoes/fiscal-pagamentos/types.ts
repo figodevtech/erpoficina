@@ -25,6 +25,9 @@ export type Empresa = {
   certificadosenha?: string;
   cschomologacao?: string;
   cscproducao?: string;
+  placa_consulta_limite_mensal: number;
+  placa_consulta_qtd_mes: number;
+  placa_consulta_mes: string;
 };
 
 export type NFeCfg = {

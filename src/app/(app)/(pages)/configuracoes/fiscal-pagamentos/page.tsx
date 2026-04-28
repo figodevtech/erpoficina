@@ -46,6 +46,9 @@ export default function ConfigFiscalPagamentosPage() {
         certificadosenha: "",
         cschomologacao: "",
         cscproducao: "",
+        placa_consulta_limite_mensal: 100,
+        placa_consulta_qtd_mes: 0,
+        placa_consulta_mes: "",
       },
       nfe: {
         serieNFe: "1",
@@ -95,6 +98,9 @@ export default function ConfigFiscalPagamentosPage() {
       setValue("empresa.certificadosenha", e.certificadosenha ?? "");
       setValue("empresa.cschomologacao", e.cschomologacao ?? "");
       setValue("empresa.cscproducao", e.cscproducao ?? "");
+      setValue("empresa.placa_consulta_limite_mensal", Number(e.placa_consulta_limite_mensal ?? 100));
+      setValue("empresa.placa_consulta_qtd_mes", Number(e.placa_consulta_qtd_mes ?? 0));
+      setValue("empresa.placa_consulta_mes", e.placa_consulta_mes ?? "");
     },
     [setValue]
   );
@@ -193,10 +199,14 @@ export default function ConfigFiscalPagamentosPage() {
     setSalvando(true);
     try {
       if (activeTab === "empresa") {
+        const empresaPayload: Record<string, unknown> = { ...values.empresa };
+        delete empresaPayload.placa_consulta_limite_mensal;
+        delete empresaPayload.placa_consulta_qtd_mes;
+        delete empresaPayload.placa_consulta_mes;
         const r = await fetch("/api/config/empresa", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ empresa: values.empresa }),
+          body: JSON.stringify({ empresa: empresaPayload }),
         });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || "Falha ao salvar Empresa");

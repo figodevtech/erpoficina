@@ -40,7 +40,10 @@ export async function GET() {
         certificadocaminho,
         certificadosenha,
         cschomologacao,
-        cscproducao
+        cscproducao,
+        placa_consulta_limite_mensal,
+        placa_consulta_qtd_mes,
+        placa_consulta_mes
       `
       )
       .order("id", { ascending: true })
@@ -79,6 +82,9 @@ export async function GET() {
       certificadosenha: data.certificadosenha || "",
       cschomologacao: data.cschomologacao || "",
       cscproducao: data.cscproducao || "",
+      placa_consulta_limite_mensal: data.placa_consulta_limite_mensal ?? 100,
+      placa_consulta_qtd_mes: data.placa_consulta_qtd_mes ?? 0,
+      placa_consulta_mes: data.placa_consulta_mes || "",
     };
 
     return NextResponse.json({ empresa }, { headers: { "Cache-Control": "no-store" } });
