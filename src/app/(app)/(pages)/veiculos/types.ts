@@ -19,7 +19,6 @@ export interface Veiculo {
   cor?: string,
   kmatual?: number,
   tipo?: Veiculo_tipos,
-  chassi?: string,
   ano_modelo?: number,
   versao?: string,
   fipe?: number,

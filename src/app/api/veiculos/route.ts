@@ -132,7 +132,6 @@ export async function POST(request: Request) {
     const cor = v?.cor === null || v?.cor === undefined ? null : String(v.cor).trim();
     const tipo = v?.tipo ? String(v.tipo).trim() : undefined;
 
-    const chassi = v?.chassi === null || v?.chassi === undefined ? null : String(v.chassi).trim();
     const ano_modelo =
       v?.ano_modelo === null || v?.ano_modelo === undefined || v?.ano_modelo === "" ? null : Number(v.ano_modelo);
     const versao = v?.versao === null || v?.versao === undefined ? null : String(v.versao).trim();
@@ -167,7 +166,6 @@ export async function POST(request: Request) {
       ano,
       cor,
       kmatual,
-      chassi,
       ano_modelo,
       versao,
       fipe,

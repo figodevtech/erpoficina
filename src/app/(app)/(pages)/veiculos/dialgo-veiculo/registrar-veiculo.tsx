@@ -35,6 +35,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { BadgePlus, Check, ChevronsUpDown, Loader2, Save, Search } from "lucide-react";
+import axios, { isAxiosError } from "axios";
+import { Veiculo, Veiculo_tipos } from "../types";
 import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { useFipe } from "./useFipe";
@@ -363,7 +366,7 @@ export default function RegisterContent({
           open={openCustomer}
           setOpen={setOpenCustomer}
           OnSelect={(cliente) =>
-            aplicarAtualizacao({ clienteid: cliente.id, cliente })
+            setNovoVeiculo({ ...novoVeiculo, clienteid: cliente.id, cliente })
           }
         />
 
