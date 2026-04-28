@@ -53,6 +53,9 @@ export async function GET(_request: Request, ctx: Ctx) {
           descricao, observacoes,
           dataentrada, datasaida,
           orcamentototal,
+          cliente:cliente (
+            nomerazaosocial
+          ),
           createdat, updatedat,
           is_deleted, deleted_at
         )

@@ -491,7 +491,7 @@ export function RealizadoresOSDialog({
                               <span className="font-medium">{money(active.baseTotal)}</span>
                             </div>
 
-                            <div className="flex items-center justify-between text-xs">
+                            {/* <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">Base por realizador (dividida)</span>
                               <span className="font-medium">{money(breakdown.basePorRealizador)}</span>
                             </div>
@@ -499,9 +499,9 @@ export function RealizadoresOSDialog({
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">Total de comissão (selecionados)</span>
                               <span className="font-medium">{money(breakdown.totalComissao)}</span>
-                            </div>
+                            </div> */}
 
-                            {breakdown.rows.length > 0 && (
+                            {/* {breakdown.rows.length > 0 && (
                               <div className="pt-2 space-y-1">
                                 {breakdown.rows.map((b) => (
                                   <div key={b.userId} className="flex items-center justify-between gap-2 text-xs">
@@ -512,7 +512,7 @@ export function RealizadoresOSDialog({
                                   </div>
                                 ))}
                               </div>
-                            )}
+                            )} */}
                           </div>
 
                           <div className="h-2" />

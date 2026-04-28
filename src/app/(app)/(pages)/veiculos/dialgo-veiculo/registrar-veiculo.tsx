@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { BadgePlus, Check, ChevronsUpDown, Loader2, Save, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Save, Search } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { Veiculo, Veiculo_tipos } from "../types";
 import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
@@ -350,15 +350,15 @@ export default function RegisterContent({
   };
 
   return (
-    <DialogContent className="h-svh min-w-screen overflow-hidden p-0 sm:h-auto sm:max-h-[860px] sm:min-w-0 sm:max-w-[980px]">
+    <DialogContent className="h-svh min-w-screen overflow-hidden p-0 sm:max-h-[850px] sm:w-[95vw] sm:max-w-[1100px] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
-        <DialogHeader className="shrink-0 border-b px-6 py-4">
-          <DialogTitle className="flex items-center gap-2">
-            <BadgePlus className="h-5 w-5 text-primary" />
-            Cadastro de Veículo
+        <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
+          <DialogTitle className="text-sm sm:text-lg">
+            Veículo
+            <span className="ml-1 text-xs font-light text-muted-foreground sm:text-sm">| Novo</span>
           </DialogTitle>
           <DialogDescription>
-            Preencha os dados abaixo para registrar um novo veículo.
+            Preencha dados para registrar um novo veículo
           </DialogDescription>
         </DialogHeader>
 
@@ -370,11 +370,11 @@ export default function RegisterContent({
           }
         />
 
-        <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
+        <div className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-6 sm:px-6">
           {/* Tipo */}
-          <div className="flex flex-row items-center gap-4">
-            <div className="space-y-2 text-nowrap">
-              <Label htmlFor="tipo" className="text-sm sm:text-base">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tipo" className="text-sm">
                 Tipo de Veículo *
               </Label>
               <Select
@@ -385,10 +385,10 @@ export default function RegisterContent({
                   setAnosFipe([]);
                 }}
               >
-                <SelectTrigger className="h-10 sm:h-11">
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                   {Object.keys(Veiculo_tipos).map((tipo, i) => (
                     <SelectItem
                       className="hover:cursor-pointer"
@@ -402,13 +402,13 @@ export default function RegisterContent({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="placa" className="text-sm sm:text-base">
+              <Label htmlFor="placa" className="text-sm">
                 Placa *
               </Label>
-              <div className="flex gap-2">
+              <div className="relative">
                 <Input
                   id="placa"
-                  className="w-full uppercase"
+                  className="w-full pr-9 uppercase"
                   value={formatarPlacaParaExibicao(novoVeiculo.placa || "")}
                   onChange={(e) => {
                     const digitado = e.target.value;
@@ -418,29 +418,38 @@ export default function RegisterContent({
                     );
                     setNovoVeiculo({ ...novoVeiculo, placa: semHifen });
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (!loadingPlaca && novoVeiculo.placa && novoVeiculo.placa.length >= 7) {
+                        handleBuscarPlaca();
+                      }
+                    }
+                  }}
                   maxLength={8} // 3 + hífen + 4
                   placeholder="ABC-1D23"
                   autoCapitalize="characters"
                 />
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   type="button"
                   size="icon"
                   onClick={handleBuscarPlaca}
                   disabled={loadingPlaca || !novoVeiculo.placa || novoVeiculo.placa.length < 7}
                   title="Buscar dados da Placa"
+                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
                 >
-                  <Search className="w-4 h-4" />
+                  <Search className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             {!clienteId && (
 
-              <div className="space-y-2 w-full">
-                <Label htmlFor="tipo" className="text-sm sm:text-base">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="cliente" className="text-sm">
                   Cliente proprietário
                 </Label>
-                <div className="flex flex-row items-center gap-1">
+                <div className="flex items-center gap-2">
                   <Input
                     className="w-full"
                     value={novoVeiculo?.cliente?.nomerazaosocial || ""}
@@ -448,7 +457,7 @@ export default function RegisterContent({
                   />
                   <div
                     onClick={() => setOpenCustomer(true)}
-                    className="flex items-center hover:cursor-pointer p-1.5 rounded-full bg-muted"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background hover:cursor-pointer hover:bg-muted"
                   >
                     <Search className="w-4 h-4 text-primary" />
                   </div>
@@ -457,11 +466,11 @@ export default function RegisterContent({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
 
 
             <div className="space-y-2">
-              <Label htmlFor="marca" className="text-sm sm:text-base">
+              <Label htmlFor="marca" className="text-sm">
                 Marca *
               </Label>
               {isOffline ? (
@@ -491,7 +500,7 @@ export default function RegisterContent({
                       variant="outline"
                       role="combobox"
                       aria-expanded={open2}
-                      className="w-full justify-between text-xs"
+                      className="h-9 w-full justify-between text-sm"
                       disabled={loadingMarcas || !novoVeiculo.tipo}
                     >
                       {loadingMarcas
@@ -507,7 +516,7 @@ export default function RegisterContent({
                     onWheel={(e) => e.stopPropagation()}
                     onTouchMove={(e) => e.stopPropagation()}
                     onOpenAutoFocus={(e) => e.preventDefault()}
-                    className="w-[200px] p-0"
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
                     onWheelCapture={(e) => e.stopPropagation()}
                   >
                     <Command>
@@ -559,7 +568,7 @@ export default function RegisterContent({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="modelo" className="text-sm sm:text-base">
+              <Label htmlFor="modelo" className="text-sm">
                 Modelo *
               </Label>
               <Popover open={open1} onOpenChange={setOpen1}>
@@ -569,7 +578,7 @@ export default function RegisterContent({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open1}
-                    className="w-full justify-between text-xs"
+                    className="h-9 w-full justify-between text-sm"
                     disabled={loadingModelos || !novoVeiculo.tipo || !novoVeiculo.marca}
                   >
                     {loadingModelos
@@ -585,7 +594,7 @@ export default function RegisterContent({
                   onWheel={(e) => e.stopPropagation()}
                   onTouchMove={(e) => e.stopPropagation()}
                   onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="w-[400px] p-0"
+                  className="w-[var(--radix-popover-trigger-width)] p-0"
                   onWheelCapture={(e) => e.stopPropagation()}
                 >
                   <Command>
@@ -599,7 +608,7 @@ export default function RegisterContent({
                       <CommandGroup>
                         {modelosOptions.map((m, i) => (
                           <CommandItem
-                            className="hover:cursor-pointer text-xs"
+                            className="hover:cursor-pointer text-sm"
                             key={i}
                             value={m}
                             onSelect={() => {
@@ -630,8 +639,8 @@ export default function RegisterContent({
               </Popover>
             </div>
 
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="versao" className="text-sm sm:text-base">
+            <div className="space-y-2 lg:col-span-2">
+              <Label htmlFor="versao" className="text-sm">
                 Versão
               </Label>
               {isOffline ? (
@@ -657,7 +666,7 @@ export default function RegisterContent({
                       variant="outline"
                       role="combobox"
                       aria-expanded={openVersao}
-                      className="w-full justify-between text-xs truncate"
+                      className="h-9 w-full justify-between truncate text-sm"
                       disabled={!novoVeiculo.modelo || modelosRaw.length === 0}
                     >
                       {novoVeiculo.versao ? novoVeiculo.versao : "Selecione..."}
@@ -669,7 +678,7 @@ export default function RegisterContent({
                     onWheel={(e) => e.stopPropagation()}
                     onTouchMove={(e) => e.stopPropagation()}
                     onOpenAutoFocus={(e) => e.preventDefault()}
-                    className="w-[400px] p-0"
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
                     onWheelCapture={(e) => e.stopPropagation()}
                   >
                     <Command>
@@ -679,7 +688,7 @@ export default function RegisterContent({
                         <CommandGroup>
                           {versoesOptions.map((v, i) => (
                             <CommandItem
-                              className="hover:cursor-pointer text-xs"
+                              className="hover:cursor-pointer text-sm"
                               key={i}
                               value={v.name}
                               onSelect={() => {
@@ -709,7 +718,7 @@ export default function RegisterContent({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ano" className="text-sm sm:text-base">
+              <Label htmlFor="ano" className="text-sm">
                 Ano de Fabricação
               </Label>
               <Input
@@ -723,7 +732,7 @@ export default function RegisterContent({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ano_modelo" className="text-sm sm:text-base">
+              <Label htmlFor="ano_modelo" className="text-sm">
                 Ano Modelo
               </Label>
               {isOffline ? (
@@ -762,10 +771,10 @@ export default function RegisterContent({
                   }}
                   disabled={loadingAnos || !novoVeiculo.marca || anosFipe.length === 0}
                 >
-                  <SelectTrigger className="w-full" id="ano_modelo">
+                  <SelectTrigger className="h-9 w-full" id="ano_modelo">
                     <SelectValue placeholder={loadingAnos ? "Buscando..." : "Selecione"} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                     {anosFipe.map(a => {
                       let displayName = a.name;
                       if (displayName.includes("32000")) {
@@ -780,7 +789,7 @@ export default function RegisterContent({
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kmatual" className="text-sm sm:text-base">
+              <Label htmlFor="kmatual" className="text-sm">
                 KM atual
               </Label>
               <Input
@@ -793,7 +802,7 @@ export default function RegisterContent({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="chassi" className="text-sm sm:text-base">
+              <Label htmlFor="chassi" className="text-sm">
                 Chassi
               </Label>
               <Input
@@ -806,20 +815,20 @@ export default function RegisterContent({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
 
             <div className="space-y-2">
-              <Label htmlFor="combustivel" className="text-sm sm:text-base">
+              <Label htmlFor="combustivel" className="text-sm">
                 Combustível
               </Label>
               <Select
                 value={novoVeiculo.combustivel || ""}
                 onValueChange={(value) => handleInputChange("combustivel", value)}
               >
-                <SelectTrigger className="w-full" id="combustivel">
+                <SelectTrigger className="h-9 w-full" id="combustivel">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                   <SelectItem value="FLEX">FLEX</SelectItem>
                   <SelectItem value="GASOLINA">GASOLINA</SelectItem>
                   <SelectItem value="ETANOL">ETANOL</SelectItem>
@@ -832,17 +841,17 @@ export default function RegisterContent({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="transmissao" className="text-sm sm:text-base">
+              <Label htmlFor="transmissao" className="text-sm">
                 Transmissão
               </Label>
               <Select
                 value={novoVeiculo.transmissao || ""}
                 onValueChange={(value) => handleInputChange("transmissao", value)}
               >
-                <SelectTrigger className="w-full" id="transmissao">
+                <SelectTrigger className="h-9 w-full" id="transmissao">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                   <SelectItem value="MANUAL">MANUAL</SelectItem>
                   <SelectItem value="AUTOMATICA">AUTOMÁTICA</SelectItem>
                   <SelectItem value="AUTOMATIZADA">AUTOMATIZADA</SelectItem>
@@ -852,7 +861,7 @@ export default function RegisterContent({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="fipe" className="text-sm sm:text-base">
+              <Label htmlFor="fipe" className="text-sm">
                 FIPE (R$)
               </Label>
               <div className="flex gap-2">

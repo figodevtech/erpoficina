@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -11,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, ChevronsUpDown, Save, Search, X } from "lucide-react";
+import { Car, Check, ChevronDown, ChevronsUpDown, ClipboardList, ExternalLink, Save, Search } from "lucide-react";
 import {
   DialogClose,
   DialogContent,
@@ -22,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { tabTheme, Veiculo, Veiculo_tipos } from "../types";
+import { Veiculo, Veiculo_tipos } from "../types";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -50,6 +52,7 @@ import {
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { useFipe } from "./useFipe";
 import ValueInput from "../../(financeiro)/fluxodecaixa/components/transactionDialog/valueInput";
+import Link from "next/link";
 
 function somenteAlphaNumMaiusculo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -110,6 +113,49 @@ const handleCombustivelFromAno = (anoStr: string) => {
   return null;
 };
 
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value || 0);
+};
+
+const formatDate = (date: string | Date | null | undefined) => {
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(date));
+};
+
+const getStatusBadge = (status?: string | null) => {
+  if (!status) return <Badge variant="outline">Desconhecido</Badge>;
+  const upper = status.toUpperCase();
+  const formatted = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, " ");
+
+  switch (upper) {
+    case "ORCAMENTO":
+      return <Badge variant="outline" className="border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-400">Orçamento</Badge>;
+    case "ABERTA":
+    case "EM_ANDAMENTO":
+      return <Badge variant="outline" className="border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400">Aberta</Badge>;
+    case "PENDENTE":
+    case "APROVACAO_ORCAMENTO":
+      return <Badge variant="outline" className="border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400">Pendente</Badge>;
+    case "CONCLUIDO":
+    case "FINALIZADA":
+      return <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Finalizada</Badge>;
+    case "CANCELADO":
+    case "CANCELADA":
+      return <Badge variant="outline" className="border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400">Cancelada</Badge>;
+    case "SEM_COBRANCA":
+      return <Badge variant="outline" className="border-gray-500/20 bg-gray-500/10 text-gray-700 dark:text-gray-400">Sem Cobrança</Badge>;
+    default:
+      return <Badge variant="outline">{formatted}</Badge>;
+  }
+};
+
 export default function EditContent({
   veiculoId,
   isOpen,
@@ -123,6 +169,7 @@ export default function EditContent({
   const [openMarca, setOpenMarca] = useState(false);
   const [openModelo, setOpenModelo] = useState(false);
   const [openVersao, setOpenVersao] = useState(false);
+  const [currentTab, setCurrentTab] = useState("Geral");
 
   const [selectedVeiculo, setSelectedVeiculo] = useState<
     (Veiculo & { marcaId?: number }) | undefined
@@ -418,6 +465,8 @@ export default function EditContent({
 
 
   const disabledForm = isLoadingVeiculo || !selectedVeiculo;
+  const tabTheme =
+    " group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   if (isLoadingVeiculo) {
     return (
@@ -437,11 +486,10 @@ export default function EditContent({
     return (
       <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
-          <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-            <DialogTitle>
-              {isLoadingVeiculo
-                ? "Carregando..."
-                : `Editar Veículo ID #${selectedVeiculo?.id ?? "-"}`}
+          <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
+            <DialogTitle className="text-sm sm:text-lg">
+              Veículo #{selectedVeiculo?.id ?? "-"}
+              <span className="ml-1 text-xs font-light text-muted-foreground sm:text-sm">| Edição</span>
             </DialogTitle>
             <DialogDescription>Atualize os dados do veículo</DialogDescription>
           </DialogHeader>
@@ -452,33 +500,46 @@ export default function EditContent({
           />
 
           <Tabs
+            value={currentTab}
             defaultValue="Geral"
-            className="flex-1 min-h-0 overflow-hidden pb-0"
+            className="mt-4 flex-1 min-h-0 min-w-0 overflow-hidden"
           >
-            <TabsList className="shrink-0 top-0 z-10 bg-background mt-3 ml-3">
-              <TabsTrigger
-                value="Geral"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Geral
-              </TabsTrigger>
-              <TabsTrigger
-                value="Ordens"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Ordens
-              </TabsTrigger>
-            </TabsList>
+            <div className="sticky top-0 z-10 shrink-0">
+              <div className="overflow-x-auto overflow-y-hidden px-6 pb-2 [-ms-overflow-style:none] [scrollbar-width:none]">
+                <TabsList className="h-auto min-w-full justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
+                  <TabsTrigger
+                    onClick={() => setCurrentTab("Geral")}
+                    value="Geral"
+                    className={"hover:cursor-pointer " + tabTheme}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Car className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                      Geral
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    onClick={() => setCurrentTab("Ordens")}
+                    value="Ordens"
+                    className={"hover:cursor-pointer " + tabTheme}
+                  >
+                    <span className="flex items-center gap-2">
+                      <ClipboardList className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                      Ordens
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
             <TabsContent
               value="Geral"
               className="h-full min-h-0 overflow-hidden p-0 b"
             >
-              <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
+              <div className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-6 sm:px-6">
                 {/* Tipo */}
-                <div className="flex flex-row items-center gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
 
-                  <div className="space-y-2 text-nowrap">
-                    <Label htmlFor="tipo" className="text-sm sm:text-base">
+                  <div className="space-y-2">
+                    <Label htmlFor="tipo" className="text-sm">
                       Tipo de Veículo *
                     </Label>
                     <Select
@@ -503,10 +564,10 @@ export default function EditContent({
                       }}
                       disabled={disabledForm}
                     >
-                      <SelectTrigger className="h-10 sm:h-11">
+                      <SelectTrigger className="h-9">
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                         {Object.keys(Veiculo_tipos).map((tipo, i) => (
                           <SelectItem
                             className="hover:cursor-pointer"
@@ -520,13 +581,13 @@ export default function EditContent({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="placa" className="text-sm sm:text-base">
+                    <Label htmlFor="placa" className="text-sm">
                       Placa *
                     </Label>
-                    <div className="flex gap-2">
+                    <div className="relative">
                       <Input
                         id="placa"
-                        className="w-full uppercase"
+                        className="w-full pr-9 uppercase"
                         value={formatarPlacaParaExibicao(
                           selectedVeiculo?.placa || ""
                         )}
@@ -539,28 +600,37 @@ export default function EditContent({
                             prev ? { ...prev, placa: semHifen } : prev
                           );
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (!disabledForm && !loadingPlaca && selectedVeiculo?.placa && selectedVeiculo.placa.length >= 7) {
+                              handleBuscarPlaca();
+                            }
+                          }
+                        }}
                         maxLength={8}
                         placeholder="ABC-1D23"
                         autoCapitalize="characters"
                         disabled={disabledForm}
                       />
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         type="button"
                         size="icon"
                         onClick={handleBuscarPlaca}
                         disabled={disabledForm || loadingPlaca || !selectedVeiculo?.placa || selectedVeiculo.placa.length < 7}
                         title="Buscar dados da Placa"
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
                       >
-                        <Search className="w-4 h-4" />
+                        <Search className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                  <div className="space-y-2 w-full">
-                    <Label htmlFor="tipo" className="text-sm sm:text-base">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="cliente" className="text-sm">
                       Cliente proprietário
                     </Label>
-                    <div className="flex flex-row items-center gap-1">
+                    <div className="flex items-center gap-2">
 
                       <Input
                         className="w-full"
@@ -569,17 +639,17 @@ export default function EditContent({
                       />
                       <div
                         onClick={() => setOpenCustomer(true)}
-                        className="flex items-center hover:cursor-pointer p-1.5 rounded-full bg-muted"><Search className="w-4 h-4 text-primary" /></div>
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background hover:cursor-pointer hover:bg-muted"><Search className="w-4 h-4 text-primary" /></div>
                     </div>
                   </div>
                 </div>
 
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
 
                   {/* Marca */}
                   <div className="space-y-2">
-                    <Label htmlFor="marca" className="text-sm sm:text-base">
+                    <Label htmlFor="marca" className="text-sm">
                       Marca *
                     </Label>
                     {isOffline ? (
@@ -613,7 +683,7 @@ export default function EditContent({
                             variant="outline"
                             role="combobox"
                             aria-expanded={openMarca}
-                            className="w-full justify-between text-xs"
+                            className="h-9 w-full justify-between text-sm"
                             disabled={disabledForm || loadingMarcas || !selectedVeiculo?.tipo}
                           >
                             {loadingMarcas
@@ -629,7 +699,7 @@ export default function EditContent({
                           onWheel={(e) => e.stopPropagation()}
                           onTouchMove={(e) => e.stopPropagation()}
                           onOpenAutoFocus={(e) => e.preventDefault()}
-                          className="w-[200px] p-0"
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
                           onWheelCapture={(e) => e.stopPropagation()}
                         >
                           <Command>
@@ -684,7 +754,7 @@ export default function EditContent({
 
                   {/* Modelo */}
                   <div className="space-y-2">
-                    <Label htmlFor="modelo" className="text-sm sm:text-base">
+                    <Label htmlFor="modelo" className="text-sm">
                       Modelo *
                     </Label>
                     {isOffline ? (
@@ -716,7 +786,7 @@ export default function EditContent({
                             variant="outline"
                             role="combobox"
                             aria-expanded={openModelo}
-                            className="w-full justify-between text-xs"
+                            className="h-9 w-full justify-between text-sm"
                             disabled={disabledForm || loadingModelos || !selectedVeiculo?.tipo || !selectedVeiculo?.marca}
                           >
                             {loadingModelos
@@ -732,7 +802,7 @@ export default function EditContent({
                           onWheel={(e) => e.stopPropagation()}
                           onTouchMove={(e) => e.stopPropagation()}
                           onOpenAutoFocus={(e) => e.preventDefault()}
-                          className="w-[400px] p-0"
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
                           onWheelCapture={(e) => e.stopPropagation()}
                         >
                           <Command>
@@ -745,7 +815,7 @@ export default function EditContent({
                               <CommandGroup>
                                 {modelosOptions.map((m, i) => (
                                   <CommandItem
-                                    className="hover:cursor-pointer text-xs"
+                                    className="hover:cursor-pointer text-sm"
                                     key={i}
                                     value={m}
                                     onSelect={() => {
@@ -782,8 +852,8 @@ export default function EditContent({
                   </div>
 
                   {/* Versão */}
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="versao" className="text-sm sm:text-base">
+                  <div className="space-y-2 lg:col-span-2">
+                    <Label htmlFor="versao" className="text-sm">
                       Versão
                     </Label>
                     {isOffline ? (
@@ -814,7 +884,7 @@ export default function EditContent({
                             variant="outline"
                             role="combobox"
                             aria-expanded={openVersao}
-                            className="w-full justify-between text-xs truncate"
+                            className="h-9 w-full justify-between truncate text-sm"
                             disabled={disabledForm || !selectedVeiculo?.modelo || modelosRaw.length === 0}
                           >
                             {selectedVeiculo?.versao ? selectedVeiculo.versao : "Selecione..."}
@@ -826,7 +896,7 @@ export default function EditContent({
                           onWheel={(e) => e.stopPropagation()}
                           onTouchMove={(e) => e.stopPropagation()}
                           onOpenAutoFocus={(e) => e.preventDefault()}
-                          className="w-[400px] p-0"
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
                           onWheelCapture={(e) => e.stopPropagation()}
                         >
                           <Command>
@@ -836,7 +906,7 @@ export default function EditContent({
                               <CommandGroup>
                                 {versoesOptions.map((v, i) => (
                                   <CommandItem
-                                    className="hover:cursor-pointer text-xs"
+                                    className="hover:cursor-pointer text-sm"
                                     key={i}
                                     value={v.name}
                                     onSelect={() => {
@@ -871,7 +941,7 @@ export default function EditContent({
 
                   {/* Ano */}
                   <div className="space-y-2">
-                    <Label htmlFor="ano" className="text-sm sm:text-base">
+                    <Label htmlFor="ano" className="text-sm">
                       Ano de Fabricação
                     </Label>
                     <Input
@@ -888,7 +958,7 @@ export default function EditContent({
 
                   {/* Ano Modelo */}
                   <div className="space-y-2">
-                    <Label htmlFor="ano_modelo" className="text-sm sm:text-base">
+                    <Label htmlFor="ano_modelo" className="text-sm">
                       Ano Modelo
                     </Label>
                     {isOffline ? (
@@ -928,10 +998,10 @@ export default function EditContent({
                         }}
                         disabled={disabledForm || loadingAnos || !selectedVeiculo?.marca || anosFipe.length === 0}
                       >
-                        <SelectTrigger className="w-full" id="ano_modelo">
+                        <SelectTrigger className="h-9 w-full" id="ano_modelo">
                           <SelectValue placeholder={loadingAnos ? "Buscando..." : "Selecione"} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                           {anosFipe.map(a => {
                             let displayName = a.name;
                             if (displayName.includes("32000")) {
@@ -948,7 +1018,7 @@ export default function EditContent({
 
                   {/* KM atual */}
                   <div className="space-y-2">
-                    <Label htmlFor="kmatual" className="text-sm sm:text-base">
+                    <Label htmlFor="kmatual" className="text-sm">
                       KM atual
                     </Label>
                     <Input
@@ -970,7 +1040,7 @@ export default function EditContent({
 
                   {/* Chassi */}
                   <div className="space-y-2">
-                    <Label htmlFor="chassi" className="text-sm sm:text-base">
+                    <Label htmlFor="chassi" className="text-sm">
                       Chassi
                     </Label>
                     <Input
@@ -986,10 +1056,10 @@ export default function EditContent({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                   {/* Combustível */}
                   <div className="space-y-2">
-                    <Label htmlFor="combustivel" className="text-sm sm:text-base">
+                    <Label htmlFor="combustivel" className="text-sm">
                       Combustível
                     </Label>
                     <Select
@@ -997,10 +1067,10 @@ export default function EditContent({
                       onValueChange={(value) => handleInputChange("combustivel", value)}
                       disabled={disabledForm}
                     >
-                      <SelectTrigger className="w-full" id="combustivel">
+                      <SelectTrigger className="h-9 w-full" id="combustivel">
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                         <SelectItem value="FLEX">FLEX</SelectItem>
                         <SelectItem value="GASOLINA">GASOLINA</SelectItem>
                         <SelectItem value="ETANOL">ETANOL</SelectItem>
@@ -1014,7 +1084,7 @@ export default function EditContent({
 
                   {/* Transmissão */}
                   <div className="space-y-2">
-                    <Label htmlFor="transmissao" className="text-sm sm:text-base">
+                    <Label htmlFor="transmissao" className="text-sm">
                       Transmissão
                     </Label>
                     <Select
@@ -1022,10 +1092,10 @@ export default function EditContent({
                       onValueChange={(value) => handleInputChange("transmissao", value)}
                       disabled={disabledForm}
                     >
-                      <SelectTrigger className="w-full" id="transmissao">
+                      <SelectTrigger className="h-9 w-full" id="transmissao">
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="min-w-[var(--radix-select-trigger-width)]">
                         <SelectItem value="MANUAL">MANUAL</SelectItem>
                         <SelectItem value="AUTOMATICA">AUTOMÁTICA</SelectItem>
                         <SelectItem value="AUTOMATIZADA">AUTOMATIZADA</SelectItem>
@@ -1036,7 +1106,7 @@ export default function EditContent({
 
                   {/* FIPE */}
                   <div className="space-y-2">
-                    <Label htmlFor="fipe" className="text-sm sm:text-base">
+                    <Label htmlFor="fipe" className="text-sm">
                       FIPE (R$)
                     </Label>
                     <div className="flex gap-2">
@@ -1058,52 +1128,93 @@ export default function EditContent({
             </TabsContent>
             <TabsContent
               value="Ordens"
-              className="h-full min-h-0 overflow-hidden p-0"
+              className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-6"
             >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
-                <Table className="md:text-xs text-[10px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-center">ID</TableHead>
-                      <TableHead className="text-center">Descrição</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedVeiculo.ordens ? (
-                      selectedVeiculo.ordens.length > 0 ? (
-                        selectedVeiculo.ordens.map((ordem) => (
-                          <TableRow
-                            key={ordem.id}
-                            className="hover:cursor-pointer"
-                          >
-                            <TableCell className="text-center">
-                              {ordem.id}
-                            </TableCell>
-                            <TableCell className="text-center truncate max-w-[200px] md:max-w-xl">
-                              {ordem.descricao}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {ordem.status}
-                            </TableCell>
-                          </TableRow>
-                        ))
+              <div className="space-y-4">
+                <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                        Ordens de Serviço
+                      </h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Histórico de ordens de serviço vinculadas a este veículo.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 shadow-sm">
+                    <span className="text-xs font-medium text-muted-foreground">Total:</span>
+                    <span className="text-sm font-bold">{selectedVeiculo.ordens?.length ?? 0}</span>
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-md border bg-card">
+                  <Table className="text-xs">
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-[80px]">ID</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Valor Total</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedVeiculo.ordens && selectedVeiculo.ordens.length > 0 ? (
+                        selectedVeiculo.ordens.map((ordem: any) => {
+                          const clienteNome = ordem.cliente?.nomerazaosocial || selectedVeiculo.cliente?.nomerazaosocial || "Não informado";
+                          const dataOrdem = ordem.dataentrada || ordem.createdat || ordem.created_at;
+
+                          return (
+                            <TableRow key={ordem.id} className="transition-colors hover:bg-muted/50">
+                              <TableCell className="font-medium text-muted-foreground">#{ordem.id}</TableCell>
+                              <TableCell>{formatDate(dataOrdem)}</TableCell>
+                              <TableCell className="max-w-[160px] truncate" title={clienteNome}>
+                                {clienteNome}
+                              </TableCell>
+                              <TableCell className="max-w-[220px] truncate" title={ordem.descricao || ""}>
+                                {ordem.descricao || "-"}
+                              </TableCell>
+                              <TableCell>{getStatusBadge(ordem.status)}</TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(ordem.orcamentototal || 0)}
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 rounded-full p-0 hover:cursor-pointer">
+                                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-[160px]">
+                                    <Button variant="ghost" asChild className="w-full justify-start px-2 text-xs hover:cursor-pointer">
+                                      <Link href={`/ordens?id=${ordem.id}`}>
+                                        <ExternalLink className="mr-2 h-4 w-4" />
+                                        Abrir Ordem
+                                      </Link>
+                                    </Button>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
                       ) : (
                         <TableRow>
-                          <TableCell className="text-center h-20" colSpan={5}>
-                            Veículo não possui ordens vinculadas
+                          <TableCell className="h-24 text-center text-muted-foreground" colSpan={7}>
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <ClipboardList className="h-8 w-8 opacity-20" />
+                              <p>Veículo não possui histórico de Ordens de Serviço</p>
+                            </div>
                           </TableCell>
                         </TableRow>
-                      )
-                    ) : (
-                      <TableRow>
-                        <TableCell className="text-center h-20" colSpan={5}>
-                          Veículo não possui ordens vinculadas
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
@@ -1114,7 +1225,7 @@ export default function EditContent({
                 type="button"
                 disabled={isSubmitting || disabledForm}
                 onClick={handleUpdateVeiculo}
-                className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+                className="flex-1 text-sm hover:cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
