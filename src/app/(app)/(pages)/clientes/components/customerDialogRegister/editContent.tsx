@@ -355,9 +355,9 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
         />
         <div className="flex h-full min-h-0 flex-col">
           <DialogShellHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
-            <DialogShellTitle className="flex flex-row items-center gap-3 text-sm sm:text-lg">
+            <DialogShellTitle className="flex flex-row items-center gap-2 text-sm sm:text-lg">
               Cliente #{selectedCustomer.id}
-             <span className="ml-1 text-xs font-light text-muted-foreground sm:text-sm">| Edição</span>
+              <span className="text-muted-foreground text-sm font-light">| Edição </span>
               <Select
                 value={selectedCustomer.rank || ""}
                 onValueChange={(value) =>
