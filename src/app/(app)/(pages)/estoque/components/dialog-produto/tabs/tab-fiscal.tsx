@@ -17,7 +17,7 @@ type Props = {
 export function TabFiscal({ produto, onChange }: Props) {
   return (
     <TabsContent value="Fiscal" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-6 space-y-6">
-      
+
       {/* Classificação Fiscal */}
       <div className="rounded-xl border bg-muted/20 p-4 space-y-4">
         <div className="flex items-center gap-2 mb-2">
@@ -135,9 +135,9 @@ export function TabFiscal({ produto, onChange }: Props) {
           {/* PIS / COFINS */}
           <div className="space-y-4 p-4 rounded-lg border bg-background/80">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-2">PIS / COFINS</h4>
-            
+
             <div className="grid grid-cols-1 gap-4">
-              <div className="grid grid-cols-[2fr_1fr] gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cst_pis">CST PIS</Label>
                   <Select
@@ -173,7 +173,7 @@ export function TabFiscal({ produto, onChange }: Props) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-[2fr_1fr] gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cst_cofins">CST COFINS</Label>
                   <Select
@@ -210,7 +210,7 @@ export function TabFiscal({ produto, onChange }: Props) {
               </div>
             </div>
           </div>
-          
+
         </div>
       </div>
     </TabsContent>
