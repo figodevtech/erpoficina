@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
+  Car,
+  ClipboardList,
   Upload,
   User,
   Building2,
@@ -355,7 +357,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
           <DialogShellHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
             <DialogShellTitle className="flex flex-row items-center gap-3 text-sm sm:text-lg">
               Cliente #{selectedCustomer.id}
-              <span className="text-muted-foreground text-sm font-light">| Edição </span>
+             <span className="ml-1 text-xs font-light text-muted-foreground sm:text-sm">| Edição</span>
               <Select
                 value={selectedCustomer.rank || ""}
                 onValueChange={(value) =>
@@ -391,21 +393,30 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                 <TabsList className="h-auto min-w-full justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
                   <TabsTrigger
                     value="Geral"
-                    className="h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    className="group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                   >
-                    Geral
+                    <span className="flex items-center gap-2">
+                      <User className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                      Geral
+                    </span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="Veículos"
-                    className="h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    className="group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                   >
-                    Veículos
+                    <span className="flex items-center gap-2">
+                      <Car className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                      Veículos
+                    </span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="Ordens"
-                    className="h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    className="group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                   >
-                    Ordens de Serviço
+                    <span className="flex items-center gap-2">
+                      <ClipboardList className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                      Ordens de Serviço
+                    </span>
                   </TabsTrigger>
                 </TabsList>
               </div>
