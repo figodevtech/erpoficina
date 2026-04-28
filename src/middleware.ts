@@ -4,7 +4,6 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { PERMS, type Permission } from "@/app/api/_authz/permission-constants";
 import { getDefaultRouteForPerms } from "@/app/api/_authz/default-route";
-import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
@@ -113,6 +112,32 @@ function isExecutorOnly(user: any) {
   return perms.every((p) => p === PERMS.EXECUCAO_OS || !appPerms.includes(p));
 }
 
+async function fetchFreshUserState(userId: string) {
+  if (!supabaseUrl || !serviceKey) return null;
+
+  const url = new URL(`${supabaseUrl}/rest/v1/usuario`);
+  url.searchParams.set("id", `eq.${userId}`);
+  url.searchParams.set("select", "ativo,is_root");
+  url.searchParams.set("limit", "1");
+
+  const res = await fetch(url.toString(), {
+    cache: "no-store",
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    console.error("[Middleware] Erro ao buscar usuario:", res.status, await res.text().catch(() => ""));
+    return null;
+  }
+
+  const rows = await res.json().catch(() => []);
+  return Array.isArray(rows) ? rows[0] ?? null : null;
+}
+
 export default auth(async (req: NextRequest & { auth?: any }) => {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
@@ -138,32 +163,9 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     isRoot = (user as any).is_root === true;
   }
 
-  // CRIAÃ‡ÃƒO DO CLIENTE SUPABASE ISOLADA NO HANDLER (evita leak de estado no Edge)
-  const supabaseAdminEdge =
-    supabaseUrl && serviceKey
-      ? createClient(supabaseUrl, serviceKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-          global: {
-            fetch: (url, options) => {
-              return fetch(url, { ...options, cache: "no-store" });
-            },
-          },
-        })
-      : null;
-
-  if (userId && supabaseAdminEdge) {
+  if (userId) {
     try {
-      // ForÃ§a busca sem cache (garantido pelo client configurado acima com no-store)
-      const { data, error } = await supabaseAdminEdge
-        .from("usuario")
-        .select("ativo, is_root")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error("[Middleware] Erro ao buscar usuario:", error.message);
-      }
-
+      const data = await fetchFreshUserState(userId);
       if (data) {
         // Atualiza as variÃ¡veis locais com a verdade do banco
         isInactive = data.ativo === false;
