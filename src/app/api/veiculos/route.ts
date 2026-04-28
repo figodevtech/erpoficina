@@ -117,6 +117,7 @@ export async function POST(request: Request) {
     const clienteId = Number(clienteIdRaw);
 
     const placa = typeof v?.placa === "string" ? normalizarPlaca(v.placa) : "";
+    const chassi = v?.chassi === null || v?.chassi === undefined ? null : String(v.chassi).trim().toUpperCase();
     const modelo = typeof v?.modelo === "string" ? v.modelo.trim() : "";
     const marca = typeof v?.marca === "string" ? v.marca.trim() : "";
 
@@ -160,6 +161,7 @@ export async function POST(request: Request) {
     const payload: any = {
       clienteid: clienteId,
       placa,
+      chassi,
       modelo,
       marca,
       ano,

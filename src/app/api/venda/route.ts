@@ -45,6 +45,7 @@ type VendaPostBody = {
   formaPagamento?: string | null;
   descontoTipo?: string | null; // enum_tipo_desconto_venda
   descontoValor?: number | null;
+  categoriaVendaId?: number | null;
   subTotal: number;
   valorTotal: number;
   dataVenda?: string | null; // opcional, ISO string. Se não vier, usa default do banco (now()).
@@ -57,6 +58,13 @@ const VENDA_SELECT = `
   cliente:cliente (
   id, nomerazaosocial ),
   status,
+  categoriavendaid,
+  categoria_venda:categoriavendaid (
+    id,
+    nome,
+    descricao,
+    ativo
+  ),
   valortotal,
   datavenda,
   createdat,
@@ -437,12 +445,25 @@ export async function POST(req: Request) {
       );
     }
 
+    const categoriaVendaId =
+      body.categoriaVendaId === null || body.categoriaVendaId === undefined
+        ? null
+        : Number(body.categoriaVendaId);
+
+    if (categoriaVendaId !== null && (!Number.isFinite(categoriaVendaId) || categoriaVendaId <= 0)) {
+      return NextResponse.json(
+        { error: "categoriaVendaId inválido.", vendaId },
+        { status: 400 }
+      );
+    }
+
     if (body.formaPagamento !== undefined) {
       const { error: formaPagamentoError } = await supabaseAdmin
         .from("venda")
         .update({
           forma_pagamento: body.formaPagamento || null,
           vendedor: session.user.id,
+          categoriavendaid: categoriaVendaId,
           updatedat: new Date().toISOString(),
         })
         .eq("id", vendaId);
@@ -462,6 +483,7 @@ export async function POST(req: Request) {
         .from("venda")
         .update({
           vendedor: session.user.id,
+          categoriavendaid: categoriaVendaId,
           updatedat: new Date().toISOString(),
         })
         .eq("id", vendaId);

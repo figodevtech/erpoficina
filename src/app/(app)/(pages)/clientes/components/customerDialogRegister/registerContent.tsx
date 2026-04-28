@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Upload,
@@ -28,6 +27,7 @@ import {
   Search,
   Loader2,
   MapPin,
+  IdCard,
 } from "lucide-react";
 import {
   DialogClose,
@@ -63,6 +63,11 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Customer } from "../../types";
 import { set } from "nprogress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 interface RegisterContentProps {
@@ -72,6 +77,21 @@ interface RegisterContentProps {
   onRegister?: (c: Customer) => void;
   isDesktop?: boolean;
 }
+
+const statusOptionClass: Record<StatusCliente, string> = {
+  ATIVO:
+    "bg-emerald-100 text-emerald-800 focus:bg-emerald-100 focus:text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:focus:bg-emerald-950/50 dark:focus:text-emerald-300",
+  INATIVO:
+    "bg-slate-100 text-slate-800 focus:bg-slate-100 focus:text-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:focus:bg-slate-900 dark:focus:text-slate-300",
+  PENDENTE:
+    "bg-amber-100 text-amber-800 focus:bg-amber-100 focus:text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:focus:bg-amber-950/50 dark:focus:text-amber-300",
+};
+
+const statusLabel: Record<StatusCliente, string> = {
+  ATIVO: "Ativo",
+  INATIVO: "Inativo",
+  PENDENTE: "Pendente",
+};
 
 export default function RegisterContent({
   newCustomer,
@@ -166,7 +186,7 @@ export default function RegisterContent({
           });
         }
         if (error.status === 404) {
-          toast.error("Error no servidor de consulta", {
+          toast.error("Erro no servidor de consulta", {
             description: "Verifique com o administrador",
           });
         }
@@ -251,58 +271,62 @@ export default function RegisterContent({
   }, [newCustomer.tipopessoa]);
 
   useEffect(() => {
-    if (newCustomer.cpfcnpj.length === 14) {
+    if (newCustomer.tipopessoa === "JURIDICA" && newCustomer.cpfcnpj.length === 14) {
       handleGetCNPJ();
     }
-  }, [newCustomer.cpfcnpj]);
+  }, [newCustomer.cpfcnpj, newCustomer.tipopessoa]);
 
   useEffect(() => {
     console.log(newCustomer)
   }, [newCustomer])
 
-   const Content = isDesktop ? DialogContent : DrawerContent;
-  const Header = isDesktop ? DialogHeader : DrawerHeader;
-  const Footer = isDesktop ? DialogFooter : DrawerFooter;
-  const Title = isDesktop ? DialogTitle : DrawerTitle;
-  const Description = isDesktop ? DialogDescription : DrawerDescription;
-  const Close = isDesktop ? DialogClose : DrawerClose;
+  const DialogShellContent = isDesktop ? DialogContent : DrawerContent;
+  const DialogShellHeader = isDesktop ? DialogHeader : DrawerHeader;
+  const DialogShellFooter = isDesktop ? DialogFooter : DrawerFooter;
+  const DialogShellTitle = isDesktop ? DialogTitle : DrawerTitle;
+  const DialogShellDescription = isDesktop ? DialogDescription : DrawerDescription;
+  const DialogShellClose = isDesktop ? DialogClose : DrawerClose;
  
   return (
     // <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
-    <Content className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <DialogShellContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
-        <Header className="shrink-0 px-6 py-4 border-b-1">
-          <Title>Cadastro de Cliente</Title>
-          <Description>
+        <DialogShellHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
+          <DialogShellTitle className="text-sm sm:text-lg">
+            Cliente
+            <span className="text-muted-foreground text-sm font-light"> | Novo </span>
+          </DialogShellTitle>
+          <DialogShellDescription>
             Preencha dados para registrar um novo cliente
-          </Description>
-        </Header>
+          </DialogShellDescription>
+        </DialogShellHeader>
 
         {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
 
-        <div className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-6 py-10 space-y-2">
-          {/* Foto do Cliente */}
-          <div className="flex flex-col items-center space-y-3 sm:space-y-4">
-            <div className="relative">
-              <Avatar className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24">
+        <div className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-6 sm:px-6">
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-3">
+                <div className="relative shrink-0">
+                  <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
                 <AvatarImage
                   // src={fotoPreview || "/placeholder.svg"}
                   alt="Foto do cliente"
                 />
-                <AvatarFallback className="text-sm sm:text-lg">
+                <AvatarFallback className="text-sm">
                   {newCustomer.tipopessoa === "FISICA" ? (
-                    <User className="h-6 w-6 sm:h-8 sm:w-8" />
+                    <User className="h-5 w-5 sm:h-6 sm:w-6" />
                   ) : (
-                    <Building2 className="h-6 w-6 sm:h-8 sm:w-8" />
+                    <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
                   )}
                 </AvatarFallback>
               </Avatar>
               <Label
                 htmlFor="foto-upload"
-                className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 cursor-pointer"
+                className="absolute -bottom-1 -right-1 cursor-pointer"
               >
-                <div className="bg-primary text-primary-foreground rounded-full p-1.5 sm:p-2 hover:bg-primary/90 transition-colors">
-                  <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                <div className="rounded-full bg-primary p-1.5 text-primary-foreground transition-colors hover:bg-primary/90">
+                  <Camera className="h-3 w-3" />
                 </div>
                 <input
                   id="foto-upload"
@@ -311,107 +335,140 @@ export default function RegisterContent({
                   className="hidden"
                 />
               </Label>
-            </div>
-          </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">
+                    {newCustomer.nomerazaosocial?.trim() || "Novo cliente"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Defina o perfil e complete os dados cadastrais.
+                  </p>
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="status" className="text-sm sm:text-base">
-              Status
-            </Label>
-            <Select
-              value={newCustomer.status || ""}
-              onValueChange={(value: StatusCliente) =>
-                handleInputChange("status", value)
-              }
-            >
-              <SelectTrigger className="h-10 sm:h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ATIVO">
-                  <Badge variant="default" className="bg-green-500">
-                    Ativo
-                  </Badge>
-                </SelectItem>
-                <SelectItem value="INATIVO">
-                  <Badge variant="secondary">Inativo</Badge>
-                </SelectItem>
-                <SelectItem value="PENDENTE">
-                  <Badge variant="destructive">Pendente</Badge>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Tipo de Pessoa */}
-          <div className="space-y-2">
-            <Label htmlFor="tipopessoa" className="text-sm sm:text-base">
-              Tipo de Pessoa *
-            </Label>
-            <Select
-              value={newCustomer.tipopessoa}
-              onValueChange={(value: TipoPessoa) =>
-                handleInputChange("tipopessoa", value)
-              }
-            >
-              <SelectTrigger className="h-10 sm:h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="FISICA">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span className="text-sm sm:text-base">Pessoa Física</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="JURIDICA">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    <span className="text-sm sm:text-base">
-                      Pessoa Jurídica
-                    </span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="status" className="text-sm">
+                    Status
+                  </Label>
+                  <Select
+                    value={newCustomer.status || ""}
+                    onValueChange={(value: StatusCliente) =>
+                      handleInputChange("status", value)
+                    }
+                  >
+                    <SelectTrigger className={cn("h-10 sm:h-11", statusOptionClass[newCustomer.status])}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        value="ATIVO"
+                        className={cn("px-2 py-1.5 text-sm font-medium", statusOptionClass.ATIVO)}
+                      >
+                        {statusLabel.ATIVO}
+                      </SelectItem>
+                      <SelectItem
+                        value="INATIVO"
+                        className={cn("px-2 py-1.5 text-sm font-medium", statusOptionClass.INATIVO)}
+                      >
+                        {statusLabel.INATIVO}
+                      </SelectItem>
+                      <SelectItem
+                        value="PENDENTE"
+                        className={cn("px-2 py-1.5 text-sm font-medium", statusOptionClass.PENDENTE)}
+                      >
+                        {statusLabel.PENDENTE}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipopessoa" className="text-sm">
+                    Tipo de Pessoa *
+                  </Label>
+                  <Select
+                    value={newCustomer.tipopessoa}
+                    onValueChange={(value: TipoPessoa) =>
+                      handleInputChange("tipopessoa", value)
+                    }
+                  >
+                    <SelectTrigger className="h-10 sm:h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FISICA">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <span className="text-sm">Pessoa Física</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="JURIDICA">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          <span className="text-sm">Pessoa Jurídica</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Dados Principais */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="cpfcnpj" className="text-sm sm:text-base">
+              <Label htmlFor="cpfcnpj" className="text-sm">
                 {newCustomer.tipopessoa === "FISICA" ? "CPF" : "CNPJ"} *
               </Label>
-              <div className=" relative">
+              <div className="relative">
                 {isLoadingCNPJ && (
-                  <Loader2 className="w-4 h-4 absolute right-2 top-2.5 animate-spin text-primary" />
+                  <Loader2 className="absolute right-9 top-2.5 h-4 w-4 animate-spin text-primary" />
                 )}
-                <Input
-                  inputMode="numeric"
-                  id="cpfcnpj"
-                  className=""
-                  value={
-                    formatCpfCnpj(
-                      newCustomer.cpfcnpj,
-                      newCustomer.tipopessoa
-                    ) || ""
-                  }
-                  onChange={(e) => {
-                    const onlyNumbers = e.target.value.replace(/\D/g, "");
+                <div className="relative">
+                  {newCustomer.tipopessoa === "JURIDICA" ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={handleGetCNPJ}
+                          className="absolute right-2 top-1.5 rounded-3xl p-1 transition-all hover:bg-gray-500/20"
+                          aria-label="Consultar CNPJ"
+                        >
+                          <IdCard className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Consultar CNPJ</TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                  <Input
+                    inputMode="numeric"
+                    id="cpfcnpj"
+                    className=""
+                    value={
+                      formatCpfCnpj(
+                        newCustomer.cpfcnpj,
+                        newCustomer.tipopessoa
+                      ) || ""
+                    }
+                    onChange={(e) => {
+                      const onlyNumbers = e.target.value.replace(/\D/g, "");
 
-                    handleInputChange("cpfcnpj", onlyNumbers);
-                  }}
-                  placeholder={
-                    newCustomer.tipopessoa === "FISICA"
-                      ? "000.000.000-00"
-                      : "00.000.000/0000-00"
-                  }
-                  maxLength={newCustomer.tipopessoa === "FISICA" ? 14 : 18}
-                />
+                      handleInputChange("cpfcnpj", onlyNumbers);
+                    }}
+                    placeholder={
+                      newCustomer.tipopessoa === "FISICA"
+                        ? "000.000.000-00"
+                        : "00.000.000/0000-00"
+                    }
+                    maxLength={newCustomer.tipopessoa === "FISICA" ? 14 : 18}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nomerazaosocial" className="text-sm sm:text-base">
+              <Label htmlFor="nomerazaosocial" className="text-sm">
                 {newCustomer.tipopessoa === "FISICA"
                   ? "Nome Completo"
                   : "Razão Social"}{" "}
@@ -438,7 +495,7 @@ export default function RegisterContent({
             <div className="space-y-2">
               <Label
                 htmlFor="email"
-                className="flex items-center gap-2 text-sm sm:text-base"
+                className="flex items-center gap-2 text-sm"
               >
                 <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
                 Email *
@@ -457,7 +514,7 @@ export default function RegisterContent({
             <div className="space-y-2">
               <Label
                 htmlFor="telefone"
-                className="flex items-center gap-2 text-sm sm:text-base"
+                className="flex items-center gap-2 text-sm"
               >
                 <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
                 Telefone *
@@ -481,15 +538,27 @@ export default function RegisterContent({
           <div className="space-y-3 sm:space-y-4">
             {/* <div className="flex items-center gap-2">
               <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
-              <h3 className="text-base sm:text-lg font-semibold">Endereço</h3>
+              <h3 className="text-base font-semibold sm:text-lg">Endereço</h3>
             </div> */}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-center gap-2">
               <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                <Label htmlFor="cep" className="text-sm sm:text-base">
+                <Label htmlFor="cep" className="text-sm">
                   CEP
                 </Label>
-                <div className="flex flex-row items-center gap-1">
+                <div className="relative">
+                  {isLoadingCep ? (
+                    <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleGetCep}
+                      className="absolute right-2 top-1.5 rounded-3xl p-1 transition-all hover:bg-gray-500/20"
+                      aria-label="Consultar CEP"
+                    >
+                      <Search className="h-4 w-4" />
+                    </button>
+                  )}
                   <Input
                     id="cep"
                     className=""
@@ -498,21 +567,10 @@ export default function RegisterContent({
                     placeholder="00000-000"
                     maxLength={9}
                   />
-                  <Button
-                    onClick={handleGetCep}
-                    className="hover:cursor-pointer"
-                    variant={"outline"}
-                  >
-                    {isLoadingCep ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Search className="w-4 h-4" />
-                    )}
-                  </Button>
                 </div>
               </div>
               <div className="space-y-2 lg:col-span-2">
-                <Label htmlFor="endereco" className="text-sm sm:text-base">
+                <Label htmlFor="endereco" className="text-sm">
                   <MapPin className="h-4.5" />
                   Endereço Completo
                 </Label>
@@ -527,7 +585,7 @@ export default function RegisterContent({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="numero" className="text-sm sm:text-base">
+                <Label htmlFor="numero" className="text-sm">
                   Número
                 </Label>
                 <Input
@@ -544,7 +602,7 @@ export default function RegisterContent({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="estado" className="text-sm sm:text-base">
+                <Label htmlFor="estado" className="text-sm">
                   Estado
                 </Label>
 
@@ -614,7 +672,7 @@ export default function RegisterContent({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cidade" className="text-sm sm:text-base">
+                <Label htmlFor="cidade" className="text-sm">
                   Cidade
                 </Label>
 
@@ -662,12 +720,12 @@ export default function RegisterContent({
                           {cidades.map((cidade) => (
                             <CommandItem
                               key={cidade.id}
-                              value={cidade.nome} // ✅ string (serve pra busca também)
+                              value={cidade.nome} // string
                               onSelect={() => {
                                 setNewCustomer({
                                   ...newCustomer,
                                   cidade: cidade.nome,
-                                  codigomunicipio: String(cidade.id), // ✅ mantém consistente com seu estado inicial ""
+                                  codigomunicipio: String(cidade.id),
                                 });
                                 setOpen(false);
                               }}
@@ -690,7 +748,7 @@ export default function RegisterContent({
                 </Popover>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cidade" className="text-sm sm:text-base">
+                <Label htmlFor="cidade" className="text-sm">
                   Bairro
                 </Label>
                 <Input
@@ -702,7 +760,7 @@ export default function RegisterContent({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="complemento" className="text-sm sm:text-base">
+                <Label htmlFor="complemento" className="text-sm">
                   Complemento
                 </Label>
                 <Input
@@ -718,7 +776,7 @@ export default function RegisterContent({
             </div>
           </div>
 
-          {/* Dados Fiscais - Apenas para Pessoa Jurídica */}
+          {/* Dados fiscais - Apenas para Pessoa Jurídica */}
           {newCustomer.tipopessoa === "JURIDICA" && (
             <>
               <Separator />
@@ -734,7 +792,7 @@ export default function RegisterContent({
                   <div className="space-y-2">
                     <Label
                       htmlFor="inscricaoestadual"
-                      className="text-sm sm:text-base"
+                      className="text-sm"
                     >
                       Inscrição Estadual
                     </Label>
@@ -752,7 +810,7 @@ export default function RegisterContent({
                   <div className="space-y-2">
                     <Label
                       htmlFor="inscricaomunicipal"
-                      className="text-sm sm:text-base"
+                      className="text-sm"
                     >
                       Inscrição Municipal
                     </Label>
@@ -771,7 +829,7 @@ export default function RegisterContent({
                 <div className="space-y-2">
                   <Label
                     htmlFor="codigomunicipio"
-                    className="text-sm sm:text-base"
+                    className="text-sm"
                   >
                     Código do Município
                   </Label>
@@ -791,14 +849,14 @@ export default function RegisterContent({
 
           {/* Botões */}
         </div>
-        <Footer className="px-6 py-4">
+        <DialogShellFooter className="border-t px-4 py-3 sm:px-6">
           <div className="flex sm:flex-row gap-3 sm:gap-4">
             <Button
               type="submit"
               form="register-form"
               disabled={isSubmitting}
               onClick={handleCreateCustomer}
-              className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+              className="flex-1 text-sm hover:cursor-pointer"
             >
               {isSubmitting ? (
                 <>
@@ -812,14 +870,15 @@ export default function RegisterContent({
                 </>
               )}
             </Button>
-            <Close asChild>
+            <DialogShellClose asChild>
               <Button className="hover:cursor-pointer" variant={"outline"}>
                 Cancelar
               </Button>
-            </Close>
+            </DialogShellClose>
           </div>
-        </Footer>
+        </DialogShellFooter>
       </div>
-    </Content>
+    </DialogShellContent>
   );
 }
+

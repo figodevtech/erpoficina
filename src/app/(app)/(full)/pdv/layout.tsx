@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+
 import { useEffect, useState } from "react";
 import { ConfigProvider } from "../../(pages)/config-context";
 import { Config } from "../../(pages)/type";
@@ -8,32 +9,73 @@ import { Pizza } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
+const CONFIG_CACHE_KEY = "erpoficina:config-cache";
+
+function readCachedConfig(): Config | undefined {
+  if (typeof window === "undefined") return undefined;
+
+  try {
+    const raw = window.sessionStorage.getItem(CONFIG_CACHE_KEY);
+    if (!raw) return undefined;
+    return JSON.parse(raw) as Config;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeCachedConfig(config: Config) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(config));
+  } catch {
+    // ignore cache failures
+  }
+}
+
 export default function PdvLayout({ children }: { children: React.ReactNode }) {
-  // Layout enxuto: sem sidebar, ocupa a tela toda (root layout geral ainda se aplica).
   const [loadingConfigs, setLoadingConfigs] = useState(true);
   const [progress, setProgress] = useState(0);
   const [config, setConfig] = useState<Config | undefined>(undefined);
-  const handleGetConfig = async () => {
-    setProgress(10);
+
+  const handleGetConfig = async (background = false) => {
+    if (!background) {
+      setLoadingConfigs(true);
+      setProgress(10);
+    }
+
     try {
-      setProgress(40);
-      const response = await fetch("/api/config");
-      setProgress(70);
+      setProgress(background ? 100 : 40);
+      const response = await fetch("/api/config", { cache: "no-store" });
+      setProgress(background ? 100 : 70);
       const data = await response.json();
-      setProgress(90);
+
       if (data.config) {
+        writeCachedConfig(data.config);
+        setConfig(data.config);
         setProgress(100);
-        setTimeout(() => setConfig(data.config), 500);
       }
     } catch (error) {
       console.error("Erro ao buscar configuração:", error);
     } finally {
-      setLoadingConfigs(false);
+      if (!background) {
+        setLoadingConfigs(false);
+      }
     }
   };
 
   useEffect(() => {
-    handleGetConfig();
+    const cachedConfig = readCachedConfig();
+
+    if (cachedConfig) {
+      setConfig(cachedConfig);
+      setProgress(100);
+      setLoadingConfigs(false);
+      void handleGetConfig(true);
+      return;
+    }
+
+    void handleGetConfig(false);
   }, []);
 
   if (loadingConfigs || !config) {
@@ -50,8 +92,7 @@ export default function PdvLayout({ children }: { children: React.ReactNode }) {
 
           <Progress value={progress} className="w-50" />
           <span className="text-xs text-muted-foreground mt-2 text-nowrap flex flex-row gap-1 items-center">
-            Estamos esquentando a pizza.{" "}
-            <Pizza className="w-3 h-3 animate-bounce" />
+            Estamos esquentando a pizza. <Pizza className="w-3 h-3 animate-bounce" />
           </span>
           <span className="text-[10px] text-muted-foreground font-serif">
             Powered by FIGO.
@@ -61,13 +102,9 @@ export default function PdvLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!loadingConfigs && config) {
-    return (
-      <ConfigProvider config={config}>
-        <div className="min-h-screen bg-background text-foreground">
-          {children}
-        </div>
-      </ConfigProvider>
-    );
-  }
+  return (
+    <ConfigProvider config={config}>
+      <div className="min-h-screen bg-background text-foreground">{children}</div>
+    </ConfigProvider>
+  );
 }

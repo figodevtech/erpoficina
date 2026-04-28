@@ -12,6 +12,7 @@ import {
   LayoutPanelLeft,
   Palette,
   ChevronDown,
+  ShoppingBag,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -21,6 +22,7 @@ import ServicosSection from "./servicos-section";
 import FornecedoresSection from "./fornecedores-section";
 import BancosSection from "./contas-bancarias-section";
 import CategoriasTransacaoSection from "./categorias-transacao-section";
+import CategoriasVendaSection from "./categorias-venda-section";
 import SetoresSection from "./setores-section";
 import CoresVeiculosSection from "./cores-veiculos-section";
 
@@ -32,6 +34,7 @@ type TabId =
   | "setores"
   | "bancos"
   | "categorias"
+  | "categorias_venda"
   | "cores_veiculos";
 
 export default function TiposConfigPage() {
@@ -85,6 +88,12 @@ export default function TiposConfigPage() {
       icon: Tags,
       title: "Categorias de transação",
       subtitle: "Organize o financeiro",
+    },
+    {
+      id: "categorias_venda",
+      icon: ShoppingBag,
+      title: "Categorias de venda",
+      subtitle: "Organize as vendas",
     },
     {
       id: "cores_veiculos",
@@ -168,6 +177,7 @@ export default function TiposConfigPage() {
           {activeTab === "setores" && <SetoresSection />}
           {activeTab === "bancos" && <BancosSection />}
           {activeTab === "categorias" && <CategoriasTransacaoSection />}
+          {activeTab === "categorias_venda" && <CategoriasVendaSection />}
           {activeTab === "cores_veiculos" && <CoresVeiculosSection />}
         </div>
       </div>

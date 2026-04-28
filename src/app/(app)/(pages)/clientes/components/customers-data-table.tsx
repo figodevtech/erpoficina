@@ -35,6 +35,7 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { ExportCustomersButton } from "./ExportCustomersButton";
 import { formatCpfCnpj } from "./customerDialogRegister/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CustomerDataTableProps {
   handleGetCustomers: (pageNumber?: number, limit?: number, search?: string, status?: Status) => void;
@@ -71,6 +72,9 @@ export default function CustomersDataTable({
 }: CustomerDataTableProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
+
+  const truncate = (value: string, max: number) =>
+    value.length > max ? `${value.slice(0, max)}...` : value;
 
   const handleDeleteUser = async (id: number) => {
     setIsDeleting(true);
@@ -169,7 +173,14 @@ export default function CustomersDataTable({
 
                 <TableCell>
                   <div>
-                    <div className="font-medium">{customer.nomerazaosocial}</div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="max-w-[220px] truncate font-medium">
+                          {truncate(customer.nomerazaosocial, 28)}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>{customer.nomerazaosocial}</TooltipContent>
+                    </Tooltip>
                     <div className="text-sm text-muted-foreground">
                       {customer.tipopessoa === "FISICA" ? "PF" : "PJ"}
                     </div>
@@ -178,7 +189,14 @@ export default function CustomersDataTable({
 
                 <TableCell>
                   <div>
-                    <div className="text-sm">{customer.email}</div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="max-w-[220px] truncate text-sm">
+                          {truncate(customer.email, 28)}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>{customer.email}</TooltipContent>
+                    </Tooltip>
                     <div className="text-sm text-muted-foreground flex items-center">
                       {formatarTelefone(customer.telefone)}
                       {customer.telefone && (

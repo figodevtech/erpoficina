@@ -70,17 +70,24 @@ import { PedidoOnlineDialog } from "./pedido-online-dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useConfig } from "../../../config-context";
+import {
+  PaymentListFilters,
+  PaymentsFilterSheet,
+} from "../../../(financeiro)/components/payments-filter-sheet";
 
 interface VendasDataTableProps {
   vendas: VendaComItens[];
   isLoading: boolean;
   pagination: Pagination;
   search: string;
+  filters: PaymentListFilters;
+  setFilters: (value: PaymentListFilters) => void;
   handleGetVendas: (
     pageNumber?: number,
     limit?: number,
     searchText?: string,
     status?: vendaStatus | "TODOS",
+    filters?: PaymentListFilters,
   ) => void;
   fetchStatusCounts: () => void;
   status: vendaStatus | "TODOS";
@@ -264,6 +271,8 @@ export default function VendasDataTable({
   vendas,
   pagination,
   search,
+  filters,
+  setFilters,
   handleGetVendas,
   fetchStatusCounts,
   status,
@@ -280,7 +289,14 @@ export default function VendasDataTable({
   const [approveVendaId, setApproveVendaId] = useState<number | null>(null);
   const [approvalPaymentMethod, setApprovalPaymentMethod] =
     useState<ApprovalPaymentMethod>("NAO_INFORMAR");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const config = useConfig();
+  const hasActiveFilters = Boolean(
+    filters.cliente.trim() ||
+      filters.notaNumero.trim() ||
+      filters.dataInicio ||
+      filters.dataFim,
+  );
 
   const handleDeleteVenda = async (id: number) => {
     toast(
@@ -332,7 +348,7 @@ export default function VendasDataTable({
         setApproveDialogOpen(false);
         setApproveVendaId(null);
         setApprovalPaymentMethod("NAO_INFORMAR");
-        handleGetVendas(pagination.page, pagination.limit, search, status);
+        handleGetVendas(pagination.page, pagination.limit, search, status, filters);
         fetchStatusCounts();
       }
     } catch (error) {
@@ -359,6 +375,7 @@ export default function VendasDataTable({
                     pagination.limit,
                     search,
                     status,
+                    filters,
                   );
                   fetchStatusCounts();
                 }}
@@ -373,14 +390,36 @@ export default function VendasDataTable({
             </CardDescription>
           </div>
 
-          {/* <div className="flex items-center gap-2">
-            <Button
-              className="hover:cursor-pointer"
-              onClick={() => setIsOpen(true)}
-            >
-              Nova Venda
-            </Button>
-          </div> */}
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:cursor-pointer"
+                onClick={() => {
+                  const cleared = { cliente: "", notaNumero: "" };
+                  setFilters(cleared);
+                  handleGetVendas(1, pagination.limit, search, status, cleared);
+                }}
+              >
+                Limpar filtros
+              </Button>
+            )}
+            <PaymentsFilterSheet
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onAplicar={() =>
+                handleGetVendas(1, pagination.limit, search, status, filters)
+              }
+              onLimpar={() => {
+                const cleared = { cliente: "", notaNumero: "" };
+                setFilters(cleared);
+                handleGetVendas(1, pagination.limit, search, status, cleared);
+              }}
+            />
+          </div>
         </div>
       </CardHeader>
 
@@ -556,7 +595,7 @@ export default function VendasDataTable({
               size="sm"
               className="hover:cursor-pointer"
               onClick={() =>
-                handleGetVendas(1, pagination.limit, search, status)
+                handleGetVendas(1, pagination.limit, search, status, filters)
               }
               disabled={pagination.page === 1}
             >
@@ -572,6 +611,7 @@ export default function VendasDataTable({
                   pagination.limit,
                   search,
                   status,
+                  filters,
                 )
               }
               disabled={pagination.page === 1}
@@ -591,6 +631,7 @@ export default function VendasDataTable({
                   pagination.limit,
                   search,
                   status,
+                  filters,
                 )
               }
               disabled={
@@ -610,6 +651,7 @@ export default function VendasDataTable({
                   pagination.limit,
                   search,
                   status,
+                  filters,
                 )
               }
               disabled={

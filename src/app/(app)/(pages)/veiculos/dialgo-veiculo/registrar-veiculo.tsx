@@ -3,32 +3,6 @@
 import type React from "react";
 import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Check, ChevronsUpDown, Search, Upload } from "lucide-react";
-import {
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import axios, { isAxiosError } from "axios";
-import { toast } from "sonner";
-import { Veiculo, Veiculo_tipos } from "../types";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -37,7 +11,30 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { useFipe } from "./useFipe";
@@ -48,9 +45,9 @@ function somenteAlphaNumMaiusculo(valor: string) {
 }
 
 function formatarPlacaParaExibicao(valorSemFormatacao: string) {
-  const v = somenteAlphaNumMaiusculo(valorSemFormatacao).slice(0, 7); // placa tem 7 chars
-  if (v.length <= 3) return v;
-  return `${v.slice(0, 3)}-${v.slice(3)}`;
+  const valor = somenteAlphaNumMaiusculo(valorSemFormatacao).slice(0, 7);
+  if (valor.length <= 3) return valor;
+  return `${valor.slice(0, 3)}-${valor.slice(3)}`;
 }
 
 function normalizarTextoBusca(valor: string) {
@@ -350,19 +347,23 @@ export default function RegisterContent({
   };
 
   return (
-    <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <DialogContent className="h-svh min-w-screen overflow-hidden p-0 sm:h-auto sm:max-h-[860px] sm:min-w-0 sm:max-w-[980px]">
       <div className="flex h-full min-h-0 flex-col">
-        <DialogHeader className="shrink-0 px-6 py-4 border-b-1">
-          <DialogTitle>Cadastro de Veículo</DialogTitle>
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
+          <DialogTitle className="flex items-center gap-2">
+            <BadgePlus className="h-5 w-5 text-primary" />
+            Cadastro de Veículo
+          </DialogTitle>
           <DialogDescription>
-            Preencha os dados para registrar um novo veículo
+            Preencha os dados abaixo para registrar um novo veículo.
           </DialogDescription>
         </DialogHeader>
+
         <CustomerSelect
           open={openCustomer}
           setOpen={setOpenCustomer}
-          OnSelect={(c) =>
-            setNovoVeiculo({ ...novoVeiculo, clienteid: c.id, cliente: c })
+          OnSelect={(cliente) =>
+            aplicarAtualizacao({ clienteid: cliente.id, cliente })
           }
         />
 
@@ -868,32 +869,32 @@ export default function RegisterContent({
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4">
-          <div className="flex sm:flex-row gap-3 sm:gap-4">
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
+          <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" className="sm:min-w-[120px]">
+                Cancelar
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
               form="register-form"
               disabled={isSubmitting}
               onClick={handleCreateVeiculo}
-              className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+              className="sm:min-w-[110px]"
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Cadastrando...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Cadastrar Veículo
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar
                 </>
               )}
             </Button>
-            <DialogClose asChild>
-              <Button className="hover:cursor-pointer" variant={"outline"}>
-                Cancelar
-              </Button>
-            </DialogClose>
           </div>
         </DialogFooter>
       </div>

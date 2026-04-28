@@ -1,17 +1,19 @@
-// src/app/api/ordens/criar/route.ts
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/** enums do banco */
 type DBChecklistStatus = "OK" | "ALERTA" | "FALHA";
 type DBAlvo = "VEICULO" | "PECA";
 type DBPrioridade = "BAIXA" | "NORMAL" | "ALTA";
-type DBStatusOS =
-  | "AGUARDANDO_CHECKLIST"
-  | "ORCAMENTO";
+type DBStatusOS = "AGUARDANDO_CHECKLIST" | "ORCAMENTO";
+
+type PecaPayload = {
+  nome: string;
+  descricao?: string | null;
+  lacre?: string | null;
+};
 
 type Payload = {
   setorid: number | null;
@@ -20,12 +22,9 @@ type Payload = {
   observacoes: string | null;
   observacoes_fiscais?: string | null;
   status?: DBStatusOS | null;
-  checklistTemplateId?: string | null; // legado
+  checklistTemplateId?: string | null;
   prioridade?: DBPrioridade;
-
-  // ✅ agora é obrigatório ser cliente cadastrado
   cliente: { id: number };
-
   alvo?: {
     tipo: DBAlvo;
     veiculo?: {
@@ -36,9 +35,9 @@ type Payload = {
       cor?: string | null;
       kmatual?: number | null;
     };
-    peca?: { nome: string; descricao?: string | null; lacre?: string | null };
+    peca?: PecaPayload;
+    pecas?: PecaPayload[];
   };
-
   checklist?: Array<{
     item: string;
     status?: DBChecklistStatus | string | null | undefined;
@@ -46,12 +45,32 @@ type Payload = {
   }>;
 };
 
-function normPrioridade(v: any): DBPrioridade {
+function normPrioridade(v: unknown): DBPrioridade {
   const t = String(v ?? "").trim().toUpperCase();
   return t === "BAIXA" || t === "ALTA" ? (t as DBPrioridade) : "NORMAL";
 }
 
+function normalizarPecas(alvo?: Payload["alvo"]): PecaPayload[] {
+  const lista = Array.isArray(alvo?.pecas) && alvo.pecas.length > 0
+    ? alvo.pecas
+    : alvo?.peca
+      ? [alvo.peca]
+      : [];
+
+  return lista
+    .map((item) => ({
+      nome: String(item?.nome || "").trim(),
+      descricao: item?.descricao ? String(item.descricao).trim() : null,
+      lacre: item?.lacre ? String(item.lacre).trim() : null,
+    }))
+    .filter((item) => item.nome);
+}
+
 export async function POST(req: NextRequest) {
+  let createdVeiculoId: number | null = null;
+  const createdPecaIds: number[] = [];
+  const createdOsIds: number[] = [];
+
   try {
     const session = await auth();
     const usuariocriadorid = (session?.user as any)?.id as string | undefined;
@@ -65,37 +84,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "setorid é obrigatório" }, { status: 400 });
     }
 
-    // ✅ bloqueia payload antigo/avulso
     if (!body?.cliente || typeof body.cliente?.id !== "number") {
-      return NextResponse.json({ error: "Cliente deve ser cadastrado (cliente.id é obrigatório)." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Cliente deve ser cadastrado (cliente.id é obrigatório)." },
+        { status: 400 }
+      );
     }
 
     const payload = body as Payload;
-
     const setorid = Number(payload.setorid);
     const prioridade = normPrioridade(payload.prioridade);
-    const status =
+    const status: DBStatusOS =
       payload.status === "ORCAMENTO" ? "ORCAMENTO" : "AGUARDANDO_CHECKLIST";
-
-    // ========= Resolve cliente =========
     const clienteid = Number(payload.cliente.id);
 
-    // (opcional mas recomendado) valida se existe
-    const { data: cRow, error: cErr } = await supabaseAdmin.from("cliente").select("id").eq("id", clienteid).maybeSingle();
+    const { data: cRow, error: cErr } = await supabaseAdmin
+      .from("cliente")
+      .select("id")
+      .eq("id", clienteid)
+      .maybeSingle();
+
     if (cErr) throw cErr;
     if (!cRow?.id) {
       return NextResponse.json({ error: "Cliente não encontrado." }, { status: 400 });
     }
 
-    // ========= Resolve alvo (veículo/peça) =========
     let alvo_tipo: DBAlvo = "VEICULO";
     let veiculoid: number | null = payload?.veiculoid ? Number(payload.veiculoid) : null;
     let pecaid: number | null = null;
-
-    // ids criados nesta chamada (rollback se der ruim)
-    let createdVeiculoId: number | null = null;
-    let createdPecaId: number | null = null;
-
     const alvo = payload?.alvo;
 
     if (!alvo) {
@@ -137,8 +153,8 @@ export async function POST(req: NextRequest) {
 
           if (eVNew) throw eVNew;
 
-          veiculoid = vNew.id;
-          createdVeiculoId = vNew.id;
+          veiculoid = Number(vNew.id);
+          createdVeiculoId = Number(vNew.id);
         } else {
           veiculoid = null;
         }
@@ -148,32 +164,67 @@ export async function POST(req: NextRequest) {
     } else if (alvo.tipo === "PECA") {
       alvo_tipo = "PECA";
 
-      const nome = (alvo.peca?.nome || "").trim();
-      if (!nome) {
-        return NextResponse.json({ error: "Para alvo PECA, informe o nome da peça." }, { status: 400 });
+      const pecas = normalizarPecas(alvo);
+      if (pecas.length === 0) {
+        return NextResponse.json(
+          { error: "Para alvo PEÇA, informe ao menos uma peça." },
+          { status: 400 }
+        );
       }
 
-      const { data: pNew, error: eP } = await supabaseAdmin
-        .from("peca")
-        .insert({
-          clienteid,
-          veiculoid: veiculoid || null,
-          titulo: nome,
-          descricao: (alvo.peca?.descricao || null) as any,
-          lacre: (alvo.peca?.lacre || null) as any,
-        })
-        .select("id")
-        .single();
+      for (const pecaItem of pecas) {
+        const { data: pNew, error: eP } = await supabaseAdmin
+          .from("peca")
+          .insert({
+            clienteid,
+            veiculoid: veiculoid || null,
+            titulo: pecaItem.nome,
+            descricao: pecaItem.descricao,
+            lacre: pecaItem.lacre,
+          })
+          .select("id")
+          .single();
 
-      if (eP) throw eP;
+        if (eP) throw eP;
 
-      pecaid = pNew.id;
-      createdPecaId = pNew.id;
+        const pecaIdAtual = Number(pNew.id);
+        createdPecaIds.push(pecaIdAtual);
+
+        const { data: osPeca, error: eOSPeca } = await supabaseAdmin
+          .from("ordemservico")
+          .insert({
+            clienteid,
+            veiculoid,
+            pecaid: pecaIdAtual,
+            alvo_tipo,
+            usuariocriadorid,
+            setorid,
+            prioridade,
+            descricao: payload.descricao || null,
+            observacoes: payload.observacoes || null,
+            observacoes_fiscais: payload.observacoes_fiscais || null,
+            status,
+          })
+          .select("id")
+          .single();
+
+        if (eOSPeca) throw eOSPeca;
+
+        createdOsIds.push(Number(osPeca.id));
+      }
+
+      return NextResponse.json(
+        {
+          id: createdOsIds[0] ?? null,
+          ids: createdOsIds,
+          totalCriadas: createdOsIds.length,
+        },
+        { status: 201 }
+      );
     } else {
       return NextResponse.json({ error: "alvo.tipo inválido" }, { status: 400 });
     }
 
-    // ========= Cria OS =========
     const { data: os, error: eOS } = await supabaseAdmin
       .from("ordemservico")
       .insert({
@@ -192,14 +243,20 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
 
-    if (eOS) {
-      if (createdPecaId) await supabaseAdmin.from("peca").delete().eq("id", createdPecaId);
-      if (createdVeiculoId) await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
-      throw eOS;
+    if (eOS) throw eOS;
+
+    return NextResponse.json({ id: Number(os.id) }, { status: 201 });
+  } catch (err: any) {
+    if (createdOsIds.length > 0) {
+      await supabaseAdmin.from("ordemservico").delete().in("id", createdOsIds);
+    }
+    if (createdPecaIds.length > 0) {
+      await supabaseAdmin.from("peca").delete().in("id", createdPecaIds);
+    }
+    if (createdVeiculoId) {
+      await supabaseAdmin.from("veiculo").delete().eq("id", createdVeiculoId);
     }
 
-    return NextResponse.json({ id: os.id as number }, { status: 201 });
-  } catch (err: any) {
     console.error("POST /api/ordens/criar", err);
     return NextResponse.json({ error: err?.message || "Falha ao criar OS" }, { status: 500 });
   }

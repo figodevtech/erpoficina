@@ -52,7 +52,17 @@ export function useCarrinhoOrcamento(
         return novo;
       }
       const pu = toNum(s.precohora || 0);
-      return [...prev, { servicoid: s.id, descricao: s.descricao, quantidade: 1, precounitario: pu, subtotal: pu }];
+      return [
+        ...prev,
+        {
+          servicoid: s.id,
+          descricao: s.descricao,
+          descricaoServico: null,
+          quantidade: 1,
+          precounitario: pu,
+          subtotal: pu,
+        },
+      ];
     });
   };
 

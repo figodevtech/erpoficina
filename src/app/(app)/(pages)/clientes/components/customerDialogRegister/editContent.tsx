@@ -1,19 +1,12 @@
-"use client";
+﻿"use client";
 
 import type React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Upload,
@@ -34,6 +27,7 @@ import {
   Ellipsis,
   Pen,
   ArrowLeftRight,
+  Save,
 } from "lucide-react";
 import {
   DialogClose,
@@ -44,44 +38,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { StatusCliente, TipoPessoa, ESTADOS_BRASIL, tabTheme } from "./types";
-import {
-  formatCep,
-  formatCpfCnpj,
-  formatTelefone,
-  getRankEmoji,
-} from "./utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatusCliente, TipoPessoa, ESTADOS_BRASIL } from "./types";
+import { formatCep, formatCpfCnpj, formatTelefone, getRankEmoji } from "./utils";
 import { Cliente_rank, Customer } from "../../types";
 import axios, { isAxiosError } from "axios";
 import { useGetCidades } from "@/app/(app)/hooks/useGetCidades";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { VeiculoDialog } from "../../../veiculos/dialgo-veiculo/dialog-veiculo";
 import {
   DropdownMenu,
@@ -90,32 +57,49 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
-import { DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import {
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface EditContentProps {
   customerId: number;
   isDesktop?: boolean;
 }
-export default function EditContent({ customerId, isDesktop=true }: EditContentProps) {
+
+const statusOptionClass: Record<StatusCliente, string> = {
+  ATIVO:
+    "bg-emerald-100 text-emerald-800 focus:bg-emerald-100 focus:text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:focus:bg-emerald-950/50 dark:focus:text-emerald-300",
+  INATIVO:
+    "bg-slate-100 text-slate-800 focus:bg-slate-100 focus:text-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:focus:bg-slate-900 dark:focus:text-slate-300",
+  PENDENTE:
+    "bg-amber-100 text-amber-800 focus:bg-amber-100 focus:text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:focus:bg-amber-950/50 dark:focus:text-amber-300",
+};
+
+const statusLabel: Record<StatusCliente, string> = {
+  ATIVO: "Ativo",
+  INATIVO: "Inativo",
+  PENDENTE: "Pendente",
+};
+
+export default function EditContent({ customerId, isDesktop = true }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
-  const [selectedCustomer, setselectedCustomer] = useState<
-    Customer | undefined
-  >(undefined);
+  const [selectedCustomer, setselectedCustomer] = useState<Customer | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const { cidades, loading } = useGetCidades(selectedCustomer?.estado);
   const [open, setOpen] = useState(false);
   const [open2, setOpen2] = useState(false);
   const [openVehicle, setOpenVehicle] = useState(false);
-  const [veiculoId, setSelectedVeiculoId] = useState<number | undefined>(
-    undefined
-  );
+  const [veiculoId, setSelectedVeiculoId] = useState<number | undefined>(undefined);
   const [isLoadingVeiculos, setIsLoadingVeiculos] = useState(false);
   const [openCustomerSelect, setOpenCustomerSelect] = useState(false);
-  const [veiculoTransferId, setVeiculoTransferId] = useState<
-    number | undefined
-  >(undefined);
+  const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
   const [transferindo, setTransferindo] = useState(false);
 
   function validarEmailDigitado(email: string): boolean {
@@ -127,7 +111,6 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
 
     return regex.test(valor);
   }
-
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     if (selectedCustomer) {
@@ -160,9 +143,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
     }
     setIsLoadingCNPJ(true);
     try {
-      const response = await axios.get(
-        `https://publica.cnpj.ws/cnpj/${selectedCustomer?.cpfcnpj}`
-      );
+      const response = await axios.get(`https://publica.cnpj.ws/cnpj/${selectedCustomer?.cpfcnpj}`);
       if (response.status === 200) {
         console.log(response.data);
         const juridica = response.data;
@@ -197,7 +178,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
           });
         }
         if (error.status === 404) {
-          toast.error("Error no servidor de consulta", {
+          toast.error("Erro no servidor de consulta", {
             description: "Verifique com o administrador",
           });
         }
@@ -214,9 +195,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
     }
     setIsLoadingCep(true);
     try {
-      const response = await axios.get(
-        `https://opencep.com/v1/${selectedCustomer?.cep}`
-      );
+      const response = await axios.get(`https://opencep.com/v1/${selectedCustomer?.cep}`);
       if (response.status === 200) {
         console.log(response);
         const enderecoResponse = response.data;
@@ -243,17 +222,13 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
   };
 
   const handleUpdateCustomer = async () => {
-
     if (!validarEmailDigitado(selectedCustomer?.email || "")) {
-      toast.warning("Insira um email válido")
-      return
+      toast.warning("Insira um email válido");
+      return;
     }
     setIsSubmitting(true);
     try {
-      const response = await axios.put(
-        "/api/customers/" + customerId,
-        selectedCustomer
-      );
+      const response = await axios.put("/api/customers/" + customerId, selectedCustomer);
 
       if (response.status === 200) {
         // console.log(response)
@@ -273,9 +248,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
   const handleGetClienteVeiculos = async () => {
     setIsLoadingVeiculos(true);
     try {
-      const response = await axios.get(
-        `/api/veiculos/cliente/${selectedCustomer?.id}`
-      );
+      const response = await axios.get(`/api/veiculos/cliente/${selectedCustomer?.id}`);
       if (response.status === 200 && selectedCustomer) {
         setselectedCustomer({
           ...selectedCustomer,
@@ -296,16 +269,13 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
       <div className="flex felx-row gap-1 items-center">
         <Loader2 className="w-3 h-3 animate-spin" />
         <span>Transferindo veículo...</span>{" "}
-      </div>
+      </div>,
     );
     setTransferindo(true);
     try {
-      const response = await axios.post(
-        `/api/veiculos/${veiculoTransferId}/transferencia`,
-        {
-          novoDonoId: novoDonoId,
-        }
-      );
+      const response = await axios.post(`/api/veiculos/${veiculoTransferId}/transferencia`, {
+        novoDonoId: novoDonoId,
+      });
       if (response.status === 200) {
         toast.success("Veículo transferido com sucesso!");
         handleGetClienteVeiculos();
@@ -331,44 +301,48 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
     console.log(selectedCustomer);
   }, [selectedCustomer]);
 
-  const Content = isDesktop ? DialogContent : DrawerContent;
-  const Header = isDesktop ? DialogHeader : DrawerHeader;
-  const Footer = isDesktop ? DialogFooter : DrawerFooter;
-  const Title = isDesktop ? DialogTitle : DrawerTitle;
-  const Description = isDesktop ? DialogDescription : DrawerDescription;
-  const Close = isDesktop ? DialogClose : DrawerClose;
+  const DialogShellContent = isDesktop ? DialogContent : DrawerContent;
+  const DialogShellHeader = isDesktop ? DialogHeader : DrawerHeader;
+  const DialogShellFooter = isDesktop ? DialogFooter : DrawerFooter;
+  const DialogShellTitle = isDesktop ? DialogTitle : DrawerTitle;
+  const DialogShellDescription = isDesktop ? DialogDescription : DrawerDescription;
+  const DialogShellClose = isDesktop ? DialogClose : DrawerClose;
 
   if (isLoading) {
     return (
-      <Content className={
-        isDesktop
-          ? `
+      <DialogShellContent
+        className={
+          isDesktop
+            ? `
         h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
         sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
       `
-          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
-      }>
-        <Header className="hidden">
-          <Title></Title>
-        </Header>
+            : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+        }
+      >
+        <DialogShellHeader className="hidden">
+          <DialogShellTitle></DialogShellTitle>
+        </DialogShellHeader>
         <div className="flex h-full min-h-0 flex-col justify-center items-center">
           <div className="size-8 border-t-2 border-primary rounded-t-full animate-spin"></div>
           <span className="text-primary">Carregando</span>
         </div>
-      </Content>
+      </DialogShellContent>
     );
   }
 
   if (selectedCustomer) {
-          return (
-            <Content className={
-        isDesktop
-          ? `
+    return (
+      <DialogShellContent
+        className={
+          isDesktop
+            ? `
         h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
         sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
       `
-          : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
-      }>
+            : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+        }
+      >
         <VeiculoDialog
           setSelectedVeiculoId={setSelectedVeiculoId}
           isOpen={openVehicle}
@@ -378,9 +352,10 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
           onRegister={() => handleGetClienteVeiculos()}
         />
         <div className="flex h-full min-h-0 flex-col">
-          <Header className="shrink-0 px-6 py-4 border-b-1">
-            <Title className="flex flex-row items-center gap-5">
+          <DialogShellHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
+            <DialogShellTitle className="flex flex-row items-center gap-3 text-sm sm:text-lg">
               Cliente #{selectedCustomer.id}
+              <span className="text-muted-foreground text-sm font-light">| Edição </span>
               <Select
                 value={selectedCustomer.rank || ""}
                 onValueChange={(value) =>
@@ -391,7 +366,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                 }
               >
                 <SelectTrigger className="bg-transparent border-none shadow-none focus:ring-0 focus:ring-offset-0 text-[10px] hover:cursor-pointer">
-                  <SelectValue placeholder="Não Ranqueado" />
+                  <SelectValue placeholder="Não ranqueado" />
                 </SelectTrigger>
                 <SelectContent align="end" className="text-xs w-min bg-none">
                   {Object.values(Cliente_rank).map((rank) => (
@@ -405,164 +380,142 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                   ))}
                 </SelectContent>
               </Select>
-            </Title>
-            <Description>
-              Modifique dados para atualizar o cliente
-            </Description>
-          </Header>
+            </DialogShellTitle>
+            <DialogShellDescription>Modifique dados para atualizar o cliente</DialogShellDescription>
+          </DialogShellHeader>
 
           {/* Área principal com abas */}
-          <Tabs
-            defaultValue="Geral"
-            className="flex-1 min-h-0 overflow-hidden pb-0"
-          >
-            <TabsList className="shrink-0 top-0 z-10 bg-background mt-3 ml-3">
-              <TabsTrigger
-                value="Geral"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Geral
-              </TabsTrigger>
-              <TabsTrigger
-                value="Veículos"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Veículos
-              </TabsTrigger>
-              <TabsTrigger
-                value="Ordens"
-                className={"hover:cursor-pointer" + tabTheme}
-              >
-                Ordens de Serviço
-              </TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="Geral" className="flex-1 min-h-0 overflow-hidden pb-0">
+            <div className="sticky top-0 z-10 mt-4 shrink-0">
+              <div className="overflow-x-auto px-6 pb-2">
+                <TabsList className="h-auto min-w-full justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
+                  <TabsTrigger
+                    value="Geral"
+                    className="h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  >
+                    Geral
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="Veículos"
+                    className="h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  >
+                    Veículos
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="Ordens"
+                    className="h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                  >
+                    Ordens de Serviço
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
 
             {/* CONTEÚDO DA ABA: o scroll fica no wrapper interno */}
-            <TabsContent
-              value="Geral"
-              className="h-full min-h-0 overflow-hidden p-0 b"
-            >
-              <div className="h-full min-h-0 overflow-auto px-4 py-10 space-y-2 bg-muted-foreground/5">
-                {/* Foto do Cliente */}
-                <div className="flex flex-col items-center space-y-3 sm:space-y-4">
-                  <div className="relative">
-                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24">
-                      <AvatarImage
-                        // src={fotoPreview || "/placeholder.svg"}
-                        alt="Foto do cliente"
-                      />
-                      <AvatarFallback className="text-sm sm:text-lg">
-                        {selectedCustomer.tipopessoa === "FISICA" ? (
-                          <User className="h-6 w-6 sm:h-8 sm:w-8" />
-                        ) : (
-                          <Building2 className="h-6 w-6 sm:h-8 sm:w-8" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Label
-                      htmlFor="foto-upload"
-                      className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 cursor-pointer"
-                    >
-                      <div className="bg-primary text-primary-foreground rounded-full p-1.5 sm:p-2 hover:bg-primary/90 transition-colors">
-                        <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+            <TabsContent value="Geral" className="h-full min-h-0 overflow-hidden p-0 b">
+              <div className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-6 sm:px-6">
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0">
+                        <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
+                          <AvatarImage
+                            // src={fotoPreview || "/placeholder.svg"}
+                            alt="Foto do cliente"
+                          />
+                          <AvatarFallback className="text-sm">
+                            {selectedCustomer.tipopessoa === "FISICA" ? (
+                              <User className="h-5 w-5 sm:h-6 sm:w-6" />
+                            ) : (
+                              <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Label htmlFor="foto-upload" className="absolute -bottom-1 -right-1 cursor-pointer">
+                          <div className="rounded-full bg-primary p-1.5 text-primary-foreground transition-colors hover:bg-primary/90">
+                            <Camera className="h-3 w-3" />
+                          </div>
+                          <input id="foto-upload" type="file" accept="image/*" className="hidden" />
+                        </Label>
                       </div>
-                      <input
-                        id="foto-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                      />
-                    </Label>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold">
+                          {selectedCustomer.nomerazaosocial?.trim() || `Cliente #${selectedCustomer.id}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Atualize os dados cadastrais do cliente.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="status" className="text-sm">
+                          Status
+                        </Label>
+                        <Select
+                          value={selectedCustomer.status}
+                          onValueChange={(value: StatusCliente) => handleInputChange("status", value)}
+                        >
+                          <SelectTrigger className={cn("h-10 sm:h-11", statusOptionClass[selectedCustomer.status])}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem
+                              value="ATIVO"
+                              className={cn("px-2 py-1.5 text-sm font-medium hover:cursor-pointer", statusOptionClass.ATIVO)}
+                            >
+                              {statusLabel.ATIVO}
+                            </SelectItem>
+                            <SelectItem
+                              value="INATIVO"
+                              className={cn("px-2 py-1.5 text-sm font-medium hover:cursor-pointer", statusOptionClass.INATIVO)}
+                            >
+                              {statusLabel.INATIVO}
+                            </SelectItem>
+                            <SelectItem
+                              value="PENDENTE"
+                              className={cn("px-2 py-1.5 text-sm font-medium hover:cursor-pointer", statusOptionClass.PENDENTE)}
+                            >
+                              {statusLabel.PENDENTE}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tipopessoa" className="text-sm">
+                          Tipo de Pessoa *
+                        </Label>
+                        <Select
+                          value={selectedCustomer.tipopessoa}
+                          onValueChange={(value: TipoPessoa) => handleInputChange("tipopessoa", value)}
+                        >
+                          <SelectTrigger className="h-10 sm:h-11">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="FISICA" className="hover:cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span className="text-sm">Pessoa Física</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="JURIDICA" className="hover:cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4" />
+                                <span className="text-sm">Pessoa Jurídica</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status" className="text-sm sm:text-base">
-                    Status
-                  </Label>
-                  <Select
-                    value={selectedCustomer.status}
-                    onValueChange={(value: StatusCliente) =>
-                      handleInputChange("status", value)
-                    }
-                  >
-                    <SelectTrigger className="h-10 sm:h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        value="ATIVO"
-                        className="hover:cursor-pointer"
-                      >
-                        <Badge variant="default" className="bg-green-500">
-                          Ativo
-                        </Badge>
-                      </SelectItem>
-                      <SelectItem
-                        value="INATIVO"
-                        className="hover:cursor-pointer"
-                      >
-                        <Badge variant="destructive">Inativo</Badge>
-                      </SelectItem>
-                      <SelectItem
-                        value="PENDENTE"
-                        className="hover:cursor-pointer"
-                      >
-                        <Badge variant="default" className="bg-yellow-600">
-                          Pendente
-                        </Badge>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Tipo de Pessoa */}
-                <div className="space-y-2">
-                  <Label htmlFor="tipopessoa" className="text-sm sm:text-base">
-                    Tipo de Pessoa *
-                  </Label>
-                  <Select
-                    value={selectedCustomer.tipopessoa}
-                    onValueChange={(value: TipoPessoa) =>
-                      handleInputChange("tipopessoa", value)
-                    }
-                  >
-                    <SelectTrigger className="h-10 sm:h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        value="FISICA"
-                        className="hover:cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          <span className="text-sm sm:text-base">
-                            Pessoa Física
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem
-                        value="JURIDICA"
-                        className="hover:cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          <span className="text-sm sm:text-base">
-                            Pessoa Jurídica
-                          </span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {/* Dados Principais */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cpfcnpj" className="text-sm sm:text-base">
-                      {selectedCustomer.tipopessoa === "FISICA"
-                        ? "CPF"
-                        : "CNPJ"}{" "}
-                      *
+                    <Label htmlFor="cpfcnpj" className="text-sm">
+                      {selectedCustomer.tipopessoa === "FISICA" ? "CPF" : "CNPJ"} *
                     </Label>
                     <div className=" relative">
                       {isLoadingCNPJ && (
@@ -584,55 +537,31 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                           id="cpfcnpj"
                           inputMode="numeric"
                           className=""
-                          value={
-                            formatCpfCnpj(
-                              selectedCustomer.cpfcnpj,
-                              selectedCustomer.tipopessoa
-                            ) || ""
-                          }
+                          value={formatCpfCnpj(selectedCustomer.cpfcnpj, selectedCustomer.tipopessoa) || ""}
                           onChange={(e) => {
-                            const onlyNumbers = e.target.value.replace(
-                              /\D/g,
-                              ""
-                            );
+                            const onlyNumbers = e.target.value.replace(/\D/g, "");
 
                             handleInputChange("cpfcnpj", onlyNumbers);
                           }}
                           placeholder={
-                            selectedCustomer.tipopessoa === "FISICA"
-                              ? "000.000.000-00"
-                              : "00.000.000/0000-00"
+                            selectedCustomer.tipopessoa === "FISICA" ? "000.000.000-00" : "00.000.000/0000-00"
                           }
-                          maxLength={
-                            selectedCustomer.tipopessoa === "FISICA" ? 14 : 18
-                          }
+                          maxLength={selectedCustomer.tipopessoa === "FISICA" ? 14 : 18}
                         />
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="nomerazaosocial"
-                      className="text-sm sm:text-base"
-                    >
-                      {selectedCustomer.tipopessoa === "FISICA"
-                        ? "Nome Completo"
-                        : "Razão Social"}{" "}
-                      *
+                    <Label htmlFor="nomerazaosocial" className="text-sm">
+                      {selectedCustomer.tipopessoa === "FISICA" ? "Nome Completo" : "Razão Social"} *
                     </Label>
                     <Input
                       id="nomerazaosocial"
                       className=""
                       value={selectedCustomer.nomerazaosocial || ""}
-                      onChange={(e) =>
-                        handleInputChange("nomerazaosocial", e.target.value)
-                      }
-                      placeholder={
-                        selectedCustomer.tipopessoa === "FISICA"
-                          ? "João da Silva"
-                          : "Empresa LTDA"
-                      }
+                      onChange={(e) => handleInputChange("nomerazaosocial", e.target.value)}
+                      placeholder={selectedCustomer.tipopessoa === "FISICA" ? "João da Silva" : "Empresa LTDA"}
                     />
                   </div>
                 </div>
@@ -640,10 +569,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                 {/* Contato */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="email"
-                      className="flex items-center gap-2 text-sm sm:text-base"
-                    >
+                    <Label htmlFor="email" className="flex items-center gap-2 text-sm">
                       <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
                       Email
                     </Label>
@@ -652,18 +578,13 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                       type="email"
                       className=""
                       value={selectedCustomer.email || ""}
-                      onChange={(e) =>
-                        handleInputChange("email", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("email", e.target.value)}
                       placeholder="cliente@email.com"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="telefone"
-                      className="flex items-center gap-2 text-sm sm:text-base"
-                    >
+                    <Label htmlFor="telefone" className="flex items-center gap-2 text-sm">
                       <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
                       Telefone
                     </Label>
@@ -673,9 +594,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                       className=""
                       value={formatTelefone(selectedCustomer.telefone) || ""}
                       onChange={(e) => {
-                        const raw = e.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 11);
+                        const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
                         handleInputChange("telefone", raw);
                       }}
                       placeholder="(11) 99999-9999"
@@ -688,38 +607,34 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                 <div className="space-y-3 sm:space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-center gap-2">
                     <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                      <Label htmlFor="cep" className="text-sm sm:text-base">
+                      <Label htmlFor="cep" className="text-sm">
                         CEP
                       </Label>
-                      <div className="flex flex-row items-center gap-1">
+                      <div className="relative">
+                        {isLoadingCep ? (
+                          <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-primary" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleGetCep}
+                            className="absolute right-2 top-1.5 rounded-3xl p-1 transition-all hover:bg-gray-500/20"
+                            aria-label="Consultar CEP"
+                          >
+                            <Search className="h-4 w-4" />
+                          </button>
+                        )}
                         <Input
                           id="cep"
                           className=""
                           value={formatCep(selectedCustomer.cep) || ""}
-                          onChange={(e) =>
-                            handleInputChange("cep", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange("cep", e.target.value)}
                           placeholder="00000-000"
                           maxLength={9}
                         />
-                        <Button
-                          onClick={handleGetCep}
-                          className="hover:cursor-pointer"
-                          variant={"outline"}
-                        >
-                          {isLoadingCep ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Search className="w-4 h-4" />
-                          )}
-                        </Button>
                       </div>
                     </div>
                     <div className="space-y-2 lg:col-span-2">
-                      <Label
-                        htmlFor="endereco"
-                        className="text-sm sm:text-base"
-                      >
+                      <Label htmlFor="endereco" className="text-sm">
                         <MapPin className="h-4.5" />
                         Endereço Completo
                       </Label>
@@ -727,23 +642,19 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                         id="endereco"
                         className=""
                         value={selectedCustomer.endereco || ""}
-                        onChange={(e) =>
-                          handleInputChange("endereco", e.target.value)
-                        }
+                        onChange={(e) => handleInputChange("endereco", e.target.value)}
                         placeholder="Rua, número, complemento, bairro"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="numero" className="text-sm sm:text-base">
+                      <Label htmlFor="numero" className="text-sm">
                         Número
                       </Label>
                       <Input
                         id="endereconumero"
                         className=""
                         value={selectedCustomer.endereconumero || ""}
-                        onChange={(e) =>
-                          handleInputChange("endereconumero", e.target.value)
-                        }
+                        onChange={(e) => handleInputChange("endereconumero", e.target.value)}
                         placeholder="123"
                       />
                     </div>
@@ -752,7 +663,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="estado" className="text-sm sm:text-base">
+                    <Label htmlFor="estado" className="text-sm">
                       Estado
                     </Label>
 
@@ -765,9 +676,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                           className="w-[200px] justify-between"
                         >
                           {selectedCustomer.estado
-                            ? ESTADOS_BRASIL.find(
-                              (estado) => estado === selectedCustomer.estado
-                            )
+                            ? ESTADOS_BRASIL.find((estado) => estado === selectedCustomer.estado)
                             : "Selecione..."}
                           <ChevronsUpDown className="opacity-50" />
                         </Button>
@@ -780,14 +689,9 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                         onOpenAutoFocus={(e) => e.preventDefault()}
                       >
                         <Command>
-                          <CommandInput
-                            placeholder="Buscar estado..."
-                            className="h-9 text-base"
-                          />
+                          <CommandInput placeholder="Buscar estado..." className="h-9 text-base" />
                           <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
-                            <CommandEmpty>
-                              Nenhum estado encontrada.
-                            </CommandEmpty>
+                            <CommandEmpty>Nenhum estado encontrada.</CommandEmpty>
 
                             {/* Aqui NÃO precisa de overflow/max-h */}
                             <CommandGroup>
@@ -808,9 +712,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                                   <Check
                                     className={cn(
                                       "ml-auto",
-                                      selectedCustomer.estado === estado
-                                        ? "opacity-100"
-                                        : "opacity-0"
+                                      selectedCustomer.estado === estado ? "opacity-100" : "opacity-0",
                                     )}
                                   />
                                 </CommandItem>
@@ -823,15 +725,12 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="cidade" className="text-sm sm:text-base">
+                    <Label htmlFor="cidade" className="text-sm">
                       Cidade
                     </Label>
 
                     <Popover open={open} onOpenChange={setOpen}>
-                      <PopoverTrigger
-                        disabled={selectedCustomer.estado ? false : true}
-                        asChild
-                      >
+                      <PopoverTrigger disabled={selectedCustomer.estado ? false : true} asChild>
                         <Button
                           variant="outline"
                           role="combobox"
@@ -839,10 +738,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                           className="w-[200px] justify-between"
                         >
                           {selectedCustomer.cidade
-                            ? cidades.find(
-                              (cidade) =>
-                                cidade.nome === selectedCustomer.cidade
-                            )?.nome
+                            ? cidades.find((cidade) => cidade.nome === selectedCustomer.cidade)?.nome
                             : loading
                               ? "Carregando..."
                               : selectedCustomer.estado
@@ -860,14 +756,9 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                         onWheelCapture={(e) => e.stopPropagation()}
                       >
                         <Command>
-                          <CommandInput
-                            placeholder="Buscar cidade..."
-                            className="h-9 text-base"
-                          />
+                          <CommandInput placeholder="Buscar cidade..." className="h-9 text-base" />
                           <CommandList className="max-h-45 overflow-y-auto overscroll-contain">
-                            <CommandEmpty>
-                              Nenhuma cidade encontrada.
-                            </CommandEmpty>
+                            <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
 
                             {/* Aqui NÃO precisa de overflow/max-h */}
                             <CommandGroup>
@@ -889,9 +780,7 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                                   <Check
                                     className={cn(
                                       "ml-auto",
-                                      selectedCustomer.cidade === cidade.nome
-                                        ? "opacity-100"
-                                        : "opacity-0"
+                                      selectedCustomer.cidade === cidade.nome ? "opacity-100" : "opacity-0",
                                     )}
                                   />
                                 </CommandItem>
@@ -903,108 +792,78 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                     </Popover>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="bairro" className="text-sm sm:text-base">
+                    <Label htmlFor="bairro" className="text-sm">
                       Bairro
                     </Label>
                     <Input
                       id="bairro"
                       className=""
                       value={selectedCustomer.bairro || ""}
-                      onChange={(e) =>
-                        handleInputChange("bairro", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("bairro", e.target.value)}
                       placeholder="Ap, bloco..."
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="complemento"
-                      className="text-sm sm:text-base"
-                    >
+                    <Label htmlFor="complemento" className="text-sm">
                       Complemento
                     </Label>
                     <Input
                       id="enderecocomplemento"
                       className=""
                       value={selectedCustomer.enderecocomplemento || ""}
-                      onChange={(e) =>
-                        handleInputChange("enderecocomplemento", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("enderecocomplemento", e.target.value)}
                       placeholder="Ap, bloco..."
                     />
                   </div>
                 </div>
 
-                {/* Dados Fiscais - Apenas para Pessoa Jurídica */}
+                {/* Dados fiscais - Apenas para Pessoa Jurídica */}
                 {selectedCustomer.tipopessoa === "JURIDICA" && (
                   <>
                     <Separator />
                     <div className="space-y-3 sm:space-y-4">
                       <div className="flex items-center gap-2">
                         <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                        <h3 className="text-base sm:text-lg font-semibold">
-                          Dados Fiscais
-                        </h3>
+                        <h3 className="text-base sm:text-lg font-semibold">Dados Fiscais</h3>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div className="space-y-2">
-                          <Label
-                            htmlFor="inscricaoestadual"
-                            className="text-sm sm:text-base"
-                          >
+                          <Label htmlFor="inscricaoestadual" className="text-sm">
                             Inscrição Estadual
                           </Label>
                           <Input
                             id="inscricaoestadual"
                             className=""
                             value={selectedCustomer.inscricaoestadual || ""}
-                            onChange={(e) =>
-                              handleInputChange(
-                                "inscricaoestadual",
-                                e.target.value
-                              )
-                            }
+                            onChange={(e) => handleInputChange("inscricaoestadual", e.target.value)}
                             placeholder="123456789"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label
-                            htmlFor="inscricaomunicipal"
-                            className="text-sm sm:text-base"
-                          >
+                          <Label htmlFor="inscricaomunicipal" className="text-sm">
                             Inscrição Municipal
                           </Label>
                           <Input
                             id="inscricaomunicipal"
                             className=""
                             value={selectedCustomer.inscricaomunicipal || ""}
-                            onChange={(e) =>
-                              handleInputChange(
-                                "inscricaomunicipal",
-                                e.target.value
-                              )
-                            }
+                            onChange={(e) => handleInputChange("inscricaomunicipal", e.target.value)}
                             placeholder="123456789"
                           />
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <Label
-                          htmlFor="codigomunicipio"
-                          className="text-sm sm:text-base"
-                        >
+                        <Label htmlFor="codigomunicipio" className="text-sm">
                           Código do Município
                         </Label>
                         <Input
                           id="codigomunicipio"
                           className=""
                           value={selectedCustomer.codigomunicipio || ""}
-                          onChange={(e) =>
-                            handleInputChange("codigomunicipio", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange("codigomunicipio", e.target.value)}
                           placeholder="3550308"
                         />
                       </div>
@@ -1017,19 +876,13 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
             </TabsContent>
 
             {/* Exemplos para as outras abas (mantêm a mesma estrutura) */}
-            <TabsContent
-              value="Veículos"
-              className="h-full min-h-0 overflow-hidden p-0"
-            >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
+            <TabsContent value="Veículos" className="h-full min-h-0 overflow-hidden p-0">
+              <div className="h-full min-h-0 overflow-auto rounded-md bg-muted-foreground/5 px-4 py-6 space-y-4 sm:px-6">
                 <span
                   onClick={handleGetClienteVeiculos}
                   className="text-xs text-muted-foreground flex flex-row items-center gap-1 hover:cursor-pointer"
                 >
-                  Recarregar{" "}
-                  <Loader2
-                    className={`w-3 h-3 ${isLoadingVeiculos && "animate-spin"}`}
-                  />
+                  Recarregar <Loader2 className={`w-3 h-3 ${isLoadingVeiculos && "animate-spin"}`} />
                 </span>
                 <div className="w-full flex flex-row justify-end">
                   <Button
@@ -1047,6 +900,8 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center">ID</TableHead>
+                      <TableHead className="text-center">Alvo</TableHead>
+                      <TableHead className="text-center">Detalhes</TableHead>
                       <TableHead className="text-center">Descrição</TableHead>
                       <TableHead className="text-center hidden md:table-cell">Placa</TableHead>
                       <TableHead className="text-center hidden md:table-cell">Cor</TableHead>
@@ -1057,22 +912,20 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                   <TableBody>
                     {selectedCustomer.veiculos.length > 0 ? (
                       selectedCustomer.veiculos.map((vehicle) => (
-                        <TableRow
-                          key={vehicle.id}
-                          className="hover:cursor-pointer text-center"
-                        >
+                        <TableRow key={vehicle.id} className="hover:cursor-pointer text-center">
                           <TableCell>{vehicle.id}</TableCell>
                           <TableCell>
                             <div className="flex flex-col text-left gap-1 md:hidden text-xs">
                               <span className="font-medium">
-
                                 {vehicle.marca}/{vehicle.modelo}
                               </span>
                               <span className="text-muted-foreground">
                                 {vehicle.placa} - {vehicle.ano} - {vehicle.cor}
                               </span>
                             </div>
-                            <span className="hidden md:block">{vehicle.marca}/{vehicle.modelo}</span>
+                            <span className="hidden md:block">
+                              {vehicle.marca}/{vehicle.modelo}
+                            </span>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">{vehicle.placa}</TableCell>
                           <TableCell className="hidden md:table-cell">{vehicle.cor}</TableCell>
@@ -1120,11 +973,8 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
               </div>
             </TabsContent>
 
-            <TabsContent
-              value="Ordens"
-              className="h-full min-h-0 overflow-hidden p-0"
-            >
-              <div className="h-full min-h-0 overflow-auto rounded-md px-4 py-10 space-y-2 bg-muted-foreground/5">
+            <TabsContent value="Ordens" className="h-full min-h-0 overflow-hidden p-0">
+              <div className="h-full min-h-0 overflow-auto rounded-md bg-muted-foreground/5 px-4 py-6 space-y-4 sm:px-6">
                 <Table className="text-xs">
                   <TableHeader>
                     <TableRow>
@@ -1136,19 +986,51 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                   <TableBody>
                     {selectedCustomer.ordens.length > 0 ? (
                       selectedCustomer.ordens.map((ordem) => (
-                        <TableRow
-                          key={ordem.id}
-                          className="hover:cursor-pointer"
-                        >
+                        <TableRow key={ordem.id} className="hover:cursor-pointer">
+                          <TableCell className="text-center">{ordem.id}</TableCell>
                           <TableCell className="text-center">
-                            {ordem.id}
+                            {ordem.alvo_tipo === "PECA" ? "Peça" : "Veículo"}
                           </TableCell>
-                          <TableCell className="text-center max-w-52 truncate">
-                            {ordem.descricao}
+                          <TableCell className="max-w-64">
+                            <div className="flex flex-col gap-1 text-left">
+                              {ordem.alvo_tipo === "PECA" ? (
+                                <>
+                                  <span className="truncate">
+                                    {ordem.peca?.titulo || ordem.peca?.descricao || "Peça não informada"}
+                                  </span>
+                                  {ordem.peca?.lacre ? (
+                                    <span className="text-[11px] text-muted-foreground">Lacre: {ordem.peca.lacre}</span>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="truncate">
+                                    {ordem.veiculo
+                                      ? `${ordem.veiculo.marca ?? ""} ${ordem.veiculo.modelo ?? ""}`.trim() ||
+                                        ordem.veiculo.modelo ||
+                                        "Veículo vinculado"
+                                      : "Veículo não informado"}
+                                  </span>
+                                  {ordem.veiculo?.placa ? (
+                                    <span className="text-[11px] text-muted-foreground">
+                                      Placa: {ordem.veiculo.placa}
+                                    </span>
+                                  ) : null}
+                                </>
+                              )}
+                            </div>
                           </TableCell>
-                          <TableCell className="text-center">
-                            {ordem.status}
+                          <TableCell className="max-w-52">
+                            <div className="flex flex-col gap-1 text-left">
+                              <span className="truncate font-medium">{ordem.descricao || "Sem descrição"}</span>
+                              {"prioridade" in ordem && ordem.prioridade ? (
+                                <span className="text-[11px] text-muted-foreground">
+                                  Prioridade: {String(ordem.prioridade)}
+                                </span>
+                              ) : null}
+                            </div>
                           </TableCell>
+                          <TableCell className="text-center">{ordem.status}</TableCell>
                         </TableRow>
                       ))
                     ) : (
@@ -1164,13 +1046,13 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="px-6 py-4">
+          <DialogShellFooter className="border-t px-4 py-3 sm:px-6">
             <div className="flex sm:flex-row gap-3 sm:gap-4">
               <Button
                 type="submit"
                 form="register-form"
                 disabled={isSubmitting}
-                className="flex-1 text-sm sm:text-base hover:cursor-pointer"
+                className="flex-1  w-[110px] hover:cursor-pointer"
                 onClick={handleUpdateCustomer}
               >
                 {isSubmitting ? (
@@ -1180,25 +1062,25 @@ export default function EditContent({ customerId, isDesktop=true }: EditContentP
                   </>
                 ) : (
                   <>
-                    <Upload className="h-4 w-4 mr-2" />
+                    <Save className="h-4 w-4 " />
                     Salvar
                   </>
                 )}
               </Button>
-              <DialogClose asChild>
+              <DialogShellClose asChild>
                 <Button className="hover:cursor-pointer" variant={"outline"}>
                   Cancelar
                 </Button>
-              </DialogClose>
+              </DialogShellClose>
             </div>
-          </DialogFooter>
+          </DialogShellFooter>
         </div>
         <CustomerSelect
           open={openCustomerSelect}
           setOpen={setOpenCustomerSelect}
           OnSelect={(c) => handleVehicleTransfer(c.id)}
         />
-      </Content>
+      </DialogShellContent>
     );
   }
 }

@@ -17,7 +17,9 @@ const VEICULO_FIELDS = `
 `;
 
 const ORDEM_FIELDS = `
-id, clienteid, descricao, status
+  id, clienteid, descricao, status, prioridade, alvo_tipo,
+  peca:peca ( id, titulo, descricao, lacre ),
+  veiculo:veiculo ( id, placa, modelo, marca )
 `
 
 type Status = "ATIVO" | "INATIVO" | "PENDENTE";

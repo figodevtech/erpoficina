@@ -1,9 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-// ajuste o caminho do DialogShell conforme seu projeto
+import { Button } from "@/components/ui/button";
 import { DialogShell } from "../dialogs/dialog-shell";
 import { FormularioNovaOS } from "./ordem-form";
 
@@ -20,8 +19,9 @@ export function NovaOSDialog({ open, onOpenChange }: Props) {
     <DialogShell
       open={open}
       onOpenChange={onOpenChange}
-      title="Nova Ordem de Serviço"
-      description="Preencha o formulario para criação da ordem de serviço."
+      title="Ordem de Serviço"
+      titleSuffix="Nova"
+      description="Preencha o formulário para criação da ordem de serviço."
       maxW="lg:max-w-5xl xl:max-w-6xl"
       footer={
         <>
@@ -63,7 +63,9 @@ export function NovaOSDialog({ open, onOpenChange }: Props) {
       }
     >
       <FormularioNovaOS
-        exposeSubmit={(fn) => (submitRef.current = fn)}
+        exposeSubmit={(fn) => {
+          submitRef.current = fn;
+        }}
         onDone={() => onOpenChange(false)}
         onSavingChange={setSaving}
       />

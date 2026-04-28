@@ -1,6 +1,7 @@
 "use client";
 
 import { TabsTrigger } from "@/components/ui/tabs";
+import { Package, FileText, Boxes, Image as ImageIcon } from "lucide-react";
 import { Save, Upload } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
@@ -49,7 +50,7 @@ export default function CadastroProduto({
   const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
 
   const tabTheme =
-    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+    " group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   const handleChange = (field: keyof Produto, value: any) => {
     setNewProduct({ ...newProduct, [field]: value });
@@ -150,7 +151,12 @@ export default function CadastroProduto({
   return (
     <ProductDialogLayout
       isDesktop={isDesktop}
-      title="Cadastro de Produtos"
+      title={
+        <>
+          Produto
+          <span className="ml-1 text-xs font-light text-muted-foreground sm:text-sm">| Novo</span>
+        </>
+      }
       description="Preencha dados para registrar um novo produto"
       defaultTab="Geral"
       submitLabel2="Salvar e Continuar"
@@ -160,34 +166,30 @@ export default function CadastroProduto({
       currentTab={currentTab}
       tabs={
         <>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Geral")}
-            value="Geral"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Geral
-          </TabsTrigger>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Fiscal")}
-            value="Fiscal"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Fiscal
-          </TabsTrigger>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Estoque")}
-            value="Estoque"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Estoque
-          </TabsTrigger>
-          <TabsTrigger
-            onClick={() => setCurrentTab("Imagens")}
-            value="Imagens"
-            className={"hover:cursor-pointer" + tabTheme}
-          >
-            Imagens
-          </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Geral")} value="Geral" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <Package className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Geral
+              </span>
+            </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Fiscal")} value="Fiscal" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Fiscal
+              </span>
+            </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Estoque")} value="Estoque" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <Boxes className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Estoque
+              </span>
+            </TabsTrigger>
+          <TabsTrigger onClick={() => setCurrentTab("Imagens")} value="Imagens" className={"hover:cursor-pointer " + tabTheme}>
+              <span className="flex items-center gap-2">
+                <ImageIcon className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                Imagens
+              </span>
+            </TabsTrigger>
         </>
       }
     >

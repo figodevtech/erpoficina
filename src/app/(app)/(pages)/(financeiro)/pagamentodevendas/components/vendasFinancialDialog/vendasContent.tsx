@@ -1,4 +1,5 @@
 import { DialogContent, DialogDescription, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import formatarEmReal from "@/utils/formatarEmReal";
@@ -8,16 +9,30 @@ import axios, { isAxiosError } from "axios";
 import TransactionDialog from "../../../fluxodecaixa/components/transactionDialog/transactionDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Loader, Loader2, Trash2Icon } from "lucide-react";
+import { ChevronDown, ExternalLink, FileText, Loader, Loader2, Paperclip, Trash2Icon } from "lucide-react";
 import DeleteAlert from "./deleteAlert";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatDate";
 import { VendaComItens } from "@/app/(app)/(pages)/(vendas)/historicovendas/types";
+import {
+  getVendaAnexoCategoriaLabel,
+  type VendaAnexoCategoria,
+} from "@/lib/venda-anexo-categorias";
 
 interface VendasContentProps {
   vendaId: number;
   IsOpen?: boolean;
 }
+
+type VendaAnexo = {
+  id: number;
+  nome: string;
+  tipo?: string | null;
+  tamanho?: number | null;
+  url: string;
+  categoria: VendaAnexoCategoria;
+  createdat?: string | null;
+};
 
 // Ajuste conforme a sua estrutura real
 
@@ -32,6 +47,8 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     totalPages: 0,
   });
   const [venda, setVenda] = useState<VendaComItens | undefined>(undefined);
+  const [anexos, setAnexos] = useState<VendaAnexo[]>([]);
+  const [isLoadingAnexos, setIsLoadingAnexos] = useState(false);
   const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -43,6 +60,12 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
       ? (value as Metodo_pagamento)
       : undefined;
   })();
+  const formatFileSize = (value?: number | null) => {
+    if (!value) return "Tamanho não informado";
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  };
+  const isImageAnexo = (anexo: VendaAnexo) => String(anexo.tipo ?? "").startsWith("image/");
 
   // ====== DATA LOADERS
   const handleGetVenda = async (vendaId: number) => {
@@ -83,10 +106,40 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     }
   };
 
+  const handleGetAnexos = async (vendaIdArg?: number) => {
+    const targetId = vendaIdArg ?? venda?.id;
+    if (!targetId) return;
+
+    setIsLoadingAnexos(true);
+    try {
+      const response = await axios.get(`/api/venda/${targetId}/anexos`);
+      const items = Array.isArray(response.data?.items)
+        ? response.data.items.map((item: any) => ({
+            id: Number(item.id),
+            nome: String(item.nome ?? "Anexo"),
+            tipo: item.tipo ?? null,
+            tamanho:
+              typeof item.tamanho === "number"
+                ? item.tamanho
+                : Number(item.tamanho ?? 0) || null,
+            url: String(item.url ?? ""),
+            categoria: (item.categoria ?? "OUTROS") as VendaAnexoCategoria,
+            createdat: item.createdat ?? null,
+          }))
+        : [];
+      setAnexos(items);
+    } catch {
+      toast.error("Não foi possível carregar os anexos");
+    } finally {
+      setIsLoadingAnexos(false);
+    }
+  };
+
   useEffect(() => {
     if (!IsOpen) {
       setTransactions([]);
       setVenda(undefined);
+      setAnexos([]);
     }
   }, [IsOpen]);
 
@@ -124,6 +177,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     if (vendaId && IsOpen) {
       handleGetVenda(vendaId);
       handleGetTransactions(undefined, vendaId);
+      handleGetAnexos(vendaId);
     }
   }, [vendaId, IsOpen]);
 
@@ -173,6 +227,72 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
               Método de pagamento selecionado na venda: <b>{venda.forma_pagamento}</b>
             </div>
           ) : null}
+          <div className="rounded-lg border bg-background px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Anexos da venda
+                </span>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Verifique os anexos antes de registrar um novo pagamento.
+                </p>
+              </div>
+              <div
+                className="flex w-fit flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
+                onClick={() => handleGetAnexos(venda.id)}
+              >
+                <span>Recarregar anexos</span>
+                <Loader2 className={`w-[12px] ${isLoadingAnexos ? "animate-spin" : ""}`} />
+              </div>
+            </div>
+
+            {isLoadingAnexos ? (
+              <div className="mt-3 flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-muted-foreground">
+                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+                <p className="text-sm">Carregando anexos...</p>
+              </div>
+            ) : anexos.length === 0 ? (
+              <div className="mt-3 flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center text-muted-foreground">
+                <Paperclip className="h-8 w-8 opacity-25" />
+                <p className="text-sm">Nenhum anexo vinculado.</p>
+              </div>
+            ) : (
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {anexos.map((anexo) => (
+                  <div key={anexo.id} className="overflow-hidden rounded-lg border bg-card">
+                    {isImageAnexo(anexo) ? (
+                      <a href={anexo.url} target="_blank" rel="noreferrer" className="block">
+                        <img src={anexo.url} alt={anexo.nome} className="h-28 w-full object-cover" />
+                      </a>
+                    ) : (
+                      <div className="flex h-28 items-center justify-center bg-muted/40">
+                        <FileText className="h-8 w-8 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="space-y-2 p-3">
+                      <Badge variant="secondary" className="w-fit">
+                        {getVendaAnexoCategoriaLabel(anexo.categoria)}
+                      </Badge>
+                      <p className="truncate text-sm font-semibold" title={anexo.nome}>
+                        {anexo.nome}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(anexo.tamanho)}
+                        {anexo.createdat ? ` - ${formatDate(anexo.createdat)}` : ""}
+                      </p>
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <a href={anexo.url} target="_blank" rel="noreferrer" className="gap-2">
+                          <ExternalLink className="h-4 w-4" />
+                          Abrir anexo
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
             <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>

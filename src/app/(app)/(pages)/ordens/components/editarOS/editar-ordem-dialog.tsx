@@ -1,41 +1,34 @@
-// src/app/(app)/(pages)/ordens/components/editarOS/editar-ordem-dialog.tsx
 "use client";
 
 import { useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogShell } from "../dialogs/dialog-shell";
 import { OrdemEditForm } from "./ordem-edit-form";
-import { Loader2 } from "lucide-react";
 
 export function EditarOSDialog({
   open,
   onOpenChange,
   defaultValues,
-  // onEdit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultValues: any | null;
-  // onEdit?: (dados: any) => Promise<void> | void;
 }) {
   const submitRef = useRef<null | (() => void)>(null);
   const [saving, setSaving] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
 
-  const titulo = `Editar OS ${defaultValues?.numero ?? defaultValues?.id ?? ""}`;
-  const desc = `${defaultValues?.cliente?.nome ?? ""}${
-    defaultValues?.veiculo
-      ? ` • ${defaultValues.veiculo?.modelo ?? ""} • ${
-          defaultValues.veiculo?.placa ?? ""
-        }`
-      : ""
-  }`;
+  const ordemId = defaultValues?.numero ?? defaultValues?.id ?? "";
 
   return (
     <DialogShell
       open={open}
       onOpenChange={onOpenChange}
-      title={titulo || "Editar Ordem de Serviço"}
+      title={ordemId ? `Ordem de Serviço #${ordemId}` : "Ordem de Serviço"}
+      titleSuffix="Edição"
       description="Atualize os dados da ordem de serviço usando o mesmo formulário da criação."
+      loading={initialLoading}
       maxW="lg:max-w-5xl xl:max-w-6xl"
       footer={
         <>
@@ -62,8 +55,11 @@ export function EditarOSDialog({
     >
       <OrdemEditForm
         defaultValues={defaultValues}
-        exposeSubmit={(fn) => (submitRef.current = fn)}
+        exposeSubmit={(fn) => {
+          submitRef.current = fn;
+        }}
         onSavingChange={setSaving}
+        onInitialLoadingChange={setInitialLoading}
         onClose={() => onOpenChange(false)}
       />
     </DialogShell>

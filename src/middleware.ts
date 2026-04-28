@@ -1,4 +1,4 @@
-// src/middleware.ts
+﻿// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
@@ -17,7 +17,7 @@ const PUBLIC_PATHS = [
   "/api/auth",
 ];
 
-// ✅ APIs públicas (adicione aqui as que podem sem login)
+// âœ… APIs pÃºblicas (adicione aqui as que podem sem login)
 const PUBLIC_API_PREFIXES = [
   "/api/auth/check-email",
   "/api/auth/send-recovery",
@@ -50,14 +50,14 @@ function isPublicPath(pathname: string) {
 
 function isPublicApi(pathname: string) {
   if (!pathname.startsWith("/api")) return false;
-  if (pathname.startsWith("/api/auth")) return true; // NextAuth sempre público
+  if (pathname.startsWith("/api/auth")) return true; // NextAuth sempre pÃºblico
   return PUBLIC_API_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 }
 
 /**
- * Regras por prefixo -> permissão necessária
+ * Regras por prefixo -> permissÃ£o necessÃ¡ria
  */
 const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
   { prefix: "/dashboard", perm: PERMS.DASHBOARD },
@@ -110,11 +110,11 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
 
   const isLoggedIn = !!user;
 
-  // Variáveis locais para decisão (evita mutar o objeto user da sessão original se possível)
+  // VariÃ¡veis locais para decisÃ£o (evita mutar o objeto user da sessÃ£o original se possÃ­vel)
   let isInactive = false;
   let isRoot = false;
 
-  // Se tiver usuário, pega o ID e consulta dados frescos
+  // Se tiver usuÃ¡rio, pega o ID e consulta dados frescos
   const userId = (user as any)?.id as string | undefined;
 
   // Inicializa com o que veio do token (fallback)
@@ -123,7 +123,7 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     isRoot = (user as any).is_root === true;
   }
 
-  // CRIAÇÃO DO CLIENTE SUPABASE ISOLADA NO HANDLER (evita leak de estado no Edge)
+  // CRIAÃ‡ÃƒO DO CLIENTE SUPABASE ISOLADA NO HANDLER (evita leak de estado no Edge)
   const supabaseAdminEdge =
     supabaseUrl && serviceKey
       ? createClient(supabaseUrl, serviceKey, {
@@ -138,7 +138,7 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
 
   if (userId && supabaseAdminEdge) {
     try {
-      // Força busca sem cache (garantido pelo client configurado acima com no-store)
+      // ForÃ§a busca sem cache (garantido pelo client configurado acima com no-store)
       const { data, error } = await supabaseAdminEdge
         .from("usuario")
         .select("ativo, is_root")
@@ -150,14 +150,10 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
       }
 
       if (data) {
-        // Atualiza as variáveis locais com a verdade do banco
+        // Atualiza as variÃ¡veis locais com a verdade do banco
         isInactive = data.ativo === false;
         isRoot = data.is_root === true;
 
-        // Log de debug para produção
-        console.log(
-          `[Middleware] User: ${userId} | DB_IsRoot: ${data.is_root} | Token_IsRoot: ${(user as any).is_root}`,
-        );
       }
     } catch (err) {
       console.error("[Middleware] Falha geral user check:", err);
@@ -166,17 +162,17 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
 
   const isApi = pathname.startsWith("/api");
 
-  // ✅ API pública
+  // âœ… API pÃºblica
   if (isApi && isPublicApi(pathname)) {
     return NextResponse.next();
   }
 
-  // ✅ página pública
+  // âœ… pÃ¡gina pÃºblica
   if (!isApi && isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  // ❌ não logado
+  // âŒ nÃ£o logado
   if (!isLoggedIn) {
     if (isApi) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
@@ -187,7 +183,7 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     return NextResponse.redirect(url);
   }
 
-  // ❌ inativo
+  // âŒ inativo
   if (isInactive) {
     if (isApi) {
       return NextResponse.json({ error: "INACTIVE_USER" }, { status: 403 });
@@ -198,9 +194,9 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     return NextResponse.redirect(url);
   }
 
-  // ✅ Lógica de Usuário ROOT
+  // âœ… LÃ³gica de UsuÃ¡rio ROOT
   if (isRoot) {
-    // Se for API, deixa passar (para não quebrar fetches do front)
+    // Se for API, deixa passar (para nÃ£o quebrar fetches do front)
     if (isApi) {
       return NextResponse.next({ headers: { "Cache-Control": "no-store" } });
     }
@@ -211,10 +207,10 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
         headers: { "Cache-Control": "no-store" },
       });
     }
-    // Se for /root, deixa passar (ainda vai cair no return next() lá embaixo)
+    // Se for /root, deixa passar (ainda vai cair no return next() lÃ¡ embaixo)
     return NextResponse.next({ headers: { "Cache-Control": "no-store" } });
   } else {
-    // ❌ Não é root
+    // âŒ NÃ£o Ã© root
     if (pathname.startsWith("/root")) {
       // Se tentar acessar /root sendo comum, joga para /dashboard
       return NextResponse.redirect(new URL("/dashboard", nextUrl), {
@@ -223,7 +219,7 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
     }
   }
 
-  // ✅ autorização por permissão (rotas)
+  // âœ… autorizaÃ§Ã£o por permissÃ£o (rotas)
   const rule = matchRule(pathname);
   if (rule) {
     const ok = hasPermFromSession(user, rule.perm);
@@ -244,6 +240,6 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
 });
 
 export const config = {
-  // ✅ Protege TUDO (inclusive /api), exceto assets do Next
+  // âœ… Protege TUDO (inclusive /api), exceto assets do Next
   matcher: ["/((?!_next/static|_next/image|favicon.ico|images).*)"],
 };

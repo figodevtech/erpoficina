@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   ArrowLeftToLine,
   ReceiptText,
   Info,
+  ChevronsUpDown,
 } from "lucide-react";
 import { Estoque_status, Produto } from "@/app/(app)/(pages)/estoque/types";
 import {
@@ -53,6 +54,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
@@ -72,14 +81,41 @@ interface CartItem {
 }
 
 type DiscountType = "FIXO" | "PORCENTAGEM";
-type PaymentMethod = "CREDITO" | "DEBITO" | "DINHEIRO" | "PIX" | "NAO_INFORMAR";
+type PaymentMethod =
+  | "CREDITO"
+  | "DEBITO"
+  | "DINHEIRO"
+  | "PIX"
+  | "BOLETO"
+  | "NAO_INFORMAR";
+type PaymentMethodOption = Exclude<PaymentMethod, "NAO_INFORMAR">;
+type CategoriaVenda = {
+  id: number;
+  nome: string;
+  descricao?: string | null;
+  ativo?: boolean | null;
+};
+
+const PAYMENT_METHOD_OPTIONS: Array<{
+  value: PaymentMethodOption;
+  label: string;
+}> = [
+  { value: "CREDITO", label: "Crédito" },
+  { value: "DEBITO", label: "Débito" },
+  { value: "DINHEIRO", label: "Dinheiro" },
+  { value: "PIX", label: "Pix" },
+  { value: "BOLETO", label: "Boleto" },
+];
 
 export function POSSystem() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoriasVenda, setCategoriasVenda] = useState<CategoriaVenda[]>([]);
+  const [loadingCategoriasVenda, setLoadingCategoriasVenda] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("TODOS");
+  const [selectedSaleCategoryId, setSelectedSaleCategoryId] = useState<number | null>(null);
   const [creatingVenda, setCreatingVenda] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
@@ -88,9 +124,10 @@ export function POSSystem() {
   >(undefined);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<DiscountType | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
-    null
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(
+    ["NAO_INFORMAR"]
   );
+  const [paymentMethodsOpen, setPaymentMethodsOpen] = useState(false);
   const [selectedProductInfo, setSelectedProductInfo] = useState<
     Produto | undefined
   >(undefined);
@@ -124,23 +161,54 @@ export function POSSystem() {
     fetchProdutos();
   }, []);
 
+  useEffect(() => {
+    const fetchCategoriasVenda = async () => {
+      try {
+        setLoadingCategoriasVenda(true);
+        const response = await axios.get("/api/tipos/categorias-venda", {
+          params: { ativo: "true" },
+        });
+        const items = Array.isArray(response.data?.items)
+          ? response.data.items.map((categoria: any) => ({
+              id: Number(categoria.id),
+              nome: String(categoria.nome ?? ""),
+              descricao: categoria.descricao ?? null,
+              ativo: typeof categoria.ativo === "boolean" ? categoria.ativo : true,
+            }))
+          : [];
+        setCategoriasVenda(items);
+      } catch (error) {
+        if (isAxiosError(error)) {
+          toast.error("Falha ao buscar categorias de venda", {
+            description: error.response?.data?.error || error.message,
+          });
+        }
+        setCategoriasVenda([]);
+      } finally {
+        setLoadingCategoriasVenda(false);
+      }
+    };
+
+    fetchCategoriasVenda();
+  }, []);
+
   const ALL = "TODOS";
 
   const filteredProducts = produtos.filter((p) => {
     const q = searchTerm.trim().toLowerCase();
     const matchesText = p.titulo?.toLowerCase().includes(q);
 
-    // se ALL, não filtra por grupo
+    // se ALL, nÃ£o filtra por grupo
     const matchesCategory =
       selectedCategory === ALL || p.grupo?.nome === selectedCategory;
 
     return matchesText && matchesCategory;
   });
   const addToCart = (product: Produto) => {
-    // Garante que tem estoque válido
+    // Garante que tem estoque vÃ¡lido
     if (product.estoque == null || product.estoque <= 0) return;
 
-    // Garante que id e precovenda não são undefined/null
+    // Garante que id e precovenda nÃ£o sÃ£o undefined/null
     if (product.id == null || product.precovenda == null) {
       console.error(
         "Produto inválido para o PDV (id ou precovenda ausentes)",
@@ -164,12 +232,12 @@ export function POSSystem() {
       setCart([
         ...cart,
         {
-          id: product.id, // agora é number garantido
+          id: product.id, // agora Ã© number garantido
           titulo: product.titulo || "SEM TÍTULO",
-          precovenda: product.precovenda, // agora é number garantido
+          precovenda: product.precovenda, // agora Ã© number garantido
           quantity: 1,
           grupo: product.grupo?.nome || "SEM GRUPO",
-          estoque: product.estoque, // já garantimos que não é null/undefined
+          estoque: product.estoque, // jÃ¡ garantimos que nÃ£o Ã© null/undefined
         },
       ]);
     }
@@ -205,10 +273,6 @@ export function POSSystem() {
     );
   };
 
-  useEffect(()=>{
-console.log(cart)
-  },[cart])
-
   const subtotal = cart.reduce(
     (sum, item) => sum + item.precovenda * item.quantity,
     0,
@@ -224,6 +288,37 @@ console.log(cart)
         )
       : Math.min(subtotal, normalizedDiscountInput);
   const total = Math.max(0, subtotal - discountAmount);
+  const hasPaymentMethodSelected = paymentMethods.some(
+    (method) => method !== "NAO_INFORMAR"
+  );
+
+  const togglePaymentMethod = (method: PaymentMethodOption) => {
+    setPaymentMethods((current) => {
+      const hasMethod = current.includes(method);
+
+      if (hasMethod) {
+        const next = current.filter((value) => value !== method);
+        return next.length > 0 ? next : ["NAO_INFORMAR"];
+      }
+
+      return [
+        ...current.filter((value) => value !== "NAO_INFORMAR"),
+        method,
+      ];
+    });
+  };
+
+  const toggleNaoInformar = (checked: boolean) => {
+    setPaymentMethods(checked ? ["NAO_INFORMAR"] : []);
+  };
+
+  const paymentMethodsLabel = !hasPaymentMethodSelected
+    ? "Não informar"
+    : PAYMENT_METHOD_OPTIONS.filter((method) =>
+        paymentMethods.includes(method.value)
+      )
+        .map((method) => method.label)
+        .join(", ");
 
   const handleSaveBudget = async () => {
     if (cart.length === 0) {
@@ -252,6 +347,7 @@ console.log(cart)
       status: "ORCAMENTO",
       descontoTipo: discountType,
       descontoValor: discountAmount > 0 ? discountAmount : null,
+      categoriaVendaId: selectedSaleCategoryId,
       subTotal: subtotal,
       valorTotal: total,
       formaPagamento: null,
@@ -273,6 +369,8 @@ console.log(cart)
       setCart([]);
       setDiscount(0);
       setDiscountType(null);
+      setSelectedSaleCategoryId(null);
+      setPaymentMethods(["NAO_INFORMAR"]);
       setSelectedCustomer(undefined);
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -316,12 +414,15 @@ console.log(cart)
       status: "PAGAMENTO", // enum_status_venda
       descontoTipo: discountType,
       descontoValor: discountAmount > 0 ? discountAmount : null,
+      categoriaVendaId: selectedSaleCategoryId,
       subTotal: subtotal,
       valorTotal: total,
       formaPagamento:
-        !paymentMethod || paymentMethod === "NAO_INFORMAR"
+        !hasPaymentMethodSelected
           ? null
-          : paymentMethod,
+          : paymentMethods
+              .filter((method): method is PaymentMethodOption => method !== "NAO_INFORMAR")
+              .join(", "),
       dataVenda: null,
       itens: cart.map((item) => ({
         produtoId: item.id,
@@ -335,13 +436,13 @@ console.log(cart)
 
     // chamada com axios
     const { data } = await axios.post("/api/venda", payload);
-      console.log("Venda criada com sucesso:", data);
       toast.success("Venda cadastrada com sucesso.");
 
       setCart([]);
       setDiscount(0);
       setDiscountType(null);
-      setPaymentMethod(null);
+      setSelectedSaleCategoryId(null);
+      setPaymentMethods(["NAO_INFORMAR"]);
       setSelectedCustomer(undefined);
     } catch (error: any) {
       if (axios.isAxiosError(error)) {
@@ -790,6 +891,33 @@ console.log(cart)
 
                     {/* Totals */}
                     <div className="border-t border-border pt-4 space-y-2">
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">
+                          Categoria de venda
+                        </span>
+                        <Select
+                          value={selectedSaleCategoryId ? String(selectedSaleCategoryId) : "uncategorized"}
+                          onValueChange={(value) =>
+                            setSelectedSaleCategoryId(value === "uncategorized" ? null : Number(value))
+                          }
+                          disabled={loadingCategoriasVenda}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue
+                              placeholder={loadingCategoriasVenda ? "Carregando..." : "Selecione uma categoria"}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="uncategorized">Sem categoria</SelectItem>
+                            {categoriasVenda.map((categoria) => (
+                              <SelectItem key={categoria.id} value={String(categoria.id)}>
+                                {categoria.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <span className="text-xs text-muted-foreground">
@@ -899,29 +1027,63 @@ console.log(cart)
 
                         <AlertDialogHeader>
                           <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                          <AlertDialogDescription> Ao selecionar esta opção, o pagamento da venda ficará em aberto</AlertDialogDescription>
+                          <AlertDialogDescription>
+                            Ao selecionar esta opção, o pagamento da venda ficará em aberto
+                          </AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="space-y-2">
                           <span className="text-sm font-medium text-foreground">
-                            Método de pagamento
+                            Métodos de pagamento
                           </span>
-                          <Select
-                            value={paymentMethod ?? "NAO_INFORMAR"}
-                            onValueChange={(value) =>
-                              setPaymentMethod(value as PaymentMethod)
-                            }
+                          <Popover
+                            open={paymentMethodsOpen}
+                            onOpenChange={setPaymentMethodsOpen}
                           >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Selecione o método de pagamento" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="NAO_INFORMAR">Não informar</SelectItem>
-                              <SelectItem value="CREDITO">Crédito</SelectItem>
-                              <SelectItem value="DEBITO">Débito</SelectItem>
-                              <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
-                              <SelectItem value="PIX">Pix</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full justify-between font-normal"
+                              >
+                                <span className="truncate">
+                                  {paymentMethodsLabel}
+                                </span>
+                                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="start"
+                              className="w-[var(--radix-popover-trigger-width)] p-0"
+                            >
+                              <Command>
+                                <CommandList>
+                                  <CommandGroup>
+                                    <CommandItem
+                                      value="nao-informar"
+                                      onSelect={() =>
+                                        toggleNaoInformar(!paymentMethods.includes("NAO_INFORMAR"))
+                                      }
+                                      className="flex items-center gap-3"
+                                    >
+                                      <Checkbox checked={!hasPaymentMethodSelected} />
+                                      <span>Não informar</span>
+                                    </CommandItem>
+                                    {PAYMENT_METHOD_OPTIONS.map((method) => (
+                                      <CommandItem
+                                        key={method.value}
+                                        value={method.value}
+                                        onSelect={() => togglePaymentMethod(method.value)}
+                                        className="flex items-center gap-3"
+                                      >
+                                        <Checkbox checked={paymentMethods.includes(method.value)} />
+                                        <span>{method.label}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <AlertDialogFooter>
                           <AlertDialogCancel className="hover:cursor-pointer">Cancelar</AlertDialogCancel>

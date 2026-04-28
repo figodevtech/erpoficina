@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import axios from "axios";
 import { ReactNode, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 import {
   ChevronLeftIcon,
@@ -40,6 +41,11 @@ import { Pagination } from "../(pages)/estoque/types";
 import { set } from "nprogress";
 import ServicoDialog from "../(pages)/configuracoes/tipos/components/servicoDialog/servico-dialog";
 import formatarEmReal from "@/utils/formatarEmReal";
+
+function hasPermission(user: any, permission: string) {
+  const permissoes = Array.isArray(user?.permissoes) ? user.permissoes : [];
+  return permissoes.map((p: any) => String(p).trim().toUpperCase()).includes(permission);
+}
 
 interface ServiceSelectProps {
   children?: ReactNode;
@@ -67,6 +73,8 @@ export default function ServiceSelect({
   setOpen,
   open,
 }: ServiceSelectProps) {
+  const { data: session } = useSession();
+  const canCreateService = hasPermission(session?.user, "CONFIG_ACESSO");
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -153,25 +161,29 @@ export default function ServiceSelect({
                   className="pl-10"
                 />
               </div>
-              <Button
-                onClick={() => openNovo()}
-                variant={"outline"}
-                className="hover:cursor-pointer text-xs"
-              >
-                <Plus /> Novo
-              </Button>
-              <ServicoDialog
-                open={openServico}
-                setOpen={(open) => {
-                  if (!open) {
-                    setForm(emptyForm);
-                    handleGetServices(1, pagination.limit, "");
-                  }
-                  setOpenServico(open);
-                }}
-                form={form}
-                setForm={setForm}
-              />
+              {canCreateService && (
+                <>
+                  <Button
+                    onClick={() => openNovo()}
+                    variant={"outline"}
+                    className="hover:cursor-pointer text-xs"
+                  >
+                    <Plus /> Novo
+                  </Button>
+                  <ServicoDialog
+                    open={openServico}
+                    setOpen={(open) => {
+                      if (!open) {
+                        setForm(emptyForm);
+                      }
+                      setOpenServico(open);
+                    }}
+                    loadServicos={() => handleGetServices(1, pagination.limit, "")}
+                    form={form}
+                    setForm={setForm}
+                  />
+                </>
+              )}
             </div>
 
             <div

@@ -60,6 +60,13 @@ export interface VendaComItens {
   valortotal: number;
   cliente: Customer
   status: vendaStatus;
+  categoriavendaid?: number | null;
+  categoria_venda?: {
+    id: number;
+    nome: string;
+    descricao?: string | null;
+    ativo?: boolean | null;
+  } | null;
   canal: VendaCanal;
   status_entrega?: VendaStatusEntrega | null;
   codigo_rastreio?: string | null;

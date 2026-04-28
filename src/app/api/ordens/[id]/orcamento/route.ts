@@ -61,6 +61,7 @@ export async function GET(
       .select(`
         ordemservicoid,
         servicoid,
+        descricao,
         quantidade,
         precounitario,
         subtotal,
@@ -73,6 +74,7 @@ export async function GET(
     const servicos = (servRows ?? []).map((r: any) => ({
       servicoid: toNum(r.servicoid),
       descricao: String(r.servico?.descricao ?? ""),
+      descricaoServico: r.descricao ? String(r.descricao) : null,
       quantidade: toNum(r.quantidade ?? 1),
       precounitario: toNum(r.precounitario ?? 0),
       subtotal: toNum(r.subtotal ?? 0),
@@ -121,6 +123,7 @@ export async function PUT(
 
     const servicosBody: Array<{
       servicoid: Num;
+      descricao?: string | null;
       quantidade: Num;
       precounitario: Num;
       subtotal?: Num;
@@ -337,6 +340,7 @@ export async function PUT(
         const rowsS = servicosBody.map((s) => ({
           ordemservicoid: osId,
           servicoid: toNum(s.servicoid),
+          descricao: s.descricao ? String(s.descricao).trim() : null,
           quantidade: Math.max(0, toNum(s.quantidade) || 1),
           precounitario: toNum(s.precounitario ?? 0),
           subtotal:

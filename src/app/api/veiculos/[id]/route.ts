@@ -114,6 +114,11 @@ export async function PUT(request: Request, ctx: Ctx) {
       patch.modelo = modelo;
     }
 
+    // chassi
+    if (v.chassi !== undefined) {
+      patch.chassi = v.chassi === null ? null : String(v.chassi).trim().toUpperCase();
+    }
+
     // marca
     if (v.marca !== undefined) {
       if (v.marca === null)
