@@ -30,6 +30,7 @@ export function EditarOSDialog({
       description="Atualize os dados da ordem de serviço usando o mesmo formulário da criação."
       loading={initialLoading}
       maxW="lg:max-w-5xl xl:max-w-6xl"
+      mobileFull
       footer={
         <>
           <Button

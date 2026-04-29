@@ -23,6 +23,7 @@ export function NovaOSDialog({ open, onOpenChange }: Props) {
       titleSuffix="Nova"
       description="Preencha o formulário para criação da ordem de serviço."
       maxW="lg:max-w-5xl xl:max-w-6xl"
+      mobileFull
       footer={
         <>
           <Button

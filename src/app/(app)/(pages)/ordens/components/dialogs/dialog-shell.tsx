@@ -12,6 +12,7 @@ export function DialogShell({
   footer,
   loading = false,
   maxW = "lg:max-w-5xl xl:max-w-6xl",
+  mobileFull = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -22,17 +23,24 @@ export function DialogShell({
   footer: ReactNode;
   loading?: boolean;
   maxW?: string;
+  mobileFull?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={`p-0 w-[96vw] sm:max-w-[95vw] md:max-w-3xl ${maxW}`}
+        className={
+          mobileFull
+            ? `h-svh w-[100dvw] max-w-[100dvw] min-w-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[85vh] sm:w-[95vw] sm:max-w-[95vw] sm:rounded-lg md:max-w-3xl ${maxW}`
+            : `p-0 w-[96vw] sm:max-w-[95vw] md:max-w-3xl ${maxW}`
+        }
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div
-          className={`grid w-full max-h-[85vh] ${loading ? "grid-rows-[1fr]" : "grid-rows-[auto_1fr_auto]"}`}
+          className={`grid w-full ${
+            mobileFull ? "h-full max-h-svh sm:max-h-[85vh]" : "max-h-[85vh]"
+          } ${loading ? "grid-rows-[1fr]" : "grid-rows-[auto_1fr_auto]"}`}
         >
           {loading ? (
             <div className="sr-only">
@@ -64,7 +72,7 @@ export function DialogShell({
             {children}
           </div>
           {!loading ? (
-            <div className="flex items-center justify-end gap-2 border-t px-4 py-3 sm:px-6">
+            <div className="flex items-center justify-end gap-2 overflow-x-auto border-t px-4 py-3 sm:px-6">
               {footer}
             </div>
           ) : null}
