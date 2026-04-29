@@ -204,6 +204,12 @@ export default function EditContent({
 
   const handleBuscarPlaca = async () => {
     if (!selectedVeiculo?.placa || selectedVeiculo.placa.length < 7) return;
+    if (!selectedVeiculo.tipo) {
+      toast.warning("Selecione o tipo de veículo", {
+        description: "É obrigatório escolher um tipo antes de consultar a placa.",
+      });
+      return;
+    }
 
     setLoadingPlaca(true);
     const toastId = toast.loading("Consultando placa...");
@@ -308,6 +314,12 @@ export default function EditContent({
 
   const handleUpdateVeiculo = async () => {
     if (!selectedVeiculo?.id) return;
+    if (!selectedVeiculo.tipo) {
+      toast.warning("Selecione o tipo de veículo", {
+        description: "É obrigatório escolher um tipo antes de salvar o veículo.",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -634,7 +646,7 @@ export default function EditContent({
 
                       <Input
                         className="w-full"
-                        value={selectedVeiculo?.cliente?.nomerazaosocial || ""}
+                        value={selectedVeiculo?.cliente?.nomerazaosocial || "Selecione"}
                         disabled={true}
                       />
                       <div

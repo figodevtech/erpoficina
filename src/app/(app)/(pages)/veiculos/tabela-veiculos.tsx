@@ -49,6 +49,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Pagination, Veiculo, Veiculo_tipos } from "./types";
 import { VeiculoDialog } from "./dialgo-veiculo/dialog-veiculo";
 import { useState } from "react";
@@ -85,6 +95,9 @@ export default function TabelaVeiculos({
   const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
   const [openCustomerSelect, setOpenCustomerSelect] = useState(false);
   const [transferindo, setTransferindo] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [veiculoToDelete, setVeiculoToDelete] = useState<Veiculo | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
 
   const handleVehicleTransfer = async (novoDonoId: number) => {
@@ -109,6 +122,51 @@ export default function TabelaVeiculos({
     }
   };
 
+  const handleOpenDeleteDialog = (veiculo: Veiculo) => {
+    if (!veiculo.id) {
+      toast.error("Veículo sem ID válido para excluir.");
+      return;
+    }
+
+    setVeiculoToDelete(veiculo);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteVehicle = async () => {
+    if (!veiculoToDelete?.id) return;
+
+    setDeleting(true);
+    toast(
+      <div className="flex flex-row flex-nowrap items-center gap-2">
+        <Loader className="w-4 animate-spin" />
+        <span>Excluindo veículo...</span>
+      </div>
+    );
+
+    try {
+      const response = await axios.delete(`/api/veiculos/${veiculoToDelete.id}`);
+
+      if (response.status === 200) {
+        toast.success("Veículo excluído com sucesso!");
+        handleGetVehicles(pagination.page, pagination.limit, search, selectedTipo);
+        setDeleteDialogOpen(false);
+        setVeiculoToDelete(null);
+      } else {
+        toast.warning(`Status inesperado: ${response.status}`);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro ao excluir veículo", {
+          description: error.response?.data?.error ?? error.message,
+        });
+      } else {
+        toast.error("Erro inesperado ao excluir veículo.");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <Card>
       <VeiculoDialog
@@ -130,6 +188,45 @@ export default function TabelaVeiculos({
         setOpen={setOpenCustomerSelect}
         OnSelect={(c) => handleVehicleTransfer(c.id)}
       />
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setVeiculoToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Deletará o veículo
+              {veiculoToDelete?.placa ? ` de placa ${veiculoToDelete.placa}` : ""} e os dados atrelados a ele.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="hover:cursor-pointer" disabled={deleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="hover:cursor-pointer"
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteVehicle();
+              }}
+            >
+              {deleting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Excluindo
+                </span>
+              ) : (
+                "Continuar"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CardHeader className="border-b-2 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -231,6 +328,8 @@ export default function TabelaVeiculos({
                         <DropdownMenuItem
                           className="hover:cursor-pointer"
                           variant="destructive"
+                          disabled={!canAct}
+                          onClick={() => handleOpenDeleteDialog(v)}
                         >
                           <Trash2Icon className="mr-2 h-4 w-4" />
                           Excluir

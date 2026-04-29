@@ -28,6 +28,12 @@ function idValido(raw: string) {
   return n;
 }
 
+const TIPOS_VEICULO = new Set(["CARROS", "MOTOS", "CAMINHOES"]);
+
+function tipoVeiculoValido(valor: string | undefined) {
+  return !!valor && TIPOS_VEICULO.has(valor);
+}
+
 type Params = { id: string };
 type Ctx = { params: Promise<Params> };
 
@@ -92,6 +98,10 @@ export async function PUT(request: Request, ctx: Ctx) {
     }
 
     const patch: any = {};
+    const tipoRecebido = v.tipo === undefined || v.tipo === null ? undefined : String(v.tipo).trim();
+    if (!tipoVeiculoValido(tipoRecebido)) {
+      return respostaJSON({ error: "Campo 'tipo' é obrigatório." }, 400);
+    }
 
     // placa
     if (v.placa !== undefined) {
@@ -168,7 +178,7 @@ export async function PUT(request: Request, ctx: Ctx) {
       if (v.tipo === null)
         return respostaJSON({ error: "Campo 'tipo' não pode ser null." }, 400);
 
-      patch.tipo = String(v.tipo).trim();
+      patch.tipo = tipoRecebido;
     }
 
     // chassi

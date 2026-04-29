@@ -28,6 +28,12 @@ function parseIntSeguro(valor: string | null) {
   return Number.isInteger(n) ? n : null;
 }
 
+const TIPOS_VEICULO = new Set(["CARROS", "MOTOS", "CAMINHOES"]);
+
+function tipoVeiculoValido(valor: string | undefined) {
+  return !!valor && TIPOS_VEICULO.has(valor);
+}
+
 /* ========================= GET (lista paginada) ========================= */
 
 export async function GET(request: Request) {
@@ -55,7 +61,7 @@ export async function GET(request: Request) {
         "id, clienteid, placa, placa_formatada, modelo, marca, ano, cor, kmatual, tipo, chassi, ano_modelo, versao, fipe, combustivel, transmissao, cliente: cliente( nomerazaosocial, cpfcnpj, email, telefone )",
         { count: "exact" }
       )
-      .order("modelo", { ascending: true })
+      .order("id", { ascending: false })
       .range(from, to);
 
     if (clienteId !== null) query = query.eq("clienteid", clienteId);
@@ -149,6 +155,9 @@ export async function POST(request: Request) {
     if (!placa) return respostaJSON({ error: "Campo 'placa' é obrigatório." }, 400);
     if (!modelo) return respostaJSON({ error: "Campo 'modelo' é obrigatório." }, 400);
     if (!marca) return respostaJSON({ error: "Campo 'marca' é obrigatório." }, 400);
+    if (!tipoVeiculoValido(tipo)) {
+      return respostaJSON({ error: "Campo 'tipo' é obrigatório." }, 400);
+    }
 
     if (ano !== null && (!Number.isInteger(ano) || ano < 1900 || ano > 3000)) {
       return respostaJSON({ error: "Campo 'ano' inválido." }, 400);
@@ -171,8 +180,8 @@ export async function POST(request: Request) {
       fipe,
       combustivel,
       transmissao,
+      tipo,
     };
-    if (tipo) payload.tipo = tipo;
 
     const { data, error } = await supabase
       .from("veiculo")

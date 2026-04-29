@@ -37,8 +37,6 @@ export function VeiculoDialog({
   >(undefined);
   const [, setIsLoading] = useState(false);
   const [novoVeiculo, setNovoVeiculo] = useState<Veiculo>({
-    tipo: Veiculo_tipos.CARROS,
-    chassi: "",
   });
 
   const handleGetVeiculo = async (id: number) => {
@@ -76,7 +74,6 @@ export function VeiculoDialog({
           setSelectedVeiculoId?.(undefined);
           setSelectedVeiculo(undefined);
           setNovoVeiculo({
-            tipo: Veiculo_tipos.CARROS,
             ...(clienteId ? { clienteid: clienteId } : {})
           });
         }

@@ -138,6 +138,12 @@ export default function RegisterContent({
 
   const handleBuscarPlaca = async () => {
     if (!novoVeiculo.placa || novoVeiculo.placa.length < 7) return;
+    if (!novoVeiculo.tipo) {
+      toast.warning("Selecione o tipo de veículo", {
+        description: "É obrigatório escolher um tipo antes de consultar a placa.",
+      });
+      return;
+    }
 
     setLoadingPlaca(true);
     const toastId = toast.loading("Consultando placa...");
@@ -208,6 +214,13 @@ export default function RegisterContent({
   };
 
   const handleCreateVeiculo = async () => {
+    if (!novoVeiculo.tipo) {
+      toast.warning("Selecione o tipo de veículo", {
+        description: "É obrigatório escolher um tipo antes de salvar o veículo.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await axios.post("/api/veiculos", { novoVeiculo });
@@ -452,7 +465,7 @@ export default function RegisterContent({
                 <div className="flex items-center gap-2">
                   <Input
                     className="w-full"
-                    value={novoVeiculo?.cliente?.nomerazaosocial || ""}
+                    value={novoVeiculo?.cliente?.nomerazaosocial || "Selecione"}
                     disabled={true}
                   />
                   <div
