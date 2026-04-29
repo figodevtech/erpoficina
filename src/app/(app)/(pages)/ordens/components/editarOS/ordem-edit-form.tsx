@@ -389,63 +389,6 @@ export function OrdemEditForm({
         </div>
       ) : (
         <>
-          {/* Definição da OS */}
-          <Card className="border-border">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-3">
-                  <Label>Setor responsavel</Label>
-                  <Select
-                    value={setor}
-                    onValueChange={setSetor}
-                    disabled={loadingSetores || (!!setoresError && setores.length === 0) || saving}
-                  >
-                    <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
-                      <SelectValue
-                        placeholder={
-                          loadingSetores
-                            ? "Carregando setores..."
-                            : setores.length
-                              ? "Selecione o setor"
-                              : "Nenhum setor disponível"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {setores.map((s) => (
-                        <SelectItem key={s.id} value={String(s.id)}>
-                          {s.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Prioridade</Label>
-                  <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)} disabled={saving}>
-                    <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
-                      <SelectValue placeholder="Selecione a prioridade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="BAIXA">Baixa</SelectItem>
-                      <SelectItem value="NORMAL">Normal</SelectItem>
-                      <SelectItem value="ALTA">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Separator />
-            </CardContent>
-          </Card>
-
           {/* Cliente */}
           <Card className="border-border">
             <CardHeader className="pb-3">
@@ -568,15 +511,66 @@ export function OrdemEditForm({
             </CardContent>
           </Card>
 
-          {/* Alvo do reparo */}
+          {/* Definição da OS */}
           <Card className="border-border">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">Alvo do reparo</CardTitle>
+                <Building2 className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-3">
+                  <Label>Setor responsavel</Label>
+                  <Select
+                    value={setor}
+                    onValueChange={setSetor}
+                    disabled={loadingSetores || (!!setoresError && setores.length === 0) || saving}
+                  >
+                    <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                      <SelectValue
+                        placeholder={
+                          loadingSetores
+                            ? "Carregando setores..."
+                            : setores.length
+                              ? "Selecione o setor"
+                              : "Nenhum setor disponível"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {setores.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Prioridade</Label>
+                  <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)} disabled={saving}>
+                    <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                      <SelectValue placeholder="Selecione a prioridade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BAIXA">Baixa</SelectItem>
+                      <SelectItem value="NORMAL">Normal</SelectItem>
+                      <SelectItem value="ALTA">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-primary" />
+                  <Label className="font-medium">Alvo do reparo</Label>
+                </div>
+
               <RadioGroup
                 value={alvoTipo}
                 onValueChange={(v: AlvoTipo) => setAlvoTipo(v)}
@@ -735,6 +729,7 @@ export function OrdemEditForm({
                   </div>
                 </div>
               )}
+              </div>
             </CardContent>
           </Card>
 
