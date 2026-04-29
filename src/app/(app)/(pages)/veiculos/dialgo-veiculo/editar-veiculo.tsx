@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -13,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Car, Check, ChevronDown, ChevronsUpDown, ClipboardList, ExternalLink, Save, Search } from "lucide-react";
+import { Car, Check, ChevronDown, ChevronsUpDown, ClipboardList, Loader2, Search } from "lucide-react";
 import {
   DialogClose,
   DialogContent,
@@ -52,7 +51,6 @@ import {
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { useFipe } from "./useFipe";
 import ValueInput from "../../(financeiro)/fluxodecaixa/components/transactionDialog/valueInput";
-import Link from "next/link";
 
 function somenteAlphaNumMaiusculo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -170,6 +168,7 @@ export default function EditContent({
   const [openModelo, setOpenModelo] = useState(false);
   const [openVersao, setOpenVersao] = useState(false);
   const [currentTab, setCurrentTab] = useState("Geral");
+  const [expandedOrdemId, setExpandedOrdemId] = useState<number | null>(null);
 
   const [selectedVeiculo, setSelectedVeiculo] = useState<
     (Veiculo & { marcaId?: number }) | undefined
@@ -496,7 +495,7 @@ export default function EditContent({
 
   if (selectedVeiculo) {
     return (
-      <DialogContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+      <DialogContent className="h-svh w-screen max-w-none p-0 overflow-hidden sm:max-h-[850px] sm:w-[95vw] sm:max-w-[1100px] sm:min-w-0">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
             <DialogTitle className="text-sm sm:text-lg">
@@ -548,7 +547,7 @@ export default function EditContent({
             >
               <div className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-6 sm:px-6">
                 {/* Tipo */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
 
                   <div className="space-y-2">
                     <Label htmlFor="tipo" className="text-sm">
@@ -638,7 +637,7 @@ export default function EditContent({
                       </Button>
                     </div>
                   </div>
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="col-span-2 space-y-2">
                     <Label htmlFor="cliente" className="text-sm">
                       Cliente proprietário
                     </Label>
@@ -657,10 +656,10 @@ export default function EditContent({
                 </div>
 
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
 
                   {/* Marca */}
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2">
                     <Label htmlFor="marca" className="text-sm">
                       Marca *
                     </Label>
@@ -765,7 +764,7 @@ export default function EditContent({
                   </div>
 
                   {/* Modelo */}
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2">
                     <Label htmlFor="modelo" className="text-sm">
                       Modelo *
                     </Label>
@@ -864,7 +863,7 @@ export default function EditContent({
                   </div>
 
                   {/* Versão */}
-                  <div className="space-y-2 lg:col-span-2">
+                  <div className="col-span-2 space-y-2">
                     <Label htmlFor="versao" className="text-sm">
                       Versão
                     </Label>
@@ -1068,7 +1067,7 @@ export default function EditContent({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                   {/* Combustível */}
                   <div className="space-y-2">
                     <Label htmlFor="combustivel" className="text-sm">
@@ -1117,7 +1116,7 @@ export default function EditContent({
                   </div>
 
                   {/* FIPE */}
-                  <div className="space-y-2">
+                  <div className="col-span-2 space-y-2 lg:col-span-1">
                     <Label htmlFor="fipe" className="text-sm">
                       FIPE (R$)
                     </Label>
@@ -1140,11 +1139,11 @@ export default function EditContent({
             </TabsContent>
             <TabsContent
               value="Ordens"
-              className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-6"
+              className="h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-6"
             >
-              <div className="space-y-4">
-                <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1">
+              <div className="min-w-0 max-w-full space-y-4 overflow-hidden">
+                <div className="flex min-w-0 flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
                       <ClipboardList className="h-4 w-4 text-muted-foreground" />
                       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1161,8 +1160,9 @@ export default function EditContent({
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-md border bg-card">
-                  <Table className="text-xs">
+                <div className="w-full max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-card sm:max-w-full">
+                  <div className="max-w-full overflow-x-auto">
+                    <Table className="w-[760px] min-w-[760px] max-w-none text-xs">
                     <TableHeader className="bg-muted/50">
                       <TableRow>
                         <TableHead className="w-[80px]">ID</TableHead>
@@ -1171,7 +1171,6 @@ export default function EditContent({
                         <TableHead>Descrição</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Valor Total</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1179,10 +1178,22 @@ export default function EditContent({
                         selectedVeiculo.ordens.map((ordem: any) => {
                           const clienteNome = ordem.cliente?.nomerazaosocial || selectedVeiculo.cliente?.nomerazaosocial || "Não informado";
                           const dataOrdem = ordem.dataentrada || ordem.createdat || ordem.created_at;
+                          const produtos = Array.isArray(ordem.produtos) ? ordem.produtos : [];
+                          const servicos = Array.isArray(ordem.servicos) ? ordem.servicos : [];
+                          const expanded = expandedOrdemId === ordem.id;
 
                           return (
-                            <TableRow key={ordem.id} className="transition-colors hover:bg-muted/50">
-                              <TableCell className="font-medium text-muted-foreground">#{ordem.id}</TableCell>
+                            <Fragment key={ordem.id}>
+                            <TableRow
+                              className="cursor-pointer transition-colors hover:bg-muted/50"
+                              onClick={() => setExpandedOrdemId(expanded ? null : ordem.id)}
+                            >
+                              <TableCell className="font-medium text-muted-foreground">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+                                  #{ordem.id}
+                                </span>
+                              </TableCell>
                               <TableCell>{formatDate(dataOrdem)}</TableCell>
                               <TableCell className="max-w-[160px] truncate" title={clienteNome}>
                                 {clienteNome}
@@ -1194,24 +1205,59 @@ export default function EditContent({
                               <TableCell className="text-right font-medium">
                                 {formatCurrency(ordem.orcamentototal || 0)}
                               </TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 rounded-full p-0 hover:cursor-pointer">
-                                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-[160px]">
-                                    <Button variant="ghost" asChild className="w-full justify-start px-2 text-xs hover:cursor-pointer">
-                                      <Link href={`/ordens?id=${ordem.id}`}>
-                                        <ExternalLink className="mr-2 h-4 w-4" />
-                                        Abrir Ordem
-                                      </Link>
-                                    </Button>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
                             </TableRow>
+                            {expanded ? (
+                              <TableRow className="bg-muted/20">
+                                <TableCell colSpan={6} className="p-3">
+                                  <div className="grid min-w-[700px] grid-cols-2 gap-3">
+                                    <div className="rounded-md border bg-background p-3">
+                                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Serviços
+                                      </p>
+                                      {servicos.length > 0 ? (
+                                        <div className="space-y-2">
+                                          {servicos.map((item: any, index: number) => (
+                                            <div key={`${ordem.id}-servico-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                              <span className="truncate" title={item.servico?.descricao || ""}>
+                                                {item.servico?.descricao || "Serviço"}
+                                              </span>
+                                              <span className="shrink-0 font-medium">
+                                                {formatCurrency(item.subtotal || 0)}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground">Nenhum serviço vinculado.</p>
+                                      )}
+                                    </div>
+
+                                    <div className="rounded-md border bg-background p-3">
+                                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Produtos
+                                      </p>
+                                      {produtos.length > 0 ? (
+                                        <div className="space-y-2">
+                                          {produtos.map((item: any, index: number) => (
+                                            <div key={`${ordem.id}-produto-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                              <span className="truncate" title={item.produto?.titulo || ""}>
+                                                {item.produto?.titulo || "Produto"}
+                                              </span>
+                                              <span className="shrink-0 font-medium">
+                                                {formatCurrency(item.subtotal || 0)}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground">Nenhum produto vinculado.</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ) : null}
+                            </Fragment>
                           );
                         })
                       ) : (
@@ -1225,38 +1271,39 @@ export default function EditContent({
                         </TableRow>
                       )}
                     </TableBody>
-                  </Table>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="px-6 py-4">
-            <div className="flex sm:flex-row gap-3 sm:gap-4">
+          <DialogFooter className="shrink-0 border-t px-4 py-3 sm:px-6">
+            <div className="flex w-full flex-row justify-end gap-2">
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  className="h-9 min-w-24 hover:cursor-pointer"
+                  variant="outline"
+                >
+                  Cancelar
+                </Button>
+              </DialogClose>
               <Button
                 type="button"
                 disabled={isSubmitting || disabledForm}
                 onClick={handleUpdateVeiculo}
-                className="flex-1 text-sm hover:cursor-pointer"
+                className="h-9 min-w-24 text-sm hover:cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Salvando...
                   </>
                 ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar alterações
-                  </>
+                  "Salvar"
                 )}
               </Button>
-
-              <DialogClose asChild>
-                <Button className="hover:cursor-pointer" variant={"outline"}>
-                  Cancelar
-                </Button>
-              </DialogClose>
             </div>
           </DialogFooter>
         </div>

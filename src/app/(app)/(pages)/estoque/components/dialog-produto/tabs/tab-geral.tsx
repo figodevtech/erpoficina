@@ -3,13 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,230 +47,186 @@ export function TabGeral({
   const qtdFabricante = (produto.fabricante ?? "").length;
 
   return (
-    <TabsContent
-      value="Geral"
-      className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 md:px-6 md:py-6"
-    >
+    <TabsContent value="Geral" className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 md:px-6 md:py-6">
       <div className="space-y-4">
         <div className="rounded-lg border bg-card p-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <div className="flex flex-nowrap space-x-2">
-            <Label htmlFor="status_estoque">Status do Estoque:</Label>
-            {ESTOQUE_STATUS_BADGES.filter(
-              (s) => s.value === produto.status_estoque,
-            ).map((s) => (
-              <Badge key={s.value} variant={s.badge}>
-                {s.value}
-              </Badge>
-            ))}
-          </div>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+            <div className="col-span-2 space-y-2 lg:col-span-2 flex items-center">
+              <Label htmlFor="status_estoque">
+                Status do Estoque:{" "}
+                {ESTOQUE_STATUS_BADGES.filter((s) => s.value === produto.status_estoque).map((s) => (
+                  <Badge key={s.value} variant={s.badge}>
+                    {s.value}
+                  </Badge>
+                ))}
+              </Label>
+            </div>
 
-          <div className="flex flex-nowrap space-x-2">
-            <Label>Grupo:</Label>
-            <Select
-              value={produto.grupo_produto_id?.toString() || "OUTROS"}
-              onValueChange={(v) => onChange("grupo_produto_id", v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {grupos.map((g) => (
+            <div className="space-y-2 lg:col-span-2">
+              <Label>Grupo</Label>
+              <Select
+                value={produto.grupo_produto_id?.toString() || "OUTROS"}
+                onValueChange={(v) => onChange("grupo_produto_id", v)}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grupos.map((g) => (
+                    <SelectItem className="hover:cursor-pointer" key={g.id} value={g.id.toString()}>
+                      {g.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 lg:col-span-2">
+              <Label>Conservação</Label>
+              <Select
+                value={produto.conservacao || ""}
+                onValueChange={(v) => {
+                  if (v === "Selecione") {
+                    onChange("conservacao", null);
+                  } else {
+                    onChange("conservacao", v);
+                  }
+                }}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(Conservacao_produto).map((c) => (
+                    <SelectItem className="hover:cursor-pointer" key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
                   <SelectItem
-                    className="hover:cursor-pointer"
-                    key={g.id}
-                    value={g.id.toString()}
+                    className="hover:cursor-pointer bg-muted/50 data-[state=open]:bg-muted"
+                    key="Selecione"
+                    value="Selecione"
                   >
-                    {g.nome}
+                    NÃO INFORMAR
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-nowrap space-x-2">
-            <Label>Conservação:</Label>
-            <Select
-              value={produto.conservacao || ""}
-              onValueChange={(v) => {
-                if (v === "Selecione") {
-                  onChange("conservacao", null);
-                } else {
-                  onChange("conservacao", v);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.values(Conservacao_produto).map((c) => (
-                  <SelectItem
-                    className="hover:cursor-pointer"
-                    key={c}
-                    value={c}
-                  >
-                    {c}
-                  </SelectItem>
-                ))}
-                <SelectItem
-                  className="hover:cursor-pointer bg-muted/50 data-[state=open]:bg-muted"
-                  key="Selecione"
-                  value="Selecione"
-                >
-                  NÃO INFORMAR
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
         <div className="rounded-lg border bg-card p-4 space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="titulo">Título *</Label>
-            <span
-              className={`text-xs ${qtdTitulo >= LIMITE_TITULO ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              {qtdTitulo}/{LIMITE_TITULO}
-            </span>
-          </div>
-
-          <Input
-            id="titulo"
-            value={produto.titulo || ""}
-            onChange={(e) => onChange("titulo", e.target.value)}
-            placeholder={
-              mode === "edit" ? "Nome comercial / vitrine" : "Título interno"
-            }
-            maxLength={LIMITE_TITULO}
-          />
-        </div>
-
-        <div className="space-y-2 sm:col-span-2">
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="descricao">Descrição</Label>
-            <span
-              className={`text-xs ${qtdDescricao >= LIMITE_DESCRICAO ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              {qtdDescricao}/{LIMITE_DESCRICAO}
-            </span>
-          </div>
-
-          <Textarea
-            id="descricao"
-            value={produto.descricao || ""}
-            onChange={(e) => onChange("descricao", e.target.value)}
-            placeholder="Descrição do produto"
-            maxLength={LIMITE_DESCRICAO}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="fabricante">Fabricante</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="titulo">Título *</Label>
+              <span className={`text-xs ${qtdTitulo >= LIMITE_TITULO ? "text-destructive" : "text-muted-foreground"}`}>
+                {qtdTitulo}/{LIMITE_TITULO}
+              </span>
+            </div>
+
+            <Input
+              id="titulo"
+              value={produto.titulo || ""}
+              onChange={(e) => onChange("titulo", e.target.value)}
+              placeholder={mode === "edit" ? "Nome comercial / vitrine" : "Título interno"}
+              maxLength={LIMITE_TITULO}
+            />
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="descricao">Descrição</Label>
               <span
-                className={`text-xs ${qtdFabricante >= LIMITE_FABRICANTE ? "text-destructive" : "text-muted-foreground"}`}
+                className={`text-xs ${qtdDescricao >= LIMITE_DESCRICAO ? "text-destructive" : "text-muted-foreground"}`}
               >
-                {qtdFabricante}/{LIMITE_FABRICANTE}
+                {qtdDescricao}/{LIMITE_DESCRICAO}
               </span>
             </div>
-            <Input
-              id="fabricante"
-              value={(produto as any).fabricante || ""}
-              onChange={(e) => onChange("fabricante", e.target.value)}
-              placeholder="Fabricante"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="codigobarras">Código de Barras</Label>
-            <Input
-              id="codigobarras"
-              value={produto.codigobarras || ""}
-              onChange={(e) =>
-                onChange("codigobarras", onlyDigits(e.target.value))
-              }
-              placeholder="7891234567890"
-              inputMode="numeric"
-              maxLength={14}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="unidade">Unidade</Label>
-            <Select
-              value={produto.unidade || undefined}
-              onValueChange={(v) => onChange("unidade", v as Unidade_medida)}
-              disabled={loadingUnidades || !!errorUnidades}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    loadingUnidades
-                      ? "Carregando..."
-                      : errorUnidades
-                        ? "Erro ao carregar"
-                        : "Selecione"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {unidades.map((u) => (
-                  <SelectItem
-                    key={u.id}
-                    value={u.sigla as Unidade_medida}
-                    className="hover:cursor-pointer"
-                  >
-                    {u.sigla}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
-            {errorUnidades && (
-              <p className="mt-1 text-xs text-destructive">{errorUnidades}</p>
-            )}
+            <Textarea
+              id="descricao"
+              value={produto.descricao || ""}
+              onChange={(e) => onChange("descricao", e.target.value)}
+              placeholder="Descrição do produto"
+              maxLength={LIMITE_DESCRICAO}
+            />
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="precovenda">Valor de Venda (Unitário)</Label>
-            <ValueInput
-              price={produto.precovenda}
-              setPrice={(v) => onChange("precovenda", v)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="precocompra">
-              Valor Médio de Compra (Unitário)
-            </Label>
-            <ValueInput
-              price={produto.precocompra}
-              setPrice={(v) => onChange("precocompra", v)}
-            />
-          </div>
-        </div>
-        <div className="space-y-2 sm:col-span-4 ">
-          <div className="w-full flex flex-row items-center gap-2">
-            <div className="flex flex-col md:flex-row md:gap-2">
-              <Label htmlFor="referencia">Referência</Label>
-              <span className=" italic text-xs text-muted-foreground flex flex-row items-center gap-1">
-                <Info className="size-3" />
-                Insira ou cole tags de busca separadas por espaço.
-              </span>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+            <div className="col-span-2 space-y-2 lg:col-span-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="fabricante">Fabricante</Label>
+                <span
+                  className={`text-xs ${qtdFabricante >= LIMITE_FABRICANTE ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {qtdFabricante}/{LIMITE_FABRICANTE}
+                </span>
+              </div>
+              <Input
+                id="fabricante"
+                value={(produto as any).fabricante || ""}
+                onChange={(e) => onChange("fabricante", e.target.value)}
+                placeholder="Fabricante"
+              />
+            </div>
+            <div className="space-y-2 lg:col-span-2">
+              <Label htmlFor="codigobarras">Código de Barras</Label>
+              <Input
+                id="codigobarras"
+                value={produto.codigobarras || ""}
+                onChange={(e) => onChange("codigobarras", onlyDigits(e.target.value))}
+                placeholder="7891234567890"
+                inputMode="numeric"
+                maxLength={14}
+              />
+            </div>
+            <div className="order-4 space-y-2 lg:col-span-3">
+              <Label htmlFor="precovenda">Valor de Venda (Unitário)</Label>
+              <ValueInput price={produto.precovenda} setPrice={(v) => onChange("precovenda", v)} />
+            </div>
+            <div className="order-3 space-y-2 lg:col-span-2">
+              <Label htmlFor="unidade">Unidade</Label>
+              <Select
+                value={produto.unidade || undefined}
+                onValueChange={(v) => onChange("unidade", v as Unidade_medida)}
+                disabled={loadingUnidades || !!errorUnidades}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue
+                    placeholder={loadingUnidades ? "Carregando..." : errorUnidades ? "Erro ao carregar" : "Selecione"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {unidades.map((u) => (
+                    <SelectItem key={u.id} value={u.sigla as Unidade_medida} className="hover:cursor-pointer">
+                      {u.sigla}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {errorUnidades && <p className="mt-1 text-xs text-destructive">{errorUnidades}</p>}
+            </div>
+            <div className="order-5 space-y-2 lg:col-span-3">
+              <Label htmlFor="precocompra">Valor Médio de Compra</Label>
+              <ValueInput price={produto.precocompra} setPrice={(v) => onChange("precocompra", v)} />
             </div>
           </div>
-          <TagInput
-            value={
-              produto.referencia?.length && produto.referencia.length > 0
-                ? produto.referencia.split(" ")
-                : []
-            }
-            onChange={(tags) => onChange("referencia", tags.join(" "))}
-            placeholder="Ex: P-001 P-002"
-          />
-        </div>
+          <div className="space-y-2 sm:col-span-4 ">
+            <div className="w-full flex flex-row items-center gap-2">
+              <div className="flex flex-col md:flex-row md:gap-2">
+                <Label htmlFor="referencia">Referência</Label>
+                <span className=" italic text-xs text-muted-foreground flex flex-row items-center gap-1">
+                  <Info className="size-3" />
+                  Insira ou cole tags de busca separadas por espaço.
+                </span>
+              </div>
+            </div>
+            <TagInput
+              value={produto.referencia?.length && produto.referencia.length > 0 ? produto.referencia.split(" ") : []}
+              onChange={(tags) => onChange("referencia", tags.join(" "))}
+              placeholder="Ex: P-001 P-002"
+            />
+          </div>
         </div>
 
         {showDates ? (
@@ -285,15 +235,11 @@ export function TabGeral({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-nowrap">
               <div className="space-x-1 flex items-center text-muted-foreground text-xs">
                 <Label>Criado em:</Label>
-                <span className="text-muted-foreground">
-                  {formatDate((produto as any).createdat)}
-                </span>
+                <span className="text-muted-foreground">{formatDate((produto as any).createdat)}</span>
               </div>
               <div className="space-x-1 flex items-center text-muted-foreground text-xs">
                 <Label>Última modificação:</Label>
-                <span className="text-muted-foreground">
-                  {formatDate((produto as any).updatedat)}
-                </span>
+                <span className="text-muted-foreground">{formatDate((produto as any).updatedat)}</span>
               </div>
             </div>
           </>

@@ -19,6 +19,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 type Props = {
   title: React.ReactNode;
@@ -96,9 +97,9 @@ export function ProductDialogLayout({
                     isDesktop
                       ? `
                     overflow-x-auto overflow-y-hidden px-6 pb-2
-                    [-ms-overflow-style:none] [scrollbar-width:none] 
+                    [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border
                   `
-                      : `overflow-x-auto overflow-y-hidden px-4 pb-2`
+                      : `overflow-x-auto overflow-y-hidden px-4 pb-2 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border`
                   }
                 >
                   <TabsList
@@ -113,46 +114,49 @@ export function ProductDialogLayout({
             </Tabs>
 
             <DialogShellFooter className={isDesktop ? "shrink-0 border-t px-4 py-3 sm:px-6" : "shrink-0 border-t px-4 py-3"}>
-              <div className="flex sm:flex-row gap-2">
-                <Button
-                  type="button"
-                  disabled={submitting || submitDisabled}
-                  className="flex-1 hover:cursor-pointer"
-                  onClick={() => onSubmit()}
-                >
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>{submitLabel}</>
-                  )}
-                </Button>
+              <div className="flex w-full flex-row justify-end gap-2 overflow-x-auto">
+                <DialogShellClose asChild>
+                  <Button
+                    type="button"
+                    className="h-9 min-w-24 shrink-0 hover:cursor-pointer"
+                    variant="outline"
+                  >
+                    Cancelar
+                  </Button>
+                </DialogShellClose>
                 {submitLabel2 && (
                   <Button
-                    variant={"secondary"}
+                    variant="secondary"
                     type="button"
                     disabled={submitting || submitDisabled}
-                    className="flex-1 hover:cursor-pointer"
+                    className="h-9 min-w-24 shrink-0 text-sm hover:cursor-pointer"
                     onClick={() => onSubmit(true)}
                   >
                     {submitting ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Salvando...
                       </>
                     ) : (
-                      <>{submitLabel2}</>
+                      submitLabel2
                     )}
                   </Button>
                 )}
-
-                <DialogShellClose asChild>
-                  <Button className="hover:cursor-pointer" variant={"outline"}>
-                    Cancelar
-                  </Button>
-                </DialogShellClose>
+                <Button
+                  type="button"
+                  disabled={submitting || submitDisabled}
+                  className="h-9 min-w-24 shrink-0 text-sm hover:cursor-pointer"
+                  onClick={() => onSubmit()}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    submitLabel
+                  )}
+                </Button>
               </div>
             </DialogShellFooter>
           </>

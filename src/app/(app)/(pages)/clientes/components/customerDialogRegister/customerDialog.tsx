@@ -63,7 +63,6 @@ export function CustomerDialog({
       if (response.status === 200) {
         const { data } = response;
         setSelectedCustomer(data.data);
-        // console.log("Cliente carregado:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar cliente:", error);

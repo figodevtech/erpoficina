@@ -46,7 +46,6 @@ export function VeiculoDialog({
       if (response.status === 200) {
         const { data } = response;
         setSelectedVeiculo(data.data);
-        // console.log("Cliente carregado:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar veiculo:", error);

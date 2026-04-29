@@ -56,7 +56,6 @@ export default function ClientesPage() {
         const { data } = response;
         setCustomerItems(data.data);
         setPagination(data.pagination);
-        console.log("Clientes carregados:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar clientes:", error);

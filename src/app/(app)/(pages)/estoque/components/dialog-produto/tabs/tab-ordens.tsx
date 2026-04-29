@@ -1,16 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Fragment, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TabsContent } from "@/components/ui/tabs";
-import { ChevronDown, ExternalLink, ClipboardList } from "lucide-react";
+import { ChevronDown, ClipboardList } from "lucide-react";
 import { Produto } from "../../../types";
-import Link from "next/link";
 
 export function TabOrdens({ produto }: { produto: Produto }) {
   const ordens = (produto as any).ordensdoproduto ?? [];
+  const [expandedOrdemId, setExpandedOrdemId] = useState<number | null>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -19,7 +18,7 @@ export function TabOrdens({ produto }: { produto: Produto }) {
     }).format(value || 0);
   };
 
-  const formatDate = (date: string | null) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return "-";
     return new Intl.DateTimeFormat("pt-BR", {
       day: "2-digit",
@@ -54,12 +53,10 @@ export function TabOrdens({ produto }: { produto: Produto }) {
   };
 
   return (
-    <TabsContent value="Ordens" className="h-full min-h-0 overflow-auto dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-6 space-y-6">
-      
+    <TabsContent value="Ordens" className="h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden dark:bg-muted-foreground/5 px-2 py-3 md:px-6 md:py-6 space-y-6">
       <div className="space-y-4">
-        {/* Header */}
-        <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
+        <div className="flex min-w-0 flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -76,67 +73,118 @@ export function TabOrdens({ produto }: { produto: Produto }) {
           </div>
         </div>
 
-        <div className="rounded-md border bg-card overflow-hidden">
-          <Table className="text-xs">
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="w-[80px]">ID</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Veículo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Valor Total</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ordens.length > 0 ? (
-                ordens.map((o: any, idx: number) => {
-                  const ordem = o.ordem || {};
-                  const clienteNome = ordem.cliente?.nomerazaosocial || "Não informado";
-                  const veiculoPlaca = ordem.veiculo?.placa_formatada || ordem.veiculo?.placa;
-                  const veiculoNome = ordem.veiculo ? `${ordem.veiculo.modelo} (${veiculoPlaca})` : "-";
-
-                  return (
-                    <TableRow key={idx} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-medium text-muted-foreground">#{ordem.id}</TableCell>
-                      <TableCell>{formatDate(ordem.datainicio || ordem.createdat)}</TableCell>
-                      <TableCell className="max-w-[150px] truncate" title={clienteNome}>{clienteNome}</TableCell>
-                      <TableCell>{veiculoNome}</TableCell>
-                      <TableCell>{getStatusBadge(ordem.status)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(ordem.orcamentototal || 0)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer rounded-full">
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[160px]">
-                            <Button variant="ghost" asChild className="w-full justify-start cursor-pointer px-2 text-xs">
-                              <Link href={`/ordens?id=${ordem.id}`}>
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                Abrir Ordem
-                              </Link>
-                            </Button>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
+        <div className="w-full max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-card sm:max-w-full">
+          <div className="max-w-full overflow-x-auto">
+            <Table className="w-[760px] min-w-[760px] max-w-none text-xs">
+              <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableCell className="text-center h-24 text-muted-foreground" colSpan={7}>
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <ClipboardList className="h-8 w-8 opacity-20" />
-                      <p>Produto não possui histórico de Ordens de Serviço</p>
-                    </div>
-                  </TableCell>
+                  <TableHead className="w-[80px]">ID</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Veículo</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Valor Total</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {ordens.length > 0 ? (
+                  ordens.map((o: any, idx: number) => {
+                    const ordem = o.ordem || {};
+                    const clienteNome = ordem.cliente?.nomerazaosocial || "Não informado";
+                    const veiculoPlaca = ordem.veiculo?.placa_formatada || ordem.veiculo?.placa;
+                    const veiculoNome = ordem.veiculo ? `${ordem.veiculo.modelo ?? "Veículo"}${veiculoPlaca ? ` (${veiculoPlaca})` : ""}` : "-";
+                    const expanded = expandedOrdemId === ordem.id;
+
+                    return (
+                      <Fragment key={`${ordem.id}-${idx}`}>
+                        <TableRow
+                          className="cursor-pointer transition-colors hover:bg-muted/50"
+                          onClick={() => setExpandedOrdemId(expanded ? null : ordem.id)}
+                        >
+                          <TableCell className="font-medium text-muted-foreground">
+                            <span className="inline-flex items-center gap-1.5">
+                              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                              #{ordem.id}
+                            </span>
+                          </TableCell>
+                          <TableCell>{formatDate(ordem.dataentrada || ordem.createdat)}</TableCell>
+                          <TableCell className="max-w-[150px] truncate" title={clienteNome}>{clienteNome}</TableCell>
+                          <TableCell className="max-w-[180px] truncate" title={veiculoNome}>{veiculoNome}</TableCell>
+                          <TableCell>{getStatusBadge(ordem.status)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(ordem.orcamentototal || 0)}</TableCell>
+                        </TableRow>
+                        {expanded ? (
+                          <TableRow className="bg-muted/20">
+                            <TableCell colSpan={6} className="p-3">
+                              <div className="grid min-w-[700px] grid-cols-3 gap-3">
+                                <div className="rounded-md border bg-background p-3">
+                                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Uso do produto
+                                  </p>
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-muted-foreground">Quantidade</span>
+                                      <span className="font-medium">{o.quantidade ?? 0}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-muted-foreground">Preço unitário</span>
+                                      <span className="font-medium">{formatCurrency(o.precounitario || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-muted-foreground">Subtotal</span>
+                                      <span className="font-medium">{formatCurrency(o.subtotal || 0)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-md border bg-background p-3">
+                                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Ordem de serviço
+                                  </p>
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-muted-foreground">Entrada</span>
+                                      <span className="font-medium">{formatDate(ordem.dataentrada)}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-muted-foreground">Criada em</span>
+                                      <span className="font-medium">{formatDate(ordem.createdat)}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                      <span className="text-muted-foreground">Total OS</span>
+                                      <span className="font-medium">{formatCurrency(ordem.orcamentototal || 0)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-md border bg-background p-3">
+                                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Descrição
+                                  </p>
+                                  <p className="line-clamp-4 text-xs text-muted-foreground" title={ordem.descricao || ""}>
+                                    {ordem.descricao || "Sem descrição."}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell className="text-center h-24 text-muted-foreground" colSpan={6}>
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <ClipboardList className="h-8 w-8 opacity-20" />
+                        <p>Produto não possui histórico de Ordens de Serviço</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </TabsContent>

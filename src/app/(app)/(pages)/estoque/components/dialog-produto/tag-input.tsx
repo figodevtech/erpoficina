@@ -100,7 +100,7 @@ export function TagInput({
     <div
       onClick={handleContainerClick}
       className={cn(
-        "flex min-h-10 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-muted/30 px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        "flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
         className
       )}
     >
@@ -127,7 +127,7 @@ export function TagInput({
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="text-lg flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-[120px]"
+        className="h-7 min-w-[120px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />
     </div>
   )

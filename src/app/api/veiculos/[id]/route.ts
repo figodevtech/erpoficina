@@ -62,6 +62,18 @@ export async function GET(_request: Request, ctx: Ctx) {
           cliente:cliente (
             nomerazaosocial
           ),
+          produtos:osproduto (
+            quantidade,
+            precounitario,
+            subtotal,
+            produto:produtoid ( id, titulo )
+          ),
+          servicos:osservico (
+            quantidade,
+            precounitario,
+            subtotal,
+            servico:servicoid ( id, descricao )
+          ),
           createdat, updatedat,
           is_deleted, deleted_at
         )

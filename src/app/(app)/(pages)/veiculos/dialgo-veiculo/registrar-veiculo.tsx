@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown, Loader2, Save, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { Veiculo, Veiculo_tipos } from "../types";
 import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
@@ -385,7 +385,7 @@ export default function RegisterContent({
 
         <div className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-6 sm:px-6">
           {/* Tipo */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="tipo" className="text-sm">
                 Tipo de Veículo *
@@ -458,7 +458,7 @@ export default function RegisterContent({
             </div>
             {!clienteId && (
 
-              <div className="space-y-2 sm:col-span-2">
+              <div className="col-span-2 space-y-2">
                 <Label htmlFor="cliente" className="text-sm">
                   Cliente proprietário
                 </Label>
@@ -479,10 +479,10 @@ export default function RegisterContent({
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
 
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="marca" className="text-sm">
                 Marca *
               </Label>
@@ -580,7 +580,7 @@ export default function RegisterContent({
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="modelo" className="text-sm">
                 Modelo *
               </Label>
@@ -652,7 +652,7 @@ export default function RegisterContent({
               </Popover>
             </div>
 
-            <div className="space-y-2 lg:col-span-2">
+            <div className="col-span-2 space-y-2">
               <Label htmlFor="versao" className="text-sm">
                 Versão
               </Label>
@@ -828,7 +828,7 @@ export default function RegisterContent({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
 
             <div className="space-y-2">
               <Label htmlFor="combustivel" className="text-sm">
@@ -873,7 +873,7 @@ export default function RegisterContent({
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="col-span-2 space-y-2 lg:col-span-1">
               <Label htmlFor="fipe" className="text-sm">
                 FIPE (R$)
               </Label>
@@ -894,19 +894,22 @@ export default function RegisterContent({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 border-t px-6 py-4">
-          <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <DialogFooter className="shrink-0 border-t px-4 py-3 sm:px-6">
+          <div className="flex w-full flex-row justify-end gap-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="sm:min-w-[120px]">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 min-w-24 hover:cursor-pointer"
+              >
                 Cancelar
               </Button>
             </DialogClose>
             <Button
-              type="submit"
-              form="register-form"
+              type="button"
               disabled={isSubmitting}
               onClick={handleCreateVeiculo}
-              className="sm:min-w-[110px]"
+              className="h-9 min-w-24 text-sm hover:cursor-pointer"
             >
               {isSubmitting ? (
                 <>
@@ -914,10 +917,7 @@ export default function RegisterContent({
                   Salvando...
                 </>
               ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Salvar
-                </>
+                "Salvar"
               )}
             </Button>
           </div>

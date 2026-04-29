@@ -65,7 +65,7 @@ export default function EntradaValor({ setPrice, price }: EntradaValorProps) {
       value={formatBRL(digits)}
       onChange={handleChange}
       // onKeyDown={handleKeyDown}
-      className="not-dark:bg-white"
+      className="w-full not-dark:bg-white"
       placeholder="R$ 0,00"
       maxLength={15} // R$ 999.999.999,99
     />

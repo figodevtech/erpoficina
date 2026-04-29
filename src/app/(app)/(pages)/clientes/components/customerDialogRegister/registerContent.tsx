@@ -15,7 +15,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
-  Upload,
   User,
   Building2,
   Mail,
@@ -289,7 +288,7 @@ export default function RegisterContent({
  
   return (
     // <DialogContent className="h-dvh sm:max-w-[1100px] w-[95vw] p-2 overflow-hidden">
-    <DialogShellContent className="h-svh min-w-screen p-0 overflow-hidden sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0">
+    <DialogShellContent className="h-svh w-screen max-w-none p-0 overflow-hidden sm:max-h-[850px] sm:w-[95vw] sm:max-w-[1100px] sm:min-w-0">
       <div className="flex h-full min-h-0 flex-col">
         <DialogShellHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
           <DialogShellTitle className="text-sm sm:text-lg">
@@ -346,7 +345,7 @@ export default function RegisterContent({
                 </div>
               </div>
 
-              <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid flex-1 grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-sm">
                     Status
@@ -600,8 +599,8 @@ export default function RegisterContent({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="estado" className="text-sm">
                   Estado
                 </Label>
@@ -612,7 +611,7 @@ export default function RegisterContent({
                       variant="outline"
                       role="combobox"
                       aria-expanded={open2}
-                      className="w-[200px] justify-between"
+                      className="w-full justify-between"
                     >
                       {newCustomer.estado
                         ? ESTADOS_BRASIL.find(
@@ -627,7 +626,7 @@ export default function RegisterContent({
                     onWheel={(e) => e.stopPropagation()}
                     onTouchMove={(e) => e.stopPropagation()}
                     onOpenAutoFocus={(e) => e.preventDefault()}
-                    className="w-[200px] p-0"
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
                     onWheelCapture={(e) => e.stopPropagation()}
                   >
                     <Command>
@@ -671,7 +670,7 @@ export default function RegisterContent({
                 </Popover>
               </div>
 
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="cidade" className="text-sm">
                   Cidade
                 </Label>
@@ -685,7 +684,7 @@ export default function RegisterContent({
                       variant="outline"
                       role="combobox"
                       aria-expanded={open}
-                      className="w-[200px] justify-between"
+                      className="w-full justify-between"
                     >
                       {newCustomer.cidade
                         ? cidades.find(
@@ -704,7 +703,7 @@ export default function RegisterContent({
                     onWheel={(e) => e.stopPropagation()}
                     onTouchMove={(e) => e.stopPropagation()}
                     onOpenAutoFocus={(e) => e.preventDefault()}
-                    className="w-[200px] p-0"
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
                     onWheelCapture={(e) => e.stopPropagation()}
                   >
                     <Command>
@@ -850,31 +849,31 @@ export default function RegisterContent({
           {/* Botões */}
         </div>
         <DialogShellFooter className="border-t px-4 py-3 sm:px-6">
-          <div className="flex sm:flex-row gap-3 sm:gap-4">
-            <Button
-              type="submit"
-              form="register-form"
-              disabled={isSubmitting}
-              onClick={handleCreateCustomer}
-              className="flex-1 text-sm hover:cursor-pointer"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Cadastrando...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Cadastrar Cliente
-                </>
-              )}
-            </Button>
+          <div className="flex w-full flex-row justify-end gap-2">
             <DialogShellClose asChild>
-              <Button className="hover:cursor-pointer" variant={"outline"}>
+              <Button
+                type="button"
+                className="h-9 min-w-24 hover:cursor-pointer"
+                variant="outline"
+              >
                 Cancelar
               </Button>
             </DialogShellClose>
+            <Button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleCreateCustomer}
+              className="h-9 min-w-24 text-sm hover:cursor-pointer"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
           </div>
         </DialogShellFooter>
       </div>

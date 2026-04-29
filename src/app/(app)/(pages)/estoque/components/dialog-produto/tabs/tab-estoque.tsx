@@ -15,12 +15,12 @@ type Props = {
 
 export function TabEstoque({ mode, produto, onChange }: Props) {
   return (
-    <TabsContent value="Estoque" className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 md:px-6 md:py-6">
-      <div className="space-y-4">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <TabsContent value="Estoque" className="h-full min-h-0 overflow-auto bg-muted-foreground/5 px-3 py-3 md:px-6 md:py-6">
+      <div className="space-y-3 md:space-y-4">
+        <div className="rounded-md border bg-card p-3 md:rounded-lg md:p-4">
+          <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="estoque">{mode === "edit" ? "Estoque (Qtd) *" : "Estoque Inicial (Qtd) *"}</Label>
+            <Label htmlFor="estoque" className="text-xs md:text-sm">{mode === "edit" ? "Estoque (Qtd) *" : "Estoque Inicial (Qtd) *"}</Label>
             <Input
               disabled={mode === "edit"}
               id="estoque"
@@ -33,7 +33,7 @@ export function TabEstoque({ mode, produto, onChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="estoqueminimo">Estoque Mínimo *</Label>
+            <Label htmlFor="estoqueminimo" className="text-xs md:text-sm">Estoque Mínimo *</Label>
             <Input
               id="estoqueminimo"
               value={(produto as any).estoqueminimo || ""}
@@ -46,11 +46,11 @@ export function TabEstoque({ mode, produto, onChange }: Props) {
           </div>
         </div>
 
-        <Separator />
+        <Separator className="my-1 md:my-2" />
 
-        <div className="rounded-lg border bg-card p-4 text-xs text-muted-foreground">
-          <span>Regra de estoque:</span>
-          <ul className="mt-2 list-disc list-inside">
+        <div className="rounded-md border bg-card p-3 text-xs text-muted-foreground md:rounded-lg md:p-4">
+          <span className="font-medium text-foreground">Regra de estoque</span>
+          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
             <li>
               <strong>OK:</strong> Estoque acima do estoque mínimo.
             </li>

@@ -2,7 +2,6 @@
 
 import { TabsTrigger } from "@/components/ui/tabs";
 import { Package, FileText, Boxes, Image as ImageIcon } from "lucide-react";
-import { Save, Upload } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Estoque_status, Grupo_produto, Produto } from "../../types";

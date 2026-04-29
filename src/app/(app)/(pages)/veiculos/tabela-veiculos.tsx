@@ -246,9 +246,9 @@ export default function TabelaVeiculos({
 
           <div className="flex items-center gap-2">
 
-            <Button onClick={() => setOpenVeiculo(true)} variant={"outline"} size={"sm"} className="cursor-pointer text-xs">
+            <Button onClick={() => setOpenVeiculo(true)} className="cursor-pointer">
               <Plus className="mr-2 h-4 w-4" />
-              Novo Veículo
+              Veículo
             </Button>
 
 

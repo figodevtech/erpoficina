@@ -98,7 +98,6 @@ export default function ProductSelect({
         const { data } = response;
         setProductItems(data.data);
         setPagination(data.pagination);
-        console.log("Produtos carregados:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar Produtos:", error);

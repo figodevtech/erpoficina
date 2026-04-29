@@ -50,7 +50,6 @@ export default function EstoquePage() {
         const { data } = response;
         setProducts(data.data);
         setPagination(data.pagination);
-        console.log("Produtos carregados:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar Produtos:", error);

@@ -1,10 +1,11 @@
 ﻿"use client";
 
 import type React from "react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -29,7 +30,6 @@ import {
   Ellipsis,
   Pen,
   ArrowLeftRight,
-  Save,
 } from "lucide-react";
 import {
   DialogClose,
@@ -88,6 +88,48 @@ const statusLabel: Record<StatusCliente, string> = {
   PENDENTE: "Pendente",
 };
 
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value || 0);
+};
+
+const formatDate = (date: string | Date | null | undefined) => {
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(date));
+};
+
+const getStatusBadge = (status?: string | null) => {
+  if (!status) return <Badge variant="outline">Desconhecido</Badge>;
+  const upper = status.toUpperCase();
+  const formatted = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, " ");
+
+  switch (upper) {
+    case "ORCAMENTO":
+      return <Badge variant="outline" className="border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-400">Orçamento</Badge>;
+    case "ABERTA":
+    case "EM_ANDAMENTO":
+      return <Badge variant="outline" className="border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400">Aberta</Badge>;
+    case "PENDENTE":
+    case "APROVACAO_ORCAMENTO":
+      return <Badge variant="outline" className="border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400">Pendente</Badge>;
+    case "CONCLUIDO":
+    case "FINALIZADA":
+      return <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Finalizada</Badge>;
+    case "CANCELADA":
+      return <Badge variant="outline" className="border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400">Cancelada</Badge>;
+    case "PAGAMENTO":
+      return <Badge variant="outline" className="border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400">Pagamento</Badge>;
+    default:
+      return <Badge variant="outline">{formatted}</Badge>;
+  }
+};
+
 export default function EditContent({ customerId, isDesktop = true }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
@@ -103,6 +145,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
   const [openCustomerSelect, setOpenCustomerSelect] = useState(false);
   const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
   const [transferindo, setTransferindo] = useState(false);
+  const [expandedOrdemId, setExpandedOrdemId] = useState<number | null>(null);
 
   function validarEmailDigitado(email: string): boolean {
     if (!email) return false;
@@ -129,7 +172,6 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
         // console.log(response)
         const { data } = response;
         setselectedCustomer(data.data);
-        console.log("Cliente carregado:", data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar cliente:", error);
@@ -319,7 +361,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
         h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
         sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
       `
-            : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+            : `h-[100dvh] w-screen max-w-none min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
         }
       >
         <DialogShellHeader className="hidden">
@@ -342,7 +384,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
         h-svh w-[100dvw] max-w-[100dvw] p-0 overflow-hidden min-w-0
         sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:min-w-0
       `
-            : `h-[100dvh] min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
+            : `h-[100dvh] w-screen max-w-none min-h-dvh mt-0 rounded-none max-h-none flex flex-col`
         }
       >
         <VeiculoDialog
@@ -457,7 +499,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                       </div>
                     </div>
 
-                    <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid flex-1 grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor="status" className="text-sm">
                           Status
@@ -672,8 +714,8 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+                  <div className="min-w-0 space-y-2">
                     <Label htmlFor="estado" className="text-sm">
                       Estado
                     </Label>
@@ -684,7 +726,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                           variant="outline"
                           role="combobox"
                           aria-expanded={open2}
-                          className="w-[200px] justify-between"
+                          className="w-full justify-between"
                         >
                           {selectedCustomer.estado
                             ? ESTADOS_BRASIL.find((estado) => estado === selectedCustomer.estado)
@@ -694,7 +736,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                       </PopoverTrigger>
 
                       <PopoverContent
-                        className="w-[200px] p-0"
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
                         onWheel={(e) => e.stopPropagation()}
                         onTouchMove={(e) => e.stopPropagation()}
                         onOpenAutoFocus={(e) => e.preventDefault()}
@@ -735,7 +777,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                     </Popover>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2">
                     <Label htmlFor="cidade" className="text-sm">
                       Cidade
                     </Label>
@@ -746,7 +788,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                           variant="outline"
                           role="combobox"
                           aria-expanded={open}
-                          className="w-[200px] justify-between"
+                          className="w-full justify-between"
                         >
                           {selectedCustomer.cidade
                             ? cidades.find((cidade) => cidade.nome === selectedCustomer.cidade)?.nome
@@ -763,7 +805,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                         onWheel={(e) => e.stopPropagation()}
                         onTouchMove={(e) => e.stopPropagation()}
                         onOpenAutoFocus={(e) => e.preventDefault()}
-                        className="w-[200px] p-0"
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
                         onWheelCapture={(e) => e.stopPropagation()}
                       >
                         <Command>
@@ -984,105 +1026,198 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
               </div>
             </TabsContent>
 
-            <TabsContent value="Ordens" className="h-full min-h-0 overflow-hidden p-0">
-              <div className="h-full min-h-0 overflow-auto rounded-md bg-muted-foreground/5 px-4 py-6 space-y-4 sm:px-6">
-                <Table className="text-xs">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-center">ID</TableHead>
-                      <TableHead className="text-center">Descrição</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedCustomer.ordens.length > 0 ? (
-                      selectedCustomer.ordens.map((ordem) => (
-                        <TableRow key={ordem.id} className="hover:cursor-pointer">
-                          <TableCell className="text-center">{ordem.id}</TableCell>
-                          <TableCell className="text-center">
-                            {ordem.alvo_tipo === "PECA" ? "Peça" : "Veículo"}
-                          </TableCell>
-                          <TableCell className="max-w-64">
-                            <div className="flex flex-col gap-1 text-left">
-                              {ordem.alvo_tipo === "PECA" ? (
-                                <>
-                                  <span className="truncate">
-                                    {ordem.peca?.titulo || ordem.peca?.descricao || "Peça não informada"}
-                                  </span>
-                                  {ordem.peca?.lacre ? (
-                                    <span className="text-[11px] text-muted-foreground">Lacre: {ordem.peca.lacre}</span>
-                                  ) : null}
-                                </>
-                              ) : (
-                                <>
-                                  <span className="truncate">
-                                    {ordem.veiculo
-                                      ? `${ordem.veiculo.marca ?? ""} ${ordem.veiculo.modelo ?? ""}`.trim() ||
-                                        ordem.veiculo.modelo ||
-                                        "Veículo vinculado"
-                                      : "Veículo não informado"}
-                                  </span>
-                                  {ordem.veiculo?.placa ? (
-                                    <span className="text-[11px] text-muted-foreground">
-                                      Placa: {ordem.veiculo.placa}
-                                    </span>
-                                  ) : null}
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-52">
-                            <div className="flex flex-col gap-1 text-left">
-                              <span className="truncate font-medium">{ordem.descricao || "Sem descrição"}</span>
-                              {"prioridade" in ordem && ordem.prioridade ? (
-                                <span className="text-[11px] text-muted-foreground">
-                                  Prioridade: {String(ordem.prioridade)}
-                                </span>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">{ordem.status}</TableCell>
+            <TabsContent
+              value="Ordens"
+              className="h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-muted-foreground/5 p-0"
+            >
+              <div className="h-full min-h-0 min-w-0 max-w-full space-y-4 overflow-hidden px-2 py-3 sm:px-6 sm:py-6">
+                <div className="flex min-w-0 flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                        Ordens de Serviço
+                      </h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Histórico de ordens de serviço vinculadas a este cliente.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 shadow-sm">
+                    <span className="text-xs font-medium text-muted-foreground">Total:</span>
+                    <span className="text-sm font-bold">{selectedCustomer.ordens?.length ?? 0}</span>
+                  </div>
+                </div>
+
+                <div className="w-full max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-card sm:max-w-full">
+                  <div className="max-w-full overflow-x-auto">
+                    <Table className="w-[820px] min-w-[820px] max-w-none text-xs">
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead className="w-[90px]">ID</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Alvo</TableHead>
+                          <TableHead>Detalhes</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Valor Total</TableHead>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell className="text-center h-20" colSpan={5}>
-                          Cliente não possui ordens cadastradas
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedCustomer.ordens?.length > 0 ? (
+                          selectedCustomer.ordens.map((ordem: any) => {
+                            const dataOrdem = ordem.dataentrada || ordem.createdat || ordem.created_at;
+                            const produtos = Array.isArray(ordem.produtos) ? ordem.produtos : [];
+                            const servicos = Array.isArray(ordem.servicos) ? ordem.servicos : [];
+                            const expanded = expandedOrdemId === ordem.id;
+                            const alvoDescricao =
+                              ordem.alvo_tipo === "PECA"
+                                ? ordem.peca?.titulo || ordem.peca?.descricao || "Peça não informada"
+                                : ordem.veiculo
+                                  ? `${ordem.veiculo.marca ?? ""} ${ordem.veiculo.modelo ?? ""}`.trim() ||
+                                    ordem.veiculo.modelo ||
+                                    "Veículo vinculado"
+                                  : "Veículo não informado";
+
+                            return (
+                              <Fragment key={ordem.id}>
+                                <TableRow
+                                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                                  onClick={() => setExpandedOrdemId(expanded ? null : ordem.id)}
+                                >
+                                  <TableCell className="font-medium text-muted-foreground">
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+                                      #{ordem.id}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>{formatDate(dataOrdem)}</TableCell>
+                                  <TableCell>{ordem.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</TableCell>
+                                  <TableCell className="max-w-[180px]">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="truncate" title={alvoDescricao}>
+                                        {alvoDescricao}
+                                      </span>
+                                      {ordem.alvo_tipo === "PECA" && ordem.peca?.lacre ? (
+                                        <span className="text-[11px] text-muted-foreground">Lacre: {ordem.peca.lacre}</span>
+                                      ) : null}
+                                      {ordem.alvo_tipo !== "PECA" && ordem.veiculo?.placa ? (
+                                        <span className="text-[11px] text-muted-foreground">Placa: {ordem.veiculo.placa}</span>
+                                      ) : null}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="max-w-[220px]">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="truncate font-medium" title={ordem.descricao || ""}>
+                                        {ordem.descricao || "Sem descrição"}
+                                      </span>
+                                      {ordem.prioridade ? (
+                                        <span className="text-[11px] text-muted-foreground">
+                                          Prioridade: {String(ordem.prioridade)}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{getStatusBadge(ordem.status)}</TableCell>
+                                  <TableCell className="text-right font-medium">
+                                    {formatCurrency(ordem.orcamentototal || 0)}
+                                  </TableCell>
+                                </TableRow>
+                                {expanded ? (
+                                  <TableRow className="bg-muted/20">
+                                    <TableCell colSpan={7} className="p-3">
+                                      <div className="grid min-w-[760px] grid-cols-2 gap-3">
+                                        <div className="rounded-md border bg-background p-3">
+                                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Serviços
+                                          </p>
+                                          {servicos.length > 0 ? (
+                                            <div className="space-y-2">
+                                              {servicos.map((item: any, index: number) => (
+                                                <div key={`${ordem.id}-servico-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                                  <span className="truncate" title={item.servico?.descricao || ""}>
+                                                    {item.servico?.descricao || "Serviço"}
+                                                  </span>
+                                                  <span className="shrink-0 font-medium">
+                                                    {formatCurrency(item.subtotal || 0)}
+                                                  </span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-muted-foreground">Nenhum serviço vinculado.</p>
+                                          )}
+                                        </div>
+
+                                        <div className="rounded-md border bg-background p-3">
+                                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Produtos
+                                          </p>
+                                          {produtos.length > 0 ? (
+                                            <div className="space-y-2">
+                                              {produtos.map((item: any, index: number) => (
+                                                <div key={`${ordem.id}-produto-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                                  <span className="truncate" title={item.produto?.titulo || ""}>
+                                                    {item.produto?.titulo || "Produto"}
+                                                  </span>
+                                                  <span className="shrink-0 font-medium">
+                                                    {formatCurrency(item.subtotal || 0)}
+                                                  </span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-muted-foreground">Nenhum produto vinculado.</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell className="h-20 text-center" colSpan={7}>
+                              Cliente não possui ordens cadastradas
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
 
           <DialogShellFooter className="border-t px-4 py-3 sm:px-6">
-            <div className="flex sm:flex-row gap-3 sm:gap-4">
+            <div className="flex w-full flex-row justify-end gap-2">
+              <DialogShellClose asChild>
+                <Button
+                  type="button"
+                  className="h-9 min-w-24 hover:cursor-pointer"
+                  variant="outline"
+                >
+                  Cancelar
+                </Button>
+              </DialogShellClose>
               <Button
-                type="submit"
-                form="register-form"
+                type="button"
                 disabled={isSubmitting}
-                className="flex-1  w-[110px] hover:cursor-pointer"
+                className="h-9 min-w-24 text-sm hover:cursor-pointer"
                 onClick={handleUpdateCustomer}
               >
                 {isSubmitting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Salvando...
                   </>
                 ) : (
-                  <>
-                    <Save className="h-4 w-4 " />
-                    Salvar
-                  </>
+                  "Salvar"
                 )}
               </Button>
-              <DialogShellClose asChild>
-                <Button className="hover:cursor-pointer" variant={"outline"}>
-                  Cancelar
-                </Button>
-              </DialogShellClose>
             </div>
           </DialogShellFooter>
         </div>
