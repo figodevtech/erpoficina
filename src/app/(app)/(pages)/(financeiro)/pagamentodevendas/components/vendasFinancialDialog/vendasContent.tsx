@@ -34,6 +34,15 @@ type VendaAnexo = {
   createdat?: string | null;
 };
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CREDITO: "Credito",
+  DEBITO: "Debito",
+  DINHEIRO: "Dinheiro",
+  PIX: "Pix",
+  BOLETO: "Boleto",
+  TRANSFERENCIA: "Transferencia",
+};
+
 // Ajuste conforme a sua estrutura real
 
 export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
@@ -66,6 +75,33 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
   };
   const isImageAnexo = (anexo: VendaAnexo) => String(anexo.tipo ?? "").startsWith("image/");
+  const paymentMethods = (() => {
+    const raw = String(venda?.forma_pagamento ?? "").trim();
+    if (!raw) return [];
+
+    if (raw.includes(":")) {
+      return raw.split(/,\s+(?=[A-Z_]+:)/).map((entry) => {
+        const [method, ...amountParts] = entry.split(":");
+        const key = method.trim().toUpperCase();
+        return {
+          method: PAYMENT_METHOD_LABELS[key] ?? method.trim(),
+          amount: amountParts.join(":").trim() || null,
+        };
+      });
+    }
+
+    return raw
+      .split(",")
+      .map((method) => method.trim())
+      .filter(Boolean)
+      .map((method) => {
+        const key = method.toUpperCase();
+        return {
+          method: PAYMENT_METHOD_LABELS[key] ?? method,
+          amount: null,
+        };
+      });
+  })();
 
   // ====== DATA LOADERS
   const handleGetVenda = async (vendaId: number) => {
@@ -222,126 +258,142 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
         </div>
 
         <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-4 space-y-2">
-          {venda.forma_pagamento ? (
-            <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700">
-              Método de pagamento selecionado na venda: <b>{venda.forma_pagamento}</b>
-            </div>
-          ) : null}
-          <div className="rounded-lg border bg-background px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Anexos da venda
-                </span>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Verifique os anexos antes de registrar um novo pagamento.
-                </p>
+          <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+            <div className="overflow-hidden rounded-lg border bg-background">
+              <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
+                <div className="bg-background p-3">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
+                  <p className="mt-1 truncate text-sm font-medium" title={venda.cliente?.nomerazaosocial || ""}>
+                    {venda.cliente?.nomerazaosocial || "-"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {venda.cliente?.telefone || venda.cliente?.email || "Sem contato"}
+                  </p>
+                </div>
+                <div className="bg-background p-3">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Venda</span>
+                  <p className="mt-1 text-sm font-medium">{venda.status || "-"}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(venda.datavenda)}</p>
+                </div>
+                <div className="bg-background p-3">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Vendedor</span>
+                  <p className="mt-1 truncate text-sm font-medium">{venda.criador?.nome || venda.created_by || "-"}</p>
+                  <p className="text-xs text-muted-foreground">Responsavel</p>
+                </div>
+                <div className="bg-background p-3">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobranca</span>
+                  <p className="mt-1 text-sm font-medium">{formatarEmReal(venda.valortotal || 0)}</p>
+                  <p className="text-xs text-muted-foreground">Aberto: {formatarEmReal(saldoDevedor)}</p>
+                </div>
               </div>
-              <div
-                className="flex w-fit flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
-                onClick={() => handleGetAnexos(venda.id)}
-              >
-                <span>Recarregar anexos</span>
-                <Loader2 className={`w-[12px] ${isLoadingAnexos ? "animate-spin" : ""}`} />
+              <div className="grid gap-px bg-border sm:grid-cols-4">
+                <div className="bg-background px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Itens</span>
+                  <p className="text-sm font-medium">
+                    {venda.itens?.length ?? 0} item(ns) - {formatarEmReal(venda.sub_total || 0)}
+                  </p>
+                </div>
+                <div className="bg-background px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Canal</span>
+                  <p className="text-sm">{venda.canal || "-"}</p>
+                </div>
+                <div className="bg-background px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Desconto</span>
+                  <p className="text-sm">
+                    {venda.desconto_tipo ? `${venda.desconto_tipo} - ${formatarEmReal(venda.desconto_valor || 0)}` : "-"}
+                  </p>
+                </div>
+                <div className="bg-background px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Anexos</span>
+                  <p className="text-sm font-medium">{anexos.length} arquivo(s)</p>
+                </div>
               </div>
             </div>
 
+            <div className="rounded-lg border bg-background p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Metodos de pagamento</span>
+                <Badge variant="outline">{paymentMethods.length}</Badge>
+              </div>
+              {paymentMethods.length > 0 ? (
+                <div className="divide-y rounded-md border">
+                  {paymentMethods.map((item, index) => (
+                    <div key={`${item.method}-${index}`} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <span className="truncate font-medium">{item.method}</span>
+                      <span className="shrink-0 text-muted-foreground">{item.amount ?? "Valor nao informado"}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed px-3 py-5 text-center text-sm text-muted-foreground">
+                  Nenhum metodo informado.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-background px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <Paperclip className="h-4 w-4 text-muted-foreground" />
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Anexos da venda</span>
+                <Badge variant="secondary">{anexos.length}</Badge>
+              </div>
+              <button
+                type="button"
+                className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => handleGetAnexos(venda.id)}
+              >
+                Recarregar
+                <Loader2 className={`h-3 w-3 ${isLoadingAnexos ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+
             {isLoadingAnexos ? (
-              <div className="mt-3 flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-muted-foreground">
-                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
-                <p className="text-sm">Carregando anexos...</p>
+              <div className="mt-2 flex h-16 items-center justify-center gap-2 rounded-md border border-dashed text-sm text-muted-foreground">
+                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
+                Carregando anexos...
               </div>
             ) : anexos.length === 0 ? (
-              <div className="mt-3 flex min-h-[120px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center text-muted-foreground">
-                <Paperclip className="h-8 w-8 opacity-25" />
-                <p className="text-sm">Nenhum anexo vinculado.</p>
+              <div className="mt-2 rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+                Nenhum anexo vinculado.
               </div>
             ) : (
-              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {anexos.map((anexo) => (
-                  <div key={anexo.id} className="overflow-hidden rounded-lg border bg-card">
-                    {isImageAnexo(anexo) ? (
-                      <a href={anexo.url} target="_blank" rel="noreferrer" className="block">
-                        <img src={anexo.url} alt={anexo.nome} className="h-28 w-full object-cover" />
-                      </a>
-                    ) : (
-                      <div className="flex h-28 items-center justify-center bg-muted/40">
-                        <FileText className="h-8 w-8 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    <div className="space-y-2 p-3">
-                      <Badge variant="secondary" className="w-fit">
-                        {getVendaAnexoCategoriaLabel(anexo.categoria)}
-                      </Badge>
-                      <p className="truncate text-sm font-semibold" title={anexo.nome}>
+                  <div key={anexo.id} className="flex min-w-0 items-center gap-2 rounded-md border bg-card p-2">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded bg-muted/50">
+                      {isImageAnexo(anexo) ? (
+                        <img src={anexo.url} alt={anexo.nome} className="h-full w-full object-cover" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium" title={anexo.nome}>
                         {anexo.nome}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(anexo.tamanho)}
-                        {anexo.createdat ? ` - ${formatDate(anexo.createdat)}` : ""}
+                      <p className="truncate text-xs text-muted-foreground">
+                        {getVendaAnexoCategoriaLabel(anexo.categoria)} - {formatFileSize(anexo.tamanho)}
                       </p>
-                      <Button type="button" variant="outline" size="sm" asChild>
-                        <a href={anexo.url} target="_blank" rel="noreferrer" className="gap-2">
-                          <ExternalLink className="h-4 w-4" />
-                          Abrir anexo
-                        </a>
-                      </Button>
                     </div>
+                    <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 px-2" asChild>
+                      <a href={anexo.url} target="_blank" rel="noreferrer" aria-label="Abrir anexo">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
-            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
-              <p className="mt-1 text-sm font-medium">{venda.cliente?.nomerazaosocial || "—"}</p>
-              <p className="text-xs text-muted-foreground">
-                {venda.cliente?.telefone || venda.cliente?.email || "Sem contato"}
-              </p>
+          {venda.observacoes_fiscais ? (
+            <div className="rounded-lg border bg-background px-3 py-2">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Observacoes fiscais</span>
+              <p className="mt-1 line-clamp-3 text-sm whitespace-pre-wrap">{venda.observacoes_fiscais}</p>
             </div>
-            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Venda</span>
-              <p className="mt-1 text-sm font-medium">{venda.status || "—"}</p>
-              <p className="text-xs text-muted-foreground">{formatDate(venda.datavenda)}</p>
-            </div>
-            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Vendedor</span>
-              <p className="mt-1 text-sm font-medium">{venda.criador?.nome || venda.created_by || "—"}</p>
-              <p className="text-xs text-muted-foreground">Usuário que realizou a venda</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-               <div className="rounded-lg border bg-background px-4 py-3">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Itens</span>
-              <p className="mt-1 text-sm font-medium">{venda.itens?.length ?? 0} item(ns)</p>
-              <p className="text-xs text-muted-foreground">Subtotal: {formatarEmReal(venda.sub_total || 0)}</p>
-            </div>
-              <div className="rounded-lg border bg-background px-4 py-3">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobrança</span>
-              <p className="mt-1 text-sm font-medium">{formatarEmReal(venda.valortotal || 0)}</p>
-              <p className="text-xs text-muted-foreground">Aberto: {formatarEmReal(saldoDevedor)}</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-lg border bg-background px-4 py-3">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Canal</span>
-              <p className="mt-1 text-sm">{venda.canal || "—"}</p>
-            </div>
-            <div className="rounded-lg border bg-background px-4 py-3">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Desconto</span>
-              <p className="mt-1 text-sm">
-                {venda.desconto_tipo ? `${venda.desconto_tipo} • ${formatarEmReal(venda.desconto_valor || 0)}` : "—"}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-background px-4 py-3">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Observações fiscais</span>
-              <p className="mt-1 text-sm whitespace-pre-wrap">{venda.observacoes_fiscais || "—"}</p>
-            </div>
-          </div>
-
+          ) : null}
           {venda.itens?.length ? (
             <div className="rounded-lg border bg-background px-4 py-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Itens da cobrança</span>
@@ -364,7 +416,18 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
             </div>
           ) : null}
 
-          <div className="flex flex-row justify-end">
+          <div className="flex items-start justify-between gap-3 pt-4">
+            <div className="flex flex-col gap-1">
+              <h1 className="m-0 text-base font-semibold">Transações: {transactions.length}</h1>
+              <button
+                type="button"
+                className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => handleGetTransactions()}
+              >
+                <span>Recarregar</span>
+                <Loader2 className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
               vendaId={venda.id}
@@ -377,17 +440,6 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
               </Button>
             </TransactionDialog>
           </div>
-
-          <h1 className="m-0">Transações: {transactions.length}</h1>
-
-          <div
-            className="flex w-fit flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
-            onClick={() => handleGetTransactions()}
-          >
-            <span>Recarregar</span>
-            <Loader2 className="w-[12px]" />
-          </div>
-
           <Separator />
 
           {/* WRAPPER para rolagem horizontal no mobile */}
