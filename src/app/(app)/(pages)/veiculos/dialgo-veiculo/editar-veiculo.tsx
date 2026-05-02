@@ -1162,115 +1162,115 @@ export default function EditContent({
 
                 <div className="w-full max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-card sm:max-w-full">
                   <div className="max-w-full overflow-x-auto">
-                    <Table className="w-[760px] min-w-[760px] max-w-none text-xs">
-                    <TableHeader className="bg-muted/50">
-                      <TableRow>
-                        <TableHead className="w-[80px]">ID</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Valor Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedVeiculo.ordens && selectedVeiculo.ordens.length > 0 ? (
-                        selectedVeiculo.ordens.map((ordem: any) => {
-                          const clienteNome = ordem.cliente?.nomerazaosocial || selectedVeiculo.cliente?.nomerazaosocial || "Não informado";
-                          const dataOrdem = ordem.dataentrada || ordem.createdat || ordem.created_at;
-                          const produtos = Array.isArray(ordem.produtos) ? ordem.produtos : [];
-                          const servicos = Array.isArray(ordem.servicos) ? ordem.servicos : [];
-                          const expanded = expandedOrdemId === ordem.id;
-
-                          return (
-                            <Fragment key={ordem.id}>
-                            <TableRow
-                              className="cursor-pointer transition-colors hover:bg-muted/50"
-                              onClick={() => setExpandedOrdemId(expanded ? null : ordem.id)}
-                            >
-                              <TableCell className="font-medium text-muted-foreground">
-                                <span className="inline-flex items-center gap-1.5">
-                                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
-                                  #{ordem.id}
-                                </span>
-                              </TableCell>
-                              <TableCell>{formatDate(dataOrdem)}</TableCell>
-                              <TableCell className="max-w-[160px] truncate" title={clienteNome}>
-                                {clienteNome}
-                              </TableCell>
-                              <TableCell className="max-w-[220px] truncate" title={ordem.descricao || ""}>
-                                {ordem.descricao || "-"}
-                              </TableCell>
-                              <TableCell>{getStatusBadge(ordem.status)}</TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency(ordem.orcamentototal || 0)}
-                              </TableCell>
-                            </TableRow>
-                            {expanded ? (
-                              <TableRow className="bg-muted/20">
-                                <TableCell colSpan={6} className="p-3">
-                                  <div className="grid min-w-[700px] grid-cols-2 gap-3">
-                                    <div className="rounded-md border bg-background p-3">
-                                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                        Serviços
-                                      </p>
-                                      {servicos.length > 0 ? (
-                                        <div className="space-y-2">
-                                          {servicos.map((item: any, index: number) => (
-                                            <div key={`${ordem.id}-servico-${index}`} className="flex items-center justify-between gap-3 text-xs">
-                                              <span className="truncate" title={item.servico?.descricao || ""}>
-                                                {item.servico?.descricao || "Serviço"}
-                                              </span>
-                                              <span className="shrink-0 font-medium">
-                                                {formatCurrency(item.subtotal || 0)}
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground">Nenhum serviço vinculado.</p>
-                                      )}
-                                    </div>
-
-                                    <div className="rounded-md border bg-background p-3">
-                                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                        Produtos
-                                      </p>
-                                      {produtos.length > 0 ? (
-                                        <div className="space-y-2">
-                                          {produtos.map((item: any, index: number) => (
-                                            <div key={`${ordem.id}-produto-${index}`} className="flex items-center justify-between gap-3 text-xs">
-                                              <span className="truncate" title={item.produto?.titulo || ""}>
-                                                {item.produto?.titulo || "Produto"}
-                                              </span>
-                                              <span className="shrink-0 font-medium">
-                                                {formatCurrency(item.subtotal || 0)}
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground">Nenhum produto vinculado.</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ) : null}
-                            </Fragment>
-                          );
-                        })
-                      ) : (
+                    <Table className="max-w-none text-xs">
+                      <TableHeader className="bg-muted/50">
                         <TableRow>
-                          <TableCell className="h-24 text-center text-muted-foreground" colSpan={7}>
-                            <div className="flex flex-col items-center justify-center gap-2">
-                              <ClipboardList className="h-8 w-8 opacity-20" />
-                              <p>Veículo não possui histórico de Ordens de Serviço</p>
-                            </div>
-                          </TableCell>
+                          <TableHead className="w-[80px]">ID</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Valor Total</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedVeiculo.ordens && selectedVeiculo.ordens.length > 0 ? (
+                          selectedVeiculo.ordens.map((ordem: any) => {
+                            const clienteNome = ordem.cliente?.nomerazaosocial || selectedVeiculo.cliente?.nomerazaosocial || "Não informado";
+                            const dataOrdem = ordem.dataentrada || ordem.createdat || ordem.created_at;
+                            const produtos = Array.isArray(ordem.produtos) ? ordem.produtos : [];
+                            const servicos = Array.isArray(ordem.servicos) ? ordem.servicos : [];
+                            const expanded = expandedOrdemId === ordem.id;
+
+                            return (
+                              <Fragment key={ordem.id}>
+                                <TableRow
+                                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                                  onClick={() => setExpandedOrdemId(expanded ? null : ordem.id)}
+                                >
+                                  <TableCell className="font-medium text-muted-foreground">
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+                                      #{ordem.id}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>{formatDate(dataOrdem)}</TableCell>
+                                  <TableCell className="max-w-[160px] truncate" title={clienteNome}>
+                                    {clienteNome}
+                                  </TableCell>
+                                  <TableCell className="max-w-[220px] truncate" title={ordem.descricao || ""}>
+                                    {ordem.descricao || "-"}
+                                  </TableCell>
+                                  <TableCell>{getStatusBadge(ordem.status)}</TableCell>
+                                  <TableCell className="text-right font-medium">
+                                    {formatCurrency(ordem.orcamentototal || 0)}
+                                  </TableCell>
+                                </TableRow>
+                                {expanded ? (
+                                  <TableRow className="bg-muted/20">
+                                    <TableCell colSpan={6} className="p-3">
+                                      <div className="grid min-w-[700px] grid-cols-2 gap-3">
+                                        <div className="rounded-md border bg-background p-3">
+                                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Serviços
+                                          </p>
+                                          {servicos.length > 0 ? (
+                                            <div className="space-y-2">
+                                              {servicos.map((item: any, index: number) => (
+                                                <div key={`${ordem.id}-servico-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                                  <span className="truncate" title={item.servico?.descricao || ""}>
+                                                    {item.servico?.descricao || "Serviço"}
+                                                  </span>
+                                                  <span className="shrink-0 font-medium">
+                                                    {formatCurrency(item.subtotal || 0)}
+                                                  </span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-muted-foreground">Nenhum serviço vinculado.</p>
+                                          )}
+                                        </div>
+
+                                        <div className="rounded-md border bg-background p-3">
+                                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Produtos
+                                          </p>
+                                          {produtos.length > 0 ? (
+                                            <div className="space-y-2">
+                                              {produtos.map((item: any, index: number) => (
+                                                <div key={`${ordem.id}-produto-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                                                  <span className="truncate" title={item.produto?.titulo || ""}>
+                                                    {item.produto?.titulo || "Produto"}
+                                                  </span>
+                                                  <span className="shrink-0 font-medium">
+                                                    {formatCurrency(item.subtotal || 0)}
+                                                  </span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-muted-foreground">Nenhum produto vinculado.</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell className="h-24 text-center text-muted-foreground" colSpan={7}>
+                              <div className="flex flex-col items-center justify-center gap-2">
+                                <ClipboardList className="h-8 w-8 opacity-20" />
+                                <p>Veículo não possui histórico de Ordens de Serviço</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
                     </Table>
                   </div>
                 </div>

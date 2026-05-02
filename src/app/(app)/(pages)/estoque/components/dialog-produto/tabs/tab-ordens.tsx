@@ -75,7 +75,7 @@ export function TabOrdens({ produto }: { produto: Produto }) {
 
         <div className="w-full max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-card sm:max-w-full">
           <div className="max-w-full overflow-x-auto">
-            <Table className="w-[760px] min-w-[760px] max-w-none text-xs">
+            <Table className="max-w-none text-xs">
               <TableHeader className="bg-muted/50">
                 <TableRow>
                   <TableHead className="w-[80px]">ID</TableHead>

@@ -953,8 +953,6 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center">ID</TableHead>
-                      <TableHead className="text-center">Alvo</TableHead>
-                      <TableHead className="text-center">Detalhes</TableHead>
                       <TableHead className="text-center">Descrição</TableHead>
                       <TableHead className="text-center hidden md:table-cell">Placa</TableHead>
                       <TableHead className="text-center hidden md:table-cell">Cor</TableHead>
@@ -977,7 +975,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                               </span>
                             </div>
                             <span className="hidden md:block">
-                              {vehicle.marca}/{vehicle.modelo}
+                              {vehicle.marca}/{vehicle.modelo} {vehicle.versao}
                             </span>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">{vehicle.placa}</TableCell>
@@ -1016,7 +1014,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell className="text-center h-20" colSpan={6}>
+                        <TableCell className="text-center h-20" colSpan={99}>
                           Cliente não possui veículos cadastrados
                         </TableCell>
                       </TableRow>
@@ -1030,7 +1028,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
               value="Ordens"
               className="h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-muted-foreground/5 p-0"
             >
-              <div className="h-full min-h-0 min-w-0 max-w-full space-y-4 overflow-hidden px-2 py-3 sm:px-6 sm:py-6">
+              <div className="h-full min-h-0 min-w-0 max-w-full space-y-4 overflow-auto px-2 py-3 sm:px-6 sm:py-6">
                 <div className="flex min-w-0 flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
@@ -1051,7 +1049,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
 
                 <div className="w-full max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-card sm:max-w-full">
                   <div className="max-w-full overflow-x-auto">
-                    <Table className="w-[820px] min-w-[820px] max-w-none text-xs">
+                    <Table className="max-w-none text-xs">
                       <TableHeader className="bg-muted/50">
                         <TableRow>
                           <TableHead className="w-[90px]">ID</TableHead>
@@ -1075,8 +1073,8 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
                                 ? ordem.peca?.titulo || ordem.peca?.descricao || "Peça não informada"
                                 : ordem.veiculo
                                   ? `${ordem.veiculo.marca ?? ""} ${ordem.veiculo.modelo ?? ""}`.trim() ||
-                                    ordem.veiculo.modelo ||
-                                    "Veículo vinculado"
+                                  ordem.veiculo.modelo ||
+                                  "Veículo vinculado"
                                   : "Veículo não informado";
 
                             return (
