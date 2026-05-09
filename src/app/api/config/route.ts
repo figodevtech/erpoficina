@@ -12,6 +12,18 @@ const supabase = createClient(
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
+const CONFIG_SELECT_BASE =
+  "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers";
+
+const CONFIG_SELECT_AGENDAMENTO =
+  "agendamento_intervalo_minutos, agendamento_hora_inicio, agendamento_hora_fim, agendamento_dias_trabalho";
+
+const CONFIG_SELECT_COMPLETO = `${CONFIG_SELECT_BASE}, ${CONFIG_SELECT_AGENDAMENTO}`;
+
+function colunaNaoExiste(error: any) {
+  return error?.code === "42703";
+}
+
 function respostaJSON(body: any, status = 200) {
   return NextResponse.json(body, {
     status,
@@ -39,19 +51,41 @@ function diasValidos(v: any) {
   return dias.length > 0 ? dias.sort((a, b) => a - b) : undefined;
 }
 
+function comPadroesAgendamento(config: any) {
+  if (!config) return null;
+
+  return {
+    ...config,
+    agendamento_intervalo_minutos: Number(config.agendamento_intervalo_minutos ?? 60),
+    agendamento_hora_inicio: String(config.agendamento_hora_inicio ?? "08:00").slice(0, 5),
+    agendamento_hora_fim: String(config.agendamento_hora_fim ?? "18:00").slice(0, 5),
+    agendamento_dias_trabalho: Array.isArray(config.agendamento_dias_trabalho)
+      ? config.agendamento_dias_trabalho
+      : [1, 2, 3, 4, 5],
+  };
+}
+
 // Busca sempre a config mais recente (normalmente só existe 1 linha)
 async function buscarConfigAtual() {
   const { data, error } = await supabase
     .from("config_geral")
-    .select(
-      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, agendamento_intervalo_minutos, agendamento_hora_inicio, agendamento_hora_fim, agendamento_dias_trabalho, created_at, habilitar_drawers"
-    )
+    .select(CONFIG_SELECT_COMPLETO)
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error) throw error;
-  return data ?? null;
+  if (!error) return comPadroesAgendamento(data);
+  if (!colunaNaoExiste(error)) throw error;
+
+  const fallback = await supabase
+    .from("config_geral")
+    .select(CONFIG_SELECT_BASE)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallback.error) throw fallback.error;
+  return comPadroesAgendamento(fallback.data);
 }
 
 async function criarConfigPadraoSeNaoExistir() {
@@ -61,13 +95,21 @@ async function criarConfigPadraoSeNaoExistir() {
   const { data, error } = await supabase
     .from("config_geral")
     .insert({}) // usa defaults do banco
-    .select(
-      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, agendamento_intervalo_minutos, agendamento_hora_inicio, agendamento_hora_fim, agendamento_dias_trabalho, created_at, habilitar_drawers"
-    )
+    .select(CONFIG_SELECT_COMPLETO)
     .single();
 
-  if (error) throw error;
-  return data;
+  if (!error) return comPadroesAgendamento(data);
+  if (!colunaNaoExiste(error)) throw error;
+
+  const fallback = await supabase
+    .from("config_geral")
+    .select(CONFIG_SELECT_BASE)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallback.error) throw fallback.error;
+  return comPadroesAgendamento(fallback.data);
 }
 
 export async function GET() {
@@ -148,10 +190,16 @@ export async function PUT(request: Request) {
 
     if (error) {
       console.error("Supabase update error:", error);
+      if (colunaNaoExiste(error)) {
+        return respostaJSON(
+          { error: "As configurações de agendamento ainda não foram aplicadas no banco. Rode as migrations do Supabase." },
+          409
+        );
+      }
       return respostaJSON({ error: "Falha ao atualizar configuração geral." }, 500);
     }
 
-    return respostaJSON({ config: data });
+    return respostaJSON({ config: comPadroesAgendamento(data) });
   } catch (err: any) {
     console.error("PUT /api/config-geral", err);
     return respostaJSON({ error: "Falha ao atualizar configuração geral." }, 500);
