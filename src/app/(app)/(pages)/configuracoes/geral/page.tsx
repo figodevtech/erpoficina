@@ -13,7 +13,8 @@ import {
   AlertCircle,
   FileText,
   Package,
-  Search
+  Search,
+  CalendarDays,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Config } from "../../type";
 
 type UsoConsultasPlaca = {
@@ -28,6 +31,16 @@ type UsoConsultasPlaca = {
   usadas: number;
   mes: string;
 };
+
+const DIAS_SEMANA = [
+  { value: 0, label: "Dom" },
+  { value: 1, label: "Seg" },
+  { value: 2, label: "Ter" },
+  { value: 3, label: "Qua" },
+  { value: 4, label: "Qui" },
+  { value: 5, label: "Sex" },
+  { value: 6, label: "Sab" },
+];
 
 export default function ConfigGeralPage() {
   const [salvando, setSalvando] = useState(false);
@@ -43,6 +56,10 @@ export default function ConfigGeralPage() {
       emissao_nf_no_modulo_vendas: false,
       emissao_nf_ordens_nao_pagas: false,
       emissao_nf_vendas_nao_pagas: false,
+      agendamento_intervalo_minutos: 60,
+      agendamento_hora_inicio: "08:00",
+      agendamento_hora_fim: "18:00",
+      agendamento_dias_trabalho: [1, 2, 3, 4, 5],
     },
   });
 
@@ -118,6 +135,7 @@ export default function ConfigGeralPage() {
 
   const limitePlacas = usoConsultasPlaca?.limite ?? 0;
   const usadasPlacas = usoConsultasPlaca?.usadas ?? 0;
+  const diasTrabalho = watch("agendamento_dias_trabalho") ?? [1, 2, 3, 4, 5];
   const percentualPlacas =
     limitePlacas > 0 ? Math.min(100, Math.round((usadasPlacas / limitePlacas) * 100)) : 100;
 
@@ -187,6 +205,90 @@ export default function ConfigGeralPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Ao virar o mes, o contador e reiniciado automaticamente na proxima consulta.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="overflow-hidden border-primary/10 shadow-sm p-0">
+          <CardHeader className="bg-primary/5 py-4">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              <CardTitle>Agenda de atendimento</CardTitle>
+            </div>
+            <CardDescription>Defina dias, horario de trabalho e intervalo padrao dos agendamentos.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 py-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Intervalo dos slots</Label>
+                <Select
+                  value={String(watch("agendamento_intervalo_minutos") ?? 60)}
+                  onValueChange={(value) => setValue("agendamento_intervalo_minutos", Number(value), { shouldDirty: true })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 minutos</SelectItem>
+                    <SelectItem value="30">30 minutos</SelectItem>
+                    <SelectItem value="45">45 minutos</SelectItem>
+                    <SelectItem value="60">1 hora</SelectItem>
+                    <SelectItem value="90">1h30</SelectItem>
+                    <SelectItem value="120">2 horas</SelectItem>
+                    <SelectItem value="180">3 horas</SelectItem>
+                    <SelectItem value="240">4 horas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Inicio do expediente</Label>
+                <Input
+                  type="time"
+                  value={(watch("agendamento_hora_inicio") ?? "08:00").slice(0, 5)}
+                  onChange={(event) => setValue("agendamento_hora_inicio", event.target.value, { shouldDirty: true })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Fim do expediente</Label>
+                <Input
+                  type="time"
+                  value={(watch("agendamento_hora_fim") ?? "18:00").slice(0, 5)}
+                  onChange={(event) => setValue("agendamento_hora_fim", event.target.value, { shouldDirty: true })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Dias de trabalho</Label>
+              <div className="flex flex-wrap gap-2">
+                {DIAS_SEMANA.map((dia) => {
+                  const active = diasTrabalho.includes(dia.value);
+                  return (
+                    <Button
+                      key={dia.value}
+                      type="button"
+                      variant={active ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        const next = active
+                          ? diasTrabalho.filter((item) => item !== dia.value)
+                          : [...diasTrabalho, dia.value].sort((a, b) => a - b);
+                        if (next.length === 0) {
+                          toast.error("Selecione ao menos um dia de trabalho.");
+                          return;
+                        }
+                        setValue("agendamento_dias_trabalho", next, { shouldDirty: true });
+                      }}
+                    >
+                      {dia.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Esses valores controlam a grade do calendario e a duracao padrao sugerida em novos agendamentos.
               </p>
             </div>
           </CardContent>

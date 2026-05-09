@@ -157,6 +157,13 @@ export async function requireRelatoriosAccess() {
   return requirePerm(PERMS.RELATORIOS);
 }
 
+export async function hasAgendamentosAccess() {
+  return hasPerm(PERMS.AGENDAMENTOS);
+}
+export async function requireAgendamentosAccess() {
+  return requirePerm(PERMS.AGENDAMENTOS);
+}
+
 export async function hasFinanceiroAccess() {
   return hasPerm(PERMS.FINANCEIRO);
 }

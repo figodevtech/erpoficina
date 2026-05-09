@@ -9,5 +9,9 @@ export interface Config {
     emissao_nf_ordens_nao_pagas: boolean;
     emissao_nf_vendas_nao_pagas: boolean;
     habilitar_drawers: boolean;
+    agendamento_intervalo_minutos: number;
+    agendamento_hora_inicio: string;
+    agendamento_hora_fim: string;
+    agendamento_dias_trabalho: number[];
     created_at: string;
 }

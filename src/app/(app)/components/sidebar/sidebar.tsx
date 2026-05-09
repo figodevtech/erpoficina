@@ -26,6 +26,7 @@ import {
   Lock,
   Car,
   Wrench,
+  CalendarDays,
 } from "lucide-react";
 
 import { NavMain } from "./components/nav-main";
@@ -75,6 +76,12 @@ const data = {
       icon: NotepadText,
       isActive: true,
       perm: PERMS.ORDENS,
+    },
+    {
+      title: "Agendamentos",
+      url: "/agendamentos",
+      icon: CalendarDays,
+      perm: PERMS.AGENDAMENTOS,
     },
     {
       title: "Veículos",

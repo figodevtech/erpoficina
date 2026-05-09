@@ -23,12 +23,28 @@ function booleanValido(v: any) {
   return typeof v === "boolean" ? v : undefined;
 }
 
+function numeroValido(v: any) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function horaValida(v: any) {
+  const s = String(v ?? "").trim();
+  return /^\d{2}:\d{2}(:\d{2})?$/.test(s) ? s.slice(0, 5) : undefined;
+}
+
+function diasValidos(v: any) {
+  if (!Array.isArray(v)) return undefined;
+  const dias = [...new Set(v.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item >= 0 && item <= 6))];
+  return dias.length > 0 ? dias.sort((a, b) => a - b) : undefined;
+}
+
 // Busca sempre a config mais recente (normalmente só existe 1 linha)
 async function buscarConfigAtual() {
   const { data, error } = await supabase
     .from("config_geral")
     .select(
-      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers"
+      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, agendamento_intervalo_minutos, agendamento_hora_inicio, agendamento_hora_fim, agendamento_dias_trabalho, created_at, habilitar_drawers"
     )
     .order("id", { ascending: false })
     .limit(1)
@@ -46,7 +62,7 @@ async function criarConfigPadraoSeNaoExistir() {
     .from("config_geral")
     .insert({}) // usa defaults do banco
     .select(
-      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers"
+      "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, agendamento_intervalo_minutos, agendamento_hora_inicio, agendamento_hora_fim, agendamento_dias_trabalho, created_at, habilitar_drawers"
     )
     .single();
 
@@ -89,6 +105,32 @@ export async function PUT(request: Request) {
         }
         patch[key] = val;
       }
+    }
+
+    if (body.agendamento_intervalo_minutos !== undefined) {
+      const val = numeroValido(body.agendamento_intervalo_minutos);
+      if (val === undefined || ![15, 30, 45, 60, 90, 120, 180, 240].includes(val)) {
+        return respostaJSON({ error: "Intervalo de agendamento invalido." }, 400);
+      }
+      patch.agendamento_intervalo_minutos = val;
+    }
+
+    if (body.agendamento_hora_inicio !== undefined) {
+      const val = horaValida(body.agendamento_hora_inicio);
+      if (val === undefined) return respostaJSON({ error: "Horario inicial invalido." }, 400);
+      patch.agendamento_hora_inicio = val;
+    }
+
+    if (body.agendamento_hora_fim !== undefined) {
+      const val = horaValida(body.agendamento_hora_fim);
+      if (val === undefined) return respostaJSON({ error: "Horario final invalido." }, 400);
+      patch.agendamento_hora_fim = val;
+    }
+
+    if (body.agendamento_dias_trabalho !== undefined) {
+      const val = diasValidos(body.agendamento_dias_trabalho);
+      if (val === undefined) return respostaJSON({ error: "Selecione ao menos um dia de trabalho." }, 400);
+      patch.agendamento_dias_trabalho = val;
     }
 
     if (Object.keys(patch).length === 0) {
