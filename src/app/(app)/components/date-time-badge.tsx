@@ -52,7 +52,7 @@ export default function DateTimeBadge() {
   if (!mounted || !now) {
     return (
       <div
-        className="hidden md:flex h-8 w-72 rounded-full bg-muted/60 animate-pulse"
+        className="hidden h-8 w-72 animate-pulse rounded-md bg-muted/60 md:flex"
         aria-hidden="true"
       />
     );
@@ -62,7 +62,7 @@ export default function DateTimeBadge() {
   const timeStr = timeFmt.format(now); // ex: 14:07
 
   return (
-    <div className="hidden md:flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground">
+    <div className="hidden items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground md:flex">
       <span className="truncate">{dateStr}</span>
       <span className="select-none opacity-60">•</span>
       {/* tabular-nums deixa os dígitos monoespaçados sem trocar a fonte do header */}
