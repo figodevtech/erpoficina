@@ -5,6 +5,7 @@ import * as React from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { SessionProvider } from "next-auth/react";
 import type { Session } from "next-auth";
+import { SessionPermissionsRefresher } from "@/components/session-permissions-refresher";
 
 type NextThemesProps = React.ComponentProps<typeof NextThemesProvider>;
 
@@ -21,7 +22,8 @@ export function Providers({
   session?: Session | null;
 } & NextThemesProps) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider session={session} refetchInterval={30} refetchOnWindowFocus>
+      <SessionPermissionsRefresher />
       <NextThemesProvider {...props}>{children}</NextThemesProvider>
     </SessionProvider>
   );

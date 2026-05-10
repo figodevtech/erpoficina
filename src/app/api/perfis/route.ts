@@ -1,17 +1,23 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
+import { PERMS, type Permission } from "@/app/api/_authz/permission-constants";
+import { requirePerm } from "@/app/api/_authz/perms";
 
-function exigirAcesso(session: any, permissao: string = PERMS.PERMISSOES) {
-  if (!session?.user) return { ok: false, status: 401 as const, msg: "Não autenticado" };
-
-  const ok = permissionSetHas((session.user as any)?.permissoes, permissao);
-  if (!ok) return { ok: false, status: 403 as const, msg: "Sem permissão" };
-
-  return { ok: true as const };
+async function exigirAcesso(permissao: Permission = PERMS.PERMISSOES) {
+  try {
+    await requirePerm(permissao);
+    return { ok: true as const };
+  } catch (error: any) {
+    const msg = String(error?.message ?? "");
+    const unauthenticated = /não autenticado|nao autenticado|unauth/i.test(msg);
+    return {
+      ok: false as const,
+      status: (error?.statusCode ?? (unauthenticated ? 401 : 403)) as 401 | 403,
+      msg: unauthenticated ? "Não autenticado" : "Sem permissão",
+    };
+  }
 }
 
 type CriarPerfilPayload = {
@@ -21,8 +27,7 @@ type CriarPerfilPayload = {
 };
 
 export async function GET() {
-  const session = await auth();
-  const gate = exigirAcesso(session);
+  const gate = await exigirAcesso();
   if (!gate.ok) return NextResponse.json({ error: gate.msg }, { status: gate.status });
 
   const [perfisRes, permsRes] = await Promise.all([
@@ -65,16 +70,11 @@ export async function GET() {
     descricao: perm.descricao ?? null,
   }));
 
-  // compatibilidade: mantém as duas chaves
-  return NextResponse.json(
-    { perfis, permissoes, permissoesDisponiveis: permissoes },
-    { status: 200 }
-  );
+  return NextResponse.json({ perfis, permissoes, permissoesDisponiveis: permissoes }, { status: 200 });
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  const gate = exigirAcesso(session, PERMS.PERMISSOES_CRIAR);
+  const gate = await exigirAcesso(PERMS.PERMISSOES_CRIAR);
   if (!gate.ok) return NextResponse.json({ error: gate.msg }, { status: gate.status });
 
   const body = (await req.json().catch(() => null)) as CriarPerfilPayload | null;

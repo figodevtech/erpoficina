@@ -1,17 +1,23 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
+import { PERMS, type Permission } from "@/app/api/_authz/permission-constants";
+import { requirePerm } from "@/app/api/_authz/perms";
 
-function exigirAcesso(session: any, permissao: string = PERMS.PERMISSOES) {
-  if (!session?.user) return { ok: false, status: 401 as const, msg: "Não autenticado" };
-
-  const ok = permissionSetHas((session.user as any)?.permissoes, permissao);
-  if (!ok) return { ok: false, status: 403 as const, msg: "Sem permissão" };
-
-  return { ok: true as const };
+async function exigirAcesso(permissao: Permission = PERMS.PERMISSOES) {
+  try {
+    await requirePerm(permissao);
+    return { ok: true as const };
+  } catch (error: any) {
+    const msg = String(error?.message ?? "");
+    const unauthenticated = /não autenticado|nao autenticado|unauth/i.test(msg);
+    return {
+      ok: false as const,
+      status: (error?.statusCode ?? (unauthenticated ? 401 : 403)) as 401 | 403,
+      msg: unauthenticated ? "Não autenticado" : "Sem permissão",
+    };
+  }
 }
 
 type AtualizarPerfilPayload = {
@@ -21,14 +27,12 @@ type AtualizarPerfilPayload = {
 };
 
 async function getParamId(ctx: any): Promise<string> {
-  // compatível com params objeto OU params Promise (como você tinha)
   const p = await (ctx?.params ?? {});
   return p?.id;
 }
 
 export async function GET(req: NextRequest, ctx: any) {
-  const session = await auth();
-  const gate = exigirAcesso(session);
+  const gate = await exigirAcesso();
   if (!gate.ok) return NextResponse.json({ error: gate.msg }, { status: gate.status });
 
   const id = await getParamId(ctx);
@@ -75,16 +79,11 @@ export async function GET(req: NextRequest, ctx: any) {
     descricao: perm.descricao ?? null,
   }));
 
-  // compatibilidade: mantém as duas chaves
-  return NextResponse.json(
-    { perfil, permissoes, permissoesDisponiveis: permissoes },
-    { status: 200 }
-  );
+  return NextResponse.json({ perfil, permissoes, permissoesDisponiveis: permissoes }, { status: 200 });
 }
 
 export async function PUT(req: NextRequest, ctx: any) {
-  const session = await auth();
-  const gate = exigirAcesso(session, PERMS.PERMISSOES_EDITAR);
+  const gate = await exigirAcesso(PERMS.PERMISSOES_EDITAR);
   if (!gate.ok) return NextResponse.json({ error: gate.msg }, { status: gate.status });
 
   const id = await getParamId(ctx);
@@ -98,7 +97,6 @@ export async function PUT(req: NextRequest, ctx: any) {
 
   if (!nome) return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 });
 
-  // 1) atualiza perfil
   const { data: perfilAtualizado, error: ePerfil } = await supabaseAdmin
     .from("perfil")
     .update({ nome, descricao })
@@ -108,7 +106,6 @@ export async function PUT(req: NextRequest, ctx: any) {
 
   if (ePerfil) return NextResponse.json({ error: ePerfil.message }, { status: 500 });
 
-  // 2) substitui vínculos
   const { error: eDel } = await supabaseAdmin.from("perfilpermissao").delete().eq("perfilid", perfilId);
   if (eDel) return NextResponse.json({ error: eDel.message }, { status: 500 });
 

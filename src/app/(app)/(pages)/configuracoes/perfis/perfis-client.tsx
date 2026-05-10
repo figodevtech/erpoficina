@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
 import type { Perfil, Permissao } from "./types";
@@ -10,6 +11,7 @@ import { TabelaPerfis } from "./components/tabela-perfis";
 import { DialogPerfil } from "./components/dialog-perfis";
 
 export default function PerfisClient() {
+  const { update } = useSession();
   const [carregando, setCarregando] = React.useState(false);
   const [erro, setErro] = React.useState<string | null>(null);
 
@@ -85,6 +87,7 @@ export default function PerfisClient() {
       setDialogAberto(false);
       setPerfilEmEdicao(null);
       await carregar();
+      await update();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao salvar perfil");
     } finally {
