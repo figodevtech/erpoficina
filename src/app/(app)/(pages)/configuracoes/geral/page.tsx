@@ -140,7 +140,7 @@ export default function ConfigGeralPage() {
     limitePlacas > 0 ? Math.min(100, Math.round((usadasPlacas / limitePlacas) * 100)) : 100;
 
   return (
-    <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6 animate-in fade-in duration-500 sm:px-6 lg:px-8">
+    <div className="container mx-auto max-w-7xl space-y-6 px-4 py-1 animate-in fade-in duration-500 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 rounded-lg border bg-card px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
