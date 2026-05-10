@@ -989,7 +989,7 @@ export default function AgendamentosPage() {
                           <TabsTrigger
                             key={item}
                             value={item}
-                            className="h-8 rounded-xl px-3 text-xs font-medium hover:cursor-pointer data-[state=active]:shadow-sm"
+                            className="h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                           >
                             {VIEW_LABEL[item]}
                           </TabsTrigger>
