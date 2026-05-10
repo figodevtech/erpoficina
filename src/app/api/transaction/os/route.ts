@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireFinanceiroCreate, requireFinanceirosAccess } from "@/app/api/_authz/perms";
 
 /** Campos graváveis em transacao */
 const WRITABLE_FIELDS = new Set([
@@ -177,6 +178,7 @@ function sanitizeTransacaoPayload(body: any, { strict }: { strict: boolean }) {
 
 export async function GET(req: Request) {
   try {
+    await requireFinanceirosAccess();
     const { searchParams } = new URL(req.url);
 
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
@@ -276,6 +278,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    await requireFinanceiroCreate();
     const body = (await req.json()) as any;
 
     // Aceita payload bruto ou { newTransaction: {...} }

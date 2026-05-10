@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
-import { PERMS, type Permission } from "@/app/api/_authz/permission-constants";
+import { expandPermissions, normalizePermission, PERMS, permissionSetHas, type Permission } from "@/app/api/_authz/permission-constants";
 import { getDefaultRouteForPerms } from "@/app/api/_authz/default-route";
 
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
@@ -60,15 +60,33 @@ function isPublicApi(pathname: string) {
  * Regras por prefixo -> permissÃ£o necessÃ¡ria
  */
 const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
+  { prefix: "/api/execucao", perm: PERMS.EXECUCAO_OS },
+  { prefix: "/api/dashboard", perm: PERMS.DASHBOARD },
+  { prefix: "/api/customers", perm: PERMS.CLIENTES },
+  { prefix: "/api/clientes", perm: PERMS.CLIENTES },
+  { prefix: "/api/ordens", perm: PERMS.ORDENS },
+  { prefix: "/api/agendamentos", perm: PERMS.AGENDAMENTOS },
+  { prefix: "/api/products", perm: PERMS.ESTOQUE },
+  { prefix: "/api/entradas", perm: PERMS.ESTOQUE },
+  { prefix: "/api/veiculos", perm: PERMS.VEICULOS },
+  { prefix: "/api/venda", perm: PERMS.VENDAS },
+  { prefix: "/api/transaction", perm: PERMS.FINANCEIRO },
+  { prefix: "/api/pagamentos", perm: PERMS.FINANCEIRO },
+  { prefix: "/api/banks", perm: PERMS.FINANCEIRO },
+  { prefix: "/api/users", perm: PERMS.USUARIOS },
+  { prefix: "/api/perfis", perm: PERMS.PERMISSOES },
+  { prefix: "/api/config", perm: PERMS.CONFIG },
+
   { prefix: "/execucao", perm: PERMS.EXECUCAO_OS },
   { prefix: "/dashboard", perm: PERMS.DASHBOARD },
   { prefix: "/clientes", perm: PERMS.CLIENTES },
   { prefix: "/ordens", perm: PERMS.ORDENS },
+  { prefix: "/agendamentos", perm: PERMS.AGENDAMENTOS },
   { prefix: "/estoque", perm: PERMS.ESTOQUE },
   { prefix: "/relatorios", perm: PERMS.RELATORIOS },
 
+  { prefix: "/configuracoes/perfis", perm: PERMS.PERMISSOES },
   { prefix: "/configuracoes", perm: PERMS.CONFIG },
-  { prefix: "/configuracoes/perfis", perm: PERMS.CONFIG },
   { prefix: "/usuarios", perm: PERMS.USUARIOS },
   { prefix: "/acompanhamento", perm: PERMS.ACOMPANHAMENTO },
 
@@ -85,31 +103,63 @@ const ROUTE_PERMS: Array<{ prefix: string; perm: Permission }> = [
   { prefix: "/veiculos", perm: PERMS.VEICULOS },
 ];
 
+const API_ACTION_PERMS: Array<{
+  prefix: string;
+  read: Permission;
+  create?: Permission;
+  edit?: Permission;
+  delete?: Permission;
+}> = [
+  { prefix: "/api/customers", read: PERMS.CLIENTES, create: PERMS.CLIENTES_CRIAR, edit: PERMS.CLIENTES_EDITAR, delete: PERMS.CLIENTES_EXCLUIR },
+  { prefix: "/api/clientes", read: PERMS.CLIENTES, create: PERMS.CLIENTES_CRIAR, edit: PERMS.CLIENTES_EDITAR, delete: PERMS.CLIENTES_EXCLUIR },
+  { prefix: "/api/ordens", read: PERMS.ORDENS, create: PERMS.ORDENS_CRIAR, edit: PERMS.ORDENS_EDITAR, delete: PERMS.ORDENS_EXCLUIR },
+  { prefix: "/api/agendamentos", read: PERMS.AGENDAMENTOS, create: PERMS.AGENDAMENTOS_CRIAR, edit: PERMS.AGENDAMENTOS_EDITAR, delete: PERMS.AGENDAMENTOS_EXCLUIR },
+  { prefix: "/api/products", read: PERMS.ESTOQUE, create: PERMS.ESTOQUE_CRIAR, edit: PERMS.ESTOQUE_EDITAR, delete: PERMS.ESTOQUE_EXCLUIR },
+  { prefix: "/api/entradas", read: PERMS.ESTOQUE, create: PERMS.ESTOQUE_CRIAR, edit: PERMS.ESTOQUE_EDITAR, delete: PERMS.ESTOQUE_EXCLUIR },
+  { prefix: "/api/veiculos", read: PERMS.VEICULOS, create: PERMS.VEICULOS_CRIAR, edit: PERMS.VEICULOS_EDITAR, delete: PERMS.VEICULOS_EXCLUIR },
+  { prefix: "/api/venda", read: PERMS.VENDAS, create: PERMS.VENDAS_CRIAR, edit: PERMS.VENDAS_EDITAR, delete: PERMS.VENDAS_EXCLUIR },
+  { prefix: "/api/transaction", read: PERMS.FINANCEIRO, create: PERMS.FINANCEIRO_CRIAR, edit: PERMS.FINANCEIRO_EDITAR, delete: PERMS.FINANCEIRO_EXCLUIR },
+  { prefix: "/api/pagamentos", read: PERMS.FINANCEIRO, create: PERMS.FINANCEIRO_CRIAR, edit: PERMS.FINANCEIRO_EDITAR, delete: PERMS.FINANCEIRO_EXCLUIR },
+  { prefix: "/api/banks", read: PERMS.FINANCEIRO, create: PERMS.FINANCEIRO_CRIAR, edit: PERMS.FINANCEIRO_EDITAR, delete: PERMS.FINANCEIRO_EXCLUIR },
+  { prefix: "/api/users", read: PERMS.USUARIOS, create: PERMS.USUARIOS_CRIAR, edit: PERMS.USUARIOS_EDITAR, delete: PERMS.USUARIOS_EXCLUIR },
+  { prefix: "/api/perfis", read: PERMS.PERMISSOES, create: PERMS.PERMISSOES_CRIAR, edit: PERMS.PERMISSOES_EDITAR, delete: PERMS.PERMISSOES_EXCLUIR },
+  { prefix: "/api/config", read: PERMS.CONFIG, edit: PERMS.CONFIG_EDITAR },
+];
+
 function matchRule(pathname: string) {
   return ROUTE_PERMS.find(
     (r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/"),
   );
 }
 
+function matchApiActionRule(pathname: string, method: string) {
+  const rule = API_ACTION_PERMS.find(
+    (r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/"),
+  );
+  if (!rule) return null;
+
+  const normalizedMethod = method.toUpperCase();
+  if (normalizedMethod === "GET" || normalizedMethod === "HEAD" || normalizedMethod === "OPTIONS") return rule.read;
+  if (normalizedMethod === "POST") return rule.create ?? rule.edit ?? rule.read;
+  if (normalizedMethod === "PUT" || normalizedMethod === "PATCH") return rule.edit ?? rule.read;
+  if (normalizedMethod === "DELETE") return rule.delete ?? rule.edit ?? rule.read;
+  return rule.read;
+}
+
 function hasPermFromSession(user: any, perm: string) {
-  const perms: string[] = Array.isArray(user?.permissoes)
-    ? user.permissoes
-    : [];
-  const normalized = perms.map((p) => String(p).trim().toUpperCase());
-  return normalized.includes(String(perm).trim().toUpperCase());
+  return permissionSetHas(user?.permissoes, perm);
 }
 
 function getSessionPerms(user: any) {
-  const perms: string[] = Array.isArray(user?.permissoes) ? user.permissoes : [];
-  return perms.map((p) => String(p).trim().toUpperCase()).filter(Boolean);
+  return expandPermissions(user?.permissoes);
 }
 
 function isExecutorOnly(user: any) {
   const perms = getSessionPerms(user);
-  if (!perms.includes(PERMS.EXECUCAO_OS)) return false;
+  if (!perms.includes(normalizePermission(PERMS.EXECUCAO_OS))) return false;
 
-  const appPerms = Object.values(PERMS).map((p) => String(p).toUpperCase());
-  return perms.every((p) => p === PERMS.EXECUCAO_OS || !appPerms.includes(p));
+  const appPerms = Object.values(PERMS).map((p) => normalizePermission(p));
+  return perms.every((p) => p === normalizePermission(PERMS.EXECUCAO_OS) || !appPerms.includes(p));
 }
 
 async function fetchFreshUserState(userId: string) {
@@ -258,6 +308,17 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
       return NextResponse.redirect(new URL("/execucao", nextUrl), {
         headers: { "Cache-Control": "no-store" },
       });
+    }
+  }
+
+  const apiActionPerm = isApi ? matchApiActionRule(pathname, req.method) : null;
+  if (apiActionPerm) {
+    const ok = hasPermFromSession(user, apiActionPerm);
+    if (!ok) {
+      return NextResponse.json(
+        { error: "FORBIDDEN" },
+        { status: 403, headers: { "Cache-Control": "no-store" } },
+      );
     }
   }
 

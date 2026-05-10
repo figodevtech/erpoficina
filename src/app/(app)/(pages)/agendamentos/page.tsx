@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -61,6 +62,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { StatusAgendamento } from "@/types/agendamento";
 import type { Customer } from "../clientes/types";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 type VeiculoOption = { id: number; clienteid: number; placa: string; modelo?: string | null; marca?: string | null };
 
@@ -388,6 +390,7 @@ function statusBadge(status: StatusAgendamento) {
 }
 
 export default function AgendamentosPage() {
+  const { data: session } = useSession();
   const [items, setItems] = useState<AgendamentoItem[]>([]);
   const [veiculos, setVeiculos] = useState<VeiculoOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -448,6 +451,9 @@ export default function AgendamentosPage() {
     return Array.from({ length: 7 }, (_, index) => addDays(start, index));
   }, [selectedDate]);
   const slots = useMemo(() => buildSlots(agendaConfig), [agendaConfig]);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.AGENDAMENTOS_CRIAR);
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.AGENDAMENTOS_EDITAR);
+  const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.AGENDAMENTOS_EXCLUIR);
 
   const itemsByDay = useMemo(() => {
     const map = new Map<string, AgendamentoItem[]>();
@@ -583,6 +589,11 @@ export default function AgendamentosPage() {
   }, [status, currentMonth, selectedDate, view]);
 
   function openCreate(dateBase = selectedDate) {
+    if (!canCreate) {
+      toast.error("Sem permissao para criar agendamento.");
+      return;
+    }
+
     if (isDayUnavailable(dateBase)) {
       toast.error("Dia indisponivel para agendamento.");
       return;
@@ -609,6 +620,11 @@ export default function AgendamentosPage() {
   }
 
   function openEdit(item: AgendamentoItem) {
+    if (!canEdit) {
+      toast.error("Sem permissao para editar agendamento.");
+      return;
+    }
+
     const inicio = toInputFromIso(item.inicio);
     const fim = toInputFromIso(item.fim);
     setForm({
@@ -635,6 +651,11 @@ export default function AgendamentosPage() {
   }
 
   async function save() {
+    if (form.id ? !canEdit : !canCreate) {
+      toast.error("Sem permissao para salvar agendamento.");
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -666,6 +687,11 @@ export default function AgendamentosPage() {
   }
 
   async function remove(id: number) {
+    if (!canDelete) {
+      toast.error("Sem permissao para excluir agendamento.");
+      return;
+    }
+
     setDeleting(true);
     try {
       const response = await fetch(`/api/agendamentos/${id}`, { method: "DELETE" });
@@ -918,10 +944,12 @@ export default function AgendamentosPage() {
                   {[q ? "Busca ativa" : null, status !== "TODOS" ? STATUS_LABEL[status] : null].filter(Boolean).join(" · ")}
                 </Badge>
               ) : null}
-              <Button onClick={() => openCreate()}>
-                <Plus className="size-4" />
-                Novo agendamento
-              </Button>
+              {canCreate ? (
+                <Button onClick={() => openCreate()}>
+                  <Plus className="size-4" />
+                  Novo agendamento
+                </Button>
+              ) : null}
             </div>
           </div>
         </CardHeader>
@@ -1188,12 +1216,16 @@ export default function AgendamentosPage() {
                         </div>
                         <div className="flex items-center justify-end gap-2">
                           <Badge variant={statusBadge(item.status) as any}>{STATUS_LABEL[item.status]}</Badge>
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setAgendamentoParaExcluir(item)} title="Excluir">
-                            <Trash2 className="size-4" />
-                          </Button>
+                          {canEdit ? (
+                            <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
+                              <Pencil className="size-4" />
+                            </Button>
+                          ) : null}
+                          {canDelete ? (
+                            <Button size="icon" variant="ghost" onClick={() => setAgendamentoParaExcluir(item)} title="Excluir">
+                              <Trash2 className="size-4" />
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                     ))
@@ -1211,9 +1243,11 @@ export default function AgendamentosPage() {
                       {selectedDayItems.length} agendamento(s) no dia
                     </div>
                   </div>
-                  <Button type="button" size="icon" onClick={() => openCreate(selectedDate)} title="Novo neste dia">
-                    <Plus className="size-4" />
-                  </Button>
+                  {canCreate ? (
+                    <Button type="button" size="icon" onClick={() => openCreate(selectedDate)} title="Novo neste dia">
+                      <Plus className="size-4" />
+                    </Button>
+                  ) : null}
                 </div>
 
                 <div className="max-h-[420px] space-y-3 overflow-y-auto p-4">
@@ -1247,14 +1281,20 @@ export default function AgendamentosPage() {
                           {item.descricao ? <div className="text-muted-foreground">{item.descricao}</div> : null}
                         </div>
 
-                        <div className="mt-3 flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setAgendamentoParaExcluir(item)} title="Excluir">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
+                        {canEdit || canDelete ? (
+                          <div className="mt-3 flex justify-end gap-1">
+                            {canEdit ? (
+                              <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
+                                <Pencil className="size-4" />
+                              </Button>
+                            ) : null}
+                            {canDelete ? (
+                              <Button size="icon" variant="ghost" onClick={() => setAgendamentoParaExcluir(item)} title="Excluir">
+                                <Trash2 className="size-4" />
+                              </Button>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     ))
                   )}
@@ -1414,7 +1454,10 @@ export default function AgendamentosPage() {
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={save} disabled={saving || !form.clienteid || !form.titulo || !form.inicio}>
+            <Button
+              onClick={save}
+              disabled={saving || !form.clienteid || !form.titulo || !form.inicio || (form.id ? !canEdit : !canCreate)}
+            >
               {saving ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

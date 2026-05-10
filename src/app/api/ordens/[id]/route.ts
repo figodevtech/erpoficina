@@ -5,6 +5,7 @@ export const revalidate = 0;
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { auth } from "@/lib/auth";
+import { requireOSEdit, requireOSAccess } from "@/app/api/_authz/perms";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,6 +30,7 @@ type RealizadorLite = { id: string; nome: string | null };
  * ========================================= */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    await requireOSAccess();
     const { id } = await ctx.params;
     const osId = Number(id);
     if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
@@ -457,6 +459,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
  * ===================================================== */
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
+    await requireOSEdit();
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     const userId = session.user.id;

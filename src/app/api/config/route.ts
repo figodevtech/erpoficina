@@ -1,6 +1,7 @@
 // app/api/config/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireConfigEdit } from "@/app/api/_authz/perms";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -124,6 +125,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
+    await requireConfigEdit();
     const body = await request.json().catch(() => null);
     if (!body) return respostaJSON({ error: "JSON inválido no body." }, 400);
 

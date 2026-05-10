@@ -1,9 +1,10 @@
-import { PERMS } from "./permission-constants";
+import { PERMS, permissionSetHas } from "./permission-constants";
 
 const ROUTE_PRIORITY: Array<{ perm: string; href: string }> = [
   { perm: PERMS.DASHBOARD, href: "/dashboard" },
   { perm: PERMS.EXECUCAO_OS, href: "/execucao" },
   { perm: PERMS.ORDENS, href: "/ordens" },
+  { perm: PERMS.AGENDAMENTOS, href: "/agendamentos" },
   { perm: PERMS.CLIENTES, href: "/clientes" },
   { perm: PERMS.VEICULOS, href: "/veiculos" },
   { perm: PERMS.ESTOQUE, href: "/estoque" },
@@ -16,11 +17,5 @@ const ROUTE_PRIORITY: Array<{ perm: string; href: string }> = [
 ];
 
 export function getDefaultRouteForPerms(permissoes: unknown, fallback = "/nao-autorizado") {
-  const userPerms = new Set(
-    (Array.isArray(permissoes) ? permissoes : [])
-      .map((perm) => String(perm).trim().toUpperCase())
-      .filter(Boolean)
-  );
-
-  return ROUTE_PRIORITY.find((route) => userPerms.has(route.perm))?.href ?? fallback;
+  return ROUTE_PRIORITY.find((route) => permissionSetHas(permissoes, route.perm))?.href ?? fallback;
 }

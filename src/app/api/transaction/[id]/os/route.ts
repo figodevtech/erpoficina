@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireFinanceiroDelete } from "@/app/api/_authz/perms";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -30,6 +31,7 @@ const STATUS_PAGAMENTO = "PAGAMENTO";
 /* ========================= DELETE ========================= */
 export async function DELETE(_: Request, ctx: Params) {
   try {
+    await requireFinanceiroDelete();
     const id = await parseId(ctx);
 
     // 1) Buscar a transação para obter OS ou VENDA e tipo

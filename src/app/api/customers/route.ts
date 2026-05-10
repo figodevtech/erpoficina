@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireClientesAccess, requireClientesCreate } from "@/app/api/_authz/perms";
 
 type Status = "ATIVO" | "INATIVO" | "PENDENTE";
 const STATUS_SET = new Set<Status>(["ATIVO", "INATIVO", "PENDENTE"]);
@@ -40,6 +41,7 @@ function normalizeTipopessoa(v?: string | null) {
    ============================ */
 export async function GET(req: Request) {
   try {
+    await requireClientesAccess();
     const { searchParams } = new URL(req.url);
 
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
@@ -122,6 +124,7 @@ export async function GET(req: Request) {
 // src/app/api/clientes/route.ts (apenas o POST, o resto do arquivo fica como está)
 export async function POST(req: Request) {
   try {
+    await requireClientesCreate();
     const body = (await req.json()) as any;
 
     // Suporta { newCustomer: {...} } ou {...} direto

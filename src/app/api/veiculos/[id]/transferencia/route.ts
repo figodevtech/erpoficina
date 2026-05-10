@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { auth } from "@/lib/auth";
+import { requireVeiculosEdit } from "@/app/api/_authz/perms";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,6 +22,7 @@ function toPositiveInt(v: unknown): number | null {
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
 try {
+    await requireVeiculosEdit();
     const { id } = await context.params;           // ✅ aqui é o ponto
     const veiculoId = toPositiveInt(id);
 

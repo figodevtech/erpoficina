@@ -1,6 +1,7 @@
 // ./src/app/api/ordens/[id]/cancelar/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireOSEdit } from "@/app/api/_authz/perms";
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -11,6 +12,7 @@ function getSupabaseAdmin() {
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
+    await requireOSEdit();
     const { id } = await ctx.params;
     const osId = Number(id);
     if (!Number.isFinite(osId) || osId <= 0) {

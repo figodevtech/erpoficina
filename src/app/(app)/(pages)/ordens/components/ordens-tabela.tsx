@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { createClient } from "@supabase/supabase-js";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +66,7 @@ import {
 import { OrdensFilterSheet } from "./ordens-filtros";
 import { EmissaoNotaDialog } from "./dialogs/emissao-nota-dialog/emissao-nota-dialog";
 import { Label } from "@/components/ui/label";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 const MAX_ALVO_CHARS = 48;
 
@@ -80,7 +82,9 @@ export function OrdensTabela({
   onEditar: (row: OrdemComDatas) => void;
   onNovaOS: () => void;
 }) {
+  const { data: session } = useSession();
   const [rows, setRows] = useState<OrdemComDatas[]>([]);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.ORDENS_CRIAR);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -693,10 +697,12 @@ export function OrdensTabela({
                 onLimpar={handleLimparFiltros}
               />
 
+              {canCreate ? (
               <Button onClick={onNovaOS} size="sm" className="hover:cursor-pointer">
                 <Plus className="h-4 w-4 mr-1" />
                 Nova OS
               </Button>
+              ) : null}
             </div>
           </div>
 

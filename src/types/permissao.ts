@@ -4,11 +4,7 @@
  * Espelha seu enum do Postgres: enumpermissoes
  * Se você adicionar novos valores no banco, inclua aqui também.
  */
-export type EnumPermissoes =
-  | 'USUARIOS_GERENCIAR'
-  | 'ORDENSERVICO_GERENCIAR'
-  | 'ESTOQUE_GERENCIAR'
-  | 'FINANCEIRO_GERENCIAR';
+export type EnumPermissoes = string;
 
 /**
  * Tabela: public.permissao

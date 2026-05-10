@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAgendamentosAccess } from "@/app/api/_authz/perms";
+import { requireAgendamentosDelete, requireAgendamentosEdit } from "@/app/api/_authz/perms";
 import type { StatusAgendamento } from "@/types/agendamento";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -128,7 +128,7 @@ async function buildPatch(body: any, currentId: number, usuarioid?: string | nul
 
 export async function PATCH(req: Request, context: RouteContext) {
   try {
-    await requireAgendamentosAccess();
+    await requireAgendamentosEdit();
     const { id } = await context.params;
     const agendamentoId = Number(id);
     const session = await auth();
@@ -152,7 +152,7 @@ export async function PATCH(req: Request, context: RouteContext) {
 
 export async function DELETE(_req: Request, context: RouteContext) {
   try {
-    await requireAgendamentosAccess();
+    await requireAgendamentosDelete();
     const { id } = await context.params;
 
     const { error } = await supabaseAdmin.from("agendamento").delete().eq("id", Number(id));

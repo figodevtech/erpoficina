@@ -62,10 +62,12 @@ import {
 import { Pagination, Veiculo, Veiculo_tipos } from "./types";
 import { VeiculoDialog } from "./dialgo-veiculo/dialog-veiculo";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { set } from "nprogress";
 import CustomerSelect from "../../components/customerSelect";
 import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 interface TabelaVeiculosProps {
   selectedTipo?: Veiculo_tipos;
@@ -90,6 +92,7 @@ export default function TabelaVeiculos({
   search,
   selectedTipo,
 }: TabelaVeiculosProps) {
+  const { data: session } = useSession();
   const [openVeiculo, setOpenVeiculo] = useState(false);
   const [veiculoId, setSelectedVeiculoId] = useState<number | undefined>(undefined);
   const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
@@ -98,9 +101,13 @@ export default function TabelaVeiculos({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [veiculoToDelete, setVeiculoToDelete] = useState<Veiculo | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.VEICULOS_CRIAR);
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.VEICULOS_EDITAR);
+  const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.VEICULOS_EXCLUIR);
 
 
   const handleVehicleTransfer = async (novoDonoId: number) => {
+    if (!canEdit) return;
 
     toast(<div className="flex felx-row gap-1 items-center"><Loader2 className="w-3 h-3 animate-spin" /><span>Transferindo veículo...</span> </div>);
     setTransferindo(true)
@@ -123,6 +130,7 @@ export default function TabelaVeiculos({
   };
 
   const handleOpenDeleteDialog = (veiculo: Veiculo) => {
+    if (!canDelete) return;
     if (!veiculo.id) {
       toast.error("Veículo sem ID válido para excluir.");
       return;
@@ -246,10 +254,12 @@ export default function TabelaVeiculos({
 
           <div className="flex items-center gap-2">
 
+            {canCreate ? (
             <Button onClick={() => setOpenVeiculo(true)} className="cursor-pointer">
               <Plus className="mr-2 h-4 w-4" />
               Veículo
             </Button>
+            ) : null}
 
 
           </div>
@@ -309,6 +319,7 @@ export default function TabelaVeiculos({
                       </DropdownMenuTrigger>
 
                       <DropdownMenuContent align="center">
+                        {canEdit ? (
                         <DropdownMenuItem
                           className="hover:cursor-pointer"
                           onClick={() => { setSelectedVeiculoId(v.id); setOpenVeiculo(true); }}
@@ -317,6 +328,8 @@ export default function TabelaVeiculos({
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
+                        ) : null}
+                        {canEdit ? (
                         <DropdownMenuItem
                           onClick={() => { setOpenCustomerSelect(true); setVeiculoTransferId(v?.id) }}
                           className="hover:cursor-pointer bg-blue-600/10 hover:bg-blue-600/20 data-[highlighted]:bg-blue-600/50 transition-all"
@@ -324,7 +337,9 @@ export default function TabelaVeiculos({
                           <ArrowLeftRight />
                           Transferir Propriedade
                         </DropdownMenuItem>
+                        ) : null}
 
+                        {canDelete ? (
                         <DropdownMenuItem
                           className="hover:cursor-pointer"
                           variant="destructive"
@@ -334,6 +349,7 @@ export default function TabelaVeiculos({
                           <Trash2Icon className="mr-2 h-4 w-4" />
                           Excluir
                         </DropdownMenuItem>
+                        ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

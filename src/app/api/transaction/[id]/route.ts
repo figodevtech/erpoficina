@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse, NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireFinanceiroDelete, requireFinanceiroEdit, requireFinanceirosAccess } from "@/app/api/_authz/perms";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -219,6 +220,7 @@ async function parseId(ctx: Params) {
 
 export async function GET(_: Request, ctx: Params) {
   try {
+    await requireFinanceirosAccess();
     const id = await parseId(ctx);
 
     const { data, error } = await supabaseAdmin
@@ -254,6 +256,7 @@ export async function GET(_: Request, ctx: Params) {
 
 export async function PATCH(req: NextRequest, ctx: Params) {
   try {
+    await requireFinanceiroEdit();
     const id = await parseId(ctx);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: false });
@@ -322,6 +325,7 @@ export async function PATCH(req: NextRequest, ctx: Params) {
 
 export async function PUT(req: NextRequest, ctx: Params) {
   try {
+    await requireFinanceiroEdit();
     const id = await parseId(ctx);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: true });
@@ -385,6 +389,7 @@ export async function PUT(req: NextRequest, ctx: Params) {
 
 export async function DELETE(_: Request, ctx: Params) {
   try {
+    await requireFinanceiroDelete();
     const id = await parseId(ctx);
 
     const { data, error } = await supabaseAdmin

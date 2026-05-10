@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ensureAccess } from "./_authz";
+import { requireUsuariosAccess, requireUsuariosCreate } from "@/app/api/_authz/perms";
 
 function isOpen() {
   const v = (process.env.OPEN_PERMISSIONS ?? "").toString().trim().toLowerCase();
@@ -98,7 +99,8 @@ async function carregarUsuarios(opts?: { onlyActive?: boolean; q?: string }) {
 export async function GET(req: NextRequest) {
   try {
     const session = isOpen() ? null : await auth();
-    await ensureAccess(session);
+    if (isOpen()) await ensureAccess(session);
+    else await requireUsuariosAccess();
 
     const { searchParams } = new URL(req.url);
     const ativos = searchParams.get("ativos"); // "1" => só ativos
@@ -120,7 +122,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   try {
     const session = isOpen() ? null : await auth();
-    await ensureAccess(session);
+    if (isOpen()) await ensureAccess(session);
+    else await requireUsuariosCreate();
 
     const body = (await req.json().catch(() => ({}))) as any;
 

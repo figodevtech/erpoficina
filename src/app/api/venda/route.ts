@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { auth } from "@/lib/auth";
+import { requireVendasAccess, requireVendasCreate } from "@/app/api/_authz/perms";
 
 type Status =
   | "ORCAMENTO"
@@ -120,6 +121,7 @@ const VENDA_SELECT = `
  */
 export async function GET(req: Request) {
   try {
+    await requireVendasAccess();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const clienteId = searchParams.get("clienteId");
@@ -370,6 +372,7 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
+    await requireVendasCreate();
     const session = await auth()
 
     if (!session?.user.id) {

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,6 +40,7 @@ import { getCategoryIcon, getTypeColor } from "../utils";
 import { ExportTransactionsButton } from "./ExportTransactionsButton";
 import ConculidoAlert from "./concluidoAlert";
 import SearchFilter from "./searchFilter";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 type FluxoViewMode = "TODAS" | "A_RECEBER" | "A_PAGAR";
 
@@ -91,18 +93,23 @@ export default function FinancialTable({
   dateTo,
   dateFrom,
 }: FinancialTableProps) {
+  const { data: session } = useSession();
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | undefined>(undefined);
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isAlertOpen2, setIsAlertOpen2] = useState(false);
   const [loadingPago, setLoadingPago] = useState(false);
   const [, setIsDeleting] = useState(false);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.FINANCEIRO_CRIAR);
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.FINANCEIRO_EDITAR);
+  const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.FINANCEIRO_EXCLUIR);
 
   useEffect(() => {
     if (selectedTransactionId) setIsOpen(true);
   }, [selectedTransactionId]);
 
   const handleSetPago = async (id: number) => {
+    if (!canEdit) return;
     toast(
       <div className="flex flex-row flex-nowrap items-center gap-1 ">
         {" "}
@@ -129,6 +136,7 @@ export default function FinancialTable({
   };
 
   const handleDeleteTransaction = async (id: number) => {
+    if (!canDelete) return;
     setIsDeleting(true);
     toast(
       <div className="flex gap-2 items-center flex-nowrap">
@@ -232,6 +240,7 @@ export default function FinancialTable({
                 className="h-9 w-full hover:cursor-pointer sm:w-auto"
               />
 
+              {canCreate ? (
               <TransactionDialog
                 open={isOpen}
                 setOpen={setIsOpen}
@@ -247,6 +256,7 @@ export default function FinancialTable({
                   Transação
                 </Button>
               </TransactionDialog>
+              ) : null}
             </div>
           </div>
         </div>
@@ -380,7 +390,7 @@ export default function FinancialTable({
                           Visualizar
                         </DropdownMenuItem>
 
-                        {t.pendente && (
+                        {canEdit && t.pendente && (
                           <ConculidoAlert
                             isAlertOpen={isAlertOpen2}
                             setIsAlertOpen={setIsAlertOpen2}
@@ -394,6 +404,7 @@ export default function FinancialTable({
                           </ConculidoAlert>
                         )}
 
+                        {canDelete ? (
                         <DeleteAlert
                           handleDeleteTransaction={handleDeleteTransaction}
                           isAlertOpen={isAlertOpen}
@@ -405,6 +416,7 @@ export default function FinancialTable({
                             Excluir
                           </DropdownMenuItem>
                         </DeleteAlert>
+                        ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

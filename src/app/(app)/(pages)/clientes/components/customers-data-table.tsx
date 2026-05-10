@@ -31,11 +31,13 @@ import { getStatusBadge } from "../utils";
 import { CustomerDialog } from "./customerDialogRegister/customerDialog";
 import DeleteAlert from "./deleteAlert";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { ExportCustomersButton } from "./ExportCustomersButton";
 import { formatCpfCnpj } from "./customerDialogRegister/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 interface CustomerDataTableProps {
   handleGetCustomers: (pageNumber?: number, limit?: number, search?: string, status?: Status) => void;
@@ -70,13 +72,18 @@ export default function CustomersDataTable({
   isAlertOpen,
   setIsAlertOpen,
 }: CustomerDataTableProps) {
+  const { data: session } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_CRIAR);
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EDITAR);
+  const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EXCLUIR);
 
   const truncate = (value: string, max: number) =>
     value.length > max ? `${value.slice(0, max)}...` : value;
 
   const handleDeleteUser = async (id: number) => {
+    if (!canDelete) return;
     setIsDeleting(true);
     try {
       const response = await axios.delete(`/api/customers/${id}`);
@@ -122,6 +129,7 @@ export default function CustomersDataTable({
             <ExportCustomersButton search={search} status={status} />
 
             {/* Botão Novo Cliente (ok manter assim) */}
+            {canCreate ? (
             <CustomerDialog
               customerId={selectedCustomerId}
               isOpen={isOpen}
@@ -132,6 +140,7 @@ export default function CustomersDataTable({
                 <Plus className="h-4 w-4" /> Cliente
               </Button>
             </CustomerDialog>
+            ) : null}
           </div>
         </div>
       </CardHeader>
@@ -234,6 +243,7 @@ export default function CustomersDataTable({
 
                     <DropdownMenuContent className="space-y-1" align="center">
                       {/* ✅ Editar via estado (não envolve DialogTrigger dentro do menu) */}
+                      {canEdit ? (
                       <DropdownMenuItem
                         onSelect={(e) => {
                           e.preventDefault();
@@ -244,8 +254,10 @@ export default function CustomersDataTable({
                         <Edit className="h-4 w-4" />
                         <span>Editar</span>
                       </DropdownMenuItem>
+                      ) : null}
 
                       {/* ✅ Excluir via estado (não envolve AlertDialogTrigger dentro do menu) */}
+                      {canDelete ? (
                       <DropdownMenuItem
                         onSelect={(e) => {
                           e.preventDefault();
@@ -257,6 +269,7 @@ export default function CustomersDataTable({
                         <Trash2Icon className=" h-4 w-4" />
                         <span>Excluir</span>
                       </DropdownMenuItem>
+                      ) : null}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

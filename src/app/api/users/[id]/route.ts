@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ensureAccess } from "../_authz";
+import { requireUsuariosEdit } from "@/app/api/_authz/perms";
 
 function isOpen() {
   const v = (process.env.OPEN_PERMISSIONS ?? "").toString().trim().toLowerCase();
@@ -29,7 +30,8 @@ function parseDateOrNull(v: any) {
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session = isOpen() ? null : await auth();
-    await ensureAccess(session);
+    if (isOpen()) await ensureAccess(session);
+    else await requireUsuariosEdit();
 
     const { id: userId } = await context.params;
 
@@ -94,7 +96,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session = isOpen() ? null : await auth();
-    await ensureAccess(session);
+    if (isOpen()) await ensureAccess(session);
+    else await requireUsuariosEdit();
 
     const { id: userId } = await context.params;
 

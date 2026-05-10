@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireEstoqueDelete, requireEstoqueEdit } from "@/app/api/_authz/perms";
 
 type Params = { id: string; imageId: string };
 
@@ -26,6 +27,7 @@ async function parseParams(context: { params: Promise<Params> }) {
  */
 export async function PATCH(req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueEdit();
     const { produtoId, imgId } = await parseParams(context);
     const body = await req.json().catch(() => ({}));
 
@@ -64,6 +66,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<Params>
 /* ========================= DELETE (remover imagem) ========================= */
 export async function DELETE(_req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueDelete();
     const { produtoId, imgId } = await parseParams(context);
 
     const { data: img, error } = await supabaseAdmin

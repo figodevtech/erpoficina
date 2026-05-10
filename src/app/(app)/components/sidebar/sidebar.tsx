@@ -40,7 +40,7 @@ import {
 import { NavSettings } from "./components/nav-settings";
 
 import { useSession } from "next-auth/react";
-import { PERMS } from "@/app/api/_authz/permission-constants";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   user?: { nome: string; email: string };
@@ -210,8 +210,7 @@ const data = {
 
 function userHasPerm(user: any, perm?: string) {
   if (!perm) return true;
-  const perms = Array.isArray(user?.permissoes) ? user.permissoes : [];
-  return perms.map((p: any) => String(p).trim().toUpperCase()).includes(perm);
+  return permissionSetHas(user?.permissoes, perm);
 }
 
 function filterByPermission(items: any[], user: any) {

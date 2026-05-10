@@ -22,6 +22,25 @@ type Props = {
   onSalvar: (dados: { nome: string; descricao: string; permissoesIds: number[] }) => Promise<void>;
 };
 
+const ACTION_LABELS: Record<string, string> = {
+  visualizar: "Visualizar",
+  criar: "Criar",
+  editar: "Editar",
+  excluir: "Excluir",
+};
+
+function formatModulo(nome: string) {
+  const [modulo] = nome.split(":");
+  return modulo
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatAcao(nome: string) {
+  const acao = nome.split(":")[1] ?? nome;
+  return ACTION_LABELS[acao] ?? acao.replace(/_/g, " ");
+}
+
 export function DialogPerfil({
   aberto,
   setAberto,
@@ -35,6 +54,19 @@ export function DialogPerfil({
   const [nome, setNome] = React.useState("");
   const [descricao, setDescricao] = React.useState("");
   const [selecionadas, setSelecionadas] = React.useState<Set<number>>(new Set());
+  const permissoesPorModulo = React.useMemo(() => {
+    const grupos = new Map<string, Permissao[]>();
+
+    for (const perm of permissoesDisponiveis) {
+      const modulo = perm.nome.includes(":") ? formatModulo(perm.nome) : "Permissoes antigas";
+      grupos.set(modulo, [...(grupos.get(modulo) ?? []), perm]);
+    }
+
+    return Array.from(grupos.entries()).map(([modulo, permissoes]) => ({
+      modulo,
+      permissoes: permissoes.sort((a, b) => a.nome.localeCompare(b.nome)),
+    }));
+  }, [permissoesDisponiveis]);
 
   React.useEffect(() => {
     if (!aberto) return;
@@ -117,27 +149,34 @@ export function DialogPerfil({
                         Nenhuma permissão cadastrada.
                       </p>
                     ) : (
-                      permissoesDisponiveis.map((perm) => {
-                        const marcado = selecionadas.has(perm.id);
-                        return (
-                          <label
-                            key={perm.id}
-                            className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/50 cursor-pointer"
-                          >
-                            <Checkbox
-                              checked={marcado}
-                              onCheckedChange={() => alternarPermissao(perm.id)}
-                              className="mt-0.5"
-                            />
-                            <div className="leading-tight">
-                              <div className="text-sm font-medium">{perm.nome}</div>
-                              {perm.descricao ? (
-                                <div className="text-xs text-muted-foreground">{perm.descricao}</div>
-                              ) : null}
-                            </div>
-                          </label>
-                        );
-                      })
+                      permissoesPorModulo.map((grupo) => (
+                        <div key={grupo.modulo} className="rounded-md border bg-background">
+                          <div className="border-b bg-muted/40 px-3 py-2 text-sm font-medium">{grupo.modulo}</div>
+                          <div className="grid gap-1 p-2 sm:grid-cols-2">
+                            {grupo.permissoes.map((perm) => {
+                              const marcado = selecionadas.has(perm.id);
+                              return (
+                                <label
+                                  key={perm.id}
+                                  className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/50 cursor-pointer"
+                                >
+                                  <Checkbox
+                                    checked={marcado}
+                                    onCheckedChange={() => alternarPermissao(perm.id)}
+                                    className="mt-0.5"
+                                  />
+                                  <div className="leading-tight">
+                                    <div className="text-sm font-medium">{perm.nome.includes(":") ? formatAcao(perm.nome) : perm.nome}</div>
+                                    {perm.descricao ? (
+                                      <div className="text-xs text-muted-foreground">{perm.descricao}</div>
+                                    ) : null}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
                 </ScrollArea>

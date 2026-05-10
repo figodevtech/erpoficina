@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireClientesAccess, requireClientesDelete, requireClientesEdit } from "@/app/api/_authz/perms";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -102,6 +103,7 @@ async function parseId(ctx: Params) {
 
 export async function GET(_: Request, ctx: Params) {
   try {
+    await requireClientesAccess();
     const id = await parseId(ctx);
 
     const { data, error } = await supabaseAdmin
@@ -138,6 +140,7 @@ export async function GET(_: Request, ctx: Params) {
 
 export async function PATCH(req: Request, ctx: Params) {
   try {
+    await requireClientesEdit();
     const id = await parseId(ctx);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: false });
@@ -186,6 +189,7 @@ export async function PUT(req: Request, ctx: Params) {
   console.log(req, ctx)
   console.log("teste")
   try {
+    await requireClientesEdit();
     const id = await parseId(ctx);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: true });
@@ -234,6 +238,7 @@ export async function PUT(req: Request, ctx: Params) {
 
 export async function DELETE(_: Request, ctx: Params) {
   try {
+    await requireClientesDelete();
     const { id: idParam } = await ctx.params;
     const id = Number((idParam ?? "").trim());
     if (!id) {

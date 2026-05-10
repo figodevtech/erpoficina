@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import type { Usuario } from "../lib/api";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,8 +55,11 @@ export function TabelaUsuarios({
   onEnviarConvite,
   onDefinirSenha,
 }: Props) {
+  const { data: session } = useSession();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.USUARIOS_CRIAR);
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.USUARIOS_EDITAR);
 
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -119,7 +124,7 @@ export function TabelaUsuarios({
           </div>
 
           <div className="flex items-center gap-2">
-            {onNew && (
+            {onNew && canCreate && (
               <Button onClick={onNew} className="hover:cursor-pointer" size="sm">
                 <Plus className="h-4 w-4" />
                 Usuário
@@ -184,15 +189,17 @@ export function TabelaUsuarios({
                         <DropdownMenuItem onClick={() => onView(u)}>
                           <Eye className="h-4 w-4 mr-2" /> Visualizar
                         </DropdownMenuItem>
+                        {canEdit ? (
                         <DropdownMenuItem onClick={() => onEdit(u)}>
                           <Edit3 className="h-4 w-4 mr-2" /> Editar
                         </DropdownMenuItem>
-                        {onEnviarConvite && (
+                        ) : null}
+                        {onEnviarConvite && canEdit && (
                           <DropdownMenuItem onClick={() => onEnviarConvite(u)}>
                             <Mail className="h-4 w-4 mr-2" /> Refinir senha
                           </DropdownMenuItem>
                         )}
-                        {onDefinirSenha && (
+                        {onDefinirSenha && canEdit && (
                           <DropdownMenuItem onClick={() => onDefinirSenha(u)}>
                             <Key className="h-4 w-4 mr-2" /> Definir senha
                           </DropdownMenuItem>

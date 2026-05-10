@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { expandPermissions } from "@/app/api/_authz/permission-constants";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24; // 24h
 
@@ -20,13 +21,7 @@ async function carregarPermissoesPorPerfil(perfilId: number | null): Promise<str
     return [];
   }
 
-  return (data ?? [])
-    .map((r: any) =>
-      String(r?.permissao?.nome ?? "")
-        .trim()
-        .toUpperCase(),
-    )
-    .filter(Boolean);
+  return expandPermissions((data ?? []).map((r: any) => r?.permissao?.nome));
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

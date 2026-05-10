@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireEstoqueAccess, requireEstoqueEdit } from "@/app/api/_authz/perms";
 
 type Params = { id: string };
 
@@ -19,6 +20,7 @@ async function parseId(context: { params: Promise<Params> }) {
 
 export async function GET(_req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueAccess();
     const produtoId = await parseId(context);
 
     const { data, error } = await supabaseAdmin
@@ -43,6 +45,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<Params> 
 
 export async function POST(req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueEdit();
     const produtoId = await parseId(context);
 
     const form = await req.formData();

@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { StatusOS } from "@/app/(app)/(pages)/ordens/types";
+import { requireOSAccess } from "@/app/api/_authz/perms";
 
 type Prioridade = "ALTA" | "NORMAL" | "BAIXA" | null;
 type AlvoTipo = "VEICULO" | "PECA" | null;
@@ -18,6 +19,7 @@ function parseStatuses(param?: string | null): StatusOS[] {
 
 export async function GET(req: Request) {
   try {
+    await requireOSAccess();
     const { searchParams } = new URL(req.url);
 
 

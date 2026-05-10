@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import type { Perfil } from "../types";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,8 +42,11 @@ type Props = {
 };
 
 export function TabelaPerfis({ items, loading, error, onReload, onNew, onEdit, semCard }: Props) {
+  const { data: session } = useSession();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.PERMISSOES_CRIAR);
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.PERMISSOES_EDITAR);
 
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -106,19 +111,21 @@ export function TabelaPerfis({ items, loading, error, onReload, onNew, onEdit, s
                 </TableCell>
 
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
+                  {canEdit ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
 
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => onEdit(p)}>
-                        <Edit3 className="h-4 w-4 mr-2" /> Editar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => onEdit(p)}>
+                          <Edit3 className="h-4 w-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
                 </TableCell>
               </TableRow>
             ))
@@ -245,7 +252,7 @@ export function TabelaPerfis({ items, loading, error, onReload, onNew, onEdit, s
         </div>
 
         <div className="flex items-center gap-2">
-          {onNew && (
+          {onNew && canCreate && (
             <Button onClick={onNew} className="hover:cursor-pointer" size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Novo perfil

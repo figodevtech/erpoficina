@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAgendamentosAccess } from "@/app/api/_authz/perms";
+import { requireAgendamentosAccess, requireAgendamentosCreate } from "@/app/api/_authz/perms";
 import type { StatusAgendamento } from "@/types/agendamento";
 
 const STATUS = new Set<StatusAgendamento>([
@@ -172,7 +172,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requireAgendamentosAccess();
+    await requireAgendamentosCreate();
     const session = await auth();
     const payload = await buildPayload(await req.json(), (session?.user as any)?.id ?? null);
 

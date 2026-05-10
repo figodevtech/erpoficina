@@ -41,11 +41,7 @@ import { Pagination } from "../(pages)/estoque/types";
 import { set } from "nprogress";
 import ServicoDialog from "../(pages)/configuracoes/tipos/components/servicoDialog/servico-dialog";
 import formatarEmReal from "@/utils/formatarEmReal";
-
-function hasPermission(user: any, permission: string) {
-  const permissoes = Array.isArray(user?.permissoes) ? user.permissoes : [];
-  return permissoes.map((p: any) => String(p).trim().toUpperCase()).includes(permission);
-}
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 interface ServiceSelectProps {
   children?: ReactNode;
@@ -74,7 +70,7 @@ export default function ServiceSelect({
   open,
 }: ServiceSelectProps) {
   const { data: session } = useSession();
-  const canCreateService = hasPermission(session?.user, "CONFIG_ACESSO");
+  const canCreateService = permissionSetHas((session?.user as any)?.permissoes, PERMS.CONFIG_EDITAR);
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,

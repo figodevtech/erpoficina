@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireVeiculosAccess, requireVeiculosCreate } from "@/app/api/_authz/perms";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,6 +39,7 @@ function tipoVeiculoValido(valor: string | undefined) {
 
 export async function GET(request: Request) {
   try {
+    await requireVeiculosAccess();
     const { searchParams } = new URL(request.url);
 
     // filtros
@@ -112,6 +114,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requireVeiculosCreate();
     const body = await request.json().catch(() => null);
     if (!body) return respostaJSON({ error: "JSON inválido no body." }, 400);
 

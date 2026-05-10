@@ -1,11 +1,7 @@
 // types/enums.ts
 
 /** Enums conhecidos (fixos) */
-export type EnumPermissoes =
-  | 'USUARIOS_GERENCIAR'
-  | 'ORDENSERVICO_GERENCIAR'
-  | 'ESTOQUE_GERENCIAR'
-  | 'FINANCEIRO_GERENCIAR';
+export type EnumPermissoes = string;
 
 /** Enums USER-DEFINED (placeholder = string). Ajuste depois conforme o seu banco. */
 export type EnumTipoPessoa = string;          // ex.: 'FISICA' | 'JURIDICA'

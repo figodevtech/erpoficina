@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { requireEstoqueAccess, requireEstoqueCreate } from "@/app/api/_authz/perms";
 
 /** Status de estoque (para filtros do GET) */
 type Status = 'OK' | 'CRITICO' | 'BAIXO' | 'SEM_ESTOQUE';
@@ -97,6 +98,7 @@ function sanitizeProdutoPayload(body: any, { strict }: { strict: boolean }) {
 
 export async function GET(req: Request) {
   try {
+    await requireEstoqueAccess();
     const { searchParams } = new URL(req.url);
 
     const page = Math.max(Number(searchParams.get('page') ?? 1), 1);
@@ -171,6 +173,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    await requireEstoqueCreate();
     const body = (await req.json()) as any;
     console.log(body);
 

@@ -2,7 +2,7 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export { PERMS, type Permission } from "./permission-constants";
-import { PERMS, type Permission } from "./permission-constants";
+import { expandPermissions, PERMS, permissionSetHas, type Permission } from "./permission-constants";
 
 /**
  * Mapa centralizado de permissões (mesmo nome que está no banco).
@@ -42,8 +42,7 @@ async function getUserPerms(): Promise<Set<string>> {
 
   if (error) throw error;
 
-  // normaliza para UPPERCASE e remove nulos/duplicados
-  const list = (data ?? []).map((r: any) => (r?.permissao?.nome ?? "").toString().trim().toUpperCase()).filter(Boolean);
+  const list = expandPermissions((data ?? []).map((r: any) => r?.permissao?.nome));
 
   return new Set(list);
 }
@@ -52,7 +51,7 @@ async function getUserPerms(): Promise<Set<string>> {
 
 export async function hasPerm(perm: Permission): Promise<boolean> {
   const perms = await getUserPerms();
-  return perms.has(String(perm).toUpperCase());
+  return permissionSetHas(Array.from(perms), perm);
 }
 
 export async function requirePerm(perm: Permission) {
@@ -66,7 +65,7 @@ export async function requirePerm(perm: Permission) {
 
 export async function hasAny(permsToCheck: Permission[]): Promise<boolean> {
   const perms = await getUserPerms();
-  return permsToCheck.some((p) => perms.has(String(p).toUpperCase()));
+  return permsToCheck.some((p) => permissionSetHas(Array.from(perms), p));
 }
 
 export async function requireAny(permsToCheck: Permission[]) {
@@ -80,7 +79,7 @@ export async function requireAny(permsToCheck: Permission[]) {
 
 export async function hasAll(permsToCheck: Permission[]): Promise<boolean> {
   const perms = await getUserPerms();
-  return permsToCheck.every((p) => perms.has(String(p).toUpperCase()));
+  return permsToCheck.every((p) => permissionSetHas(Array.from(perms), p));
 }
 
 export async function requireAll(permsToCheck: Permission[]) {
@@ -116,6 +115,15 @@ export async function hasClientesAccess() {
 export async function requireClientesAccess() {
   return requirePerm(PERMS.CLIENTES);
 }
+export async function requireClientesCreate() {
+  return requirePerm(PERMS.CLIENTES_CRIAR);
+}
+export async function requireClientesEdit() {
+  return requirePerm(PERMS.CLIENTES_EDITAR);
+}
+export async function requireClientesDelete() {
+  return requirePerm(PERMS.CLIENTES_EXCLUIR);
+}
 
 // Usuários
 export async function hasUsuariosAccess() {
@@ -123,6 +131,15 @@ export async function hasUsuariosAccess() {
 }
 export async function requireUsuariosAccess() {
   return requirePerm(PERMS.USUARIOS);
+}
+export async function requireUsuariosCreate() {
+  return requirePerm(PERMS.USUARIOS_CRIAR);
+}
+export async function requireUsuariosEdit() {
+  return requirePerm(PERMS.USUARIOS_EDITAR);
+}
+export async function requireUsuariosDelete() {
+  return requirePerm(PERMS.USUARIOS_EXCLUIR);
 }
 
 // Config
@@ -132,6 +149,9 @@ export async function hasConfigAccess() {
 export async function requireConfigAccess() {
   return requirePerm(PERMS.CONFIG);
 }
+export async function requireConfigEdit() {
+  return requirePerm(PERMS.CONFIG_EDITAR);
+}
 
 // Estoque
 export async function hasEstoqueAccess() {
@@ -139,6 +159,15 @@ export async function hasEstoqueAccess() {
 }
 export async function requireEstoqueAccess() {
   return requirePerm(PERMS.ESTOQUE);
+}
+export async function requireEstoqueCreate() {
+  return requirePerm(PERMS.ESTOQUE_CRIAR);
+}
+export async function requireEstoqueEdit() {
+  return requirePerm(PERMS.ESTOQUE_EDITAR);
+}
+export async function requireEstoqueDelete() {
+  return requirePerm(PERMS.ESTOQUE_EXCLUIR);
 }
 
 // Acompanhamento
@@ -163,12 +192,30 @@ export async function hasAgendamentosAccess() {
 export async function requireAgendamentosAccess() {
   return requirePerm(PERMS.AGENDAMENTOS);
 }
+export async function requireAgendamentosCreate() {
+  return requirePerm(PERMS.AGENDAMENTOS_CRIAR);
+}
+export async function requireAgendamentosEdit() {
+  return requirePerm(PERMS.AGENDAMENTOS_EDITAR);
+}
+export async function requireAgendamentosDelete() {
+  return requirePerm(PERMS.AGENDAMENTOS_EXCLUIR);
+}
 
 export async function hasFinanceiroAccess() {
   return hasPerm(PERMS.FINANCEIRO);
 }
 export async function requireFinanceirosAccess() {
   return requirePerm(PERMS.FINANCEIRO);
+}
+export async function requireFinanceiroCreate() {
+  return requirePerm(PERMS.FINANCEIRO_CRIAR);
+}
+export async function requireFinanceiroEdit() {
+  return requirePerm(PERMS.FINANCEIRO_EDITAR);
+}
+export async function requireFinanceiroDelete() {
+  return requirePerm(PERMS.FINANCEIRO_EXCLUIR);
 }
 
 export async function hasVendasAccess() {
@@ -177,6 +224,15 @@ export async function hasVendasAccess() {
 export async function requireVendasAccess() {
   return requirePerm(PERMS.VENDAS);
 }
+export async function requireVendasCreate() {
+  return requirePerm(PERMS.VENDAS_CRIAR);
+}
+export async function requireVendasEdit() {
+  return requirePerm(PERMS.VENDAS_EDITAR);
+}
+export async function requireVendasDelete() {
+  return requirePerm(PERMS.VENDAS_EXCLUIR);
+}
 
 export async function hasVeiculosAccess() {
   return hasPerm(PERMS.VEICULOS);
@@ -184,11 +240,29 @@ export async function hasVeiculosAccess() {
 export async function requireVeiculosAccess() {
   return requirePerm(PERMS.VEICULOS);
 }
+export async function requireVeiculosCreate() {
+  return requirePerm(PERMS.VEICULOS_CRIAR);
+}
+export async function requireVeiculosEdit() {
+  return requirePerm(PERMS.VEICULOS_EDITAR);
+}
+export async function requireVeiculosDelete() {
+  return requirePerm(PERMS.VEICULOS_EXCLUIR);
+}
 
 export async function hasExecucaoOSAccess() {
   return hasPerm(PERMS.EXECUCAO_OS);
 }
 export async function requireExecucaoOSAccess() {
   return requirePerm(PERMS.EXECUCAO_OS);
+}
+export async function requireOSCreate() {
+  return requirePerm(PERMS.ORDENS_CRIAR);
+}
+export async function requireOSEdit() {
+  return requirePerm(PERMS.ORDENS_EDITAR);
+}
+export async function requireOSDelete() {
+  return requirePerm(PERMS.ORDENS_EXCLUIR);
 }
 

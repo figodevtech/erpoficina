@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireVeiculosAccess, requireVeiculosDelete, requireVeiculosEdit } from "@/app/api/_authz/perms";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,6 +40,7 @@ type Ctx = { params: Promise<Params> };
 
 export async function GET(_request: Request, ctx: Ctx) {
   try {
+    await requireVeiculosAccess();
     const { id: rawId } = await ctx.params;
     const id = idValido((rawId || "").trim());
     if (!id) return respostaJSON({ error: "Parâmetro 'id' inválido." }, 400);
@@ -96,6 +98,7 @@ export async function GET(_request: Request, ctx: Ctx) {
 
 export async function PUT(request: Request, ctx: Ctx) {
   try {
+    await requireVeiculosEdit();
     const { id: rawId } = await ctx.params;
     const id = idValido((rawId || "").trim());
     if (!id) return respostaJSON({ error: "Parâmetro 'id' inválido." }, 400);
@@ -279,6 +282,7 @@ export async function PUT(request: Request, ctx: Ctx) {
 
 export async function DELETE(_request: Request, ctx: Ctx) {
   try {
+    await requireVeiculosDelete();
     const { id: rawId } = await ctx.params;
     const id = idValido((rawId || "").trim());
     if (!id) return respostaJSON({ error: "Parâmetro 'id' inválido." }, 400);

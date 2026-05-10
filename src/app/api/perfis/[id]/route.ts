@@ -3,17 +3,12 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
-function obterPermissoesDaSessao(session: any): Set<string> {
-  const arr = ((session?.user as any)?.permissoes ?? (session?.user as any)?.perms ?? []) as any[];
-  return new Set(arr.map((p) => String(p).trim().toUpperCase()).filter(Boolean));
-}
-
-function exigirAcesso(session: any) {
+function exigirAcesso(session: any, permissao: string = PERMS.PERMISSOES) {
   if (!session?.user) return { ok: false, status: 401 as const, msg: "Não autenticado" };
 
-  const perms = obterPermissoesDaSessao(session);
-  const ok = perms.has("CONFIG_ACESSO") || perms.has("USUARIOS_ACESSO");
+  const ok = permissionSetHas((session.user as any)?.permissoes, permissao);
   if (!ok) return { ok: false, status: 403 as const, msg: "Sem permissão" };
 
   return { ok: true as const };
@@ -89,7 +84,7 @@ export async function GET(req: NextRequest, ctx: any) {
 
 export async function PUT(req: NextRequest, ctx: any) {
   const session = await auth();
-  const gate = exigirAcesso(session);
+  const gate = exigirAcesso(session, PERMS.PERMISSOES_EDITAR);
   if (!gate.ok) return NextResponse.json({ error: gate.msg }, { status: gate.status });
 
   const id = await getParamId(ctx);

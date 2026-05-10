@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireOSCreate } from "@/app/api/_authz/perms";
 
 type DBChecklistStatus = "OK" | "ALERTA" | "FALHA";
 type DBAlvo = "VEICULO" | "PECA";
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
   const createdOsIds: number[] = [];
 
   try {
+    await requireOSCreate();
     const session = await auth();
     const usuariocriadorid = (session?.user as any)?.id as string | undefined;
     if (!usuariocriadorid) {

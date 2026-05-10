@@ -44,11 +44,7 @@ import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { DialogProduto } from "../(pages)/estoque/components/dialog-produto/dialog-produto";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
-function hasPermission(user: any, permission: string) {
-  const permissoes = Array.isArray(user?.permissoes) ? user.permissoes : [];
-  return permissoes.map((p: any) => String(p).trim().toUpperCase()).includes(permission);
-}
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 interface ProductSelectProps {
   children?: ReactNode;
@@ -63,7 +59,7 @@ export default function ProductSelect({
   open,
 }: ProductSelectProps) {
   const { data: session } = useSession();
-  const canCreateProduct = hasPermission(session?.user, "ESTOQUE_ACESSO");
+  const canCreateProduct = permissionSetHas((session?.user as any)?.permissoes, PERMS.ESTOQUE_CRIAR);
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,

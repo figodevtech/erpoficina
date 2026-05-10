@@ -59,6 +59,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Pagination, VendaCanal, VendaComItens, vendaStatus } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
@@ -74,6 +75,7 @@ import {
   PaymentListFilters,
   PaymentsFilterSheet,
 } from "../../../(financeiro)/components/payments-filter-sheet";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 interface VendasDataTableProps {
   vendas: VendaComItens[];
@@ -277,6 +279,7 @@ export default function VendasDataTable({
   fetchStatusCounts,
   status,
 }: VendasDataTableProps) {
+  const { data: session } = useSession();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [openEmissao, setOpenEmissao] = useState(false);
@@ -291,6 +294,8 @@ export default function VendasDataTable({
     useState<ApprovalPaymentMethod>("NAO_INFORMAR");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const config = useConfig();
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.VENDAS_EDITAR);
+  const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.VENDAS_EXCLUIR);
   const hasActiveFilters = Boolean(
     filters.cliente.trim() ||
       filters.notaNumero.trim() ||
@@ -299,6 +304,7 @@ export default function VendasDataTable({
   );
 
   const handleDeleteVenda = async (id: number) => {
+    if (!canDelete) return;
     toast(
       <div className="flex flex-row items-center flex-nowrap gap-1">
         <Loader2 className="w-3 h-3 animate-spin" />
@@ -325,6 +331,7 @@ export default function VendasDataTable({
   };
 
   const handleApproveBudget = async () => {
+    if (!canEdit) return;
     if (!approveVendaId) return;
 
     toast(
@@ -505,6 +512,7 @@ export default function VendasDataTable({
                               Emissão de NF-e
                             </DropdownMenuItem>
                           )}
+                        {canEdit ? (
                         <DropdownMenuItem
                           onClick={() => {
                             setSelectedVendaId(p.id);
@@ -514,8 +522,9 @@ export default function VendasDataTable({
                           <Pencil className="h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
+                        ) : null}
 
-                        {p.status === "ORCAMENTO" && (
+                        {canEdit && p.status === "ORCAMENTO" && (
                           <DropdownMenuItem
                             onClick={() => {
                               setApproveVendaId(p.id);
@@ -540,7 +549,7 @@ export default function VendasDataTable({
                           Imprimir venda
                         </DropdownMenuItem>
 
-                        {String((p as any).canal ?? "").toUpperCase() ===
+                        {canEdit && String((p as any).canal ?? "").toUpperCase() ===
                           "ONLINE" && (
                             <DropdownMenuItem
                               onClick={() => {
@@ -553,6 +562,7 @@ export default function VendasDataTable({
                             </DropdownMenuItem>
                           )}
 
+                        {canDelete ? (
                         <DeleteAlert
                           onDelete={() => handleDeleteVenda(p.id)}
                           isAlertOpen={isAlertOpen}
@@ -567,6 +577,7 @@ export default function VendasDataTable({
                             Excluir
                           </DropdownMenuItem>
                         </DeleteAlert>
+                        ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

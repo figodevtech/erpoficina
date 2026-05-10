@@ -6,6 +6,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { auth } from "@/lib/auth";
+import { requireVendasAccess, requireVendasDelete, requireVendasEdit } from "@/app/api/_authz/perms";
 
 type Status =
   | "ORCAMENTO"
@@ -197,6 +198,7 @@ async function resolveUsuarioInternoId(session: any): Promise<string | null> {
 
 export async function GET(req: NextRequest, ctx: ParamsCtx) {
   try {
+    await requireVendasAccess();
     req;
 
     const { id: idStr } = await ctx.params;
@@ -237,6 +239,7 @@ export async function GET(req: NextRequest, ctx: ParamsCtx) {
 
 export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
   try {
+    await requireVendasEdit();
     const { id: idStr } = await ctx.params;
     const parsed = parseId(idStr);
 
@@ -467,6 +470,7 @@ export async function PATCH(req: NextRequest, ctx: ParamsCtx) {
  */
 export async function DELETE(req: NextRequest, ctx: ParamsCtx) {
   try {
+    await requireVendasDelete();
     req;
 
     const { id: idStr } = await ctx.params;

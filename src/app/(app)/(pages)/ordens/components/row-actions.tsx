@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSession } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,7 @@ import {
   Gift,
 } from "lucide-react";
 import { useConfig } from "../../config-context";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 /** Tipo base mínimo da linha */
 export type RowBase = {
@@ -114,47 +116,50 @@ export function RowActions<TRow extends RowBase>({
   setEmissaoId: (id: number) => void;
   setEmissaoOpen: (open: boolean) => void;
 }) {
+  const { data: session } = useSession();
   const config = useConfig();
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.ORDENS_EDITAR);
+  const canFinanceiroEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.FINANCEIRO_EDITAR);
   const st = String(row.status ?? "").toUpperCase();
 
   // ✅ finais: sem reset/cancelar
   const isFinalState = st === "CANCELADO" || st === "FINALIZADA" || st === "CONCLUIDO" || st === "SEM_COBRANCA";
 
   // Checklist editável até EM_ANDAMENTO. A partir de PAGAMENTO não aparece.
-  const showChecklist = !isFinalState && st !== "PAGAMENTO";
+  const showChecklist = canEdit && !isFinalState && st !== "PAGAMENTO";
 
   // ✅ reset: exceto aguardando_orcamento e orcamento, e exceto finais
-  const showResetOS = !isFinalState && st !== "AGUARDANDO_ORCAMENTO" && st !== "ORCAMENTO" && st !== "AGUARDANDO_CHECKLIST";
+  const showResetOS = canEdit && !isFinalState && st !== "AGUARDANDO_ORCAMENTO" && st !== "ORCAMENTO" && st !== "AGUARDANDO_CHECKLIST";
 
   // ✅ cancelar: exceto finais
-  const showCancelarOS = !isFinalState;
+  const showCancelarOS = canEdit && !isFinalState;
 
   // Orçamento
-  const showBudget = (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO " || st === "EM_ANDAMENTO") && policy.canEditBudget;
+  const showBudget = canEdit && (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO " || st === "EM_ANDAMENTO") && policy.canEditBudget;
 
   // Editar OS
-  const showEditOS = st === "ORCAMENTO" && policy.showEditOS;
+  const showEditOS = canEdit && st === "ORCAMENTO" && policy.showEditOS;
 
   // Link aprovação
-  const showLinkAprov = policy.showLinkAprov && st === "APROVACAO_ORCAMENTO";
+  const showLinkAprov = canEdit && policy.showLinkAprov && st === "APROVACAO_ORCAMENTO";
 
   // Aprovar/reprovar
-  const showApproveBudget = policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
-  const showRejectBudget = policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
+  const showApproveBudget = canEdit && policy.showApproveBudget && st === "APROVACAO_ORCAMENTO";
+  const showRejectBudget = canEdit && policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
 
   // Cancelar orçamento
-  const showCancelBudget = policy.showCancelBudget && (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+  const showCancelBudget = canEdit && policy.showCancelBudget && (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   // Enviar p/ aprovação
-  const showSendToApproval = policy.showSendToApproval && (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
+  const showSendToApproval = canEdit && policy.showSendToApproval && (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 
   const showEmissaoDeNota = config?.emissao_nf_ordens_nao_pagas ? st === "CONCLUIDO" || st === "PAGAMENTO" : st === "CONCLUIDO";
 
   // Produção / Pagamento
-  const showStart = policy.showStart && st === "ORCAMENTO_APROVADO";
-  const showSendToPayment = policy.showSendToPayment && st === "EM_ANDAMENTO";
-  const showReceivePayment = policy.showReceivePayment && st === "PAGAMENTO";
-  const showFinishNoCharge = st === "EM_ANDAMENTO";
+  const showStart = canEdit && policy.showStart && st === "ORCAMENTO_APROVADO";
+  const showSendToPayment = canEdit && policy.showSendToPayment && st === "EM_ANDAMENTO";
+  const showReceivePayment = canFinanceiroEdit && policy.showReceivePayment && st === "PAGAMENTO";
+  const showFinishNoCharge = canEdit && st === "EM_ANDAMENTO";
 
   return (
     <DropdownMenu>

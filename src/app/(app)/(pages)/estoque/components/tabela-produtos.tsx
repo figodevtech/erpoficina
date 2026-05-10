@@ -40,8 +40,10 @@ import AlertaExcluir from "./alerta-excluir";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { BotaoExportarProdutos } from "./botao-exportar-produtos";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 import EntradaDialog from "./dialog-entrada/dialog-entrada-unica";
 import EntradaFiscalDialog from "./dialog-entrada/dialog-entrada-fiscal";
@@ -109,7 +111,11 @@ export default function TabelaProdutos({
   isOpen,
   setIsOpen,
 }: TabelaProdutosProps) {
+  const { data: session } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
+  const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.ESTOQUE_CRIAR);
+  const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.ESTOQUE_EDITAR);
+  const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.ESTOQUE_EXCLUIR);
 
   // ✅ Dialogs controlados por estado
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -126,12 +132,14 @@ export default function TabelaProdutos({
   const [entradaGeralOpen,setEntradaGeralOpen] = useState(false)
 
   const abrirNovoProduto = () => {
+    if (!canCreate) return;
     setSelectedProductId?.(undefined);
     setIsOpen(true);
   };
 
   // ✅ aceita id opcional e faz guard (remove erro TS)
   const abrirEdicaoProduto = (id?: number) => {
+    if (!canEdit) return;
     if (!id) {
       toast.error("Produto sem ID válido para editar.");
       return;
@@ -142,6 +150,7 @@ export default function TabelaProdutos({
 
   // ✅ guard do id
   const abrirEntrada = (p: Produto) => {
+    if (!canEdit) return;
     if (!p.id) {
       toast.error("Produto sem ID válido para entrada.");
       return;
@@ -156,6 +165,7 @@ export default function TabelaProdutos({
 
   // ✅ aceita id opcional e faz guard
   const abrirExcluir = (id?: number) => {
+    if (!canDelete) return;
     if (!id) {
       toast.error("Produto sem ID válido para excluir.");
       return;
@@ -231,19 +241,25 @@ export default function TabelaProdutos({
 
               {/* ✅ DropdownMenuItem no lugar de Button */}
               <DropdownMenuContent align="center">
+                {canCreate ? (
                 <DropdownMenuItem onClick={abrirNovoProduto} className="cursor-pointer">
                   <Plus className="mr-2 h-4 w-4" />
                   Novo Produto
                 </DropdownMenuItem>
+                ) : null}
 
+                {canEdit ? (
                 <DropdownMenuItem onClick={() => setEntradaGeralOpen(true)} className="cursor-pointer">
                   <PackagePlus className="mr-2 h-4 w-4" />
                   Entrada
                 </DropdownMenuItem>
+                ) : null}
+                {canEdit ? (
                 <DropdownMenuItem onClick={() => setEntradaFiscalOpen(true)} className="cursor-pointer">
                   <FileText className="mr-2 h-4 w-4" />
                   Entrada Fiscal (NF-e)
                 </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -312,7 +328,7 @@ export default function TabelaProdutos({
               return (
                 <TableRow
                   key={id ?? `row-${idx}`}
-                  onDoubleClick={() => abrirEdicaoProduto(id)}
+                  onDoubleClick={() => canEdit && abrirEdicaoProduto(id)}
                   className="hover:cursor-pointer"
                 >
                   <TableCell>{id ?? "-"}</TableCell>
@@ -389,16 +405,21 @@ export default function TabelaProdutos({
 
                       {/* ✅ DropdownMenuItem no lugar de Button */}
                       <DropdownMenuContent align="center">
+                        {canEdit ? (
                         <DropdownMenuItem disabled={!canAct} onClick={() => abrirEdicaoProduto(id)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
+                        ) : null}
 
+                        {canEdit ? (
                         <DropdownMenuItem disabled={!canAct} onClick={() => abrirEntrada(p)}>
                           <PackagePlus className="mr-2 h-4 w-4" />
                           Entrada
                         </DropdownMenuItem>
+                        ) : null}
 
+                        {canDelete ? (
                         <DropdownMenuItem
                           disabled={!canAct || isDeleting}
                           onClick={() => abrirExcluir(id)}
@@ -407,6 +428,7 @@ export default function TabelaProdutos({
                           <Trash2Icon className="mr-2 h-4 w-4" />
                           Excluir
                         </DropdownMenuItem>
+                        ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

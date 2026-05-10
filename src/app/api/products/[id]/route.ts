@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse, NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireEstoqueAccess, requireEstoqueDelete, requireEstoqueEdit } from "@/app/api/_authz/perms";
 
 type Params = { id: string };
 
@@ -165,6 +166,7 @@ async function parseId(context: { params: Promise<Params> }) {
 
 export async function GET(_req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueAccess();
     const id = await parseId(context);
 
     const { data, error } = await supabaseAdmin
@@ -192,6 +194,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<Params> 
 
 export async function PATCH(req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueEdit();
     const id = await parseId(context);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: false });
@@ -233,6 +236,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<Params>
 
 export async function PUT(req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueEdit();
     const id = await parseId(context);
     const body = await req.json().catch(() => ({}));
     const payload = sanitizePayload(body, { strict: true });
@@ -270,6 +274,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<Params> }
 
 export async function DELETE(_req: NextRequest, context: { params: Promise<Params> }) {
   try {
+    await requireEstoqueDelete();
     const id = await parseId(context);
 
     const { data, error } = await supabaseAdmin
