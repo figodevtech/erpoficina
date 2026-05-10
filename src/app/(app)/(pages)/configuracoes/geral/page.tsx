@@ -140,8 +140,8 @@ export default function ConfigGeralPage() {
     limitePlacas > 0 ? Math.min(100, Math.round((usadasPlacas / limitePlacas) * 100)) : 100;
 
   return (
-    <div className="container mx-auto py-8 max-w-5xl space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6 animate-in fade-in duration-500 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4 rounded-lg border bg-card px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Settings className="h-8 w-8 text-primary" />
@@ -165,10 +165,8 @@ export default function ConfigGeralPage() {
         </Button>
       </div>
 
-      <Separator />
-
-      <div className="grid gap-6">
-        <Card className="overflow-hidden border-primary/10 shadow-sm p-0">
+      <div className="grid items-start gap-6 lg:grid-cols-12">
+        <Card className="overflow-hidden border-primary/10 p-0 shadow-sm lg:col-span-5">
           <CardHeader className="bg-primary/5 py-4">
             <div className="flex items-center gap-2">
               <Search className="h-5 w-5 text-primary" />
@@ -177,7 +175,7 @@ export default function ConfigGeralPage() {
             <CardDescription>Uso mensal da API de placas.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 py-6">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               <div className="rounded-lg border bg-muted/20 p-4">
                 <span className="text-xs text-muted-foreground">Usadas no mes</span>
                 <p className="mt-1 text-2xl font-semibold">{usoConsultasPlaca ? usadasPlacas : "-"}</p>
@@ -209,7 +207,7 @@ export default function ConfigGeralPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="overflow-hidden border-primary/10 shadow-sm p-0">
+        <Card className="overflow-hidden border-primary/10 p-0 shadow-sm lg:col-span-7">
           <CardHeader className="bg-primary/5 py-4">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-5 w-5 text-primary" />
@@ -218,7 +216,7 @@ export default function ConfigGeralPage() {
             <CardDescription>Defina dias, horario de trabalho e intervalo padrao dos agendamentos.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 py-6">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Intervalo dos slots</Label>
                 <Select
@@ -294,7 +292,7 @@ export default function ConfigGeralPage() {
           </CardContent>
         </Card>
         {/* MÓDULO FISCAL */}
-        <Card className="overflow-hidden border-primary/10 shadow-sm p-0">
+        <Card className="overflow-hidden border-primary/10 p-0 shadow-sm lg:col-span-12">
           <CardHeader className="bg-primary/5 py-4">
             <div className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-primary" />
@@ -320,7 +318,7 @@ export default function ConfigGeralPage() {
 
             <Separator />
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 font-medium text-sm text-primary">
                   <FileText className="h-4 w-4" /> Módulo de Vendas
@@ -377,8 +375,7 @@ export default function ConfigGeralPage() {
         </Card>
 
         {/* SISTEMA E INTERFACE */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="border-primary/10 shadow-sm">
+        <Card className="border-primary/10 shadow-sm lg:col-span-5">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5 text-primary" />
@@ -403,9 +400,9 @@ export default function ConfigGeralPage() {
                 />
               </div>
             </CardContent>
-          </Card>
+        </Card>
 
-          <Card className="border-primary/10 shadow-sm">
+        <Card className="border-primary/10 shadow-sm lg:col-span-7">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-primary" />
@@ -436,25 +433,9 @@ export default function ConfigGeralPage() {
                 </p>
               </div>
             </CardContent>
-          </Card>
-        </div>
+        </Card>
       </div>
 
-      <div className="flex justify-end pt-4 pb-12">
-        <Button
-          size="lg"
-          onClick={handleSubmit(onSalvar)}
-          disabled={salvando}
-          className="w-full md:w-auto px-12 shadow-md hover:shadow-lg transition-all"
-        >
-          {salvando ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-5 w-5" />
-          )}
-          {salvando ? "Salvando..." : "Salvar Configurações"}
-        </Button>
-      </div>
     </div>
   );
 }

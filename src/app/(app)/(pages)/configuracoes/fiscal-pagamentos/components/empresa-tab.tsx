@@ -58,7 +58,7 @@ export function EmpresaTab({ register, setValue, watch }: Props) {
   return (
     <div className="space-y-6">
       {/* Identificacao */}
-      <Card className="border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <Card className="border-primary/10 bg-card/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <CardContent className="p-5 sm:p-6">
           <h3 className="text-lg font-semibold mb-4 text-foreground">Identificacao da empresa</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -107,7 +107,7 @@ export function EmpresaTab({ register, setValue, watch }: Props) {
       </Card>
 
       {/* Endereco */}
-      <Card className="border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <Card className="border-primary/10 bg-card/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <CardContent className="p-5 sm:p-6">
           <h3 className="text-lg font-semibold mb-4 text-foreground">Endereco</h3>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -181,7 +181,7 @@ export function EmpresaTab({ register, setValue, watch }: Props) {
       </Card>
 
       {/* Regime e ambiente */}
-      <Card className="border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <Card className="border-primary/10 bg-card/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <CardContent className="p-5 sm:p-6">
           <h3 className="text-lg font-semibold mb-4 text-foreground">Configuracao fiscal</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -234,7 +234,7 @@ export function EmpresaTab({ register, setValue, watch }: Props) {
       </Card>
 
       {/* Certificado Digital */}
-      <Card className="border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <Card className="border-primary/10 bg-card/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <CardContent className="p-5 sm:p-6">
           <h3 className="text-lg font-semibold mb-4 text-foreground">Certificado Digital</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

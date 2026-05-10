@@ -15,7 +15,7 @@ export function NFeTab({
   watch?: UseFormWatch<FormValues>;
 }) {
   return (
-    <Card className="border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+    <Card className="border-primary/10 bg-card/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <CardContent className="p-5 sm:p-6 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>

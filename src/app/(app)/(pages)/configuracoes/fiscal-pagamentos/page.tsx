@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Building2, Landmark, Loader2, Receipt, Save, Settings } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Receipt, Landmark, Loader2 } from "lucide-react";
 
 import { EmpresaTab } from "./components/empresa-tab";
 import { NFeTab } from "./components/nfe-tab";
@@ -14,12 +16,15 @@ import type { FormValues } from "./types";
 
 const limparDigitos = (s: string) => (s || "").replace(/\D+/g, "");
 
+const tabTriggerClass =
+  "h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
+
 export default function ConfigFiscalPagamentosPage() {
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [activeTab, setActiveTab] = useState("empresa");
 
-  const { register, handleSubmit, setValue, watch, getValues } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch } = useForm<FormValues>({
     defaultValues: {
       empresa: {
         empresaId: 1,
@@ -170,21 +175,19 @@ export default function ConfigFiscalPagamentosPage() {
       if (ibge.length !== 7) errs.push("Codigo do Municipio (IBGE) deve ter 7 digitos.");
       if (!v.empresa.regimetributario?.trim()) errs.push("Regime tributario obrigatorio.");
     }
-    if (tab === "nfe") {
-      if (!v.nfe.naturezaOperacao?.trim()) errs.push("Natureza de operacao (NF-e) obrigatoria.");
+    if (tab === "nfe" && !v.nfe.naturezaOperacao?.trim()) {
+      errs.push("Natureza de operacao (NF-e) obrigatoria.");
     }
     return errs;
   }
+
   async function onSalvar(values: FormValues) {
     if (activeTab === "empresa") {
       values.empresa.cnpj = limparDigitos(values.empresa.cnpj);
       values.empresa.codigomunicipio = limparDigitos(values.empresa.codigomunicipio);
-      if (values.empresa.inscricaoestadual)
-        values.empresa.inscricaoestadual = limparDigitos(values.empresa.inscricaoestadual);
-      if (values.empresa.inscricaomunicipal)
-        values.empresa.inscricaomunicipal = limparDigitos(values.empresa.inscricaomunicipal);
-      if (values.empresa.inscricaoestadualst)
-        values.empresa.inscricaoestadualst = limparDigitos(values.empresa.inscricaoestadualst);
+      if (values.empresa.inscricaoestadual) values.empresa.inscricaoestadual = limparDigitos(values.empresa.inscricaoestadual);
+      if (values.empresa.inscricaomunicipal) values.empresa.inscricaomunicipal = limparDigitos(values.empresa.inscricaomunicipal);
+      if (values.empresa.inscricaoestadualst) values.empresa.inscricaoestadualst = limparDigitos(values.empresa.inscricaoestadualst);
       if (values.empresa.cep) values.empresa.cep = limparDigitos(values.empresa.cep);
       if (values.empresa.telefone) values.empresa.telefone = limparDigitos(values.empresa.telefone);
       if (values.empresa.codigopais) values.empresa.codigopais = limparDigitos(values.empresa.codigopais);
@@ -230,7 +233,7 @@ export default function ConfigFiscalPagamentosPage() {
         if (!r.ok) throw new Error(j?.error || "Falha ao salvar NFS-e");
       }
 
-      toast.success("Configurações salvas!");
+      toast.success("Configuracoes salvas!");
       await carregarTudo();
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar");
@@ -240,20 +243,57 @@ export default function ConfigFiscalPagamentosPage() {
   }
 
   return (
-    <div className="min-h-screen w-full">
+    <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6 animate-in fade-in duration-500 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4 rounded-lg border bg-card px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
+            <Settings className="h-8 w-8 text-primary" />
+            Fiscal e Pagamentos
+          </h1>
+          <p className="text-muted-foreground">
+            Configure dados da empresa, emissao fiscal e credenciais de servicos.
+          </p>
+        </div>
+        <Button
+          onClick={handleSubmit(onSalvar)}
+          disabled={salvando || carregando}
+          className="shadow-md transition-all hover:shadow-lg"
+          aria-label="Salvar alteracoes"
+          title="Salvar alteracoes"
+        >
+          {salvando || carregando ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {carregando ? "Carregando..." : "Salvando..."}
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Salvar Alteracoes
+            </>
+          )}
+        </Button>
+      </div>
+
       <main className="w-full">
         <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 rounded-xl bg-muted/60">
-            <TabsTrigger value="empresa" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" /> <span className="hidden sm:inline">Empresa</span>
-            </TabsTrigger>
-            <TabsTrigger value="nfe" className="flex items-center gap-2">
-              <Receipt className="h-4 w-4" /> <span className="hidden sm:inline">NF-e / NFC-e</span>
-            </TabsTrigger>
-            <TabsTrigger value="nfse" className="flex items-center gap-2">
-              <Landmark className="h-4 w-4" /> <span className="hidden sm:inline">NFS-e</span>
-            </TabsTrigger>
-          </TabsList>
+          <Card className="overflow-hidden border-primary/10 p-0 shadow-sm">
+            <CardContent className="p-3">
+              <div className="max-w-full overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                <TabsList className="h-auto min-w-full justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
+                  <TabsTrigger value="empresa" className={tabTriggerClass}>
+                    <Building2 className="h-4 w-4" /> <span className="hidden sm:inline">Empresa</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="nfe" className={tabTriggerClass}>
+                    <Receipt className="h-4 w-4" /> <span className="hidden sm:inline">NF-e / NFC-e</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="nfse" className={tabTriggerClass}>
+                    <Landmark className="h-4 w-4" /> <span className="hidden sm:inline">NFS-e</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </CardContent>
+          </Card>
 
           <TabsContent value="empresa" className="mt-6">
             <EmpresaTab register={register} setValue={setValue} watch={watch} />
@@ -266,24 +306,6 @@ export default function ConfigFiscalPagamentosPage() {
           <TabsContent value="nfse" className="mt-6">
             <NFSeTab register={register} setValue={setValue} />
           </TabsContent>
-
-          <div className="mt-4 flex justify-end">
-            <Button
-              onClick={handleSubmit(onSalvar)}
-              disabled={salvando || carregando}
-              aria-label="Salvar alterações"
-              title="Salvar alterações"
-            >
-              {salvando || carregando ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {carregando ? "Carregando…" : "Salvando…"}
-                </>
-              ) : (
-                "Salvar alterações"
-              )}
-            </Button>
-          </div>
         </Tabs>
       </main>
     </div>
