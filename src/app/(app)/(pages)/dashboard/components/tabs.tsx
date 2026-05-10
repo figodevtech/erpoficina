@@ -9,7 +9,7 @@ import { DollarSign, LayoutDashboard, UsersIcon } from "lucide-react";
 
 export default function TabsOptions() {
   const tabTheme =
-    " dark:data-[state=active]:bg-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+    " rounded-xl border border-transparent text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   return (
     <TooltipProvider>
@@ -18,7 +18,7 @@ export default function TabsOptions() {
           <span>
             <TabsTrigger
               value="geral"
-              className={"hover:cursor-pointer" + tabTheme}
+              className={tabTheme}
             >
               <LayoutDashboard className="h-4 w-4" />
             </TabsTrigger>
@@ -32,7 +32,7 @@ export default function TabsOptions() {
           <span>
             <TabsTrigger
               value="usuarios"
-              className={"hover:cursor-pointer" + tabTheme}
+              className={tabTheme}
             >
               <UsersIcon className="h-4 w-4" />
             </TabsTrigger>
@@ -45,7 +45,7 @@ export default function TabsOptions() {
           <span>
             <TabsTrigger
               value="financeiro"
-              className={"hover:cursor-pointer" + tabTheme}
+              className={tabTheme}
             >
               <DollarSign className="h-4 w-4" />
             </TabsTrigger>
