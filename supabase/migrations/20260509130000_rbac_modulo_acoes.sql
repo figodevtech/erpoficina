@@ -125,3 +125,41 @@ join mapa
 join public.permissao nova_perm
   on nova_perm.nome = mapa.nova
 on conflict do nothing;
+
+with legadas(nome) as (
+  values
+    ('DASHBOARD_ACESSO'),
+    ('CLIENTES_ACESSO'),
+    ('ORDENS_ACESSO'),
+    ('AGENDAMENTOS_ACESSO'),
+    ('VEICULOS_ACESSO'),
+    ('ESTOQUE_ACESSO'),
+    ('VENDAS_ACESSO'),
+    ('FINANCEIRO_ACESSO'),
+    ('ACOMPANHAMENTO_ACESSO'),
+    ('RELATORIOS_ACESSO'),
+    ('CONFIG_ACESSO'),
+    ('USUARIOS_ACESSO'),
+    ('EXECUCAO_OS_ACESSO')
+)
+delete from public.perfilpermissao pp
+using public.permissao p, legadas
+where pp.permissaoid = p.id
+  and p.nome = legadas.nome;
+
+delete from public.permissao
+where nome in (
+  'DASHBOARD_ACESSO',
+  'CLIENTES_ACESSO',
+  'ORDENS_ACESSO',
+  'AGENDAMENTOS_ACESSO',
+  'VEICULOS_ACESSO',
+  'ESTOQUE_ACESSO',
+  'VENDAS_ACESSO',
+  'FINANCEIRO_ACESSO',
+  'ACOMPANHAMENTO_ACESSO',
+  'RELATORIOS_ACESSO',
+  'CONFIG_ACESSO',
+  'USUARIOS_ACESSO',
+  'EXECUCAO_OS_ACESSO'
+);
