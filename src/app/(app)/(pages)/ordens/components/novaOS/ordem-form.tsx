@@ -398,7 +398,7 @@ export function FormularioNovaOS({
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <div className="w-full flex flex-row justify-between">
+            <div className="w-full flex flex-row flex-wrap gap-2 justify-between">
               <div className="flex flex-row items-center gap-2">
                 <CustomerSelect
                   open={openCustomer}
