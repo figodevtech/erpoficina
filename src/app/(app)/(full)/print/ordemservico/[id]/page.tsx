@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ObservacoesToggle } from "../../../components/ObservacoesToggle";
 import { fetchPrimeiroLogoEmpresa } from "@/lib/empresa-logo";
+import { fetchPrintColors } from "@/lib/print-config";
 
 export const runtime = "nodejs";
 
@@ -139,6 +140,7 @@ export default async function OSFullPage({ params }: PageProps) {
 
   const empresa = await fetchEmpresa();
   const finalLogo = await fetchPrimeiroLogoEmpresa();
+  const printColors = await fetchPrintColors();
 
   const totalProdutos =
     os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) ||
@@ -267,8 +269,8 @@ export default async function OSFullPage({ params }: PageProps) {
 
       <style>{`
   :root{
-    --brand-primary:#2563eb;
-    --brand-secondary:#0891b2;
+    --brand-primary:${printColors.primary};
+    --brand-secondary:${printColors.secondary};
     --brand-accent:#8b5cf6;
     
     --ink:#0f172a;
@@ -434,7 +436,7 @@ export default async function OSFullPage({ params }: PageProps) {
     grid-template-columns: auto 1fr auto;
     gap: 16px;
     align-items: center;
-    box-shadow: 0 4px 12px rgba(37,99,235,.2);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--brand-primary) 20%, transparent);
   }
 
   .logo-container{

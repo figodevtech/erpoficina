@@ -13,5 +13,7 @@ export interface Config {
     agendamento_hora_inicio: string;
     agendamento_hora_fim: string;
     agendamento_dias_trabalho: number[];
+    impressao_cor_primaria: string;
+    impressao_cor_secundaria: string;
     created_at: string;
 }

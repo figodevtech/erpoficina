@@ -19,7 +19,11 @@ const CONFIG_SELECT_BASE =
 const CONFIG_SELECT_AGENDAMENTO =
   "agendamento_intervalo_minutos, agendamento_hora_inicio, agendamento_hora_fim, agendamento_dias_trabalho";
 
-const CONFIG_SELECT_COMPLETO = `${CONFIG_SELECT_BASE}, ${CONFIG_SELECT_AGENDAMENTO}`;
+const CONFIG_SELECT_IMPRESSAO =
+  "impressao_cor_primaria, impressao_cor_secundaria";
+
+const CONFIG_SELECT_SEM_IMPRESSAO = `${CONFIG_SELECT_BASE}, ${CONFIG_SELECT_AGENDAMENTO}`;
+const CONFIG_SELECT_COMPLETO = `${CONFIG_SELECT_BASE}, ${CONFIG_SELECT_AGENDAMENTO}, ${CONFIG_SELECT_IMPRESSAO}`;
 
 function colunaNaoExiste(error: any) {
   return error?.code === "42703";
@@ -52,6 +56,11 @@ function diasValidos(v: any) {
   return dias.length > 0 ? dias.sort((a, b) => a - b) : undefined;
 }
 
+function corHexValida(v: any) {
+  const s = String(v ?? "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : undefined;
+}
+
 function comPadroesAgendamento(config: any) {
   if (!config) return null;
 
@@ -63,6 +72,8 @@ function comPadroesAgendamento(config: any) {
     agendamento_dias_trabalho: Array.isArray(config.agendamento_dias_trabalho)
       ? config.agendamento_dias_trabalho
       : [1, 2, 3, 4, 5],
+    impressao_cor_primaria: corHexValida(config.impressao_cor_primaria) ?? "#2563eb",
+    impressao_cor_secundaria: corHexValida(config.impressao_cor_secundaria) ?? "#0891b2",
   };
 }
 
@@ -77,6 +88,16 @@ async function buscarConfigAtual() {
 
   if (!error) return comPadroesAgendamento(data);
   if (!colunaNaoExiste(error)) throw error;
+
+  const semImpressao = await supabase
+    .from("config_geral")
+    .select(CONFIG_SELECT_SEM_IMPRESSAO)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!semImpressao.error) return comPadroesAgendamento(semImpressao.data);
+  if (!colunaNaoExiste(semImpressao.error)) throw semImpressao.error;
 
   const fallback = await supabase
     .from("config_geral")
@@ -101,6 +122,16 @@ async function criarConfigPadraoSeNaoExistir() {
 
   if (!error) return comPadroesAgendamento(data);
   if (!colunaNaoExiste(error)) throw error;
+
+  const semImpressao = await supabase
+    .from("config_geral")
+    .select(CONFIG_SELECT_SEM_IMPRESSAO)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!semImpressao.error) return comPadroesAgendamento(semImpressao.data);
+  if (!colunaNaoExiste(semImpressao.error)) throw semImpressao.error;
 
   const fallback = await supabase
     .from("config_geral")
@@ -175,6 +206,18 @@ export async function PUT(request: Request) {
       const val = diasValidos(body.agendamento_dias_trabalho);
       if (val === undefined) return respostaJSON({ error: "Selecione ao menos um dia de trabalho." }, 400);
       patch.agendamento_dias_trabalho = val;
+    }
+
+    if (body.impressao_cor_primaria !== undefined) {
+      const val = corHexValida(body.impressao_cor_primaria);
+      if (val === undefined) return respostaJSON({ error: "Cor primaria de impressao invalida." }, 400);
+      patch.impressao_cor_primaria = val;
+    }
+
+    if (body.impressao_cor_secundaria !== undefined) {
+      const val = corHexValida(body.impressao_cor_secundaria);
+      if (val === undefined) return respostaJSON({ error: "Cor secundaria de impressao invalida." }, 400);
+      patch.impressao_cor_secundaria = val;
     }
 
     if (Object.keys(patch).length === 0) {

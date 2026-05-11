@@ -9,6 +9,7 @@ import { FileText, Power, ShoppingCart, User } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { formatCep } from "@/app/(app)/(pages)/clientes/components/customerDialogRegister/utils";
 import { fetchPrimeiroLogoEmpresa } from "@/lib/empresa-logo";
+import { fetchPrintColors } from "@/lib/print-config";
 
 export const runtime = "nodejs";
 
@@ -143,6 +144,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
 
   const empresa = await fetchEmpresa();
   const finalLogo = await fetchPrimeiroLogoEmpresa();
+  const printColors = await fetchPrintColors();
   const cliente = Array.isArray(venda.cliente)
     ? venda.cliente[0]
     : venda.cliente;
@@ -187,13 +189,15 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
     <div className="os-print-root">
       <style>{`
         :root{
-          --brand-primary:#2563eb;
-          --brand-secondary:#0891b2;
+          --brand-primary:${printColors.primary};
+          --brand-secondary:${printColors.secondary};
           --ink:#0f172a;
           --muted:#64748b;
           --border:#cbd5e1;
           --paper:#ffffff;
           --soft-bg:#f8fafc;
+          --primary-soft:color-mix(in srgb, var(--brand-primary) 8%, transparent);
+          --secondary-soft:color-mix(in srgb, var(--brand-secondary) 6%, transparent);
           --radius:12px;
           --a4w:794px;
           --a4h:1123px;
@@ -281,7 +285,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
         .meta-badge .valor{ font-size:10px; font-weight:700; }
         .grid-info{ display:grid; grid-template-columns:1.4fr 1fr; gap:10px; }
         .cartao{ border:1px solid var(--border); border-radius:var(--radius); background:#fff; padding:10px; }
-        .cartao-destaque{ background:linear-gradient(135deg, rgba(37,99,235,.08), rgba(8,145,178,.06)); }
+        .cartao-destaque{ background:linear-gradient(135deg, var(--primary-soft), var(--secondary-soft)); }
         .titulo-secao{ display:flex; align-items:center; gap:8px; padding-bottom:6px; margin-bottom:8px; border-bottom:2px solid var(--border); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--brand-primary); }
         .kv{ display:grid; grid-template-columns:85px 1fr; gap:6px; font-size:10px; line-height:1.35; margin-bottom:4px; }
         .kv .k{ color:var(--muted); font-weight:700; }
@@ -300,7 +304,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
         html[data-os-observacoes="1"] .venda-observacoes{ display:block; }
         .obs-titulo{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--brand-primary); margin-bottom:6px; }
         .obs-texto{ font-size:10px; line-height:1.45; color:var(--muted); }
-        .totais-box{ border:1px solid var(--brand-primary); background:linear-gradient(135deg, rgba(37,99,235,.08), #fff); border-radius:var(--radius); padding:12px; }
+        .totais-box{ border:1px solid var(--brand-primary); background:linear-gradient(135deg, var(--primary-soft), #fff); border-radius:var(--radius); padding:12px; }
         .linha-total{ display:flex; justify-content:space-between; font-size:11px; padding:4px 0; color:var(--muted); }
         .linha-total-final{ margin-top:8px; padding-top:8px; border-top:1px solid var(--brand-primary); display:flex; justify-content:space-between; align-items:center; }
         .total-label{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--brand-primary); }

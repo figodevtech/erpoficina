@@ -15,6 +15,7 @@ import {
   Package,
   Search,
   CalendarDays,
+  Palette,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,10 @@ const DIAS_SEMANA = [
   { value: 6, label: "Sab" },
 ];
 
+function colorPickerValue(value: string | undefined, fallback: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(value ?? "") ? value! : fallback;
+}
+
 export default function ConfigGeralPage() {
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(true);
@@ -60,6 +65,8 @@ export default function ConfigGeralPage() {
       agendamento_hora_inicio: "08:00",
       agendamento_hora_fim: "18:00",
       agendamento_dias_trabalho: [1, 2, 3, 4, 5],
+      impressao_cor_primaria: "#2563eb",
+      impressao_cor_secundaria: "#0891b2",
     },
   });
 
@@ -136,6 +143,8 @@ export default function ConfigGeralPage() {
   const limitePlacas = usoConsultasPlaca?.limite ?? 0;
   const usadasPlacas = usoConsultasPlaca?.usadas ?? 0;
   const diasTrabalho = watch("agendamento_dias_trabalho") ?? [1, 2, 3, 4, 5];
+  const impressaoCorPrimaria = watch("impressao_cor_primaria") ?? "#2563eb";
+  const impressaoCorSecundaria = watch("impressao_cor_secundaria") ?? "#0891b2";
   const percentualPlacas =
     limitePlacas > 0 ? Math.min(100, Math.round((usadasPlacas / limitePlacas) * 100)) : 100;
 
@@ -288,6 +297,53 @@ export default function ConfigGeralPage() {
               <p className="text-xs text-muted-foreground">
                 Esses valores controlam a grade do calendario e a duracao padrao sugerida em novos agendamentos.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden border-primary/10 p-0 shadow-sm lg:col-span-12">
+          <CardHeader className="bg-primary/5 py-4">
+            <div className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-primary" />
+              <CardTitle>Impressao</CardTitle>
+            </div>
+            <CardDescription>Cores usadas nos modelos de OS e orcamento de venda.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 py-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Cor primaria</Label>
+              <div className="flex gap-3">
+                <Input
+                  type="color"
+                  className="h-10 w-14 shrink-0 p-1"
+                  value={colorPickerValue(impressaoCorPrimaria, "#2563eb")}
+                  onChange={(event) => setValue("impressao_cor_primaria", event.target.value, { shouldDirty: true })}
+                />
+                <Input
+                  value={impressaoCorPrimaria}
+                  onChange={(event) => setValue("impressao_cor_primaria", event.target.value, { shouldDirty: true })}
+                  placeholder="#2563eb"
+                  className="font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cor secundaria</Label>
+              <div className="flex gap-3">
+                <Input
+                  type="color"
+                  className="h-10 w-14 shrink-0 p-1"
+                  value={colorPickerValue(impressaoCorSecundaria, "#0891b2")}
+                  onChange={(event) => setValue("impressao_cor_secundaria", event.target.value, { shouldDirty: true })}
+                />
+                <Input
+                  value={impressaoCorSecundaria}
+                  onChange={(event) => setValue("impressao_cor_secundaria", event.target.value, { shouldDirty: true })}
+                  placeholder="#0891b2"
+                  className="font-mono"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
