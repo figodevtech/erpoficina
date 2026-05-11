@@ -106,12 +106,11 @@ async function urlExiste(url: string): Promise<boolean> {
   }
 }
 
-async function fetchEmpresa(empresaId = 1) {
+async function fetchEmpresa() {
   const { data, error } = await supabaseAdmin
     .from("empresa")
     .select("*")
-    .eq("id", empresaId)
-    .maybeSingle();
+    .single();
 
   if (error) {
     console.error("Erro ao buscar empresa no Supabase:", error);
@@ -154,7 +153,7 @@ export default async function OSFullPage({ params }: PageProps) {
     notFound();
   }
 
-  const empresa = await fetchEmpresa(1);
+  const empresa = await fetchEmpresa();
 
   const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const logoSupabase = supabaseBaseUrl
