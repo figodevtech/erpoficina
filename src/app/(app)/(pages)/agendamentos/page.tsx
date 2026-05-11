@@ -828,7 +828,7 @@ export default function AgendamentosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Card className="rounded-lg py-4">
           <CardHeader className="px-4">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">

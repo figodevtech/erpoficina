@@ -2,16 +2,40 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, User2, Wrench, ClipboardList, Building2, Search, Plus, X, Pencil } from "lucide-react";
+import {
+  Loader2,
+  User2,
+  Wrench,
+  ClipboardList,
+  Building2,
+  Search,
+  Plus,
+  X,
+  Pencil,
+  TriangleAlert,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
@@ -62,23 +86,36 @@ export function OrdemEditForm({
   onClose,
 }: OrdemEditFormProps) {
   const { data: session } = useSession();
-  const canEditCustomer = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EDITAR);
+  const canEditCustomer = permissionSetHas(
+    (session?.user as any)?.permissoes,
+    PERMS.CLIENTES_EDITAR,
+  );
   const osId = defaultValues?.id ?? null;
 
-  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
+  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>(
+    [],
+  );
   const [loadingSetores, setLoadingSetores] = useState(false);
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
 
-  const [modoAtendimento, setModoAtendimento] = useState<"cadastrado" | "avulso">("cadastrado");
-  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
+  const [modoAtendimento, setModoAtendimento] = useState<
+    "cadastrado" | "avulso"
+  >("cadastrado");
+  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">(
+    "NORMAL",
+  );
 
   const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
-  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
+  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<
+    number | null
+  >(null);
   const [openCustomer, setOpenCustomer] = useState(false);
   const [customerRegisterOpen, setCustomerRegisterOpen] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>(undefined);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<
+    number | undefined
+  >(undefined);
 
   const [avulsoNome, setAvulsoNome] = useState("");
   const [avulsoDoc, setAvulsoDoc] = useState("");
@@ -113,15 +150,21 @@ export function OrdemEditForm({
   };
 
   const mergeUpdatedCustomer = (updatedCustomer: Customer) => {
-    setCliente((current) =>
-      current?.id === updatedCustomer.id
-        ? {
-            ...current,
-            ...updatedCustomer,
-            veiculos: updatedCustomer.veiculos ?? current.veiculos ?? [],
-            ordens: updatedCustomer.ordens ?? current.ordens ?? [],
-          }
-        : current
+    if (cliente?.id !== updatedCustomer.id) return;
+
+    const veiculos = updatedCustomer.veiculos ?? cliente.veiculos ?? [];
+    setCliente({
+      ...cliente,
+      ...updatedCustomer,
+      veiculos,
+      ordens: updatedCustomer.ordens ?? cliente.ordens ?? [],
+    });
+    setVeiculosDoCliente(veiculos);
+    setVeiculoSelecionadoId((currentVehicleId) =>
+      currentVehicleId !== null &&
+      !veiculos.some((v) => Number(v.id) === currentVehicleId)
+        ? null
+        : currentVehicleId,
     );
   };
 
@@ -152,13 +195,19 @@ export function OrdemEditForm({
         setInitialLoading(true);
         const r = await fetch(`/api/ordens/${osId}`, { cache: "no-store" });
         const j = await r.json();
-        if (!r.ok) throw new Error(j?.error || "Não foi possível carregar a OS.");
+        if (!r.ok)
+          throw new Error(j?.error || "Não foi possível carregar a OS.");
 
         const os = j?.os ?? {};
         const cli = j?.cliente ?? j?.os?.cliente ?? null;
         const vei = j?.veiculo ?? j?.os?.veiculo ?? null;
 
-        const setorIdResolvido = os?.setorid != null ? os.setorid : os?.setor?.id != null ? os.setor.id : null;
+        const setorIdResolvido =
+          os?.setorid != null
+            ? os.setorid
+            : os?.setor?.id != null
+              ? os.setor.id
+              : null;
         setSetor(setorIdResolvido != null ? String(setorIdResolvido) : "");
 
         setPrioridade((os?.prioridade as any) || "NORMAL");
@@ -234,9 +283,21 @@ export function OrdemEditForm({
           setVPlaca(vei?.placa ?? os?.veiculo?.placa ?? "");
           setVModelo(vei?.modelo ?? os?.veiculo?.modelo ?? "");
           setVMarca(vei?.marca ?? os?.veiculo?.marca ?? "");
-          setVAno(vei?.ano ? String(vei.ano) : os?.veiculo?.ano ? String(os.veiculo.ano) : "");
+          setVAno(
+            vei?.ano
+              ? String(vei.ano)
+              : os?.veiculo?.ano
+                ? String(os.veiculo.ano)
+                : "",
+          );
           setVCor(vei?.cor ?? os?.veiculo?.cor ?? "");
-          setVKm(vei?.kmatual ? String(vei.kmatual) : os?.veiculo?.kmatual ? String(os.veiculo.kmatual) : "");
+          setVKm(
+            vei?.kmatual
+              ? String(vei.kmatual)
+              : os?.veiculo?.kmatual
+                ? String(os.veiculo.kmatual)
+                : "",
+          );
         } else {
           setPNome(resolvePecaNome(j?.peca ?? os?.peca));
           setPDesc(resolvePecaDescricao(j?.peca ?? os?.peca));
@@ -270,15 +331,18 @@ export function OrdemEditForm({
     [veiculosDoCliente],
   );
   const veiculoSelecionado =
-    veiculosDoCliente.find((v) => Number(v.id) === veiculoSelecionadoId) ?? null;
+    veiculosDoCliente.find((v) => Number(v.id) === veiculoSelecionadoId) ??
+    null;
 
   function validar(): string | null {
     if (!osId) return "OS inválida.";
     if (!setor) return "Selecione o setor responsável.";
-    if (modoAtendimento === "cadastrado" && !cliente) return "Dados do cliente não carregados.";
+    if (modoAtendimento === "cadastrado" && !cliente)
+      return "Dados do cliente não carregados.";
 
     if (modoAtendimento === "avulso") {
-      if (!avulsoNome || !avulsoDoc) return "Preencha Nome/Razão Social e CPF/CNPJ no atendimento avulso.";
+      if (!avulsoNome || !avulsoDoc)
+        return "Preencha Nome/Razão Social e CPF/CNPJ no atendimento avulso.";
       if (!avulsoTelefone?.trim() || !avulsoEmail?.trim())
         return "Para atendimento avulso, telefone e e-mail são obrigatórios.";
     }
@@ -402,7 +466,8 @@ export function OrdemEditForm({
     pLacre,
   ]);
 
-  if (!osId) return <div className="text-sm text-red-600">OS inválida para edição.</div>;
+  if (!osId)
+    return <div className="text-sm text-red-600">OS inválida para edição.</div>;
 
   return (
     <div className={initialLoading ? "min-h-[55vh]" : "space-y-6"}>
@@ -418,10 +483,13 @@ export function OrdemEditForm({
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <User2 className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Dados do Cliente
+                </CardTitle>
               </div>
               <CardDescription>
-                Selecione um cliente cadastrado para manter a OS alinhada ao fluxo de criação.
+                Selecione um cliente cadastrado para manter a OS alinhada ao
+                fluxo de criação.
               </CardDescription>
             </CardHeader>
 
@@ -552,7 +620,9 @@ export function OrdemEditForm({
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Definição da OS
+                </CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -562,7 +632,11 @@ export function OrdemEditForm({
                   <Select
                     value={setor}
                     onValueChange={setSetor}
-                    disabled={loadingSetores || (!!setoresError && setores.length === 0) || saving}
+                    disabled={
+                      loadingSetores ||
+                      (!!setoresError && setores.length === 0) ||
+                      saving
+                    }
                   >
                     <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                       <SelectValue
@@ -583,12 +657,18 @@ export function OrdemEditForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
+                  {setoresError && (
+                    <p className="text-xs text-red-500">{setoresError}</p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
                   <Label>Prioridade</Label>
-                  <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)} disabled={saving}>
+                  <Select
+                    value={prioridade}
+                    onValueChange={(v) => setPrioridade(v as any)}
+                    disabled={saving}
+                  >
                     <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                       <SelectValue placeholder="Selecione a prioridade" />
                     </SelectTrigger>
@@ -607,76 +687,91 @@ export function OrdemEditForm({
                   <Label className="font-medium">Alvo do reparo</Label>
                 </div>
 
-              <RadioGroup
-                value={alvoTipo}
-                onValueChange={(v: AlvoTipo) => setAlvoTipo(v)}
-                className="flex flex-wrap gap-4"
-              >
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <RadioGroupItem id="alvo-veic" value="VEICULO" />
-                  <span>Veículo</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <RadioGroupItem id="alvo-peca" value="PECA" />
-                  <span>Peça</span>
-                </label>
-              </RadioGroup>
+                <RadioGroup
+                  value={alvoTipo}
+                  onValueChange={(v: AlvoTipo) => setAlvoTipo(v)}
+                  className="flex flex-wrap gap-4"
+                >
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <RadioGroupItem id="alvo-veic" value="VEICULO" />
+                    <span>Veículo</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <RadioGroupItem id="alvo-peca" value="PECA" />
+                    <span>Peça</span>
+                  </label>
+                </RadioGroup>
 
-              {alvoTipo === "VEICULO" ? (
-                <div className="space-y-4">
-                  {modoAtendimento === "cadastrado" && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Vincular a um veículo do cliente (opcional)</Label>
-                        <Badge variant="outline" className="font-normal">
-                          {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
-                        </Badge>
-                      </div>
-                      <Select
-                        value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
-                        onValueChange={(v) => setVeiculoSelecionadoId(v === NONE ? null : Number(v))}
-                        disabled={!cliente || veiculoOptions.length === 0 || saving}
-                      >
-                        <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
-                          <SelectValue
-                            placeholder={
-                              !cliente
-                                ? "Carregando cliente..."
-                                : veiculoOptions.length
-                                  ? "Selecione um veículo"
-                                  : "Cliente sem veículos"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NONE}>Não vincular</SelectItem>
-                          {veiculoOptions.map((v) => (
-                            <SelectItem key={v.value} value={v.value}>
-                              {v.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {veiculoSelecionado && (
-                        <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
-                          <p className="font-medium text-foreground">
-                            Veículo vinculado: {veiculoSelecionado.modelo || "-"}
-                          </p>
-                          <p className="text-muted-foreground">
-                            Placa: {veiculoSelecionado.placa || "-"}
-                            {veiculoSelecionado.marca
-                              ? ` • Marca: ${veiculoSelecionado.marca}`
-                              : ""}
-                            {veiculoSelecionado.ano
-                              ? ` • Ano: ${veiculoSelecionado.ano}`
-                              : ""}
-                          </p>
+                {alvoTipo === "VEICULO" ? (
+                  <div className="space-y-4">
+                    {modoAtendimento === "cadastrado" && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>
+                            Vincular a um veículo do cliente (opcional)
+                          </Label>
+                          <Badge variant="outline" className="font-normal">
+                            {cliente
+                              ? `${veiculoOptions.length} veículo(s)`
+                              : "—"}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                  )}
+                        <Select
+                          value={
+                            veiculoSelecionadoId === null
+                              ? NONE
+                              : String(veiculoSelecionadoId)
+                          }
+                          onValueChange={(v) =>
+                            setVeiculoSelecionadoId(
+                              v === NONE ? null : Number(v),
+                            )
+                          }
+                          disabled={
+                            !cliente || veiculoOptions.length === 0 || saving
+                          }
+                        >
+                          <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
+                            <SelectValue
+                              placeholder={
+                                !cliente
+                                  ? "Carregando cliente..."
+                                  : veiculoOptions.length
+                                    ? "Selecione um veículo"
+                                    : "Cliente sem veículos"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>Não vincular</SelectItem>
+                            {veiculoOptions.map((v) => (
+                              <SelectItem key={v.value} value={v.value}>
+                                {v.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {veiculoSelecionado && (
+                          <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                            <p className="font-medium text-foreground">
+                              Veículo vinculado:{" "}
+                              {veiculoSelecionado.modelo || "-"}
+                            </p>
+                            <p className="text-muted-foreground">
+                              Placa: {veiculoSelecionado.placa || "-"}
+                              {veiculoSelecionado.marca
+                                ? ` • Marca: ${veiculoSelecionado.marca}`
+                                : ""}
+                              {veiculoSelecionado.ano
+                                ? ` • Ano: ${veiculoSelecionado.ano}`
+                                : ""}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                  {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1.5">
                       <Label>Placa</Label>
                       <Input
@@ -727,44 +822,50 @@ export function OrdemEditForm({
                       />
                     </div>
                   </div> */}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Nome da peça</Label>
-                    <Input
-                      value={pNome}
-                      maxLength={60}
-                      onChange={(e) => setPNome(e.target.value)}
-                      placeholder="Ex.: Radiador, Bomba d'água..."
-                      disabled={saving}
-                    />
-                    <div className="text-right text-xs text-muted-foreground">{pNome.length}/60</div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Lacre</Label>
-                    <Input
-                      value={pLacre}
-                      maxLength={30}
-                      onChange={(e) => setPLacre(e.target.value.slice(0, 30))}
-                      placeholder="Identificador do lacre"
-                      disabled={saving}
-                    />
-                    <div className="text-right text-xs text-muted-foreground">{pLacre.length}/30</div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Nome da peça</Label>
+                      <Input
+                        value={pNome}
+                        maxLength={60}
+                        onChange={(e) => setPNome(e.target.value)}
+                        placeholder="Ex.: Radiador, Bomba d'água..."
+                        disabled={saving}
+                      />
+                      <div className="text-right text-xs text-muted-foreground">
+                        {pNome.length}/60
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Lacre</Label>
+                      <Input
+                        value={pLacre}
+                        maxLength={30}
+                        onChange={(e) => setPLacre(e.target.value.slice(0, 30))}
+                        placeholder="Identificador do lacre"
+                        disabled={saving}
+                      />
+                      <div className="text-right text-xs text-muted-foreground">
+                        {pLacre.length}/30
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Descrição (opcional)</Label>
+                      <Input
+                        value={pDesc}
+                        maxLength={120}
+                        onChange={(e) => setPDesc(e.target.value)}
+                        placeholder="Detalhes da peça"
+                        disabled={saving}
+                      />
+                      <div className="text-right text-xs text-muted-foreground">
+                        {pDesc.length}/120
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Descrição (opcional)</Label>
-                    <Input
-                      value={pDesc}
-                      maxLength={120}
-                      onChange={(e) => setPDesc(e.target.value)}
-                      placeholder="Detalhes da peça"
-                      disabled={saving}
-                    />
-                    <div className="text-right text-xs text-muted-foreground">{pDesc.length}/120</div>
-                  </div>
-                </div>
-              )}
+                )}
               </div>
             </CardContent>
           </Card>
@@ -774,8 +875,14 @@ export function OrdemEditForm({
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">Descrição do Problema</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Descrição do Problema
+                </CardTitle>
               </div>
+              <CardDescription className="text-sm text-muted-foreground">
+                Informe os detalhes do problema relatado para orientar o
+                atendimento.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -791,7 +898,17 @@ export function OrdemEditForm({
           {/* Observações */}
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">Observações (Interno)</CardTitle>
+              <div className="flex gap-2 items-center">
+                <TriangleAlert className="h-5 w-5 text-primary" />
+
+                <CardTitle className="text-base sm:text-lg">
+                  Observações (Interno)
+                </CardTitle>
+              </div>
+              <CardDescription className="text-sm text-muted-foreground">
+                Espaço para anotações internas da equipe, como detalhes
+                adicionais do atendimento ou histórico relevante.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -806,7 +923,16 @@ export function OrdemEditForm({
 
           <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">Observações Fiscais</CardTitle>
+              <div className="flex gap-2 items-center">
+              <FileText className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg">
+                Observações Fiscais
+              </CardTitle>
+            </div>
+              <CardDescription className="text-sm text-muted-foreground">
+                Informações fiscais adicionais relevantes para emissão de notas
+                ou processos relacionados.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Textarea
@@ -830,6 +956,3 @@ export function OrdemEditForm({
     </div>
   );
 }
-
-
-

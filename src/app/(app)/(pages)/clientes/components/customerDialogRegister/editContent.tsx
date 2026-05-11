@@ -164,7 +164,7 @@ export default function EditContent({ customerId, isDesktop = true, onUpdate }: 
     }
   };
 
-  const handleGetCustomer = async (customerId: number) => {
+  const handleGetCustomer = async (customerId: number, notifyUpdate = false) => {
     setIsLoading(true);
     try {
       const response = await axios.get("/api/customers/" + customerId);
@@ -173,6 +173,7 @@ export default function EditContent({ customerId, isDesktop = true, onUpdate }: 
         // console.log(response)
         const { data } = response;
         setselectedCustomer(data.data);
+        if (notifyUpdate) onUpdate?.(data.data);
       }
     } catch (error) {
       console.log("Erro ao buscar cliente:", error);
@@ -279,10 +280,9 @@ export default function EditContent({ customerId, isDesktop = true, onUpdate }: 
         // console.log(response)
         const { data } = response;
         setselectedCustomer(data.data);
-        onUpdate?.(data.data);
         console.log("Cliente atualizado:", data.data);
         toast.success("Cliente Atualizado");
-        handleGetCustomer(data.data.id);
+        await handleGetCustomer(data.data.id, true);
       }
     } catch (error) {
       console.log("Erro ao atualizar cliente:", error);
@@ -296,10 +296,12 @@ export default function EditContent({ customerId, isDesktop = true, onUpdate }: 
     try {
       const response = await axios.get(`/api/veiculos/cliente/${selectedCustomer?.id}`);
       if (response.status === 200 && selectedCustomer) {
-        setselectedCustomer({
+        const updatedCustomer = {
           ...selectedCustomer,
           veiculos: response.data.veiculos,
-        });
+        };
+        setselectedCustomer(updatedCustomer);
+        onUpdate?.(updatedCustomer);
       }
     } catch (error) {
       if (isAxiosError(error)) {

@@ -277,7 +277,7 @@ export function RowActions<TRow extends RowBase>({
             }}
           >
             <Wallet className="mr-2 h-4 w-4" />
-            Receber pagamento
+            Registrar pagamento
           </DropdownMenuItem>
         )}
 

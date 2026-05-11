@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +32,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, User2, ClipboardList, Building2, Wrench, Plus, X, Pencil } from "lucide-react";
+import {
+  Search,
+  User2,
+  ClipboardList,
+  Building2,
+  Wrench,
+  Plus,
+  X,
+  Pencil,
+  TriangleAlert,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
@@ -31,7 +54,9 @@ import { CustomerDialog } from "../../../clientes/components/customerDialogRegis
 import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 export type FormularioNovaOSProps = {
-  exposeSubmit?: (fn: (mode?: "CHECKLIST" | "ORCAMENTO") => Promise<void>) => void;
+  exposeSubmit?: (
+    fn: (mode?: "CHECKLIST" | "ORCAMENTO") => Promise<void>,
+  ) => void;
   onDone?: (osId?: number) => void;
   onSavingChange?: (saving: boolean) => void;
 };
@@ -48,31 +73,48 @@ type PecaItem = {
   lacre: string | null;
 };
 
-export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: FormularioNovaOSProps) {
+export function FormularioNovaOS({
+  exposeSubmit,
+  onDone,
+  onSavingChange,
+}: FormularioNovaOSProps) {
   const { data: session } = useSession();
-  const canEditCustomer = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EDITAR);
+  const canEditCustomer = permissionSetHas(
+    (session?.user as any)?.permissoes,
+    PERMS.CLIENTES_EDITAR,
+  );
 
   const [saving, setSaving] = useState(false);
   useEffect(() => onSavingChange?.(saving), [saving, onSavingChange]);
 
-  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
+  const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>(
+    [],
+  );
   const [loadingSetores, setLoadingSetores] = useState(false);
   const [setoresError, setSetoresError] = useState<string | null>(null);
   const [setor, setSetor] = useState<string>("");
 
   const [cliente, setCliente] = useState<Customer | null>(null);
   const [veiculosDoCliente, setVeiculosDoCliente] = useState<any[]>([]);
-  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<number | null>(null);
+  const [veiculoSelecionadoId, setVeiculoSelecionadoId] = useState<
+    number | null
+  >(null);
   const [openCustomer, setOpenCustomer] = useState(false);
   const [customerRegisterOpen, setCustomerRegisterOpen] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | undefined>(undefined);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<
+    number | undefined
+  >(undefined);
 
-  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">("NORMAL");
+  const [prioridade, setPrioridade] = useState<"BAIXA" | "NORMAL" | "ALTA">(
+    "NORMAL",
+  );
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [observacoesFiscais, setObservacoesFiscais] = useState("");
   const [confirmSemVeiculoOpen, setConfirmSemVeiculoOpen] = useState(false);
-  const [pendingSubmitMode, setPendingSubmitMode] = useState<"CHECKLIST" | "ORCAMENTO">("CHECKLIST");
+  const [pendingSubmitMode, setPendingSubmitMode] = useState<
+    "CHECKLIST" | "ORCAMENTO"
+  >("CHECKLIST");
 
   const [alvoTipo, setAlvoTipo] = useState<AlvoTipo>("VEICULO");
   const [vPlaca, setVPlaca] = useState("");
@@ -95,15 +137,21 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   };
 
   const mergeUpdatedCustomer = (updatedCustomer: Customer) => {
-    setCliente((current) =>
-      current?.id === updatedCustomer.id
-        ? {
-            ...current,
-            ...updatedCustomer,
-            veiculos: updatedCustomer.veiculos ?? current.veiculos ?? [],
-            ordens: updatedCustomer.ordens ?? current.ordens ?? [],
-          }
-        : current
+    if (cliente?.id !== updatedCustomer.id) return;
+
+    const veiculos = updatedCustomer.veiculos ?? cliente.veiculos ?? [];
+    setCliente({
+      ...cliente,
+      ...updatedCustomer,
+      veiculos,
+      ordens: updatedCustomer.ordens ?? cliente.ordens ?? [],
+    });
+    setVeiculosDoCliente(veiculos);
+    setVeiculoSelecionadoId((currentVehicleId) =>
+      currentVehicleId !== null &&
+      !veiculos.some((v) => Number(v.id) === currentVehicleId)
+        ? null
+        : currentVehicleId,
     );
   };
 
@@ -167,7 +215,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
         value: String(v.id),
         label: `${v.modelo} • ${v.placa}${v.ano ? ` (${v.ano})` : ""}`,
       })),
-    [veiculosDoCliente]
+    [veiculosDoCliente],
   );
 
   useEffect(() => {
@@ -202,7 +250,8 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     if (alvoTipo === "VEICULO") {
       const placaNorm = vPlaca.trim().toUpperCase();
       if (!veiculoVinculado && placaNorm && veiculosDoCliente.length > 0) {
-        const normalize = (s: string) => s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+        const normalize = (s: string) =>
+          s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
         const jaExiste = veiculosDoCliente.some((v: any) => {
           const placaCliente = (v.placa || "").toString();
           return normalize(placaCliente) === normalize(placaNorm);
@@ -272,7 +321,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
       toast.success(
         totalCriadas > 1
           ? `${totalCriadas} OS criadas com sucesso.`
-          : `OS criada com sucesso!${osId ? ` ID: ${osId}` : ""}`
+          : `OS criada com sucesso!${osId ? ` ID: ${osId}` : ""}`,
       );
 
       window.dispatchEvent(new CustomEvent("os:refresh"));
@@ -284,7 +333,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
     }
   };
 
-  const salvar = async (mode: "CHECKLIST" | "ORCAMENTO" = "CHECKLIST"): Promise<void> => {
+  const salvar = async (
+    mode: "CHECKLIST" | "ORCAMENTO" = "CHECKLIST",
+  ): Promise<void> => {
     if (saving) return;
 
     const err = validateAll();
@@ -304,12 +355,16 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
 
   return (
     <>
-      <AlertDialog open={confirmSemVeiculoOpen} onOpenChange={setConfirmSemVeiculoOpen}>
+      <AlertDialog
+        open={confirmSemVeiculoOpen}
+        onOpenChange={setConfirmSemVeiculoOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Criar OS sem veículo</AlertDialogTitle>
             <AlertDialogDescription>
-              Deseja criar a ordem de serviço sem selecionar um veículo vinculado?
+              Deseja criar a ordem de serviço sem selecionar um veículo
+              vinculado?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -333,9 +388,13 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <User2 className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base sm:text-lg">Dados do Cliente</CardTitle>
+              <CardTitle className="text-base sm:text-lg">
+                Dados do Cliente
+              </CardTitle>
             </div>
-            <CardDescription>Selecione um cliente já cadastrado para abrir a OS.</CardDescription>
+            <CardDescription>
+              Selecione um cliente já cadastrado para abrir a OS.
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -348,13 +407,19 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                     applySelectedCustomer(c);
                   }}
                 >
-                  <Button variant="outline" className="hover:cursor-pointer w-min text-xs">
+                  <Button
+                    variant="outline"
+                    className="hover:cursor-pointer w-min text-xs"
+                  >
                     <Search className="h-3 w-3" />
                     Selecionar Cliente
                   </Button>
                 </CustomerSelect>
                 {cliente && (
-                  <div onClick={() => setCliente(null)} className="p-1.5 rounded-full hover:cursor-pointer bg-muted">
+                  <div
+                    onClick={() => setCliente(null)}
+                    className="p-1.5 rounded-full hover:cursor-pointer bg-muted"
+                  >
                     <X className="w-3 h-3 text-red-500" />
                   </div>
                 )}
@@ -402,7 +467,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base sm:text-lg">Definição da OS</CardTitle>
+              <CardTitle className="text-base sm:text-lg">
+                Definição da OS
+              </CardTitle>
             </div>
           </CardHeader>
 
@@ -413,7 +480,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                 <Select
                   value={setor}
                   onValueChange={setSetor}
-                  disabled={loadingSetores || (!!setoresError && setores.length === 0)}
+                  disabled={
+                    loadingSetores || (!!setoresError && setores.length === 0)
+                  }
                 >
                   <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                     <SelectValue
@@ -434,12 +503,17 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                     ))}
                   </SelectContent>
                 </Select>
-                {setoresError && <p className="text-xs text-red-500">{setoresError}</p>}
+                {setoresError && (
+                  <p className="text-xs text-red-500">{setoresError}</p>
+                )}
               </div>
 
               <div className="space-y-3">
                 <Label>Prioridade</Label>
-                <Select value={prioridade} onValueChange={(v) => setPrioridade(v as any)}>
+                <Select
+                  value={prioridade}
+                  onValueChange={(v) => setPrioridade(v as any)}
+                >
                   <SelectTrigger className="h-10 w-full md:w-[380px] min-w-[260px] truncate">
                     <SelectValue placeholder="Selecione a prioridade" />
                   </SelectTrigger>
@@ -478,14 +552,20 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
               {alvoTipo === "VEICULO" ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Vincular a um veículo já cadastrado (opcional)</Label>
+                    <Label>
+                      Vincular a um veículo já cadastrado (opcional)
+                    </Label>
                     <Badge variant="outline" className="font-normal">
                       {cliente ? `${veiculoOptions.length} veículo(s)` : "—"}
                     </Badge>
                   </div>
 
                   <Select
-                    value={veiculoSelecionadoId === null ? NONE : String(veiculoSelecionadoId)}
+                    value={
+                      veiculoSelecionadoId === null
+                        ? NONE
+                        : String(veiculoSelecionadoId)
+                    }
                     onValueChange={(v) => {
                       const id = v === NONE ? null : Number(v);
                       setVeiculoSelecionadoId(id);
@@ -530,7 +610,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                       <Input
                         value={pNome}
                         maxLength={MAX_PECA_NOME}
-                        onChange={(e) => setPNome(e.target.value.slice(0, MAX_PECA_NOME))}
+                        onChange={(e) =>
+                          setPNome(e.target.value.slice(0, MAX_PECA_NOME))
+                        }
                         placeholder="Ex.: Bomba d'água"
                       />
                       <div className="text-right text-xs text-muted-foreground">
@@ -546,7 +628,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                         onChange={(e) => setPLacre(e.target.value.slice(0, 30))}
                         placeholder="Lacre para identificação"
                       />
-                      <div className="text-right text-xs text-muted-foreground">{pLacre.length}/30</div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        {pLacre.length}/30
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
@@ -554,7 +638,9 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                       <Input
                         value={pDesc}
                         maxLength={MAX_PECA_DESC}
-                        onChange={(e) => setPDesc(e.target.value.slice(0, MAX_PECA_DESC))}
+                        onChange={(e) =>
+                          setPDesc(e.target.value.slice(0, MAX_PECA_DESC))
+                        }
                         placeholder="Detalhes da peça"
                       />
                       <div className="text-right text-xs text-muted-foreground">
@@ -563,8 +649,15 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="hidden lg:block opacity-0">Adicionar</Label>
-                      <Button type="button" variant="outline" onClick={adicionarPeca} className="w-full lg:w-auto">
+                      <Label className="hidden lg:block opacity-0">
+                        Adicionar
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={adicionarPeca}
+                        className="w-full lg:w-auto"
+                      >
                         <Plus className="h-4 w-4" />
                         Adicionar peça
                       </Button>
@@ -589,22 +682,33 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <Badge variant="secondary" className="font-medium">
+                                  <Badge
+                                    variant="secondary"
+                                    className="font-medium"
+                                  >
                                     Peça {index + 1}
                                   </Badge>
-                                  <p className="text-sm font-semibold leading-none">{item.nome}</p>
+                                  <p className="text-sm font-semibold leading-none">
+                                    {item.nome}
+                                  </p>
                                 </div>
 
                                 <div className="space-y-1 text-xs text-muted-foreground">
                                   {item.lacre ? (
                                     <p>
-                                      <span className="font-medium text-foreground/80">Lacre:</span>{" "}
+                                      <span className="font-medium text-foreground/80">
+                                        Lacre:
+                                      </span>{" "}
                                       {item.lacre}
                                     </p>
                                   ) : null}
-                                  {item.descricao ? <p>{item.descricao}</p> : null}
+                                  {item.descricao ? (
+                                    <p>{item.descricao}</p>
+                                  ) : null}
                                   {!item.lacre && !item.descricao ? (
-                                    <p className="italic">Sem detalhes adicionais.</p>
+                                    <p className="italic">
+                                      Sem detalhes adicionais.
+                                    </p>
                                   ) : null}
                                 </div>
                               </div>
@@ -625,14 +729,16 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                     ) : (
                       <div className="rounded-xl border border-dashed bg-muted/20 px-4 py-5">
                         <p className="text-sm text-muted-foreground">
-                          Nenhuma peça adicionada ainda. Você pode adicionar várias; será criada uma OS para cada peça.
+                          Nenhuma peça adicionada ainda. Você pode adicionar
+                          várias; será criada uma OS para cada peça.
                         </p>
                       </div>
                     )}
 
                     {pNome.trim() && (
                       <p className="text-xs text-muted-foreground">
-                        A peça atualmente preenchida também será incluída no salvamento, mesmo sem clicar em adicionar.
+                        A peça atualmente preenchida também será incluída no
+                        salvamento, mesmo sem clicar em adicionar.
                       </p>
                     )}
                   </div>
@@ -646,8 +752,14 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base sm:text-lg">Descrição do Problema</CardTitle>
+              <CardTitle className="text-base sm:text-lg">
+                Descrição do Problema
+              </CardTitle>
             </div>
+            <CardDescription className="text-sm text-muted-foreground">
+              Informe os detalhes do problema relatado para orientar o
+              atendimento.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -661,7 +773,17 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
 
         <Card className="border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Observações (Interno)</CardTitle>
+            <div className="flex gap-2 items-center">
+              <TriangleAlert className="h-5 w-5 text-primary" />
+
+              <CardTitle className="text-base sm:text-lg">
+                Observações (Interno)
+              </CardTitle>
+            </div>{" "}
+            <CardDescription className="text-sm text-muted-foreground">
+              Espaço para anotações internas da equipe, como detalhes adicionais
+              do atendimento ou histórico relevante.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -675,7 +797,16 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
 
         <Card className="border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Observações Fiscais</CardTitle>
+            <div className="flex gap-2 items-center">
+              <FileText className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg">
+                Observações Fiscais
+              </CardTitle>
+            </div>
+            <CardDescription className="text-sm text-muted-foreground">
+              Informações fiscais adicionais relevantes para emissão de notas ou
+              processos relacionados.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea
