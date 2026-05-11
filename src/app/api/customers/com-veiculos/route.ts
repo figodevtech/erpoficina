@@ -35,6 +35,11 @@ function normalizeTipopessoa(v?: string | null) {
   const up = s.toUpperCase();
   return up === "FISICA" || up === "JURIDICA" ? up : null;
 }
+function isValidEmail(v?: string | null) {
+  const s = normalizeString(v);
+  if (!s) return true;
+  return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(s);
+}
 
 /* ============================
    GET /api/clientes  (listar)
@@ -140,7 +145,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const missing = ["tipopessoa", "cpfcnpj", "nomerazaosocial", "telefone", "email"].filter(
+    const missing = ["tipopessoa", "cpfcnpj", "nomerazaosocial", "telefone"].filter(
       (k) => !json[k] || String(json[k]).trim() === ""
     );
     if (missing.length) {
@@ -163,6 +168,10 @@ export async function POST(req: Request) {
     const cpfcnpj = onlyDigits(String(json.cpfcnpj));
     if (!cpfcnpj) {
       return NextResponse.json({ error: "cpfcnpj inválido." }, { status: 400 });
+    }
+
+    if (!isValidEmail(json.email ?? null)) {
+      return NextResponse.json({ error: "Email inválido." }, { status: 400 });
     }
 
     const payload = {

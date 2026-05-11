@@ -196,8 +196,8 @@ export default function RegisterContent({
   };
 
   function validarEmailDigitado(email: string): boolean {
-    if (!email) return false;
     const valor = email.trim();
+    if (!valor) return true;
 
     // Mesmo regex usado na constraint (case-insensitive)
     const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
@@ -497,7 +497,7 @@ export default function RegisterContent({
                 className="flex items-center gap-2 text-sm"
               >
                 <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
-                Email *
+                Email
               </Label>
               <Input
                 inputMode="email"

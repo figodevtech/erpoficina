@@ -149,8 +149,8 @@ export default function EditContent({ customerId, isDesktop = true, onUpdate }: 
   const [expandedOrdemId, setExpandedOrdemId] = useState<number | null>(null);
 
   function validarEmailDigitado(email: string): boolean {
-    if (!email) return false;
     const valor = email.trim();
+    if (!valor) return true;
 
     // Mesmo regex usado na constraint (case-insensitive)
     const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;

@@ -63,6 +63,14 @@ function toNullIfEmpty(v: unknown) {
   return typeof v === "string" && v.trim() === "" ? null : v;
 }
 
+function isValidEmail(v: unknown) {
+  if (v == null) return true;
+  if (typeof v !== "string") return false;
+  const s = v.trim();
+  if (!s) return true;
+  return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(s);
+}
+
 function sanitizePayload(body: any, { strict }: { strict: boolean }) {
   const out: Record<string, any> = {};
   for (const key of Object.keys(body ?? {})) {
@@ -79,13 +87,17 @@ function sanitizePayload(body: any, { strict }: { strict: boolean }) {
   }
 
   if (strict) {
-    const required = ["tipopessoa", "cpfcnpj", "nomerazaosocial", "email", "telefone"];
+    const required = ["tipopessoa", "cpfcnpj", "nomerazaosocial", "telefone"];
     const missing = required.filter((k) => out[k] == null);
     if (missing.length) {
       throw new Error(
         `Campos obrigatórios ausentes no PUT: ${missing.join(", ")}`
       );
     }
+  }
+
+  if ("email" in out && !isValidEmail(out.email)) {
+    throw new Error("Email inválido.");
   }
 
   out.updatedat = new Date().toISOString();
