@@ -11,13 +11,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, User2, Wrench, ClipboardList, Building2, Search, Plus, X } from "lucide-react";
+import { Loader2, User2, Wrench, ClipboardList, Building2, Search, Plus, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "../../../clientes/types";
 import { listarSetores } from "../../lib/api";
 import { ClienteInfoCard } from "../novaOS/cliente-info-card";
 import { CustomerDialog } from "../../../clientes/components/customerDialogRegister/customerDialog";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 type Veiculo = {
   id: number;
@@ -59,6 +61,8 @@ export function OrdemEditForm({
   onInitialLoadingChange,
   onClose,
 }: OrdemEditFormProps) {
+  const { data: session } = useSession();
+  const canEditCustomer = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EDITAR);
   const osId = defaultValues?.id ?? null;
 
   const [setores, setSetores] = useState<Array<{ id: number; nome: string }>>([]);
@@ -100,6 +104,26 @@ export function OrdemEditForm({
 
   const [initialLoading, setInitialLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const applySelectedCustomer = (c?: Customer | null) => {
+    setCliente(c ?? null);
+    setModoAtendimento("cadastrado");
+    setVeiculoSelecionadoId(null);
+    setVeiculosDoCliente(c?.veiculos ?? []);
+  };
+
+  const mergeUpdatedCustomer = (updatedCustomer: Customer) => {
+    setCliente((current) =>
+      current?.id === updatedCustomer.id
+        ? {
+            ...current,
+            ...updatedCustomer,
+            veiculos: updatedCustomer.veiculos ?? current.veiculos ?? [],
+            ordens: updatedCustomer.ordens ?? current.ordens ?? [],
+          }
+        : current
+    );
+  };
 
   // ===== Carrega lista de setores =====
   useEffect(() => {
@@ -408,10 +432,7 @@ export function OrdemEditForm({
                     open={openCustomer}
                     setOpen={setOpenCustomer}
                     OnSelect={(c) => {
-                      setCliente(c ?? null);
-                      setModoAtendimento("cadastrado");
-                      setVeiculoSelecionadoId(null);
-                      setVeiculosDoCliente(c?.veiculos ?? []);
+                      applySelectedCustomer(c);
                     }}
                   >
                     <Button
@@ -443,14 +464,29 @@ export function OrdemEditForm({
                   isOpen={customerRegisterOpen}
                   setIsOpen={setCustomerRegisterOpen}
                   onRegister={(c) => {
-                    setCliente(c ?? null);
-                    setModoAtendimento("cadastrado");
-                    setVeiculoSelecionadoId(null);
-                    setVeiculosDoCliente(c?.veiculos ?? []);
+                    applySelectedCustomer(c);
                   }}
+                  onUpdate={mergeUpdatedCustomer}
                 />
+                {cliente && canEditCustomer ? (
+                  <Button
+                    onClick={() => {
+                      setSelectedCustomerId(cliente.id);
+                      setCustomerRegisterOpen(true);
+                    }}
+                    variant="outline"
+                    className="hover:cursor-pointer w-min text-xs"
+                    disabled={saving}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Editar Cliente
+                  </Button>
+                ) : null}
                 <Button
-                  onClick={() => setCustomerRegisterOpen(true)}
+                  onClick={() => {
+                    setSelectedCustomerId(undefined);
+                    setCustomerRegisterOpen(true);
+                  }}
                   variant={"outline"}
                   className="hover:cursor-pointer w-min text-xs"
                   disabled={saving}

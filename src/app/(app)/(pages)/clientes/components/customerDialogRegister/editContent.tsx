@@ -71,6 +71,7 @@ import {
 interface EditContentProps {
   customerId: number;
   isDesktop?: boolean;
+  onUpdate?: (c: Customer) => void;
 }
 
 const statusOptionClass: Record<StatusCliente, string> = {
@@ -130,7 +131,7 @@ const getStatusBadge = (status?: string | null) => {
   }
 };
 
-export default function EditContent({ customerId, isDesktop = true }: EditContentProps) {
+export default function EditContent({ customerId, isDesktop = true, onUpdate }: EditContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const [selectedCustomer, setselectedCustomer] = useState<Customer | undefined>(undefined);
@@ -278,6 +279,7 @@ export default function EditContent({ customerId, isDesktop = true }: EditConten
         // console.log(response)
         const { data } = response;
         setselectedCustomer(data.data);
+        onUpdate?.(data.data);
         console.log("Cliente atualizado:", data.data);
         toast.success("Cliente Atualizado");
         handleGetCustomer(data.data.id);

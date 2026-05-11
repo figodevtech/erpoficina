@@ -19,6 +19,7 @@ interface CustomerDialogProps {
   setIsOpen?: (value: boolean) => void;
   setSelectedCustomerId?: (value: number | undefined) => void;
   onRegister?: (c: Customer) => void;
+  onUpdate?: (c: Customer) => void;
 }
 
 export function CustomerDialog({
@@ -28,6 +29,7 @@ export function CustomerDialog({
   setIsOpen,
   setSelectedCustomerId,
   onRegister,
+  onUpdate,
 }: CustomerDialogProps) {
   // estado interno caso o componente não seja controlado por props
   const [internalOpen, setInternalOpen] = useState(false);
@@ -119,7 +121,7 @@ export function CustomerDialog({
         </DialogTrigger>
 
         {customerId ? (
-          <EditContent customerId={customerId} />
+          <EditContent customerId={customerId} onUpdate={onUpdate} />
         ) : (
           <RegisterContent
             setSelectedCustomerId={setSelectedCustomerId}
@@ -169,7 +171,7 @@ export function CustomerDialog({
       </DrawerTrigger>
 
       {customerId ? (
-        <EditContent isDesktop={isDesktop} customerId={customerId} />
+        <EditContent isDesktop={isDesktop} customerId={customerId} onUpdate={onUpdate} />
       ) : (
         <RegisterContent
           isDesktop={isDesktop}

@@ -20,13 +20,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, User2, ClipboardList, Building2, Wrench, Plus, X } from "lucide-react";
+import { Search, User2, ClipboardList, Building2, Wrench, Plus, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { Customer } from "../../../clientes/types";
 import { listarSetores } from "../../lib/api";
 import { ClienteInfoCard } from "./cliente-info-card";
 import { CustomerDialog } from "../../../clientes/components/customerDialogRegister/customerDialog";
+import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 export type FormularioNovaOSProps = {
   exposeSubmit?: (fn: (mode?: "CHECKLIST" | "ORCAMENTO") => Promise<void>) => void;
@@ -47,6 +49,9 @@ type PecaItem = {
 };
 
 export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: FormularioNovaOSProps) {
+  const { data: session } = useSession();
+  const canEditCustomer = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EDITAR);
+
   const [saving, setSaving] = useState(false);
   useEffect(() => onSavingChange?.(saving), [saving, onSavingChange]);
 
@@ -82,6 +87,25 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
   const [pecas, setPecas] = useState<PecaItem[]>([]);
 
   const veiculoVinculado = veiculoSelecionadoId !== null;
+
+  const applySelectedCustomer = (c?: Customer | null) => {
+    setCliente(c ?? null);
+    setVeiculoSelecionadoId(null);
+    setVeiculosDoCliente(c?.veiculos ?? []);
+  };
+
+  const mergeUpdatedCustomer = (updatedCustomer: Customer) => {
+    setCliente((current) =>
+      current?.id === updatedCustomer.id
+        ? {
+            ...current,
+            ...updatedCustomer,
+            veiculos: updatedCustomer.veiculos ?? current.veiculos ?? [],
+            ordens: updatedCustomer.ordens ?? current.ordens ?? [],
+          }
+        : current
+    );
+  };
 
   const limparRascunhoPeca = () => {
     setPNome("");
@@ -321,9 +345,7 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                   open={openCustomer}
                   setOpen={setOpenCustomer}
                   OnSelect={(c) => {
-                    setCliente(c ?? null);
-                    setVeiculoSelecionadoId(null);
-                    setVeiculosDoCliente(c?.veiculos ?? []);
+                    applySelectedCustomer(c);
                   }}
                 >
                   <Button variant="outline" className="hover:cursor-pointer w-min text-xs">
@@ -343,13 +365,28 @@ export function FormularioNovaOS({ exposeSubmit, onDone, onSavingChange }: Formu
                 isOpen={customerRegisterOpen}
                 setIsOpen={setCustomerRegisterOpen}
                 onRegister={(c) => {
-                  setCliente(c ?? null);
-                  setVeiculoSelecionadoId(null);
-                  setVeiculosDoCliente(c?.veiculos ?? []);
+                  applySelectedCustomer(c);
                 }}
+                onUpdate={mergeUpdatedCustomer}
               />
+              {cliente && canEditCustomer ? (
+                <Button
+                  onClick={() => {
+                    setSelectedCustomerId(cliente.id);
+                    setCustomerRegisterOpen(true);
+                  }}
+                  variant="outline"
+                  className="hover:cursor-pointer w-min text-xs"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Editar Cliente
+                </Button>
+              ) : null}
               <Button
-                onClick={() => setCustomerRegisterOpen(true)}
+                onClick={() => {
+                  setSelectedCustomerId(undefined);
+                  setCustomerRegisterOpen(true);
+                }}
                 variant="outline"
                 className="hover:cursor-pointer w-min text-xs"
               >
