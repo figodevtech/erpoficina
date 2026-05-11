@@ -312,6 +312,13 @@ export default auth(async (req: NextRequest & { auth?: any }) => {
   }
 
   const apiActionPerm = isApi ? matchApiActionRule(pathname, req.method) : null;
+  if (
+    pathname === "/api/config" &&
+    ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase())
+  ) {
+    return NextResponse.next({ headers: { "Cache-Control": "no-store" } });
+  }
+
   if (apiActionPerm) {
     const ok = hasPermFromSession(user, apiActionPerm);
     if (!ok) {

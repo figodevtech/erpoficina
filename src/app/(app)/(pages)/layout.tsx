@@ -11,6 +11,26 @@ import { ConfigProvider } from "./config-context";
 
 const CONFIG_CACHE_KEY = "erpoficina:config-cache";
 
+const DEFAULT_CONFIG: Config = {
+  id: 0,
+  aviso_pagamento: false,
+  checklist_obrigatorio: true,
+  alerta_estoque_pdv: true,
+  habilitar_emissao_nfe: false,
+  emissao_nf_no_modulo_ordens: true,
+  emissao_nf_no_modulo_vendas: false,
+  emissao_nf_ordens_nao_pagas: false,
+  emissao_nf_vendas_nao_pagas: false,
+  habilitar_drawers: true,
+  agendamento_intervalo_minutos: 60,
+  agendamento_hora_inicio: "08:00",
+  agendamento_hora_fim: "18:00",
+  agendamento_dias_trabalho: [1, 2, 3, 4, 5],
+  impressao_cor_primaria: "#2563eb",
+  impressao_cor_secundaria: "#0891b2",
+  created_at: "",
+};
+
 function readCachedConfig(): Config | undefined {
   if (typeof window === "undefined") return undefined;
 
@@ -47,6 +67,9 @@ export default function ShellLayout({ children }: { children: ReactNode }) {
     try {
       setProgress(background ? 100 : 40);
       const response = await fetch("/api/config", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Falha ao buscar configuração: ${response.status}`);
+      }
       setProgress(background ? 100 : 70);
       const data = await response.json();
 
@@ -57,6 +80,10 @@ export default function ShellLayout({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("Erro ao buscar configuração:", error);
+      if (!background) {
+        setConfig(DEFAULT_CONFIG);
+        setProgress(100);
+      }
     } finally {
       if (!background) {
         setLoadingConfigs(false);
@@ -78,7 +105,7 @@ export default function ShellLayout({ children }: { children: ReactNode }) {
     void handleGetConfig(false);
   }, []);
 
-  if (loadingConfigs || !config) {
+  if (loadingConfigs) {
     return (
       <div className="w-screen h-screen flex items-center justify-center gap-2">
         <div className="flex flex-col items-center justify-center">
@@ -103,7 +130,7 @@ export default function ShellLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ConfigProvider config={config}>
+    <ConfigProvider config={config ?? DEFAULT_CONFIG}>
       <ClientAppShell>{children}</ClientAppShell>
     </ConfigProvider>
   );
