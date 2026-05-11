@@ -28,7 +28,7 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
       {reason === "inactive" ? <ForceLogout reason="inactive" /> : null}
-      <span className="mb-4 text-xs text-muted-foreground">
+      <span className="mb-4 text-xs text-muted-foreground text-center">
         <blockquote className="hover:cursor-default">
           {`"${text}" - `}
           <Tooltip>
