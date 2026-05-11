@@ -2,6 +2,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoginFormClient } from "./login-form-client";
+import { fetchPrimeiroLogoEmpresa } from "@/lib/empresa-logo";
 
 async function urlExiste(url: string): Promise<boolean> {
   try {
@@ -34,13 +35,6 @@ export async function LoginForm({
 }: React.ComponentProps<"div">) {
   const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 
-  const logoSupabase = supabaseBaseUrl
-    ? safeUrl(
-        supabaseBaseUrl,
-        "/storage/v1/object/public/empresa/images/logo/logo.png"
-      )
-    : "";
-
   const bgSupabase = supabaseBaseUrl
     ? safeUrl(
         supabaseBaseUrl,
@@ -53,12 +47,11 @@ export async function LoginForm({
   const bgFallback = "/images/login-fallback.jpg";
 
   // Decide TUDO no server (sem swap no client)
-  const [logoOk, bgOk] = await Promise.all([
-    logoSupabase ? urlExiste(logoSupabase) : Promise.resolve(false),
+  const [finalLogo, bgOk] = await Promise.all([
+    fetchPrimeiroLogoEmpresa(),
     bgSupabase ? urlExiste(bgSupabase) : Promise.resolve(false),
   ]);
 
-  const finalLogo = logoOk ? logoSupabase : null;
   const finalBg = bgOk ? bgSupabase : bgFallback;
 
   return (

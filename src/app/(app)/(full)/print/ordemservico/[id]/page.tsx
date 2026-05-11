@@ -10,6 +10,7 @@ import { formatCep } from "@/app/(app)/(pages)/clientes/components/customerDialo
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ObservacoesToggle } from "../../../components/ObservacoesToggle";
+import { fetchPrimeiroLogoEmpresa } from "@/lib/empresa-logo";
 
 export const runtime = "nodejs";
 
@@ -89,23 +90,6 @@ function fmtEnum(value?: string | null) {
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function safeUrl(base: string, path: string): string {
-  try {
-    return new URL(path, base).toString();
-  } catch {
-    return "";
-  }
-}
-
-async function urlExiste(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, { method: "HEAD" });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 async function fetchEmpresa() {
   const { data, error } = await supabaseAdmin
     .from("empresa")
@@ -154,17 +138,7 @@ export default async function OSFullPage({ params }: PageProps) {
   }
 
   const empresa = await fetchEmpresa();
-
-  const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const logoSupabase = supabaseBaseUrl
-    ? safeUrl(
-        supabaseBaseUrl,
-        "/storage/v1/object/public/empresa/images/logo/logo.png"
-      )
-    : "";
-
-  const logoOk = logoSupabase ? await urlExiste(logoSupabase) : false;
-  const finalLogo = logoOk ? logoSupabase : null;
+  const finalLogo = await fetchPrimeiroLogoEmpresa();
 
   const totalProdutos =
     os.produtos?.reduce((acc: number, p: any) => acc + Number(p.subtotal), 0) ||
