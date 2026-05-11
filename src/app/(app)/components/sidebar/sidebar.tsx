@@ -35,6 +35,10 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuSkeleton,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { NavSettings } from "./components/nav-settings";
@@ -226,8 +230,30 @@ function filterByPermission(items: any[], user: any) {
     .filter(Boolean);
 }
 
+function SidebarModulesLoading() {
+  return (
+    <>
+      <SidebarGroup>
+        <SidebarGroupLabel>Módulos</SidebarGroupLabel>
+        <SidebarMenu>
+          {Array.from({ length: 8 }).map((_, index) => (
+            <SidebarMenuSkeleton key={index} showIcon />
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
+
+      <SidebarGroup>
+        <SidebarGroupLabel>Ajustes</SidebarGroupLabel>
+        <SidebarMenu>
+          <SidebarMenuSkeleton showIcon />
+        </SidebarMenu>
+      </SidebarGroup>
+    </>
+  );
+}
+
 export function AppSidebar({ user, setOpen, hoverHabilitado, ...props }: AppSidebarProps) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   // Se tiver sessão, usa usuário da sessão; senão, usa o user vindo por props (do layout)
   const effectiveUser =
@@ -238,6 +264,7 @@ export function AppSidebar({ user, setOpen, hoverHabilitado, ...props }: AppSide
           email: user.email,
         }
       : null);
+  const isSessionLoading = status === "loading" && !effectiveUser;
 
   const navOptions = React.useMemo(
     () => filterByPermission(data.navOptions, effectiveUser),
@@ -253,8 +280,14 @@ export function AppSidebar({ user, setOpen, hoverHabilitado, ...props }: AppSide
       if(!hoverHabilitado) return;
       setOpen?.(true)}} collapsible="icon" {...props}>
       <SidebarContent>
-        <NavMain items={navOptions} />
-        <NavSettings items={navSettings} />
+        {isSessionLoading ? (
+          <SidebarModulesLoading />
+        ) : (
+          <>
+            <NavMain items={navOptions} />
+            <NavSettings items={navSettings} />
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter>
         {effectiveUser && (
