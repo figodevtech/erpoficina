@@ -8,6 +8,7 @@ import { ObservacoesToggle } from "../../../../components/ObservacoesToggle";
 import { FileText, Power, ShoppingCart, User } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { formatCep } from "@/app/(app)/(pages)/clientes/components/customerDialogRegister/utils";
+import { fetchPrimeiroLogoEmpresa } from "@/lib/empresa-logo";
 
 export const runtime = "nodejs";
 
@@ -16,8 +17,6 @@ type PageProps = {
 };
 
 const EMPTY = "-";
-const EMPRESA_LOGO_URL =
-  "https://lkpwaiynvnfedvxcjmrp.supabase.co/storage/v1/object/public/empresa/images/logo/logo.png";
 
 function fmtMoney(v: number | string | null | undefined) {
   const n = Number(v ?? 0);
@@ -143,6 +142,7 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
   }
 
   const empresa = await fetchEmpresa();
+  const finalLogo = await fetchPrimeiroLogoEmpresa();
   const cliente = Array.isArray(venda.cliente)
     ? venda.cliente[0]
     : venda.cliente;
@@ -341,12 +341,16 @@ export default async function PrintVendaOrcamentoPage({ params }: PageProps) {
       <div className="folha">
         <div className="header-os">
           <div className="logo-box">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={EMPRESA_LOGO_URL}
-              alt="Logo da empresa"
-              className="logo-img"
-            />
+            {finalLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={finalLogo}
+                alt="Logo da empresa"
+                className="logo-img"
+              />
+            ) : (
+              "PDV"
+            )}
           </div>
 
           <div>

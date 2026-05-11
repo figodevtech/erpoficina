@@ -27,9 +27,6 @@ type EmpresaConfig = {
 };
 
 const EMPTY = "-";
-const EMPRESA_LOGO_URL =
-  "https://lkpwaiynvnfedvxcjmrp.supabase.co/storage/v1/object/public/empresa/images/logo/logo.png";
-
 function fmtMoney(v: number | string | null | undefined) {
   const n = Number(v ?? 0);
   if (!Number.isFinite(n)) return "R$ 0,00";
@@ -78,7 +75,9 @@ function PrintPdvOrcamentoContent() {
   const searchParams = useSearchParams();
   const [draft, setDraft] = useState<PdvOrcamentoPrintData | null>(null);
   const [empresa, setEmpresa] = useState<EmpresaConfig | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [configLoading, setConfigLoading] = useState(true);
   const printedRef = useRef(false);
 
   useEffect(() => {
@@ -103,11 +102,20 @@ function PrintPdvOrcamentoContent() {
   useEffect(() => {
     const loadEmpresa = async () => {
       try {
-        const response = await fetch("/api/config/empresa", { cache: "no-store" });
-        const data = await response.json();
-        setEmpresa(data?.empresa ?? null);
+        const [empresaResponse, logoResponse] = await Promise.all([
+          fetch("/api/config/empresa", { cache: "no-store" }),
+          fetch("/api/config/empresa/logo", { cache: "no-store" }),
+        ]);
+
+        const empresaData = await empresaResponse.json();
+        const logoData = await logoResponse.json();
+
+        setEmpresa(empresaData?.empresa ?? null);
+        setLogoUrl(logoData?.logoUrl ?? null);
       } catch (error) {
         console.error("Erro ao carregar empresa para impressão do orçamento:", error);
+      } finally {
+        setConfigLoading(false);
       }
     };
 
@@ -115,12 +123,12 @@ function PrintPdvOrcamentoContent() {
   }, []);
 
   useEffect(() => {
-    if (!draft || printedRef.current) return;
+    if (!draft || configLoading || printedRef.current) return;
 
     printedRef.current = true;
     const timeout = window.setTimeout(() => window.print(), 500);
     return () => window.clearTimeout(timeout);
-  }, [draft]);
+  }, [configLoading, draft]);
 
   const empresaNome = empresa?.nomefantasia || empresa?.razaosocial || "Empresa";
   const empresaEndereco = joinParts(
@@ -157,9 +165,7 @@ function PrintPdvOrcamentoContent() {
     );
   }, [draft]);
 
-  const logoUrl = useMemo(() => EMPRESA_LOGO_URL, []);
-
-  if (loading) {
+  if (loading || configLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando orçamento...</div>;
   }
 
