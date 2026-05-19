@@ -1,4 +1,4 @@
-export default function formatarTelefone(numero: string) {
+export default function formatarTelefone(numero?: string | null) {
   if(!numero) return null;
   const numeros = numero.replace(/\D/g, '');
 

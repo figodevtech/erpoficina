@@ -79,8 +79,11 @@ export default function CustomersDataTable({
   const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EDITAR);
   const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.CLIENTES_EXCLUIR);
 
-  const truncate = (value: string, max: number) =>
-    value.length > max ? `${value.slice(0, max)}...` : value;
+  const truncate = (value: string | null | undefined, max: number) => {
+    if (!value) return "-";
+
+    return value.length > max ? `${value.slice(0, max)}...` : value;
+  };
 
   const handleDeleteUser = async (id: number) => {
     if (!canDelete) return;
@@ -204,7 +207,7 @@ export default function CustomersDataTable({
                           {truncate(customer.email, 28)}
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent>{customer.email}</TooltipContent>
+                      <TooltipContent>{customer.email || "Sem e-mail"}</TooltipContent>
                     </Tooltip>
                     <div className="text-sm text-muted-foreground flex items-center">
                       {formatarTelefone(customer.telefone)}
@@ -227,7 +230,7 @@ export default function CustomersDataTable({
                 </TableCell>
 
                 <TableCell className="text-sm">
-                  {customer.cidade}/{customer.estado}
+                  {[customer.cidade, customer.estado].filter(Boolean).join("/") || "-"}
                 </TableCell>
 
                 <TableCell>{getStatusBadge(customer.status)}</TableCell>

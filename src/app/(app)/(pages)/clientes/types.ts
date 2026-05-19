@@ -27,18 +27,18 @@ export interface Customer {
   tipopessoa: TipoPessoa
   cpfcnpj: string
   nomerazaosocial: string
-  email: string
-  telefone: string
-  endereco: string
-  endereconumero: string
-  enderecocomplemento: string
-  cidade: string
-  estado: string
-  bairro: string
-  cep: string
-  inscricaoestadual: string
-  inscricaomunicipal: string
-  codigomunicipio: string
+  email: string | null
+  telefone: string | null
+  endereco: string | null
+  endereconumero: string | null
+  enderecocomplemento: string | null
+  cidade: string | null
+  estado: string | null
+  bairro: string | null
+  cep: string | null
+  inscricaoestadual: string | null
+  inscricaomunicipal: string | null
+  codigomunicipio: string | null
   createdat: string
   updatedat: Timestamp
   status: ClientStatus
