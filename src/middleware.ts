@@ -1,7 +1,7 @@
 ﻿// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth-edge";
 import { expandPermissions, normalizePermission, PERMS, permissionSetHas, type Permission } from "@/app/api/_authz/permission-constants";
 import { getDefaultRouteForPerms } from "@/app/api/_authz/default-route";
 
