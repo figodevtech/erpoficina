@@ -17,7 +17,7 @@ type Props = {
   modo: "criar" | "editar";
   perfilInicial?: Perfil | null;
   permissoesDisponiveis: Permissao[];
-  carregandoConteudo?: boolean;        // <- usa isso para mostrar só o spinner
+  carregandoConteudo?: boolean;
   salvando: boolean;
   onSalvar: (dados: { nome: string; descricao: string; permissoesIds: number[] }) => Promise<void>;
 };
@@ -58,7 +58,7 @@ export function DialogPerfil({
     const grupos = new Map<string, Permissao[]>();
 
     for (const perm of permissoesDisponiveis) {
-      const modulo = perm.nome.includes(":") ? formatModulo(perm.nome) : "Permissoes antigas";
+      const modulo = perm.nome.includes(":") ? formatModulo(perm.nome) : "Permissões antigas";
       grupos.set(modulo, [...(grupos.get(modulo) ?? []), perm]);
     }
 
@@ -104,95 +104,113 @@ export function DialogPerfil({
 
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
-      <DialogContent className="sm:max-w-[720px]">
-        <DialogHeader>
-          <DialogTitle>{modo === "criar" ? "Criar Perfil" : "Editar Perfil"}</DialogTitle>
-        </DialogHeader>
-
+      <DialogContent
+        className="h-svh min-w-screen overflow-hidden p-0 sm:max-h-[760px] sm:w-[85vw] sm:min-w-0 sm:max-w-[900px]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         {carregandoConteudo ? (
-          // === SOMENTE SPINNER / LOADING ===
-          <div className="flex flex-col items-center justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Carregando...</p>
-          </div>
-        ) : (
-          // === CONTEÚDO NORMAL DO DIALOG ===
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Ex. Administrador"
-                />
-              </div>
+            <DialogHeader className="hidden">
+              <DialogTitle>{modo === "criar" ? "Criar Perfil" : "Editar Perfil"}</DialogTitle>
+            </DialogHeader>
 
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Input
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                  placeholder="Opcional"
-                />
-              </div>
+            <div className="flex h-full min-h-0 flex-col items-center justify-center">
+              <div className="size-8 animate-spin rounded-t-full border-t-2 border-primary" />
+              <span className="text-primary">Carregando</span>
             </div>
+          </>
+        ) : (
+          <div className="flex h-full min-h-0 flex-col">
+            <DialogHeader className="shrink-0 border-b px-6 py-4">
+              <DialogTitle>{modo === "criar" ? "Criar Perfil" : "Editar Perfil"}</DialogTitle>
+            </DialogHeader>
 
-            <div className="space-y-2 mt-2">
-              <Label>Permissões</Label>
+            <div className="h-full min-h-0 space-y-4 overflow-auto px-6 py-6 dark:bg-muted-foreground/5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    placeholder="Ex. Administrador"
+                  />
+                </div>
 
-              <div className="rounded-md border">
-                <ScrollArea className="h-[320px]">
-                  <div className="p-3 space-y-2">
-                    {permissoesDisponiveis.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Nenhuma permissão cadastrada.
-                      </p>
-                    ) : (
-                      permissoesPorModulo.map((grupo) => (
-                        <div key={grupo.modulo} className="rounded-md border bg-background">
-                          <div className="border-b bg-muted/40 px-3 py-2 text-sm font-medium">{grupo.modulo}</div>
-                          <div className="grid gap-1 p-2 sm:grid-cols-2">
-                            {grupo.permissoes.map((perm) => {
-                              const marcado = selecionadas.has(perm.id);
-                              return (
-                                <label
-                                  key={perm.id}
-                                  className="flex items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/50 cursor-pointer"
-                                >
-                                  <Checkbox
-                                    checked={marcado}
-                                    onCheckedChange={() => alternarPermissao(perm.id)}
-                                    className="mt-0.5"
-                                  />
-                                  <div className="leading-tight">
-                                    <div className="text-sm font-medium">{perm.nome.includes(":") ? formatAcao(perm.nome) : perm.nome}</div>
-                                    {perm.descricao ? (
-                                      <div className="text-xs text-muted-foreground">{perm.descricao}</div>
-                                    ) : null}
-                                  </div>
-                                </label>
-                              );
-                            })}
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Permissões</Label>
+
+                <div className="rounded-md border bg-background">
+                  <ScrollArea className="">
+                    <div className="space-y-2 p-3">
+                      {permissoesDisponiveis.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          Nenhuma permissão cadastrada.
+                        </p>
+                      ) : (
+                        permissoesPorModulo.map((grupo) => (
+                          <div key={grupo.modulo} className="rounded-md border bg-background">
+                            <div className="border-b bg-muted/40 px-3 py-2 text-sm font-medium">{grupo.modulo}</div>
+                            <div className="grid gap-1 p-2 sm:grid-cols-2">
+                              {grupo.permissoes.map((perm) => {
+                                const marcado = selecionadas.has(perm.id);
+                                return (
+                                  <label
+                                    key={perm.id}
+                                    className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/50"
+                                  >
+                                    <Checkbox
+                                      checked={marcado}
+                                      onCheckedChange={() => alternarPermissao(perm.id)}
+                                      className="mt-0.5"
+                                    />
+                                    <div className="leading-tight">
+                                      <div className="text-sm font-medium">
+                                        {perm.nome.includes(":") ? formatAcao(perm.nome) : perm.nome}
+                                      </div>
+                                      {perm.descricao ? (
+                                        <div className="text-xs text-muted-foreground">{perm.descricao}</div>
+                                      ) : null}
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
               </div>
             </div>
 
-            <DialogFooter className="mt-2">
+            <DialogFooter className="shrink-0 border-t px-6 py-4">
               <Button variant="outline" onClick={() => setAberto(false)} disabled={salvando}>
                 Cancelar
               </Button>
 
               <Button onClick={salvar} disabled={salvando || !nome.trim()}>
-                {salvando ? "Salvando..." : "Salvar"}
+                {salvando ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salvar"
+                )}
               </Button>
             </DialogFooter>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

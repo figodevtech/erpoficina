@@ -119,7 +119,7 @@ export function TabelaPerfis({ items, loading, error, onReload, onNew, onEdit, s
                         </Button>
                       </DropdownMenuTrigger>
 
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEdit(p)}>
                           <Edit3 className="h-4 w-4 mr-2" /> Editar
                         </DropdownMenuItem>

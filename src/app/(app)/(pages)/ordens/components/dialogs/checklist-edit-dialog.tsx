@@ -479,7 +479,7 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
                 Salvando...
               </>
             ) : (
-              "Salvar alteracoes"
+              "Salvar alterações"
             )}
           </Button>
         </>

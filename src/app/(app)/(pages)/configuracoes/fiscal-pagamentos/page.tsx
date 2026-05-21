@@ -258,8 +258,8 @@ export default function ConfigFiscalPagamentosPage() {
           onClick={handleSubmit(onSalvar)}
           disabled={salvando || carregando}
           className="shadow-md transition-all hover:shadow-lg"
-          aria-label="Salvar alteracoes"
-          title="Salvar alteracoes"
+          aria-label="Salvar alterações"
+          title="Salvar alterações"
         >
           {salvando || carregando ? (
             <>
@@ -269,7 +269,7 @@ export default function ConfigFiscalPagamentosPage() {
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Salvar Alteracoes
+              Salvar Alterações
             </>
           )}
         </Button>

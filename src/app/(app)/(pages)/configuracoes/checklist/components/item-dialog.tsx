@@ -67,77 +67,80 @@ export function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {initialValue ? "Editar item" : "Adicionar item"}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent
+        className="h-svh min-w-screen overflow-hidden p-0 sm:h-auto sm:max-h-[620px] sm:w-[70vw] sm:min-w-0 sm:max-w-lg"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="flex h-full min-h-0 flex-col">
+          <DialogHeader className="shrink-0 border-b px-6 py-4">
+            <DialogTitle>
+              {initialValue ? "Editar item" : "Adicionar item"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="titulo">Título</Label>
-            <Input
-              id="titulo"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Ex.: Verificar nível de óleo"
-            />
+          <div className="h-full min-h-0 space-y-4 overflow-y-auto px-6 py-6 dark:bg-muted-foreground/5">
+            <div className="space-y-2">
+              <Label htmlFor="titulo">Título</Label>
+              <Input
+                id="titulo"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Ex.: Verificar nível de óleo"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="descricao">Descrição (opcional)</Label>
+              <Textarea
+                id="descricao"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Detalhes adicionais do item…"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categoriaItem">
+                Categoria do item (opcional)
+              </Label>
+              <Select value={categoria} onValueChange={setCategoria}>
+                <SelectTrigger id="categoriaItem">
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categorias.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="obrigatorio"
+                checked={obrigatorio}
+                onCheckedChange={(v) => setObrigatorio(!!v)}
+              />
+              <Label htmlFor="obrigatorio">Obrigatório</Label>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="descricao">Descrição (opcional)</Label>
-            <Textarea
-              id="descricao"
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Detalhes adicionais do item…"
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="categoriaItem">Categoria do item (opcional)</Label>
-            <Select value={categoria} onValueChange={setCategoria}>
-              <SelectTrigger id="categoriaItem">
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {categorias.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="obrigatorio"
-              checked={obrigatorio}
-              onCheckedChange={(v) => setObrigatorio(!!v)}
-            />
-            <Label htmlFor="obrigatorio">Obrigatório</Label>
-          </div>
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={salvar} disabled={!titulo.trim()}>
+              Salvar
+            </Button>
+          </DialogFooter>
         </div>
-
-        <DialogFooter className="mt-4">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={salvar}
-            disabled={!titulo.trim()}
-          >
-            Salvar
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

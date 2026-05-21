@@ -115,7 +115,7 @@ export function TemplatesList({
           </TableCell>
         </TableRow>
       )),
-    [limit]
+    [limit],
   );
 
   return (
@@ -132,7 +132,10 @@ export function TemplatesList({
                   className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70"
                 >
                   <span>Recarregar</span>
-                  <Loader2 width={12} className={loading ? "animate-spin" : ""} />
+                  <Loader2
+                    width={12}
+                    className={loading ? "animate-spin" : ""}
+                  />
                 </button>
               ) : (
                 <span className="text-foreground/60">
@@ -150,7 +153,11 @@ export function TemplatesList({
           {/* Botão “Novo checklist” no canto superior direito */}
           <div className="flex items-center gap-2">
             {onNew && (
-              <Button onClick={onNew} className="hover:cursor-pointer" size="sm">
+              <Button
+                onClick={onNew}
+                className="hover:cursor-pointer"
+                size="sm"
+              >
                 <Plus className="h-4 w-4 mr-1" />
                 Novo checklist
               </Button>
@@ -215,13 +222,19 @@ export function TemplatesList({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {c.categoria ? <Badge variant="secondary">{c.categoria}</Badge> : "—"}
+                      {c.categoria ? (
+                        <Badge variant="secondary">{c.categoria}</Badge>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {c.itens.length}
                     </TableCell>
                     <TableCell>
-                      {c.criadoEm ? new Date(c.criadoEm).toLocaleDateString("pt-BR") : "—"}
+                      {c.criadoEm
+                        ? new Date(c.criadoEm).toLocaleDateString("pt-BR")
+                        : "—"}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -354,16 +367,11 @@ export function TemplatesList({
       {/* Dialog de visualização (somente leitura) */}
       <Dialog open={openView} onOpenChange={setOpenView}>
         <DialogContent
-          className="
-          p-0
-          w-[96vw] max-w-[96vw]
-          sm:max-w-[90vw] md:max-w-[900px] lg:max-w-[1100px] xl:max-w-[1280px]
-          max-h-[85vh] overflow-hidden
-          "
+          className="h-svh min-w-screen overflow-hidden p-0 sm:h-[85vh] sm:min-h-[620px] sm:max-h-[820px] sm:w-[90vw] sm:min-w-0 sm:max-w-[1000px]"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <div className="grid grid-rows-[auto_1px_1fr] h-[85vh]">
-            <DialogHeader className="px-6 pt-4 pb-3 text-center">
+          <div className="flex h-full min-h-0 flex-col">
+            <DialogHeader className="shrink-0 border-b px-6 py-4">
               <DialogTitle className="text-lg font-semibold">
                 {selected?.nome}
               </DialogTitle>
@@ -373,8 +381,7 @@ export function TemplatesList({
                 </CardDescription>
               )}
             </DialogHeader>
-            <div className="bg-border" />
-            <div className="overflow-y-auto px-6 py-4 space-y-3">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-6 dark:bg-muted-foreground/5">
               {selected?.itens.map((item) => (
                 <div
                   key={item.id}
@@ -383,9 +390,7 @@ export function TemplatesList({
                   <Checkbox disabled className="mt-1" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium truncate">
-                        {item.titulo}
-                      </h4>
+                      <h4 className="font-medium truncate">{item.titulo}</h4>
                       {item.obrigatorio && (
                         <Badge variant="destructive" className="text-xs">
                           Obrigatório

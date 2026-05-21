@@ -38,6 +38,25 @@ export default function Page() {
 
   // função exposta pelo TemplateForm pra disparar o "submit"
   const submitRef = useRef<(() => Promise<void> | void) | null>(null);
+  const resetDialogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const resetDialogState = () => {
+    setEditandoId(null);
+    setModeloEmEdicao(novoTemplateVazio());
+    submitRef.current = null;
+  };
+
+  const scheduleDialogReset = () => {
+    if (resetDialogTimerRef.current) {
+      clearTimeout(resetDialogTimerRef.current);
+    }
+    resetDialogTimerRef.current = setTimeout(() => {
+      resetDialogState();
+      resetDialogTimerRef.current = null;
+    }, 200);
+  };
 
   async function reload() {
     try {
@@ -61,13 +80,29 @@ export default function Page() {
     reload();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (resetDialogTimerRef.current) {
+        clearTimeout(resetDialogTimerRef.current);
+      }
+    };
+  }, []);
+
   const iniciarNovo = () => {
+    if (resetDialogTimerRef.current) {
+      clearTimeout(resetDialogTimerRef.current);
+      resetDialogTimerRef.current = null;
+    }
     setEditandoId(null);
     setModeloEmEdicao(novoTemplateVazio());
     setOpen(true);
   };
 
   const editar = (tpl: ChecklistTemplate) => {
+    if (resetDialogTimerRef.current) {
+      clearTimeout(resetDialogTimerRef.current);
+      resetDialogTimerRef.current = null;
+    }
     setEditandoId(tpl.id);
     const clone = JSON.parse(JSON.stringify(tpl)) as ChecklistTemplate;
     setModeloEmEdicao(clone);
@@ -81,8 +116,8 @@ export default function Page() {
       setItems((lst) => lst.filter((c) => c.id !== id));
       toast.success("Checklist excluído com sucesso.");
       if (editandoId === id) {
-        setEditandoId(null);
         setOpen(false);
+        scheduleDialogReset();
       }
     } catch (e: any) {
       const msg =
@@ -97,8 +132,7 @@ export default function Page() {
   const handleCloseDialog = () => {
     if (salvando) return;
     setOpen(false);
-    setEditandoId(null);
-    setModeloEmEdicao(novoTemplateVazio());
+    scheduleDialogReset();
   };
 
   const handleSaveTemplate = async (tpl: ChecklistTemplate) => {
@@ -116,7 +150,7 @@ export default function Page() {
       if (editandoId) {
         const atualizado = await atualizarModelo(editandoId, payload);
         setItems((lst) =>
-          lst.map((c) => (c.id === editandoId ? atualizado : c))
+          lst.map((c) => (c.id === editandoId ? atualizado : c)),
         );
         toast.success("Checklist atualizado com sucesso.");
       } else {
@@ -148,8 +182,7 @@ export default function Page() {
   };
 
   const isInvalid =
-    !modeloEmEdicao.nome?.trim() ||
-    (modeloEmEdicao.itens?.length ?? 0) === 0;
+    !modeloEmEdicao.nome?.trim() || (modeloEmEdicao.itens?.length ?? 0) === 0;
 
   return (
     <div className="mx-auto space-y-6">
@@ -170,53 +203,58 @@ export default function Page() {
           else handleCloseDialog();
         }}
       >
-        <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>
-              {editandoId ? "Editar checklist" : "Novo checklist"}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent
+          className="h-svh min-w-screen overflow-hidden p-0 sm:h-[85vh] sm:min-h-[620px] sm:max-h-[820px] sm:w-[90vw] sm:min-w-0 sm:max-w-[1000px]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className="flex h-full min-h-0 flex-col">
+            <DialogHeader className="shrink-0 border-b px-6 py-4">
+              <DialogTitle>
+                {editandoId ? "Editar checklist" : "Novo checklist"}
+              </DialogTitle>
+            </DialogHeader>
 
-          {/* conteúdo rolável */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1 py-2">
-            <TemplateForm
-              value={modeloEmEdicao}
-              categorias={categorias}
-              editando={!!editandoId}
-              onSave={handleSaveTemplate}
-              onCancel={handleCloseDialog}
-              variant="bare"
-              onChange={setModeloEmEdicao}
-              exposeSubmit={(fn) => {
-                submitRef.current = fn;
-              }}
-            />
+            {/* conteúdo rolável */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 dark:bg-muted-foreground/5">
+              <TemplateForm
+                value={modeloEmEdicao}
+                categorias={categorias}
+                editando={!!editandoId}
+                onSave={handleSaveTemplate}
+                onCancel={handleCloseDialog}
+                variant="bare"
+                onChange={setModeloEmEdicao}
+                exposeSubmit={(fn) => {
+                  submitRef.current = fn;
+                }}
+              />
+            </div>
+
+            <DialogFooter className="shrink-0 border-t px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseDialog}
+                disabled={salvando}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleClickSalvar}
+                disabled={salvando || isInvalid}
+              >
+                {salvando ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salvar"
+                )}
+              </Button>
+            </DialogFooter>
           </div>
-
-          <DialogFooter className="mt-2 border-t pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCloseDialog}
-              disabled={salvando}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleClickSalvar}
-              disabled={salvando || isInvalid}
-            >
-              {salvando ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                "Salvar"
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

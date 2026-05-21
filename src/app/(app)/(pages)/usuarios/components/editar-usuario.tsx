@@ -3,15 +3,31 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Perfil, Setor, Usuario, UsuarioPayload } from "../lib/api";
 
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Loader2, CalendarIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
 import { format } from "date-fns";
@@ -23,7 +39,10 @@ type Props = {
   usuario: Usuario | null;
   perfis: Perfil[];
   setores: Setor[];
-  onSave: (id: string | number, payload: UsuarioPayload) => void | Promise<void>;
+  onSave: (
+    id: string | number,
+    payload: UsuarioPayload,
+  ) => void | Promise<void>;
 };
 
 function toDateInput(v?: string | null) {
@@ -74,7 +93,9 @@ function DatePickerField({
             className={`w-full justify-start text-left font-normal ${!selected ? "text-muted-foreground" : ""}`}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {selected ? format(selected, "dd/MM/yyyy", { locale: ptBR }) : placeholder}
+            {selected
+              ? format(selected, "dd/MM/yyyy", { locale: ptBR })
+              : placeholder}
           </Button>
         </PopoverTrigger>
 
@@ -117,7 +138,17 @@ function clampPercent(raw: string) {
   return String(Math.min(100, Math.max(0, n)));
 }
 
-export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setores, onSave }: Props) {
+const tabTriggerClass =
+  "h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
+
+export function EditarUsuarioDialog({
+  open,
+  onOpenChange,
+  usuario,
+  perfis,
+  setores,
+  onSave,
+}: Props) {
   const [tab, setTab] = useState<"dados" | "financeiro" | "vinculo">("dados");
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -138,15 +169,29 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
     setNome(usuario.nome ?? "");
     setEmail(usuario.email ?? "");
 
-    const perfilIdFromUser = (usuario as any).perfilid ?? (usuario as any).perfilId ?? usuario.perfil?.id ?? null;
-    const setorIdFromUser = (usuario as any).setorid ?? (usuario as any).setorId ?? usuario.setor?.id ?? null;
+    const perfilIdFromUser =
+      (usuario as any).perfilid ??
+      (usuario as any).perfilId ??
+      usuario.perfil?.id ??
+      null;
+    const setorIdFromUser =
+      (usuario as any).setorid ??
+      (usuario as any).setorId ??
+      usuario.setor?.id ??
+      null;
 
     setPerfilid(perfilIdFromUser != null ? String(perfilIdFromUser) : "");
     setSetorid(setorIdFromUser != null ? String(setorIdFromUser) : "");
     setAtivo(usuario.ativo ?? true);
     setSalario(formatBRLFromNumber(usuario.salario ?? null));
-    setComissao(usuario.comissao_percent != null ? String(usuario.comissao_percent) : "");
-    setComissaoVenda(usuario.comissao_venda_percent != null ? String(usuario.comissao_venda_percent) : "");
+    setComissao(
+      usuario.comissao_percent != null ? String(usuario.comissao_percent) : "",
+    );
+    setComissaoVenda(
+      usuario.comissao_venda_percent != null
+        ? String(usuario.comissao_venda_percent)
+        : "",
+    );
     setDataAdmissao(toDateInput(usuario.data_admissao));
     setDataDemissao(toDateInput(usuario.data_demissao));
   }, [usuario]);
@@ -166,7 +211,11 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
     const cv = comissaoVenda.trim() ? Number(comissaoVenda) : 0;
     if (Number.isNaN(cv) || cv < 0 || cv > 100) return false;
 
-    if (salarioNumber != null && (Number.isNaN(salarioNumber) || salarioNumber < 0)) return false;
+    if (
+      salarioNumber != null &&
+      (Number.isNaN(salarioNumber) || salarioNumber < 0)
+    )
+      return false;
 
     return true;
   }, [usuario, nome, email, comissao, comissaoVenda, salarioNumber]);
@@ -184,7 +233,9 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
         ativo,
         salario: salarioNumber,
         comissao_percent: comissao.trim() ? Number(comissao) : null,
-        comissao_venda_percent: comissaoVenda.trim() ? Number(comissaoVenda) : null,
+        comissao_venda_percent: comissaoVenda.trim()
+          ? Number(comissaoVenda)
+          : null,
         data_admissao: dataAdmissao || null,
         data_demissao: dataDemissao || null,
       });
@@ -195,140 +246,186 @@ export function EditarUsuarioDialog({ open, onOpenChange, usuario, perfis, setor
 
   return (
     <Dialog open={open} onOpenChange={(v) => !saving && onOpenChange(v)}>
-      <DialogContent className="sm:max-w-2xl overflow-hidden max-h-[92dvh] sm:h-[500px] sm:flex sm:flex-col">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>Editar usuário</DialogTitle>
-        </DialogHeader>
+      <DialogContent
+        className="h-svh min-w-screen overflow-hidden p-0 sm:h-auto sm:min-h-[520px] sm:max-h-[760px] sm:w-[85vw] sm:min-w-0 sm:max-w-[760px]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="flex h-full min-h-0 flex-col">
+          <DialogHeader className="shrink-0 border-b px-6 py-4">
+            <DialogTitle>Editar usuário</DialogTitle>
+          </DialogHeader>
 
-        {!usuario ? null : (
-          <Tabs
-            value={tab}
-            onValueChange={(v) => setTab(v as "dados" | "financeiro" | "vinculo")}
-            className="w-full sm:flex-1 sm:min-h-0 sm:flex sm:flex-col"
-          >
-            <TabsList className="shrink-0 grid w-full grid-cols-3 mb-2">
-              <TabsTrigger value="dados">Dados</TabsTrigger>
-              <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-              <TabsTrigger value="vinculo">Vínculo</TabsTrigger>
-            </TabsList>
-
-            <div className="overflow-auto pr-1 sm:flex-1 sm:min-h-0">
-              <TabsContent value="dados" className="m-0 space-y-4">
-                <div className="grid gap-2">
-                  <Label>Nome</Label>
-                  <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
+          <div className="h-full min-h-0 overflow-auto px-6 py-6 dark:bg-muted-foreground/5">
+            {!usuario ? null : (
+              <Tabs
+                value={tab}
+                onValueChange={(v) =>
+                  setTab(v as "dados" | "financeiro" | "vinculo")
+                }
+                className="w-full"
+              >
+                <div className="max-w-full overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                  <TabsList className="h-auto min-w-full justify-start gap-1.5 rounded-xl border bg-muted/40 p-1">
+                    <TabsTrigger value="dados" className={tabTriggerClass}>
+                      Dados
+                    </TabsTrigger>
+                    <TabsTrigger value="financeiro" className={tabTriggerClass}>
+                      Financeiro
+                    </TabsTrigger>
+                    <TabsTrigger value="vinculo" className={tabTriggerClass}>
+                      Vínculo
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label>E-mail</Label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@dominio.com" />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <TabsContent value="dados" className="mt-4 space-y-4">
                   <div className="grid gap-2">
-                    <Label>Perfil</Label>
-                    <Select value={perfilid} onValueChange={setPerfilid}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {perfis.map((p) => (
-                          <SelectItem key={p.id} value={String(p.id)}>
-                            {p.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Nome</Label>
+                    <Input
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder="Nome completo"
+                    />
                   </div>
 
                   <div className="grid gap-2">
-                    <Label>Setor</Label>
-                    <Select value={setorid} onValueChange={setSetorid}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {setores.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>
-                            {s.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>E-mail</Label>
+                    <Input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="email@dominio.com"
+                    />
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <div>
-                    <div className="text-sm font-medium">Ativo</div>
-                    <div className="text-xs text-muted-foreground">Usuário pode acessar o sistema.</div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label>Perfil</Label>
+                      <Select value={perfilid} onValueChange={setPerfilid}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {perfis.map((p) => (
+                            <SelectItem key={p.id} value={String(p.id)}>
+                              {p.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Setor</Label>
+                      <Select value={setorid} onValueChange={setSetorid}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {setores.map((s) => (
+                            <SelectItem key={s.id} value={String(s.id)}>
+                              {s.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <Switch checked={ativo} onCheckedChange={setAtivo} />
-                </div>
-              </TabsContent>
 
-              <TabsContent value="financeiro" className="m-0 space-y-4">
-                <div className="grid gap-2">
-                  <Label>Salário</Label>
-                  <Input
-                    inputMode="numeric"
-                    placeholder="R$ 0,00"
-                    value={salario}
-                    onChange={(e) => {
-                      const n = parseBRLStringToNumber(e.target.value);
-                      setSalario(e.target.value ? formatBRLFromNumber(n) : "");
-                    }}
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <div>
+                      <div className="text-sm font-medium">Ativo</div>
+                      <div className="text-xs text-muted-foreground">
+                        Usuário pode acessar o sistema.
+                      </div>
+                    </div>
+                    <Switch checked={ativo} onCheckedChange={setAtivo} />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="financeiro" className="mt-4 space-y-4">
+                  <div className="grid gap-2">
+                    <Label>Salário</Label>
+                    <Input
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
+                      value={salario}
+                      onChange={(e) => {
+                        const n = parseBRLStringToNumber(e.target.value);
+                        setSalario(
+                          e.target.value ? formatBRLFromNumber(n) : "",
+                        );
+                      }}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Comissão de serviços (%)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={comissao}
+                      onChange={(e) =>
+                        setComissao(clampPercent(e.target.value))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">De 0 a 100.</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Comissão de venda (%)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={comissaoVenda}
+                      onChange={(e) =>
+                        setComissaoVenda(clampPercent(e.target.value))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">De 0 a 100.</p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="vinculo" className="mt-4 space-y-4">
+                  <DatePickerField
+                    label="Data de admissão"
+                    value={dataAdmissao}
+                    onChange={setDataAdmissao}
                   />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Comissão de serviços (%)</Label>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={comissao}
-                    onChange={(e) => setComissao(clampPercent(e.target.value))}
+                  <DatePickerField
+                    label="Data de demissão"
+                    value={dataDemissao}
+                    onChange={setDataDemissao}
                   />
-                  <p className="text-xs text-muted-foreground">De 0 a 100.</p>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Comissão de venda (%)</Label>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={comissaoVenda}
-                    onChange={(e) => setComissaoVenda(clampPercent(e.target.value))}
-                  />
-                  <p className="text-xs text-muted-foreground">De 0 a 100.</p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="vinculo" className="m-0 space-y-4">
-                <DatePickerField label="Data de admissão" value={dataAdmissao} onChange={setDataAdmissao} />
-                <DatePickerField label="Data de demissão" value={dataDemissao} onChange={setDataDemissao} />
-              </TabsContent>
-            </div>
-          </Tabs>
-        )}
-
-        <DialogFooter className="gap-2 sm:shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
-          </Button>
-
-          <Button onClick={handleSave} disabled={!canSave || saving || !usuario}>
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
-              </>
-            ) : (
-              "Salvar"
+                </TabsContent>
+              </Tabs>
             )}
-          </Button>
-        </DialogFooter>
+          </div>
+
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              onClick={handleSave}
+              disabled={!canSave || saving || !usuario}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
