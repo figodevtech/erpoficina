@@ -14,8 +14,6 @@ import {
   ChevronDown,
   ShoppingBag,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-
 import GruposProdutoSection from "./grupos-produto-section";
 import UnidadesMedidaSection from "./unidades-medida-section";
 import ServicosSection from "./servicos-section";

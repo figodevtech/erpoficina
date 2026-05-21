@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { NFSeService, NFSeEmitirParams } from "@/lib/services/fiscais/nfse-service";
+import { NFSeService } from "@/lib/services/fiscais/nfse-service";
 
 export const runtime = "nodejs";
 

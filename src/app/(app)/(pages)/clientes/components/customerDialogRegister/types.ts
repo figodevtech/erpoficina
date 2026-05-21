@@ -1,4 +1,3 @@
-import { Cliente_rank } from "../../types";
 
 export type TipoPessoa = "FISICA" | "JURIDICA";
 export type StatusCliente = "ATIVO" | "INATIVO" | "PENDENTE";

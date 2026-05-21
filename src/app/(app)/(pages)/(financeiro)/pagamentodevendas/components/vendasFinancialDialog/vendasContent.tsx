@@ -111,7 +111,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
       if (response.status === 200) {
         setVenda(response.data.data);
       }
-    } catch (error) {
+    } catch {
       toast.error("Não foi possível carregar a Venda");
     } finally {
       setIsLoadingOs(false);
@@ -135,7 +135,7 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
         setTransactions(data.data);
         setPagination(data.pagination);
       }
-    } catch (error) {
+    } catch {
       toast.error("Não foi possível carregar as transações");
     } finally {
       setIsLoading(false);
@@ -542,4 +542,3 @@ export default function VendasContent({ vendaId, IsOpen }: VendasContentProps) {
     </DialogContent>
   );
 }
-

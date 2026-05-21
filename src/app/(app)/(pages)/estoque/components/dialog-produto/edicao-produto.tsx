@@ -35,7 +35,7 @@ export default function EdicaoProduto({ productId, onAfterSaveProduct, isDesktop
 
   const reqIdRef = useRef(0);
   const { unidades, loadingUnidades, errorUnidades } = useUnidadesMedida();
-  const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
+  const { grupos } = useGruposProduto();
 
   const handleGetProduct = async (id: number) => {
     const myId = ++reqIdRef.current;

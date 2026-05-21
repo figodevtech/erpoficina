@@ -34,11 +34,6 @@ type VendaOnlineData = {
   danfe_url?: string | null;
 };
 
-function isPaid(status: string | null | undefined) {
-  const s = String(status ?? "").toUpperCase();
-  return s === "PAGO" || s === "FINALIZADA";
-}
-
 function formatPtBR(iso: string | null | undefined) {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -91,8 +86,6 @@ export function PedidoOnlineForm({
   const [data, setData] = useState<VendaOnlineData | null>(null);
 
   const canEdit = useMemo(() => String(data?.canal ?? "").toUpperCase() === "ONLINE", [data?.canal]);
-  const paid = useMemo(() => isPaid(data?.status), [data?.status]);
-
   const [codigoRastreio, setCodigoRastreio] = useState("");
   const [transportadora, setTransportadora] = useState("CORREIOS");
   const [nfeChave, setNfeChave] = useState("");

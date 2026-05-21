@@ -7,7 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -85,15 +85,6 @@ export default function FornecedorDialog({
 }: FornecedorDialogProps) {
   const [form, setForm] = useState<FornecedorForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
-
-  function openNovo() {
-    if (setFornecedorToEdit) {
-      setFornecedorToEdit(null);
-    }
-
-    setForm(emptyForm);
-    setDialogOpen(true);
-  }
 
   function handleChange<K extends keyof FornecedorForm>(
     key: K,

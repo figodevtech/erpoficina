@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ordem, StatusOS } from "../../../ordens/types";
 import { Pagination } from "../../fluxodecaixa/types";
 import {
-  ChevronDown,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeft,

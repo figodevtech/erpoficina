@@ -1,8 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { CreateInvoiceDTO, InvoiceDraftResult } from "./invoice.types";
 import { buildNFePreviewXml } from "@/lib/nfe/buildNFe";
-import { EmpresaRow, NFeDestinatario, NFeEndereco, NFeEmitente } from "@/lib/nfe/types";
-import { mapClienteToDestinatario } from "@/lib/nfe/mapClienteToDestinatario"; // Vamos precisar generalizar isso ou criar helper local
+import { EmpresaRow, NFeDestinatario } from "@/lib/nfe/types";
 
 export class InvoiceDraftService {
   async createDraft(dto: CreateInvoiceDTO): Promise<InvoiceDraftResult> {
@@ -31,8 +30,6 @@ export class InvoiceDraftService {
     const nextNumber = (config.ultimo_numero || 0) + 1;
     const serie = config.serie || 1;
     const ambiente = config.ambiente || "HOMOLOGACAO";
-    const tpEmis = config.tp_emis || 1;
-
     // 3. Inserir Header na tabela NFE
     // Agora suportamos fornecedorid e entradaid
     const insertPayload: any = {

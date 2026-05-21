@@ -9,22 +9,16 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
-import { FileText, PieChart, Search, X } from "lucide-react";
+import { PieChart, Search, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 
-import { Categoria_transacao, Tipo_transacao } from "../../../(financeiro)/fluxodecaixa/types";
-import CustomerSelect from "@/app/(app)/components/customerSelect";
-import { BotaoExportHistoricoCompras } from "./botao-export-cliente-compra";
-import { Customer } from "../../../clientes/types";
 import ProductSelect from "@/app/(app)/components/productSelect";
 import { Produto } from "../../../estoque/types";
 import { BotaoExportProdutoVendas } from "./botao-export-produto-vendas";
 
 export default function DialogProdutoCompras() {
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
   // const [categoria, setCategoria] = useState<Categoria_transacao | "">("");
   const [selectedProdutc, setSelectedProduct] = useState<Produto  | undefined>(undefined)
   const [open, setOpen] = useState(false)

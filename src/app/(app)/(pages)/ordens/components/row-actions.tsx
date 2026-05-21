@@ -27,7 +27,6 @@ import {
   Eye,
   ClipboardList,
   CreditCard,
-  Trash2,
   X,
   Printer,
   Gift,
@@ -85,8 +84,6 @@ export function RowActions<TRow extends RowBase>({
   setDetailsOpen,
   setChecklistRow,
   setChecklistOpen,
-  setStoneRow,
-  setStoneOpen,
   setEmissaoId,
   setEmissaoOpen,
 }: {
@@ -148,8 +145,6 @@ export function RowActions<TRow extends RowBase>({
   const showRejectBudget = canEdit && policy.showRejectBudget && st === "APROVACAO_ORCAMENTO";
 
   // Cancelar orçamento
-  const showCancelBudget = canEdit && policy.showCancelBudget && (st === "APROVACAO_ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
-
   // Enviar p/ aprovação
   const showSendToApproval = canEdit && policy.showSendToApproval && (st === "ORCAMENTO" || st === "ORCAMENTO_RECUSADO");
 

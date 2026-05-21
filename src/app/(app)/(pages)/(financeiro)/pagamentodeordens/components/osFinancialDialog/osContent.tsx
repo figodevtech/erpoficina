@@ -86,7 +86,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         setItensProduto(response.data.itensProduto ?? []);
         setItensServico(response.data.itensServico ?? []);
       }
-    } catch (error) {
+    } catch {
       toast.error("Não foi possível carregar a OS");
     } finally {
       setHasLoadedOnce(true);
@@ -111,7 +111,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         setTransactions(data.data);
         setPagination(data.pagination);
       }
-    } catch (error) {
+    } catch {
       toast.error("Não foi possível carregar as transações");
     } finally {
       setIsLoading(false);

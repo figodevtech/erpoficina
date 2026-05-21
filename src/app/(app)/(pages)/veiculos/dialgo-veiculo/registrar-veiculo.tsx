@@ -38,7 +38,6 @@ import { toast } from "sonner";
 import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { Veiculo, Veiculo_tipos } from "../types";
-import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
 import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { useFipe } from "./useFipe";
 import ValueInput from "../../(financeiro)/fluxodecaixa/components/transactionDialog/valueInput";
@@ -110,7 +109,6 @@ export default function RegisterContent({
   const [open1, setOpen1] = useState(false);
   const [open2, setOpen2] = useState(false);
   const [openVersao, setOpenVersao] = useState(false);
-  const { cores, errorCores, loadingCores } = useVeiculosCores();
   const [openCustomer, setOpenCustomer] = useState(false);
   const [loadingPlaca, setLoadingPlaca] = useState(false);
 

@@ -10,12 +10,10 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import {
   Calendar,
   Check,
-  ChevronDown,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeft,
   ChevronsRight,
-  Divide,
   Loader,
   Loader2,
   MoreHorizontal,
@@ -98,7 +96,6 @@ export default function FinancialTable({
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isAlertOpen2, setIsAlertOpen2] = useState(false);
-  const [loadingPago, setLoadingPago] = useState(false);
   const [, setIsDeleting] = useState(false);
   const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.FINANCEIRO_CRIAR);
   const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.FINANCEIRO_EDITAR);
@@ -116,7 +113,6 @@ export default function FinancialTable({
         <span>Marcando como concluído</span> <Loader2 className="w-3 h-3 animate-spin" />
       </div>,
     );
-    setLoadingPago(true);
     try {
       const response = await axios.patch(`/api/transaction/${id}`, {
         pendente: false,
@@ -130,7 +126,6 @@ export default function FinancialTable({
         toast(error.code, { description: error.message });
       }
     } finally {
-      setLoadingPago(false);
       handleGetTransactions(pagination.page, pagination.limit, search, dateFrom, dateTo, tipo, pendenteFilter);
     }
   };

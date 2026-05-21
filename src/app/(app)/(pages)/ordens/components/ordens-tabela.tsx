@@ -56,7 +56,6 @@ import {
   SortDir,
   PrioFiltro,
   MAX_CLIENTE_CHARS,
-  MAX_DESC_CHARS,
   normalizeDateDay,
   getTempoMs,
   SortableHeader,
@@ -256,7 +255,7 @@ export function OrdensTabela({
           }))
           .filter((s: any) => s.value);
         if (mapped.length) setSetoresApiOptions(mapped);
-      } catch (e) {
+      } catch {
         // silencioso para nÇõo poluir com toast em caso de falha
       }
     }

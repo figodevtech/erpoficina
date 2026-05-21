@@ -38,7 +38,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Servico } from "@/types/servico";
 import { Pagination } from "../(pages)/estoque/types";
-import { set } from "nprogress";
 import ServicoDialog from "../(pages)/configuracoes/tipos/components/servicoDialog/servico-dialog";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";

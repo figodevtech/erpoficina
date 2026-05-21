@@ -16,12 +16,10 @@ import {
   Wrench,
   CheckSquare,
   Package,
-  Receipt,
   AlertCircle,
   Clock,
   Briefcase,
   FileText,
-  TrendingUp,
   CircleDollarSign,
   Gauge,
   Palette,
@@ -32,7 +30,6 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "./badge-status";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusOS } from "../types";
 import { Badge } from "@/components/ui/badge";

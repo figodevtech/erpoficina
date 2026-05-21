@@ -60,8 +60,6 @@ export default function ServicosSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [editing, setEditing] = useState<Servico | null>(null);
   const [form, setForm] = useState<ServicoForm>(emptyForm);
 
@@ -155,11 +153,6 @@ export default function ServicosSection() {
       ativo: s.ativo ?? true,
     });
     setOpen(true);
-  }
-
-  async function handleSave(payload: ServicoForm) {
-    // salva via dialog component
-    await loadServicos();
   }
 
   return (

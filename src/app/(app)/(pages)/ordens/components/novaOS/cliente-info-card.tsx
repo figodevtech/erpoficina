@@ -5,25 +5,6 @@ import formatarTelefone from "@/utils/formatarTelefone"
 export type TipoPessoa = "FISICA" | "JURIDICA"
 export type ClientStatus = "ATIVO" | "INATIVO" | "PENDENTE"
 
-interface Timestamp {
-  _seconds: number
-  _nanoseconds: number
-}
-
-interface Vehicle {
-  id: number
-  placa: string
-  modelo: string
-}
-
-interface Ordem {
-  id: number
-  numero: string
-  status: string
-}
-
-
-
 interface CustomerInfoCardProps {
   customer: Customer
 }

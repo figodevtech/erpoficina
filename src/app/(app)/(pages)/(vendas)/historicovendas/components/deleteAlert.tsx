@@ -17,9 +17,8 @@ interface DeleteAlertProps {
   onDelete: () => void;
   isAlertOpen: boolean;
   setIsAlertOpen: (value: boolean) => void;
-  idToDelete: number;
 }
-export default function DeleteAlert({ children, onDelete, isAlertOpen, setIsAlertOpen, idToDelete }: DeleteAlertProps) {
+export default function DeleteAlert({ children, onDelete, isAlertOpen, setIsAlertOpen }: DeleteAlertProps) {
   return (
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>

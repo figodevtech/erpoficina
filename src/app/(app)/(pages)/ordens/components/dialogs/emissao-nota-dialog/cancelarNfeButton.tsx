@@ -17,7 +17,7 @@ type Props = {
 };
 
 export function CancelarNfeButton({ nfeId, status, onAfterCancel }: Props) {
-  const [loading, setLoading] = useState(false);
+  const loading = false;
 
   const statusUpper = (status || "").toUpperCase();
   const disabled = statusUpper !== "AUTORIZADA" || loading;

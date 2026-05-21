@@ -631,8 +631,6 @@ export default async function DanfePage({ params }: PageProps) {
   let itensDisplay: ItemDisplay[] = [];
   let totalBcIcms = 0;
   let totalIcms = 0;
-  let totalPis = 0;
-  let totalCofins = 0;
   let totalProdutos = nfe.total_produtos;
   let totalNota = nfe.total_nfe;
 
@@ -640,8 +638,6 @@ export default async function DanfePage({ params }: PageProps) {
     itensDisplay = parsed.itens;
     totalBcIcms = parsed.totais.vBC;
     totalIcms = parsed.totais.vICMS;
-    totalPis = parsed.totais.vPIS;
-    totalCofins = parsed.totais.vCOFINS;
     // vProd / vNF do XML
     totalProdutos = parsed.totais.vProd;
     totalNota = parsed.totais.vNF;
@@ -710,14 +706,6 @@ export default async function DanfePage({ params }: PageProps) {
     );
     totalIcms = itensDisplay.reduce(
       (acc, i) => acc + Number(i.valor_icms ?? 0),
-      0
-    );
-    totalPis = itensDisplay.reduce(
-      (acc, i) => acc + Number(i.valor_pis ?? 0),
-      0
-    );
-    totalCofins = itensDisplay.reduce(
-      (acc, i) => acc + Number(i.valor_cofins ?? 0),
       0
     );
   }

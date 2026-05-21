@@ -44,7 +44,6 @@ import {
   Eye,
   Edit3,
   Plus,
-  Loader,
 } from "lucide-react";
 
 import {

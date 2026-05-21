@@ -5,12 +5,10 @@ import https from "https";
 import { XMLParser } from "fast-xml-parser";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { buildNFePreviewXml } from "@/lib/nfe/buildNFe";
 import { carregarCertificadoA1 } from "@/lib/nfe/certificado";
 import { assinarNFeXml } from "@/lib/nfe/assinatura";
 import { buildEnviNFeXml } from "@/lib/nfe/enviNFe";
-import type { ClienteRow, EmpresaRow, NFeItem, NFeDestinatario } from "@/lib/nfe/types";
-import { mapClienteToDestinatario } from "@/lib/nfe/mapClienteToDestinatario";
+import type { ClienteRow, EmpresaRow } from "@/lib/nfe/types";
 
 export const runtime = "nodejs";
 
@@ -173,8 +171,6 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       );
     }
 
-    const numeroNota = Number(nfe.numero);
-    const serie = Number(nfe.serie);
     const statusAtual: string | null = nfe.status ?? null;
 
     // -------------------------------------------------------------------
@@ -211,9 +207,6 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
     // -------------------------------------------------------------------
     // 4) Buscar cliente destinatario (cliente da OS vinculado a esta NF-e)
     // -------------------------------------------------------------------
-    let destinatario: NFeDestinatario | undefined;
-
-
     if (!nfe.clienteid && !nfe.entradaid) {
       console.log("[nfe] NF-e sem cliente associado (clienteid nulo)", nfe);
       return NextResponse.json(
@@ -272,9 +265,6 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
         );
       }
 
-      if (cliente) {
-        destinatario = mapClienteToDestinatario(cliente, empresa);
-      }
     }
 
     // -------------------------------------------------------------------
@@ -319,20 +309,6 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
         { status: 500 }
       );
     }
-
-    const itens: NFeItem[] = (itensNfe as any[]).map((row, idx) => ({
-      numeroItem: Number(row.n_item ?? idx + 1),
-      codigoProduto:
-        row.produtoid != null ? String(row.produtoid) : String(row.n_item ?? idx + 1),
-      descricao: row.descricao,
-      ncm: row.ncm || "00000000",
-      cfop: row.cfop,
-      unidade: row.unidade,
-      quantidade: Number(row.quantidade ?? 0),
-      valorUnitario: Number(row.valor_unitario ?? 0),
-      valorTotal: Number(row.valor_total ?? 0),
-      codigoBarras: null,
-    }));
 
     // -------------------------------------------------------------------
     // 6) Usar o XML salvo no rascunho (xml_assinado) ou gerar um novo

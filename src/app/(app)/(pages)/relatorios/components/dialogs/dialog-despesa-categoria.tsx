@@ -21,14 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Categoria_transacao, Tipo_transacao } from "../../../(financeiro)/fluxodecaixa/types";
+import { Tipo_transacao } from "../../../(financeiro)/fluxodecaixa/types";
 import { useCategoriasTransacao } from "../../../(financeiro)/fluxodecaixa/hooks/use-categoria-transacao";
 
 export default function DialogDespesaCategoria() {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [selectedCategoria, setSelectedCategoria] = useState<string>("");
- const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
+ const { categorias } = useCategoriasTransacao();
 
   return (
     <Dialog>

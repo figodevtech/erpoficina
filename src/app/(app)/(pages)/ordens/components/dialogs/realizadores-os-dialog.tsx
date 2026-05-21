@@ -276,25 +276,6 @@ export function RealizadoresOSDialog({
     }
   }
 
-  const breakdown = useMemo(() => {
-    if (!active) return { basePorRealizador: 0, totalComissao: 0, rows: [] as any[] };
-
-    const qtd = active.ids.length || 0;
-    const basePorRealizador = qtd > 0 ? active.baseTotal / qtd : 0;
-
-    const rows = active.ids.map((userId) => {
-      const u = usuarios.find((x) => x.id === userId);
-      const nome = u?.nome ?? u?.email ?? userId;
-      const p = getComissaoPercentual(u);
-      const comissao = basePorRealizador * (p / 100);
-      return { userId, nome, p, base: basePorRealizador, comissao };
-    });
-
-    const totalComissao = rows.reduce((acc, r) => acc + r.comissao, 0);
-
-    return { basePorRealizador, totalComissao, rows };
-  }, [active, usuarios]);
-
   return (
     <Dialog
       open={open}

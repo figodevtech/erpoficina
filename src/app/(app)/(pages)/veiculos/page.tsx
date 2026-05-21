@@ -9,14 +9,14 @@ import TabelaVeiculos from "./tabela-veiculos";
 export default function EstoquePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({
+  const [pagination] = useState<Pagination>({
     total: 0,
     page: 1,
     limit: 20,
     totalPages: 0,
   });
-  const [search, setSearch] = useState("");
-  const [selectedTipo, setSelectedTipo] = useState<Veiculo_tipos | undefined>(undefined);
+  const [search] = useState("");
+  const [selectedTipo] = useState<Veiculo_tipos | undefined>(undefined);
 
 const handleGetVehicles = async (pageNumber?: number, limit?: number, search?: string, tipo?: string) => {
     setIsLoading(true);
@@ -30,7 +30,7 @@ const handleGetVehicles = async (pageNumber?: number, limit?: number, search?: s
         },
       })
       setVeiculos(response.data.data);
-    } catch (error) {
+    } catch {
       
     }finally{
       setIsLoading(false);

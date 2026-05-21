@@ -185,7 +185,7 @@ export default function DialogEntrada({
                     <SelectValue placeholder="Selecione"></SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(Entrada_tipo).map((tipo, i)=>
+                    {Object.entries(Entrada_tipo).map((tipo)=>
                       <SelectItem key={tipo[1]} value={tipo[0]}>{tipo[1]}</SelectItem>
                     )}
                   </SelectContent>
@@ -277,7 +277,7 @@ export default function DialogEntrada({
                     <SelectValue placeholder="Selecione"></SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(Entrada_tipo).map((tipo, i)=>
+                    {Object.entries(Entrada_tipo).map((tipo)=>
                       <SelectItem key={tipo[1]} value={tipo[0]}>{tipo[1]}</SelectItem>
                     )}
                   </SelectContent>

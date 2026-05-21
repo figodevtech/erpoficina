@@ -10,19 +10,6 @@ type Params = { id: string };
 // Bucket de documentos fiscais (precisa existir no Supabase Storage).
 const BUCKET = "danfe";
 
-function extFromFile(file: File) {
-  const name = String(file.name || "").toLowerCase();
-  const m = name.match(/\.([a-z0-9]+)$/);
-  if (m?.[1]) return m[1];
-
-  const type = String(file.type || "").toLowerCase();
-  if (type === "application/pdf") return "pdf";
-  if (type === "image/png") return "png";
-  if (type === "image/jpeg") return "jpg";
-  if (type === "image/webp") return "webp";
-  return "bin";
-}
-
 async function parseId(context: { params: Promise<Params> }) {
   const { id } = await context.params;
   const n = Number(String(id ?? "").trim());

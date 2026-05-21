@@ -42,36 +42,6 @@ type Fornecedor = {
   ativo: boolean | null;
 };
 
-type FornecedorForm = {
-  cpfcnpj: string;
-  nomerazaosocial: string;
-  nomefantasia: string;
-  endereco: string;
-  endereconumero: string;
-  cidade: string;
-  codigomunicipio: string;
-  bairro: string;
-  estado: string;
-  cep: string;
-  contato: string;
-  ativo: boolean;
-};
-
-const emptyForm: FornecedorForm = {
-  cpfcnpj: "",
-  nomerazaosocial: "",
-  nomefantasia: "",
-  endereco: "",
-  endereconumero: "",
-  cidade: "",
-  codigomunicipio: "",
-  bairro: "",
-  estado: "",
-  cep: "",
-  contato: "",
-  ativo: true,
-};
-
 const DEFAULT_LIMIT = 10;
 
 export default function FornecedoresSection() {
@@ -80,9 +50,7 @@ export default function FornecedoresSection() {
   const [erro, setErro] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [editing, setEditing] = useState<Fornecedor | null>(null);
-  const [form, setForm] = useState<FornecedorForm>(emptyForm);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
@@ -163,79 +131,9 @@ export default function FornecedoresSection() {
     loadFornecedores();
   }, []);
 
-  function handleChange<K extends keyof FornecedorForm>(key: K, value: FornecedorForm[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
   function openEditar(f: Fornecedor) {
     setEditing(f);
-    setForm({
-      cpfcnpj: f.cpfcnpj ?? "",
-      nomerazaosocial: f.nomerazaosocial ?? "",
-      nomefantasia: f.nomefantasia ?? "",
-      endereco: f.endereco ?? "",
-      endereconumero: f.endereconumero ?? "",
-      cidade: f.cidade ?? "",
-      codigomunicipio: f.codigomunicipio ?? "",
-      bairro: f.bairro ?? "",
-      estado: f.estado ?? "",
-      cep: f.cep ?? "",
-      contato: f.contato ?? "",
-      ativo: f.ativo ?? true,
-    });
     setDialogOpen(true);
-  }
-
-  async function handleSave() {
-    if (!form.cpfcnpj.trim() || !form.nomerazaosocial.trim()) {
-      toast.error("CNPJ e Razão Social são obrigatórios.");
-      return;
-    }
-
-    const payload = {
-      cpfcnpj: form.cpfcnpj.trim(),
-      nomerazaosocial: form.nomerazaosocial.trim(),
-      nomefantasia: form.nomefantasia.trim() || null,
-      endereco: form.endereco.trim() || null,
-      cidade: form.cidade.trim() || null,
-      estado: form.estado.trim() || null,
-      cep: form.cep.trim() || null,
-      contato: form.contato.trim() || null,
-      ativo: form.ativo,
-    };
-
-    try {
-      setIsSaving(true);
-
-      if (editing) {
-        const res = await fetch(`/api/tipos/fornecedores/${editing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const j = await res.json();
-        if (!res.ok) throw new Error(j?.error || "Falha ao atualizar fornecedor");
-        toast.success("Fornecedor atualizado.");
-      } else {
-        const res = await fetch("/api/tipos/fornecedores", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const j = await res.json();
-        if (!res.ok) throw new Error(j?.error || "Falha ao cadastrar fornecedor");
-        toast.success("Fornecedor cadastrado.");
-      }
-
-      setDialogOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
-      await loadFornecedores();
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao salvar fornecedor");
-    } finally {
-      setIsSaving(false);
-    }
   }
 
   return (

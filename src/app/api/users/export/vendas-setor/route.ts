@@ -4,7 +4,6 @@ import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const FORTALEZA_TZ = "America/Fortaleza";
 const FORTALEZA_OFFSET = "-03:00";
 
 function localDayStartToUtcIso(dateStr: string) {

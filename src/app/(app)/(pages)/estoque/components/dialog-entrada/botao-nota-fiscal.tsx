@@ -39,7 +39,7 @@ export default function BotaoNotaFiscal({ setParsed, file, setFile }: BotaoNotaF
       } else {
         setParsed(data.parsed);
       }
-    } catch (err: any) {
+    } catch {
       toast.error("Erro inesperado ao enviar o arquivo");
     } finally {
       setLoading(false);

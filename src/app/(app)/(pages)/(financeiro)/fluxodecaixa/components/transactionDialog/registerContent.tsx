@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Banco,
-  Categoria_transacao,
   Metodo_pagamento,
   NewTransaction,
   Tipo_transacao,
@@ -32,7 +31,7 @@ import CustomerSelect from "@/app/(app)/components/customerSelect";
 import { formatCpfCnpj } from "../../utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { CalendarIcon, Info, Minus, Plus, Save, Upload } from "lucide-react";
+import { CalendarIcon, Info, Minus, Plus, Save } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { useCategoriasTransacao } from "../../hooks/use-categoria-transacao";
@@ -79,10 +78,6 @@ function distribuirValoresIguais(total: number, quantidade: number) {
 
 function toCentavos(value: number | undefined) {
   return Math.round((value || 0) * 100);
-}
-
-function toDateInputValue(date: Date | undefined) {
-  return date ? new Date(date).toISOString().slice(0, 10) : "";
 }
 
 function toDateOnly(date: Date) {
@@ -535,18 +530,6 @@ export default function RegisterContent({
       data: undefined,
     });
   }, [newTransaction.pendente]);
-
-  function toIsoMinuteString(date: Date | undefined) {
-    if (!date) return undefined;
-    const pad = (n: number) => String(n).padStart(2, "0");
-
-    const y = date.getFullYear();
-    const m = pad(date.getMonth() + 1);
-    const d = pad(date.getDate());
-    const hh = pad(date.getHours());
-    const mm = pad(date.getMinutes());
-    return `${y}-${m}-${d}T${hh}:${mm}`;
-  }
 
   const Content = isDesktop ? DialogContent : DrawerContent;
   const Header = isDesktop ? DialogHeader : DrawerHeader;

@@ -4,7 +4,7 @@ import { TabsTrigger } from "@/components/ui/tabs";
 import { Package, FileText, Boxes, Image as ImageIcon } from "lucide-react";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Estoque_status, Grupo_produto, Produto } from "../../types";
+import { Estoque_status, Produto } from "../../types";
 import { ProductDialogLayout } from "./tabs/dialog-layout";
 import { TabGeral } from "./tabs/tab-geral";
 import { TabFiscal } from "./tabs/tab-fiscal";
@@ -46,7 +46,7 @@ export default function CadastroProduto({
   const [imagensPreview, setImagensPreview] = useState<string[]>([]);
   const [currentTab, setCurrentTab] = useState<string>("Geral");
   const { unidades, loadingUnidades, errorUnidades } = useUnidadesMedida();
-  const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
+  const { grupos } = useGruposProduto();
 
   const tabTheme =
     " group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";

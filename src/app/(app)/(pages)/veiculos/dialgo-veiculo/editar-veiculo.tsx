@@ -38,7 +38,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { useVeiculosCores } from "../../configuracoes/tipos/hooks/use-veiculos-cores";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -173,8 +172,6 @@ export default function EditContent({
   const [selectedVeiculo, setSelectedVeiculo] = useState<
     (Veiculo & { marcaId?: number }) | undefined
   >(undefined);
-
-  const { cores, loadingCores } = useVeiculosCores();
 
   const {
     marcasFipe,

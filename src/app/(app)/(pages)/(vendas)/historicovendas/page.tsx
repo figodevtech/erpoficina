@@ -19,7 +19,7 @@ function formatMonthFromDate(date: Date): string {
 }
 export default function HistoricoVendas() {
   const [loadingStatusCounter, setLoadingStatusCounter] = useState(false);
-  const [status, setStatus] = useState<vendaStatus | "TODOS">("TODOS");
+  const [status] = useState<vendaStatus | "TODOS">("TODOS");
 
   const totalVendas = 0;
   const [data, setData] = useState<VendaStatusMetricsData | null>(null);
@@ -37,7 +37,7 @@ export default function HistoricoVendas() {
     limit: 20,
     totalPages: 0,
   });
-  const [search, setSearch] = useState("");
+  const [search] = useState("");
   const [filters, setFilters] = useState<PaymentListFilters>({
     cliente: "",
     notaNumero: "",
@@ -74,7 +74,7 @@ export default function HistoricoVendas() {
         setVendas(data.data);
         setPagination(data.pagination);
       }
-    } catch (error) {
+    } catch {
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +91,7 @@ export default function HistoricoVendas() {
       const res = await axios.get(url);
 
       setData(res.data.data); // o payload vem como {data: {...}}
-    } catch (err: any) {
+    } catch {
     } finally {
       setLoadingStatusCounter(false);
     }

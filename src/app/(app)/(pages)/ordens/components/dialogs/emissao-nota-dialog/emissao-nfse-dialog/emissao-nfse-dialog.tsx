@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Zap, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Zap, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ export function EmissaoNfseDialog({
       const res = await fetch(`/api/nfse/servicos-de-os/${osId}`);
       const json = await res.json();
       if (json.ok) setServicos(json.servicos || []);
-    } catch(e) {
+    } catch {
       toast.error("Erro ao carregar serviços da OS");
     } finally {
       setFetching(false);
@@ -160,10 +160,6 @@ export function EmissaoNfseDialog({
                     const status = s.notaFiscalStatus;
                     const isProcessing = status === "PROCESSANDO";
                     const isAuthorized = status === "AUTORIZADA";
-                    const isRejected = status === "REJEITADA" || status === "ERRO";
-                    
-                    const canEmit = !isProcessing; 
-
                     return (
                       <TableRow key={s.servicoid || index} className="group hover:bg-muted/30 transition-colors">
                         <TableCell className="max-w-[250px]">

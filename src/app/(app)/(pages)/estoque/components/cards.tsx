@@ -1,7 +1,7 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { Package, AlertTriangle, TrendingDown, TrendingUp, CircleOff, Boxes, Box } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, CircleOff, Box } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 

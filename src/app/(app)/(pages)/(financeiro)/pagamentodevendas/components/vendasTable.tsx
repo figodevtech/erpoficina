@@ -4,7 +4,6 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination } from "../../fluxodecaixa/types";
 import {
-  ChevronDown,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeft,

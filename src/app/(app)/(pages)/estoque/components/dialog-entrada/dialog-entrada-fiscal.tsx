@@ -32,7 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import ValueInput from "../dialog-produto/entrada-valor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Banco, Categoria_transacao, Metodo_pagamento } from "../../../(financeiro)/fluxodecaixa/types";
+import { Banco, Metodo_pagamento } from "../../../(financeiro)/fluxodecaixa/types";
 import { Label } from "@/components/ui/label";
 import { useCategoriasTransacao } from "../../../(financeiro)/fluxodecaixa/hooks/use-categoria-transacao";
 
@@ -79,7 +79,7 @@ export default function DialogEntradaFiscal({ children, isOpen, setIsOpen }: Ent
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [selectedMetodo, setSelectedMetodo] = useState<Metodo_pagamento | "">("");
   const [selectedCategoria, setSelectedCategoria] = useState<string>("");
-  const { categorias, loadingCategorias, errorCategorias } = useCategoriasTransacao();
+  const { categorias } = useCategoriasTransacao();
 
 
   const handleGetBanks = async () => {

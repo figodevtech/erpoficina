@@ -34,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Banco, Banco_tipo } from "../../../(financeiro)/fluxodecaixa/types";
+import { Banco_tipo } from "../../../(financeiro)/fluxodecaixa/types";
 
 type ContaBancaria = {
   id: number;
@@ -282,7 +282,7 @@ export default function ContasBancariasSection() {
                     <SelectValue placeholder="Selecione"></SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(Banco_tipo).map((t, i)=>
+                      {Object.entries(Banco_tipo).map((t)=>
                         <SelectItem key={t[1]} className="hover:cursor-pointer" value={t[0]}>{t[1]}</SelectItem>
                       )}
                     </SelectContent>

@@ -1,14 +1,12 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
-  Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import FornecedorSelect from "@/app/(app)/components/fornecedorSelect";
 import { Fornecedor, Produto, Unidade_medida } from "../../types";
@@ -194,7 +192,6 @@ interface RegisterContentProps {
 }
 
 export default function RegisterContent({
-  open,
   onOpenChange,
 }: RegisterContentProps) {
   const [tipo, setTipo] = useState<EntradaTipo>("COMPRA_FORNECEDOR");

@@ -4,24 +4,6 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/** início do dia em America/Fortaleza (retorna ISO UTC truncado em segundos) */
-function inicioHojeFortalezaISO() {
-  const now = new Date();
-
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Fortaleza",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
-
-  const [y, m, d] = ymd.split("-").map(Number);
-  const utcMidnight = new Date(Date.UTC(y!, m! - 1, d!, 0, 0, 0));
-  return utcMidnight.toISOString().slice(0, 19);
-}
-
-const isoRecentes = (horas: number) =>
-  new Date(Date.now() - Math.max(1, horas) * 3600 * 1000).toISOString().slice(0, 19);
 
 type StatusOS =
   | "ORCAMENTO"

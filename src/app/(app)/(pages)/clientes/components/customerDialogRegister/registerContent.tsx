@@ -61,7 +61,6 @@ import { cn } from "@/lib/utils";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Customer } from "../../types";
-import { set } from "nprogress";
 import {
   Tooltip,
   TooltipContent,

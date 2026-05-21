@@ -64,23 +64,6 @@ function parseLocalDateTime(value: string): Date | undefined {
   return new Date(y, m - 1, d, hh, mm, 0, 0);
 }
 
-function toIsoMinuteString(date: Date | undefined) {
-  if (!date) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  const y = date.getFullYear();
-  const m = pad(date.getMonth() + 1);
-  const d = pad(date.getDate());
-  const hh = pad(date.getHours());
-  const mm = pad(date.getMinutes());
-
-  return `${y}-${m}-${d}T${hh}:${mm}`;
-}
-
-function nowIsoMinute() {
-  return toIsoMinuteString(new Date());
-}
-
 function toDateInputString(date: Date | undefined) {
   if (!date) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -139,7 +122,7 @@ export default function EditContent({
       if (response.status === 200) {
         setBanks(response.data.data);
       }
-    } catch (error) {
+    } catch {
     } finally {
       setIsLoadingBanks(false);
     }
@@ -157,7 +140,7 @@ export default function EditContent({
           data: toDateFromApi((t as any).data),
         });
       }
-    } catch (error) {
+    } catch {
     } finally {
       setIsLoadingTransaction(false);
     }

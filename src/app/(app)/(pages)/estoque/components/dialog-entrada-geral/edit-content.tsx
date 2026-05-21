@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import FornecedorSelect from "@/app/(app)/components/fornecedorSelect";
@@ -28,7 +28,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import formatarEmReal from "@/utils/formatarEmReal";
-import { Loader2, Search, Trash2, X } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 export const TIPOS_ENTRADA = [
   { value: "COMPRA_FORNECEDOR", label: "Compra fornecedor" },
@@ -122,9 +122,7 @@ interface EditContentProps {
   onSaved?: () => void;
 }
 
-export default function EditContent({ selectedEntradaId, open, onSaved }: EditContentProps) {
-  const dialogOpen = open ?? true;
-
+export default function EditContent({ selectedEntradaId, onSaved }: EditContentProps) {
   // loading já começa TRUE quando abrir (se tiver id)
   const [loadingEntrada, setLoadingEntrada] = useState<boolean>(true)
 
@@ -170,27 +168,6 @@ export default function EditContent({ selectedEntradaId, open, onSaved }: EditCo
       }
       return [...prev, criarItemDeProduto(produto)];
     });
-  };
-
-  const handleRemove = (index: number) => {
-    setItens((prev) => {
-      const alvo = prev[index];
-      if (alvo?.id) {
-        setItensRemover((r) => (r.includes(alvo.id!) ? r : [...r, alvo.id!]));
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-
-  const resetarEstados = () => {
-    setTipo("COMPRA_FORNECEDOR");
-    setItens([]);
-    setItensRemover([]);
-    setFornecedorSelecionado(undefined);
-    setOpenFornecedor(false);
-    setOpenProduto(false);
-    setSaving(false);
-    setLoadingEntrada(false);
   };
 
   const handleGetEntrada = async (id: number, signal?: AbortSignal) => {

@@ -23,10 +23,6 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
 
-const statusParam = searchParams.get("status");
-const statusesParam = searchParams.get("statuses");
-
-
     const status = (searchParams.get("status") as StatusOS) || "TODAS";
     const statuses = parseStatuses(searchParams.get("statuses"));
     const q = searchParams.get("q")?.trim() || "";

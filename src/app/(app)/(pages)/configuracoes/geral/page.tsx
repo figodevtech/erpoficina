@@ -52,7 +52,7 @@ export default function ConfigGeralPage() {
   const [carregando, setCarregando] = useState(true);
   const [usoConsultasPlaca, setUsoConsultasPlaca] = useState<UsoConsultasPlaca | null>(null);
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm<Partial<Config>>({
+  const { handleSubmit, setValue, watch, reset } = useForm<Partial<Config>>({
     defaultValues: {
       checklist_obrigatorio: false,
       alerta_estoque_pdv: false,

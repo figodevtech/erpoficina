@@ -1,5 +1,5 @@
 import { Banknote, CircleSlash, HandCoins, Handshake, IdCardLanyard, Landmark, Lightbulb, Pickaxe, ShoppingCart, Spool, Truck, Warehouse } from "lucide-react"
-import { Categoria_transacao, Tipo_transacao } from "./types"
+import { Tipo_transacao } from "./types"
 
 export const getTypeColor = (tipo: Tipo_transacao) => {
     switch (tipo) {

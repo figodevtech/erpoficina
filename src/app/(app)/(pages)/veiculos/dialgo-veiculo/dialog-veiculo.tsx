@@ -4,7 +4,7 @@ import type React from "react";
 import { ReactNode, useEffect, useState } from "react";
 import axios from "axios";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { Veiculo, Veiculo_tipos } from "../types";
+import { Veiculo } from "../types";
 import RegisterContent from "./registrar-veiculo";
 import EditContent from "./editar-veiculo";
 

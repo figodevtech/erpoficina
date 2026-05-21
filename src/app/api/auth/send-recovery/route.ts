@@ -9,11 +9,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "E-mail inválido" }, { status: 400 });
 
     // ✅ SEM redirectTo → Supabase usa dashboard config
-    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(value);
+    await supabaseAdmin.auth.resetPasswordForEmail(value);
 
     // Sempre sucesso (melhor UX)
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
+  } catch {
     return NextResponse.json(
       { error: "Erro ao enviar recuperação" },
       { status: 500 }

@@ -56,7 +56,6 @@ import { Pagination, Veiculo, Veiculo_tipos } from "./types";
 import { VeiculoDialog } from "./dialgo-veiculo/dialog-veiculo";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { set } from "nprogress";
 import CustomerSelect from "../../components/customerSelect";
 import { toast } from "sonner";
 import axios, { isAxiosError } from "axios";
@@ -90,7 +89,7 @@ export default function TabelaVeiculos({
   const [veiculoId, setSelectedVeiculoId] = useState<number | undefined>(undefined);
   const [veiculoTransferId, setVeiculoTransferId] = useState<number | undefined>(undefined);
   const [openCustomerSelect, setOpenCustomerSelect] = useState(false);
-  const [transferindo, setTransferindo] = useState(false);
+  const [, setTransferindo] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [veiculoToDelete, setVeiculoToDelete] = useState<Veiculo | null>(null);
   const [deleting, setDeleting] = useState(false);

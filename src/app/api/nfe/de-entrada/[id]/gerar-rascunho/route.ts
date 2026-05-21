@@ -70,7 +70,7 @@ export async function POST(
 
     if (!empresaId) {
         // Tenta buscar uma empresa que TENHA configuração de NFe
-        const { data: config, error: cfgError } = await supabaseAdmin
+        const { data: config } = await supabaseAdmin
             .from('nfe_config')
             .select('empresaid')
             .limit(1)

@@ -448,7 +448,6 @@ export async function POST(req: Request) {
     const parcelasNetCents = hasParcelamento
       ? distributeNetByGross(parcelasGrossCents, valorLiquidoTotalCents)
       : [valorLiquidoTotalCents];
-    const now = Date.now();
     const baseDescricao = String(payload.descricao ?? "").trim();
     const rowsToInsert = (hasParcelamento ? parcelasDetalhadas : [{ valor: payload.valor, data: payload.data }]).map(
       (_, index) => ({

@@ -461,7 +461,6 @@ export default function VendasDataTable({
                             onDelete={() => handleDeleteVenda(p.id)}
                             isAlertOpen={isAlertOpen}
                             setIsAlertOpen={setIsAlertOpen}
-                            idToDelete={p.id}
                           >
                             <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
                               <Trash2Icon className="h-4 w-4" />

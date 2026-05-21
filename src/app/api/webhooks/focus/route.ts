@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const finalStatus = (statusMap[focusStatus] || focusStatus || "PROCESSANDO").toUpperCase();
 
     // Tentar encontrar a referência na tabela 'nfse'
-    const { data: nfse, error: nfseError } = await supabaseAdmin
+    const { data: nfse } = await supabaseAdmin
       .from("nfse")
       .select("id")
       .eq("referencia", referencia)

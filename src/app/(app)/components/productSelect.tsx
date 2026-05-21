@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Estoque_status, Pagination, Produto } from "../(pages)/estoque/types";
+import { Pagination, Produto } from "../(pages)/estoque/types";
 import formatarEmReal from "@/utils/formatarEmReal";
 import { DialogProduto } from "../(pages)/estoque/components/dialog-produto/dialog-produto";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -76,8 +76,7 @@ export default function ProductSelect({
   const handleGetProducts = async (
     pageNumber?: number,
     limit?: number,
-    searchText?: string,
-    statusValue?: Estoque_status
+    searchText?: string
   ) => {
     setIsLoading(true);
     try {

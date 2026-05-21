@@ -1,47 +1,6 @@
 import { CreateInvoiceDTO } from "../invoice.types";
 import { NFeItem } from "@/lib/nfe/types";
 
-// Tipos 'ad-hoc' baseados no schema, idealmente viriam do banco/ORM
-interface EntradaRow {
-    id: number;
-    fornecedorid: number;
-    // ... outros campos
-    fornecedor: {
-        id: number;
-        cpfcnpj: string;
-        nomerazaosocial: string;
-        endereco: string;
-        endereconumero: string;
-        enderecocomplemento: string;
-        bairro: string;
-        cidade: string;
-        uf: string | null; // schema tem estado? verificar
-        cep: string;
-        estado: string;
-        inscricaoestadual: string;
-        codigomunicipio?: string; // se tiver
-    }
-}
-
-interface EntradaItemRow {
-    id: number;
-    produto_id: number;
-    descricao: string; // ou titulo
-    ncm: string;
-    cfop: string;
-    unidade: string;
-    quantidade: number;
-    precovenda: number; // ou custo? na entradaitens tem precovenda? Schema diz: precovenda numeric not null (provavelmente custo unitário na entrada)
-    aliquotaicms?: number;
-    cst?: string;
-    csosn?: string;
-    // ... outros impostos
-    cst_pis?: string;
-    aliquota_pis?: number;
-    cst_cofins?: string;
-    aliquota_cofins?: number;
-}
-
 export class EntryAdapter {
     constructor(
         private entrada: any, // Tipo any por enquanto para flexibilidade, mas deveria ser tipado

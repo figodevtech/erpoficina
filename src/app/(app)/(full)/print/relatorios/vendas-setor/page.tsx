@@ -15,13 +15,12 @@ type PageProps = {
   }>;
 };
 
-export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Relatório de Vendas por Setor (Impressão)",
   };
 }
 
-const FORTALEZA_TZ = "America/Fortaleza";
 const FORTALEZA_OFFSET = "-03:00";
 
 function localDayStartToUtcIso(dateStr: string) {

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { StatusInfo, Tipo_transacao, Transaction } from "./types";
 import Cards from "./components/cards";
-import SearchFilter from "./components/searchFilter";
 import FinancialTable from "./components/financialTable";
 
 type FluxoViewMode = "TODAS" | "A_RECEBER" | "A_PAGAR";
@@ -53,7 +52,7 @@ export default function FinanceiroPage() {
         setTransactions(data.data);
         setPagination(data.pagination);
       }
-    } catch (error) {
+    } catch {
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +72,7 @@ export default function FinanceiroPage() {
           mesAnterior: response2.data,
         });
       }
-    } catch (error) {
+    } catch {
     } finally {
       setIsLoadingStatus(false);
     }
