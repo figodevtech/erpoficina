@@ -1,11 +1,7 @@
-// troque o NavUser anterior por este
-
 "use client";
 
 import { useState } from "react";
 import {
-  BadgeCheck,
-  Bell,
   ChevronsUpDown,
   LogOut,
   KeyRound,

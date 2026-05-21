@@ -29,7 +29,6 @@ import {
   Search,
   ShieldCheck,
   ShieldX,
-  Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {

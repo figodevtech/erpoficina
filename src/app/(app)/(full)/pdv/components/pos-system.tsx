@@ -132,13 +132,6 @@ const centsToNumber = (value: number) => value / 100;
 const formatCentsToPaymentInput = (value: number) =>
   formatCurrencyBRL(centsToNumber(Math.max(0, value)));
 
-const formatPaymentAmountInput = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
-
-  return formatCentsToPaymentInput(Number(digits));
-};
-
 export function POSSystem() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,7 +142,6 @@ export function POSSystem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("TODOS");
   const [selectedSaleCategoryId, setSelectedSaleCategoryId] = useState<number | null>(null);
   const [creatingVenda, setCreatingVenda] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCustomerSelectOpen, setIsCustomerSelectOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<
     Customer | undefined
@@ -165,7 +157,7 @@ export function POSSystem() {
     Produto | undefined
   >(undefined);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const { grupos, loadingGrupos, errorGrupos } = useGruposProduto();
+  const { grupos } = useGruposProduto();
   const router = useRouter();
   const config = useConfig();
 
@@ -507,9 +499,6 @@ export function POSSystem() {
   const createVenda = async (): Promise<boolean> => {
     try {
       if (cart.length === 0) {
-        setErrorMessage(
-          "Carrinho vazio. Adicione produtos antes de finalizar a venda.",
-        );
         return false;
       }
 
@@ -556,7 +545,7 @@ export function POSSystem() {
     };
 
     // chamada com axios
-    const { data } = await axios.post("/api/venda", payload);
+    await axios.post("/api/venda", payload);
       toast.success("Venda cadastrada com sucesso.");
 
       setCart([]);

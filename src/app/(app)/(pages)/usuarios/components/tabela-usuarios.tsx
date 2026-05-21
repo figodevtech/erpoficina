@@ -27,7 +27,6 @@ import {
   Eye,
   Edit3,
   Plus,
-  Loader,
   Mail,
   Key,
 } from "lucide-react";

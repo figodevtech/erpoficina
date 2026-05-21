@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import axios from "axios";
-import { Download, Loader, Loader2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 

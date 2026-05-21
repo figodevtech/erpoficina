@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +10,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Search, Plus, Settings, LogOut, User } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 export function DashboardHeader() {
-  const router = useRouter();
   const { data: session } = useSession();
   const user = session?.user as any;
 

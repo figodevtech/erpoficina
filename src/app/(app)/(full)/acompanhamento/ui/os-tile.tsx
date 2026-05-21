@@ -5,7 +5,7 @@ import { QuadItem } from "../lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { CarFront, Wrench, Clock, Building2, User2 } from "lucide-react";
+import { CarFront, Wrench, Clock, Building2 } from "lucide-react";
 
 function cx(...a: (string | false | null | undefined)[]) {
   return a.filter(Boolean).join(" ");

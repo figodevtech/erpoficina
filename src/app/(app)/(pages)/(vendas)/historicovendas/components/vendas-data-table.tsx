@@ -1,24 +1,10 @@
 "use client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Clock,
-  ChevronDown,
   Trash2Icon,
   ChevronsRight,
   ChevronRightIcon,
@@ -27,7 +13,6 @@ import {
   Loader2,
   Loader,
   Check,
-  EyeIcon,
   CreditCard,
   AlertCircle,
   Package,
@@ -35,13 +20,7 @@ import {
   FileText,
   Pencil,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,17 +43,13 @@ import { Pagination, VendaCanal, VendaComItens, vendaStatus } from "../types";
 import { formatDate } from "@/utils/formatDate";
 import formatarEmReal from "@/utils/formatarEmReal";
 import DeleteAlert from "./deleteAlert";
-import { GerarNotaDeOsDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/gerarNotaDeOsDialog/gerarNotaDeOsDialog";
 import { EmissaoNotaDialog } from "../../../ordens/components/dialogs/emissao-nota-dialog/emissao-nota-dialog";
 import { VendaDetailsDialog } from "./venda-detail-dialog";
 import { PedidoOnlineDialog } from "./pedido-online-dialog";
 import axios, { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { useConfig } from "../../../config-context";
-import {
-  PaymentListFilters,
-  PaymentsFilterSheet,
-} from "../../../(financeiro)/components/payments-filter-sheet";
+import { PaymentListFilters, PaymentsFilterSheet } from "../../../(financeiro)/components/payments-filter-sheet";
 import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 interface VendasDataTableProps {
@@ -101,20 +76,12 @@ interface VendasDataTableProps {
   setIsOpen: (value: boolean) => void;
 }
 
-type ApprovalPaymentMethod =
-  | "CREDITO"
-  | "DEBITO"
-  | "DINHEIRO"
-  | "PIX"
-  | "NAO_INFORMAR";
+type ApprovalPaymentMethod = "CREDITO" | "DEBITO" | "DINHEIRO" | "PIX" | "NAO_INFORMAR";
 
 const getStatusBadge = (status: vendaStatus) => {
   if (status === "ORCAMENTO") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-violet-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-violet-600 not-dark:text-white">
         <FileText className="h-3 w-3 mr-1" />
         ORÇAMENTO
       </Badge>
@@ -130,16 +97,9 @@ const getStatusBadge = (status: vendaStatus) => {
     );
   }
 
-  if (
-    status === "PAGAMENTO" ||
-    status === "PENDENTE" ||
-    status === "AUTORIZADO"
-  ) {
+  if (status === "PAGAMENTO" || status === "PENDENTE" || status === "AUTORIZADO") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-yellow-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-yellow-600 not-dark:text-white">
         <CreditCard className="h-3 w-3 mr-1" />
         {status}
       </Badge>
@@ -148,10 +108,7 @@ const getStatusBadge = (status: vendaStatus) => {
 
   if (status === "PAGO") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-emerald-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
         <Check className="h-3 w-3 mr-1" />
         PAGO
       </Badge>
@@ -160,10 +117,7 @@ const getStatusBadge = (status: vendaStatus) => {
 
   if (status === "FINALIZADA") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-gray-800 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-gray-800 not-dark:text-white">
         <Check className="h-3 w-3 mr-1" />
         FINALIZADA
       </Badge>
@@ -172,10 +126,7 @@ const getStatusBadge = (status: vendaStatus) => {
 
   if (status === "CANCELADA" || status === "CANCELADO") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-red-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-red-600 not-dark:text-white">
         <AlertCircle className="h-3 w-3 mr-1" />
         {status}
       </Badge>
@@ -192,28 +143,19 @@ const getCanalBadge = (canal: VendaCanal | string | null | undefined) => {
   const c = String(canal || "").toUpperCase();
   if (c === "ONLINE") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-sky-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-sky-600 not-dark:text-white">
         ONLINE
       </Badge>
     );
   }
   return (
-    <Badge
-      variant="secondary"
-      className="text-xs bg-emerald-600 not-dark:text-white"
-    >
+    <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
       PDV
     </Badge>
   );
 };
 
-const getEntregaBadge = (
-  canal: VendaCanal | string | null | undefined,
-  statusEntrega?: string | null,
-) => {
+const getEntregaBadge = (canal: VendaCanal | string | null | undefined, statusEntrega?: string | null) => {
   const c = String(canal || "").toUpperCase();
   if (c !== "ONLINE") {
     return <span className="text-xs text-muted-foreground">-</span>;
@@ -230,10 +172,7 @@ const getEntregaBadge = (
 
   if (s === "SEPARACAO") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-sky-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-sky-600 not-dark:text-white">
         SEPARACAO
       </Badge>
     );
@@ -241,10 +180,7 @@ const getEntregaBadge = (
 
   if (s === "ENVIO") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-indigo-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-indigo-600 not-dark:text-white">
         ENVIO
       </Badge>
     );
@@ -252,10 +188,7 @@ const getEntregaBadge = (
 
   if (s === "ENTREGUE") {
     return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-emerald-600 not-dark:text-white"
-      >
+      <Badge variant="secondary" className="text-xs bg-emerald-600 not-dark:text-white">
         ENTREGUE
       </Badge>
     );
@@ -281,7 +214,6 @@ export default function VendasDataTable({
 }: VendasDataTableProps) {
   const { data: session } = useSession();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [openEmissao, setOpenEmissao] = useState(false);
   const [emissaoId, setEmissaoId] = useState<number | null>(null);
   const [selectedVendaId, setSelectedVendaId] = useState<number | null>(null);
@@ -290,17 +222,13 @@ export default function VendasDataTable({
   const [onlineVendaId, setOnlineVendaId] = useState<number | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [approveVendaId, setApproveVendaId] = useState<number | null>(null);
-  const [approvalPaymentMethod, setApprovalPaymentMethod] =
-    useState<ApprovalPaymentMethod>("NAO_INFORMAR");
+  const [approvalPaymentMethod, setApprovalPaymentMethod] = useState<ApprovalPaymentMethod>("NAO_INFORMAR");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const config = useConfig();
   const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.VENDAS_EDITAR);
   const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.VENDAS_EXCLUIR);
   const hasActiveFilters = Boolean(
-    filters.cliente.trim() ||
-      filters.notaNumero.trim() ||
-      filters.dataInicio ||
-      filters.dataFim,
+    filters.cliente.trim() || filters.notaNumero.trim() || filters.dataInicio || filters.dataFim,
   );
 
   const handleDeleteVenda = async (id: number) => {
@@ -311,7 +239,6 @@ export default function VendasDataTable({
         <span>Deletando venda</span>
       </div>,
     );
-    setIsDeleting(true);
     try {
       const response = await axios.delete(`/api/venda/${id}`);
       if (response.status === 200) {
@@ -325,8 +252,6 @@ export default function VendasDataTable({
           duration: 5000,
         });
       }
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -344,10 +269,7 @@ export default function VendasDataTable({
     try {
       const response = await axios.patch(`/api/venda/${approveVendaId}`, {
         status: "PAGAMENTO",
-        formaPagamento:
-          approvalPaymentMethod === "NAO_INFORMAR"
-            ? null
-            : approvalPaymentMethod,
+        formaPagamento: approvalPaymentMethod === "NAO_INFORMAR" ? null : approvalPaymentMethod,
       });
 
       if (response.status === 200) {
@@ -377,22 +299,13 @@ export default function VendasDataTable({
             <CardDescription>
               <button
                 onClick={() => {
-                  handleGetVendas(
-                    pagination.page,
-                    pagination.limit,
-                    search,
-                    status,
-                    filters,
-                  );
+                  handleGetVendas(pagination.page, pagination.limit, search, status, filters);
                   fetchStatusCounts();
                 }}
                 className="inline-flex items-center gap-1 text-foreground/50 hover:text-foreground/70 hover:cursor-pointer"
               >
                 <span>Recarregar</span>
-                <Loader2
-                  width={12}
-                  className={isLoading ? "animate-spin" : ""}
-                />
+                <Loader2 width={12} className={isLoading ? "animate-spin" : ""} />
               </button>
             </CardDescription>
           </div>
@@ -417,9 +330,7 @@ export default function VendasDataTable({
               onOpenChange={setFiltersOpen}
               filters={filters}
               onFiltersChange={setFilters}
-              onAplicar={() =>
-                handleGetVendas(1, pagination.limit, search, status, filters)
-              }
+              onAplicar={() => handleGetVendas(1, pagination.limit, search, status, filters)}
               onLimpar={() => {
                 const cleared = { cliente: "", notaNumero: "" };
                 setFilters(cleared);
@@ -432,12 +343,14 @@ export default function VendasDataTable({
 
       <CardContent className="min-h-[300px] -mt-[24px] px-4 pb-4 pt-0 relative">
         <div
-          className={`${isLoading && " opacity-100"
-            } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
+          className={`${
+            isLoading && " opacity-100"
+          } transition-all opacity-0 h-0.5 bg-slate-400 w-full overflow-hidden absolute left-0 right-0 top-0`}
         >
           <div
-            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${isLoading && "animate-slideIn "
-              } `}
+            className={`w-1/2 bg-primary h-full  absolute left-0 rounded-lg  -translate-x-[100%] ${
+              isLoading && "animate-slideIn "
+            } `}
           ></div>
         </div>
 
@@ -470,38 +383,27 @@ export default function VendasDataTable({
                   <TableCell>{p.id}</TableCell>
                   <TableCell>{p.cliente.nomerazaosocial}</TableCell>
 
-                  <TableCell className="font-mono text-xs">
-                    {formatDate(p.datavenda)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {getCanalBadge((p as any).canal)}
-                  </TableCell>
+                  <TableCell className="font-mono text-xs">{formatDate(p.datavenda)}</TableCell>
+                  <TableCell className="text-center">{getCanalBadge((p as any).canal)}</TableCell>
                   <TableCell>{formatarEmReal(p.valortotal)}</TableCell>
+                  <TableCell className="text-center">{getStatusBadge(p.status)}</TableCell>
                   <TableCell className="text-center">
-                    {getStatusBadge(p.status)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {getEntregaBadge(
-                      (p as any).canal,
-                      (p as any).status_entrega,
-                    )}
+                    {getEntregaBadge((p as any).canal, (p as any).status_entrega)}
                   </TableCell>
 
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 cursor-pointer"
-                        >
+                        <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="space-y-1">
                         {config?.habilitar_emissao_nfe &&
                           config?.emissao_nf_no_modulo_vendas &&
-                          (config?.emissao_nf_vendas_nao_pagas ? p.status === "FINALIZADA" ||
-                            p.status === "PAGO" || p.status === "PAGAMENTO" : p.status === "FINALIZADA") && (
+                          (config?.emissao_nf_vendas_nao_pagas
+                            ? p.status === "FINALIZADA" || p.status === "PAGO" || p.status === "PAGAMENTO"
+                            : p.status === "FINALIZADA") && (
                             <DropdownMenuItem
                               onClick={() => {
                                 setEmissaoId(p.id);
@@ -513,15 +415,15 @@ export default function VendasDataTable({
                             </DropdownMenuItem>
                           )}
                         {canEdit ? (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedVendaId(p.id);
-                            setOpenDetails(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedVendaId(p.id);
+                              setOpenDetails(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
                         ) : null}
 
                         {canEdit && p.status === "ORCAMENTO" && (
@@ -537,46 +439,35 @@ export default function VendasDataTable({
                           </DropdownMenuItem>
                         )}
 
-                        <DropdownMenuItem
-                          onClick={() =>
-                            window.open(
-                              `/print/venda/${p.id}/orcamento`,
-                              "_blank",
-                            )
-                          }
-                        >
+                        <DropdownMenuItem onClick={() => window.open(`/print/venda/${p.id}/orcamento`, "_blank")}>
                           <FileText className="h-4 w-4" />
                           Imprimir venda
                         </DropdownMenuItem>
 
-                        {canEdit && String((p as any).canal ?? "").toUpperCase() ===
-                          "ONLINE" && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setOnlineVendaId(p.id);
-                                setOpenOnline(true);
-                              }}
-                            >
-                              <Package className="h-4 w-4" />
-                              Pedido online
-                            </DropdownMenuItem>
-                          )}
+                        {canEdit && String((p as any).canal ?? "").toUpperCase() === "ONLINE" && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setOnlineVendaId(p.id);
+                              setOpenOnline(true);
+                            }}
+                          >
+                            <Package className="h-4 w-4" />
+                            Pedido online
+                          </DropdownMenuItem>
+                        )}
 
                         {canDelete ? (
-                        <DeleteAlert
-                          onDelete={() => handleDeleteVenda(p.id)}
-                          isAlertOpen={isAlertOpen}
-                          setIsAlertOpen={setIsAlertOpen}
-                          idToDelete={p.id}
-                        >
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                            variant="destructive"
+                          <DeleteAlert
+                            onDelete={() => handleDeleteVenda(p.id)}
+                            isAlertOpen={isAlertOpen}
+                            setIsAlertOpen={setIsAlertOpen}
+                            idToDelete={p.id}
                           >
-                            <Trash2Icon className="h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DeleteAlert>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} variant="destructive">
+                              <Trash2Icon className="h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DeleteAlert>
                         ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -590,14 +481,9 @@ export default function VendasDataTable({
         <div className="flex items-center mt-4 justify-between">
           <div className="text-xs text-muted-foreground flex flex-nowrap">
             <span>{pagination.limit * (pagination.page - 1) + 1}</span> -{" "}
-            <span>
-              {pagination.limit * (pagination.page - 1) +
-                (pagination.pageCount || 0)}
-            </span>
+            <span>{pagination.limit * (pagination.page - 1) + (pagination.pageCount || 0)}</span>
             <span className="ml-1 hidden sm:block">de {pagination.total}</span>
-            <Loader
-              className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`}
-            />
+            <Loader className={`w-4 h-full animate-spin transition-all opacity-0 ${isLoading && "opacity-100"}`} />
           </div>
 
           <div className="flex items-center justify-center space-x-1 sm:space-x-3">
@@ -605,9 +491,7 @@ export default function VendasDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetVendas(1, pagination.limit, search, status, filters)
-              }
+              onClick={() => handleGetVendas(1, pagination.limit, search, status, filters)}
               disabled={pagination.page === 1}
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -616,15 +500,7 @@ export default function VendasDataTable({
               variant="outline"
               size="sm"
               className="hover:cursor-pointer"
-              onClick={() =>
-                handleGetVendas(
-                  pagination.page - 1,
-                  pagination.limit,
-                  search,
-                  status,
-                  filters,
-                )
-              }
+              onClick={() => handleGetVendas(pagination.page - 1, pagination.limit, search, status, filters)}
               disabled={pagination.page === 1}
             >
               <ChevronLeftIcon className="h-4 w-4" />
@@ -636,19 +512,8 @@ export default function VendasDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleGetVendas(
-                  pagination.page + 1,
-                  pagination.limit,
-                  search,
-                  status,
-                  filters,
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetVendas(pagination.page + 1, pagination.limit, search, status, filters)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
@@ -656,19 +521,8 @@ export default function VendasDataTable({
               className="hover:cursor-pointer"
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleGetVendas(
-                  pagination.totalPages,
-                  pagination.limit,
-                  search,
-                  status,
-                  filters,
-                )
-              }
-              disabled={
-                pagination.page === pagination.totalPages ||
-                pagination.totalPages === 0
-              }
+              onClick={() => handleGetVendas(pagination.totalPages, pagination.limit, search, status, filters)}
+              disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>
@@ -688,17 +542,9 @@ export default function VendasDataTable({
           </div>
         </div>
 
-        <EmissaoNotaDialog
-          onOpenChange={setOpenEmissao}
-          open={openEmissao}
-          vendaId={emissaoId}
-        />
+        <EmissaoNotaDialog onOpenChange={setOpenEmissao} open={openEmissao} vendaId={emissaoId} />
       </CardContent>
-      <VendaDetailsDialog
-        vendaId={selectedVendaId}
-        onOpenChange={setOpenDetails}
-        open={openDetails}
-      />
+      <VendaDetailsDialog vendaId={selectedVendaId} onOpenChange={setOpenDetails} open={openDetails} />
       <PedidoOnlineDialog
         vendaId={onlineVendaId}
         open={openOnline}
@@ -712,20 +558,14 @@ export default function VendasDataTable({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Aprovar orçamento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Ao aprovar, a venda passará para o status de pagamento.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Ao aprovar, a venda passará para o status de pagamento.</AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="space-y-2">
-            <span className="text-sm font-medium text-foreground">
-              Método de pagamento
-            </span>
+            <span className="text-sm font-medium text-foreground">Método de pagamento</span>
             <Select
               value={approvalPaymentMethod}
-              onValueChange={(value) =>
-                setApprovalPaymentMethod(value as ApprovalPaymentMethod)
-              }
+              onValueChange={(value) => setApprovalPaymentMethod(value as ApprovalPaymentMethod)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione o método de pagamento" />
@@ -749,9 +589,7 @@ export default function VendasDataTable({
             >
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleApproveBudget()}>
-              Confirmar
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => handleApproveBudget()}>Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

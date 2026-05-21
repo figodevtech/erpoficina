@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -18,9 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  AlertTriangle,
-  Clock,
-  ChevronDown,
   Trash2Icon,
   ChevronsRight,
   ChevronRightIcon,
@@ -29,10 +25,7 @@ import {
   Loader2,
   Edit,
   Loader,
-  CircleOff,
-  Store,
   Plus,
-  FileText,
   MoreHorizontal,
   ArrowLeftRight,
 } from "lucide-react";

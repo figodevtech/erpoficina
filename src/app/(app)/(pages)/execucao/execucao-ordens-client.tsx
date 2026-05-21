@@ -5,19 +5,15 @@ import { toast } from "sonner";
 import {
   CalendarDays,
   CheckCircle2,
-  CheckSquare2,
   Loader2,
-  ListChecks,
   Play,
   RefreshCcw,
   Search,
   UserRound,
   Wrench,
-  CarFront,
   Clock,
   LayoutGrid,
   SlidersHorizontal,
-  Users,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -27,32 +23,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -121,19 +99,6 @@ const execLabel: Record<string, string> = {
   FINALIZADO: "Finalizado",
 };
 
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("pt-BR");
-}
-
-function formatMoney(value: number) {
-  return Number(value || 0).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
-
 function formatTimeDiff(startIso: string, nowMs: number) {
   const start = new Date(startIso).getTime();
   const diff = Math.max(0, nowMs - start);
@@ -155,10 +120,7 @@ const execBadgeClass = (status?: string | null) => {
 };
 
 function getOrdemExecucaoStatus(ordem: OrdemExecucao) {
-  if (
-    ordem.progresso.totalServicos > 0 &&
-    ordem.progresso.servicosFinalizados >= ordem.progresso.totalServicos
-  ) {
+  if (ordem.progresso.totalServicos > 0 && ordem.progresso.servicosFinalizados >= ordem.progresso.totalServicos) {
     return "FINALIZADO";
   }
 
@@ -185,9 +147,7 @@ const ServicoItem = React.memo(function ServicoItem({
       type="button"
       onClick={() => onToggle(servico.servicoid)}
       className={`w-full rounded-lg border p-3 text-left transition-colors hover:cursor-pointer ${
-        checked
-          ? "border-primary bg-primary/5"
-          : "border-border bg-card hover:bg-muted/40"
+        checked ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted/40"
       }`}
     >
       <div className="flex items-center gap-3">
@@ -240,60 +200,63 @@ export default function ExecucaoOrdensClient() {
     return () => clearInterval(id);
   }, []);
 
-  const loadOrdens = React.useCallback(async (options?: { silent?: boolean; realtime?: boolean }) => {
-    const silent = options?.silent === true;
+  const loadOrdens = React.useCallback(
+    async (options?: { silent?: boolean; realtime?: boolean }) => {
+      const silent = options?.silent === true;
 
-    try {
-      if (silent) {
-        setSyncing(true);
-      } else {
-        setLoading(true);
-        setErro(null);
-        setRealtimeNotice(null);
+      try {
+        if (silent) {
+          setSyncing(true);
+        } else {
+          setLoading(true);
+          setErro(null);
+          setRealtimeNotice(null);
+        }
+
+        const params = new URLSearchParams({ status: tab });
+        if (q.trim()) params.set("q", q.trim());
+        if (filtroSetor) params.set("setorId", filtroSetor);
+        if (filtroPrioridade) params.set("prioridade", filtroPrioridade);
+
+        const res = await fetch(`/api/execucao/ordens?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error || "Falha ao carregar ordens");
+
+        const items = (json.items ?? []) as OrdemExecucao[];
+        setOrdens(items);
+
+        if (options?.realtime) {
+          setRealtimeNotice("Atualizado em tempo real");
+          window.setTimeout(() => setRealtimeNotice(null), 2800);
+        }
+
+        // Definir setor padrão no primeiro carregamento
+        if (!hasSetDefaultSetor && json.setorId) {
+          setFiltroSetor(String(json.setorId));
+          setHasSetDefaultSetor(true);
+        }
+      } catch (error: any) {
+        const message = error?.message || "Falha ao carregar ordens";
+        if (silent) {
+          console.error("Falha ao sincronizar execucao em tempo real", error);
+          setRealtimeNotice("Nao foi possivel sincronizar agora");
+          window.setTimeout(() => setRealtimeNotice(null), 2800);
+        } else {
+          setErro(message);
+          setOrdens([]);
+        }
+      } finally {
+        if (silent) {
+          setSyncing(false);
+        } else {
+          setLoading(false);
+        }
       }
-
-      const params = new URLSearchParams({ status: tab });
-      if (q.trim()) params.set("q", q.trim());
-      if (filtroSetor) params.set("setorId", filtroSetor);
-      if (filtroPrioridade) params.set("prioridade", filtroPrioridade);
-
-      const res = await fetch(`/api/execucao/ordens?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || "Falha ao carregar ordens");
-
-      const items = (json.items ?? []) as OrdemExecucao[];
-      setOrdens(items);
-
-      if (options?.realtime) {
-        setRealtimeNotice("Atualizado em tempo real");
-        window.setTimeout(() => setRealtimeNotice(null), 2800);
-      }
-
-      // Definir setor padrão no primeiro carregamento
-      if (!hasSetDefaultSetor && json.setorId) {
-        setFiltroSetor(String(json.setorId));
-        setHasSetDefaultSetor(true);
-      }
-    } catch (error: any) {
-      const message = error?.message || "Falha ao carregar ordens";
-      if (silent) {
-        console.error("Falha ao sincronizar execucao em tempo real", error);
-        setRealtimeNotice("Nao foi possivel sincronizar agora");
-        window.setTimeout(() => setRealtimeNotice(null), 2800);
-      } else {
-        setErro(message);
-        setOrdens([]);
-      }
-    } finally {
-      if (silent) {
-        setSyncing(false);
-      } else {
-        setLoading(false);
-      }
-    }
-  }, [q, tab, filtroSetor, filtroPrioridade, hasSetDefaultSetor]);
+    },
+    [q, tab, filtroSetor, filtroPrioridade, hasSetDefaultSetor],
+  );
 
   const ordensFiltradas = React.useMemo(() => {
     return ordens.filter((o) => {
@@ -394,24 +357,9 @@ export default function ExecucaoOrdensClient() {
 
     if (!busca) return servicos;
     return servicos.filter((servico) => {
-      return (
-        servico.descricao.toLowerCase().includes(busca) ||
-        String(servico.servicoid).includes(busca)
-      );
+      return servico.descricao.toLowerCase().includes(busca) || String(servico.servicoid).includes(busca);
     });
   }, [assumirTarget, buscaServico]);
-
-  const servicosEmExecucao = React.useMemo(() => {
-    const ordem = assumirTarget?.ordem;
-    if (!ordem) return [];
-    return ordem.servicos.filter((servico) => servico.minhaExecucao?.statusExecucao === "EM_EXECUCAO");
-  }, [assumirTarget]);
-
-  const servicosSelecionadosAssumir = React.useMemo(() => {
-    const ordem = assumirTarget?.ordem;
-    if (!ordem) return [];
-    return ordem.servicos.filter((servico) => servicosSelecionados.includes(servico.servicoid));
-  }, [assumirTarget, servicosSelecionados]);
 
   function abrirAssumirServicos(ordem: OrdemExecucao) {
     const assumiveis = ordem.servicos
@@ -430,32 +378,11 @@ export default function ExecucaoOrdensClient() {
     });
   }, []);
 
-  async function iniciarServico(ordem: OrdemExecucao, servico: ServicoExecucao) {
-    const key = `${ordem.id}:${servico.servicoid}:iniciar`;
-    try {
-      setBusyKey(key);
-      const res = await fetch(`/api/execucao/ordens/${ordem.id}/servicos/${servico.servicoid}/iniciar`, {
-        method: "POST",
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || "Falha ao iniciar servico");
-
-      toast.success("Execucao iniciada.");
-      await loadOrdens({ silent: true });
-    } catch (error: any) {
-      toast.error(error?.message || "Falha ao iniciar servico");
-    } finally {
-      setBusyKey(null);
-    }
-  }
-
   async function iniciarServicosSelecionados() {
     const ordem = assumirTarget?.ordem;
     if (!ordem) return;
 
-    const selecionados = ordem.servicos.filter((servico) =>
-      servicosSelecionados.includes(servico.servicoid)
-    );
+    const selecionados = ordem.servicos.filter((servico) => servicosSelecionados.includes(servico.servicoid));
 
     if (selecionados.length === 0) {
       toast.error("Selecione ao menos um servico.");
@@ -474,11 +401,7 @@ export default function ExecucaoOrdensClient() {
         if (!res.ok) throw new Error(json?.error || `Falha ao iniciar ${servico.descricao}`);
       }
 
-      toast.success(
-        selecionados.length === 1
-          ? "Servico iniciado."
-          : `${selecionados.length} servicos iniciados.`
-      );
+      toast.success(selecionados.length === 1 ? "Servico iniciado." : `${selecionados.length} servicos iniciados.`);
       setAssumirTarget(null);
       setServicosSelecionados([]);
       setBuscaServico("");
@@ -527,7 +450,13 @@ export default function ExecucaoOrdensClient() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center lg:w-auto">
-        <Button variant="outline" size="sm" className="w-full lg:w-auto" onClick={() => loadOrdens()} disabled={loading}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full lg:w-auto"
+          onClick={() => loadOrdens()}
+          disabled={loading}
+        >
           <RefreshCcw className={`mr-2 h-4 w-4 ${loading || syncing ? "animate-spin" : ""}`} />
           Atualizar
         </Button>
@@ -547,11 +476,15 @@ export default function ExecucaoOrdensClient() {
                 <div className="space-y-2">
                   <Label>Setor</Label>
                   <Select value={filtroSetor} onValueChange={setFiltroSetor}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todos</SelectItem>
                       {setoresDisponiveis.map((s) => (
-                        <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -559,7 +492,9 @@ export default function ExecucaoOrdensClient() {
                 <div className="space-y-2">
                   <Label>Prioridade</Label>
                   <Select value={filtroPrioridade} onValueChange={setFiltroPrioridade}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Todas" /></SelectTrigger>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todas</SelectItem>
                       <SelectItem value="ALTA">Alta</SelectItem>
@@ -569,8 +504,20 @@ export default function ExecucaoOrdensClient() {
                   </Select>
                 </div>
                 <div className="mt-2 flex justify-between gap-2">
-                  <Button variant="outline" className="flex-1" type="button" onClick={() => { setFiltroSetor("todos"); setFiltroPrioridade("todos"); }}>Limpar</Button>
-                  <Button className="flex-1" type="button" onClick={() => setSheetOpen(false)}>Aplicar</Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    type="button"
+                    onClick={() => {
+                      setFiltroSetor("todos");
+                      setFiltroPrioridade("todos");
+                    }}
+                  >
+                    Limpar
+                  </Button>
+                  <Button className="flex-1" type="button" onClick={() => setSheetOpen(false)}>
+                    Aplicar
+                  </Button>
                 </div>
               </div>
             </SheetContent>
@@ -580,7 +527,11 @@ export default function ExecucaoOrdensClient() {
 
       {realtimeNotice ? (
         <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+          {syncing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+          ) : (
+            <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+          )}
           <span>{realtimeNotice}</span>
         </div>
       ) : null}
@@ -607,73 +558,71 @@ export default function ExecucaoOrdensClient() {
           {/* Filtros visíveis só no desktop (lg+) */}
           <div className="hidden lg:block">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1 hover:cursor-pointer">
-                <SlidersHorizontal className="h-4 w-4" />
-                Filtros
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Filtros da listagem</SheetTitle>
-              </SheetHeader>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1 hover:cursor-pointer">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filtros
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Filtros da listagem</SheetTitle>
+                </SheetHeader>
 
-              <div className="grid flex-1 auto-rows-min gap-6 px-4 mt-6">
-                {/* Setor */}
-                <div className="space-y-2">
-                  <Label>Setor</Label>
-                  <Select value={filtroSetor} onValueChange={setFiltroSetor}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      {setoresDisponiveis.map((s) => (
-                        <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div className="grid flex-1 auto-rows-min gap-6 px-4 mt-6">
+                  {/* Setor */}
+                  <div className="space-y-2">
+                    <Label>Setor</Label>
+                    <Select value={filtroSetor} onValueChange={setFiltroSetor}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        {setoresDisponiveis.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {s.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Prioridade */}
-                <div className="space-y-2">
-                  <Label>Prioridade</Label>
-                  <Select value={filtroPrioridade} onValueChange={setFiltroPrioridade}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Todas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todas</SelectItem>
-                      <SelectItem value="ALTA">Alta</SelectItem>
-                      <SelectItem value="NORMAL">Normal</SelectItem>
-                      <SelectItem value="BAIXA">Baixa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Prioridade */}
+                  <div className="space-y-2">
+                    <Label>Prioridade</Label>
+                    <Select value={filtroPrioridade} onValueChange={setFiltroPrioridade}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todas</SelectItem>
+                        <SelectItem value="ALTA">Alta</SelectItem>
+                        <SelectItem value="NORMAL">Normal</SelectItem>
+                        <SelectItem value="BAIXA">Baixa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="mt-2 flex justify-between gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    type="button"
-                    onClick={() => {
-                      setFiltroSetor("todos");
-                      setFiltroPrioridade("todos");
-                    }}
-                  >
-                    Limpar
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    type="button"
-                    onClick={() => setSheetOpen(false)}
-                  >
-                    Aplicar
-                  </Button>
+                  <div className="mt-2 flex justify-between gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      type="button"
+                      onClick={() => {
+                        setFiltroSetor("todos");
+                        setFiltroPrioridade("todos");
+                      }}
+                    >
+                      Limpar
+                    </Button>
+                    <Button className="flex-1" type="button" onClick={() => setSheetOpen(false)}>
+                      Aplicar
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
 
@@ -722,24 +671,25 @@ export default function ExecucaoOrdensClient() {
             const alvo =
               ordem.alvoTipo === "PECA"
                 ? ordem.peca?.titulo || ordem.peca?.descricao || "Peca"
-                : [ordem.veiculo?.marca, ordem.veiculo?.modelo, ordem.veiculo?.placa]
-                    .filter(Boolean)
-                    .join(" ") || "Veiculo";
+                : [ordem.veiculo?.marca, ordem.veiculo?.modelo, ordem.veiculo?.placa].filter(Boolean).join(" ") ||
+                  "Veiculo";
             const assumiveisCount = ordem.servicos.filter(
-              (servico) => !servico.minhaExecucao || servico.minhaExecucao.statusExecucao === "PENDENTE"
-            ).length;
-            const minhasEmExecucaoCount = ordem.servicos.filter(
-              (servico) => servico.minhaExecucao?.statusExecucao === "EM_EXECUCAO"
+              (servico) => !servico.minhaExecucao || servico.minhaExecucao.statusExecucao === "PENDENTE",
             ).length;
             const statusExecucaoOrdem = getOrdemExecucaoStatus(ordem);
 
-            const priorityColor = 
-              ordem.prioridade === "ALTA" ? "border-l-destructive" : 
-              ordem.prioridade === "NORMAL" ? "border-l-blue-500" : 
-              "border-l-muted-foreground/30";
+            const priorityColor =
+              ordem.prioridade === "ALTA"
+                ? "border-l-destructive"
+                : ordem.prioridade === "NORMAL"
+                  ? "border-l-blue-500"
+                  : "border-l-muted-foreground/30";
 
             return (
-              <Card key={ordem.id} className={`overflow-hidden border-2 border-border/80 shadow-sm border-l-4 ${priorityColor} gap-0 py-0`}>
+              <Card
+                key={ordem.id}
+                className={`overflow-hidden border-2 border-border/80 shadow-sm border-l-4 ${priorityColor} gap-0 py-0`}
+              >
                 {/* Header: OS e Status */}
                 <div className="px-4 py-2 flex items-center justify-between border-b">
                   <span className="font-semibold text-muted-foreground">OS #{ordem.id}</span>
@@ -759,7 +709,10 @@ export default function ExecucaoOrdensClient() {
                             {ordem.veiculo.placa}
                           </Badge>
                         ) : ordem.peca?.lacre ? (
-                          <Badge variant="outline" className="mt-2 border-amber-500 bg-amber-50 text-amber-700 text-sm font-medium">
+                          <Badge
+                            variant="outline"
+                            className="mt-2 border-amber-500 bg-amber-50 text-amber-700 text-sm font-medium"
+                          >
                             LACRE: {ordem.peca.lacre}
                           </Badge>
                         ) : null}
@@ -805,7 +758,6 @@ export default function ExecucaoOrdensClient() {
                       ) : (
                         ordem.servicos.map((servico) => {
                           const minha = servico.minhaExecucao;
-                          const statusExecucao = minha?.statusExecucao ?? null;
                           const keyBase = `${ordem.id}:${servico.servicoid}`;
                           const isBusy = busyKey === `${keyBase}:iniciar` || busyKey === `${keyBase}:finalizar`;
                           const servicoLabel = servico.observacao
@@ -823,11 +775,17 @@ export default function ExecucaoOrdensClient() {
                                           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground leading-snug">
                                             {servico.descricao}
                                             {servico.observacao ? (
-                                              <span className="font-normal text-muted-foreground"> - {servico.observacao}</span>
+                                              <span className="font-normal text-muted-foreground">
+                                                {" "}
+                                                - {servico.observacao}
+                                              </span>
                                             ) : null}
                                           </p>
                                           {minha?.statusExecucao ? (
-                                            <Badge variant="outline" className={`shrink-0 px-2 py-0.5 text-xs font-medium ${execBadgeClass(minha.statusExecucao)}`}>
+                                            <Badge
+                                              variant="outline"
+                                              className={`shrink-0 px-2 py-0.5 text-xs font-medium ${execBadgeClass(minha.statusExecucao)}`}
+                                            >
                                               {execLabel[minha.statusExecucao] ?? minha.statusExecucao}
                                             </Badge>
                                           ) : null}
@@ -856,7 +814,9 @@ export default function ExecucaoOrdensClient() {
                                         </div>
                                       ))
                                     ) : (
-                                      <span className="text-xs text-muted-foreground italic">Aguardando realizador</span>
+                                      <span className="text-xs text-muted-foreground italic">
+                                        Aguardando realizador
+                                      </span>
                                     )}
 
                                     {minha?.iniciadoEm && (
@@ -878,10 +838,13 @@ export default function ExecucaoOrdensClient() {
                                       onClick={() => setFinalizarTarget({ ordem, servico })}
                                       disabled={isBusy || tab !== "ativas"}
                                     >
-                                      {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                      {isBusy ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <CheckCircle2 className="h-4 w-4" />
+                                      )}
                                     </Button>
                                   )}
-                              
                                 </div>
                               </div>
                             </div>
@@ -895,11 +858,14 @@ export default function ExecucaoOrdensClient() {
                   {ordem.produtos.length > 0 && (
                     <div className="p-4 bg-secondary/20 border-t-2 border-border/50">
                       <h4 className="text-sm font-bold uppercase text-foreground/70 tracking-widest mb-3 flex items-center gap-2">
-                         📦 Produtos Necessários
+                        📦 Produtos Necessários
                       </h4>
                       <div className="grid grid-cols-1 gap-2">
                         {ordem.produtos.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between bg-card p-3 rounded-lg border-2 border-border/50 shadow-sm">
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between bg-card p-3 rounded-lg border-2 border-border/50 shadow-sm"
+                          >
                             <span className="text-base font-bold text-foreground">{p.titulo}</span>
                             <Badge variant="secondary" className="text-sm font-black px-3 py-1 bg-muted-foreground/10">
                               x{p.quantidade}
@@ -970,9 +936,7 @@ export default function ExecucaoOrdensClient() {
               <ScrollArea className="flex-1 border rounded-lg">
                 <div className="space-y-2 p-3">
                   {servicosAssumiveis.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-muted-foreground">
-                      Nenhum serviço disponível.
-                    </div>
+                    <div className="p-8 text-center text-sm text-muted-foreground">Nenhum serviço disponível.</div>
                   ) : (
                     servicosAssumiveis.map((servico) => (
                       <ServicoItem
@@ -1004,10 +968,7 @@ export default function ExecucaoOrdensClient() {
                 <Button
                   className="flex-1 hover:cursor-pointer"
                   onClick={iniciarServicosSelecionados}
-                  disabled={
-                    servicosSelecionados.length === 0 ||
-                    busyKey === `${assumirTarget?.ordem.id}:bulk-iniciar`
-                  }
+                  disabled={servicosSelecionados.length === 0 || busyKey === `${assumirTarget?.ordem.id}:bulk-iniciar`}
                 >
                   {busyKey === `${assumirTarget?.ordem.id}:bulk-iniciar` ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
