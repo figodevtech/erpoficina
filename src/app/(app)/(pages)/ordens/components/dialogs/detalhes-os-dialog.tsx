@@ -1,52 +1,50 @@
 // ./src/app/(app)/(pages)/ordens/components/dialogs/detalhes-os-dialog.tsx
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogHeader,
+DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
 import {
-  Loader2,
-  Copy,
-  ExternalLink,
-  Link2,
-  Car,
-  Wrench,
-  User2,
-  Building2,
-  CheckSquare,
-  Package,
-  ImageIcon,
-  FileText,
-  StickyNote,
-  ListChecks,
-  Calculator,
-  X,
-  AlertTriangle,
-  Users,
+AlertTriangle,
+Building2,
+Calculator,
+Car,
+CheckSquare,
+Copy,
+ExternalLink,
+FileText,
+ImageIcon,
+Link2,
+ListChecks,
+Package,
+StickyNote,
+User2,
+Users,
+Wrench
 } from "lucide-react";
+import { Fragment,useEffect,useMemo,useState } from "react";
+import { toast } from "sonner";
 
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+Command,
+CommandEmpty,
+CommandGroup,
+CommandInput,
+CommandItem,
+CommandList,
+} from "@/components/ui/command";
+import { Popover,PopoverContent,PopoverTrigger } from "@/components/ui/popover";
 
-import { carregarDetalhesOS, listarUsuariosAtivos, type UsuarioAtivo } from "../../lib/api";
+import { carregarDetalhesOS,listarUsuariosAtivos,type UsuarioAtivo } from "../../lib/api";
 
 const PUBLIC_APPROVAL_BASE = "/aprovacao";
 function approvalUrlFromToken(token: string) {
@@ -361,6 +359,7 @@ export function OSDetalhesDialog({
   const [responsaveis, setResponsaveis] = useState<UsuarioAtivo[]>([]);
   const [loadingResponsaveis, setLoadingResponsaveis] = useState(false);
   const [savingResponsavelKey, setSavingResponsavelKey] = useState<string | null>(null);
+  const [currentTab, setCurrentTab] = useState("resumo");
 
   const canFetch = open && !!osId;
 
@@ -426,6 +425,10 @@ export function OSDetalhesDialog({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (open) setCurrentTab("resumo");
+  }, [open, osId]);
+
   const titulo = useMemo(() => (data?.os?.id ? `Detalhes da OS #${data.os.id}` : "Detalhes da OS"), [data?.os?.id]);
 
   const statusBadge = useMemo(() => {
@@ -447,6 +450,9 @@ export function OSDetalhesDialog({
     [data?.itensServico]
   );
   const totalGeral = useMemo(() => totalProdutos + totalServicos, [totalProdutos, totalServicos]);
+
+  const tabTriggerClass =
+    "group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   const checklistAutores = useMemo(() => {
     const nomes = (data?.checklist ?? [])
@@ -537,63 +543,102 @@ export function OSDetalhesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="
-          w-[95vw] sm:max-w-5xl
-          max-h-[85vh] sm:max-h-[85vh] supports-[height:100svh]:max-h-[85svh]
-          overflow-y-auto overscroll-contain
-          p-0
+          flex h-[100dvh] w-[100dvw] max-w-[100dvw] flex-col rounded-none
+          sm:h-[85vh] sm:w-[95vw] sm:max-w-5xl sm:rounded-lg
+          supports-[height:100svh]:sm:h-[85svh]
+          overflow-hidden
+          !gap-0 p-0
         "
+        showCloseButton={!loading}
       >
-        <div className="top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b relative">
-          <DialogClose asChild>
-            <Button variant="ghost" size="icon" className="absolute right-2 top-2" aria-label="Fechar" title="Fechar">
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogClose>
+        {!loading ? (
+        <div className="shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b relative">
+          <DialogHeader className="gap-0 px-5 py-4 pr-12">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1">
+                <DialogTitle className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <Link2 className="h-5 w-5 shrink-0 text-primary" />
+                    <span className="truncate">{titulo}</span>
+                  </span>
+                  {statusBadge}
+                  {prioBadge}
+                </DialogTitle>
+                <DialogDescription className="text-sm">
+                  Informações completas da OS, itens, checklist, responsáveis e links de aprovação.
+                </DialogDescription>
+              </div>
 
-          <DialogHeader className="px-5 pt-5 pb-3">
-            <DialogTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-primary" />
-              {titulo}
-            </DialogTitle>
-            <DialogDescription>Informações completas da OS, itens, checklist, responsáveis e links de aprovação.</DialogDescription>
+              <span className="grid grid-cols-2 gap-2 text-left sm:ml-auto sm:min-w-[260px] sm:text-right">
+                <span className="rounded-md border bg-muted/35 px-2.5 py-1.5">
+                  <span className="block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Entrada
+                  </span>
+                  <span className="block text-xs font-semibold text-foreground">{fmtDate(data?.os?.dataentrada)}</span>
+                </span>
+                <span className="rounded-md border bg-muted/35 px-2.5 py-1.5">
+                  <span className="block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Saída real
+                  </span>
+                  <span className="block text-xs font-semibold text-foreground">{fmtDate(data?.os?.datasaida)}</span>
+                </span>
+              </span>
+            </div>
           </DialogHeader>
-
-          <div className="px-5 pb-3 flex items-center gap-2">
-            {statusBadge}
-            {prioBadge}
-            <div className="ml-auto text-xs text-muted-foreground">
-              Entrada: <b>{fmtDate(data?.os?.dataentrada)}</b>
-              {" · "}Saída real: <b>{fmtDate(data?.os?.datasaida)}</b>
-            </div>
-          </div>
         </div>
+        ) : null}
 
-        <div className="px-5 pb-5">
+        <div className={loading ? "min-h-0 flex-1 overflow-hidden p-0" : "min-h-0 flex-1 overflow-hidden pb-0"}>
           {loading ? (
-            <div className="flex min-h-[55vh] flex-col items-center justify-center gap-3">
-              <div className="size-8 animate-spin rounded-full border-t-2 border-primary" />
-              <span className="text-sm font-medium text-primary">Carregando</span>
-            </div>
+            <>
+              <div className="sr-only">
+                <DialogTitle>{titulo}</DialogTitle>
+                <DialogDescription>Carregando detalhes da OS</DialogDescription>
+              </div>
+              <div className="flex h-full items-center justify-center">
+                <div className="size-8 animate-spin rounded-full border-t-2 border-primary" />
+              </div>
+            </>
           ) : !data ? (
-            <div className="h-24 grid place-items-center text-sm text-muted-foreground">Não foi possível carregar os detalhes.</div>
+            <div className="grid h-full place-items-center text-sm text-muted-foreground">Não foi possível carregar os detalhes.</div>
           ) : (
-            <div className="space-y-6">
-              {mostrarAlertaAntesDeIniciar && (
-                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-300" />
-                  <div>
-                    <div className="font-medium text-amber-100">Defina o responsável pelos serviços antes de iniciar a OS.</div>
-                    <div className="text-amber-100/80">
-                      Há serviços sem responsável atribuído. Recomenda-se escolher quem irá executar cada serviço antes de clicar em{" "}
-                      <b>Iniciar</b>.
-                    </div>
+            <div className="flex h-full min-h-0 flex-col">
+              <Tabs value={currentTab} onValueChange={setCurrentTab} className="flex-1 min-h-0 overflow-hidden pb-0">
+                <div className="sticky top-0 z-10 mt-4 shrink-0">
+                  <div className="overflow-x-auto px-2 pb-2 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                  <TabsList className="h-auto min-w-full justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
+                    <TabsTrigger value="resumo" className={tabTriggerClass}>
+                      <span className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                        Resumo
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="itens" className={tabTriggerClass}>
+                      <span className="flex items-center gap-2">
+                        <Package className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                        Itens
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="checklist" className={tabTriggerClass}>
+                      <span className="flex items-center gap-2">
+                        <ListChecks className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                        Checklist
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="aprovacao" className={tabTriggerClass}>
+                      <span className="flex items-center gap-2">
+                        <Link2 className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                        Aprovação
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
                   </div>
                 </div>
-              )}
 
+                <TabsContent value="resumo" className="mt-0 h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-4 sm:px-6 sm:py-5">
               {/* Resumo */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-lg border p-4">
+              <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <User2 className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Cliente</span>
@@ -601,7 +646,7 @@ export function OSDetalhesDialog({
                   <div className="text-sm">{data.os.cliente?.nomerazaosocial ?? "—"}</div>
                 </div>
 
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Building2 className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Setor</span>
@@ -609,7 +654,7 @@ export function OSDetalhesDialog({
                   <div className="text-sm">{data.os.setor?.nome ?? "—"}</div>
                 </div>
 
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     {data.os.alvo_tipo === "PECA" ? <Wrench className="h-4 w-4 text-primary" /> : <Car className="h-4 w-4 text-primary" />}
                     <span className="text-sm font-medium">{data.os.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</span>
@@ -635,7 +680,7 @@ export function OSDetalhesDialog({
                   )}
                 </div>
 
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <CheckSquare className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Status de Aprovação</span>
@@ -645,29 +690,29 @@ export function OSDetalhesDialog({
               </section>
 
               {/* Descrição / Observações / Motivo */}
-              <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                <div className="rounded-lg border p-4">
+              <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Descrição</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{data.os.descricao || "—"}</div>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <StickyNote className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Observações Fiscais</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{data.os.observacoes_fiscais || "—"}</div>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <StickyNote className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Observações (Interno)</span>
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{data.os.observacoes || "—"}</div>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <AlertTriangle className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Motivo do cancelamento</span>
@@ -675,7 +720,7 @@ export function OSDetalhesDialog({
                   <div className="text-sm whitespace-pre-wrap">{motivoCancelamento || "—"}</div>
                 </div>
 
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <AlertTriangle className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Motivo sem cobrança</span>
@@ -685,9 +730,24 @@ export function OSDetalhesDialog({
               </section>
 
               {/* Produtos / Serviços / Totais */}
-              <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                </TabsContent>
+
+                <TabsContent value="itens" className="mt-0 h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-4 sm:px-6 sm:py-5">
+              {mostrarAlertaAntesDeIniciar && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-300" />
+                  <div>
+                    <div className="font-medium text-amber-100">Defina o responsável pelos serviços antes de iniciar a OS.</div>
+                    <div className="text-amber-100/80">
+                      Há serviços sem responsável atribuído. Recomenda-se escolher quem irá executar cada serviço antes de clicar em{" "}
+                      <b>Iniciar</b>.
+                    </div>
+                  </div>
+                </div>
+              )}
+              <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* PRODUTOS */}
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Package className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Produtos</span>
@@ -700,7 +760,7 @@ export function OSDetalhesDialog({
                   ) : (
                     <ul className="space-y-2 text-sm">
                       {data.itensProduto.map((it, idx) => (
-                        <li key={`${it.ordemservicoid}-${it.produtoid}-${idx}`} className="flex items-center justify-between gap-2">
+                        <li key={`${it.ordemservicoid}-${it.produtoid}-${idx}`} className="flex flex-col gap-1 rounded-md border bg-muted/20 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                           <div className="min-w-0">
                             <div className="font-medium truncate">
                               {it.produto?.descricao || it.produto?.codigo || `Produto #${it.produtoid}`}
@@ -709,7 +769,7 @@ export function OSDetalhesDialog({
                               {it.quantidade} × {fmtMoney(it.precounitario)}
                             </div>
                           </div>
-                          <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
+                          <div className="shrink-0 font-medium sm:text-right">{fmtMoney(it.subtotal)}</div>
                         </li>
                       ))}
                     </ul>
@@ -717,7 +777,7 @@ export function OSDetalhesDialog({
                 </div>
 
                 {/* SERVIÇOS */}
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Wrench className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Serviços</span>
@@ -737,8 +797,8 @@ export function OSDetalhesDialog({
                         const estaSemResponsavel = selectedIds.length === 0;
 
                         return (
-                          <li key={rowKey} className="flex flex-col gap-1 border-b last:border-b-0 py-2">
-                            <div className="flex items-center justify-between gap-2">
+                          <li key={rowKey} className="flex flex-col gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                               <div className="min-w-0">
                                 <div className="font-medium truncate">
                                   {it.servico?.descricao || it.servico?.codigo || `Serviço #${it.servicoid}`}
@@ -747,7 +807,7 @@ export function OSDetalhesDialog({
                                   {it.quantidade} × {fmtMoney(it.precounitario)}
                                 </div>
                               </div>
-                              <div className="shrink-0 font-medium">{fmtMoney(it.subtotal)}</div>
+                              <div className="shrink-0 font-medium sm:text-right">{fmtMoney(it.subtotal)}</div>
                             </div>
 
                             <div className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -784,7 +844,7 @@ export function OSDetalhesDialog({
                   )}
                 </div>
 
-                <div className="lg:col-span-2 rounded-lg border p-4">
+                <div className="rounded-lg border bg-card p-4 lg:col-span-2">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Calculator className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Total geral</span>
@@ -793,14 +853,17 @@ export function OSDetalhesDialog({
                 </div>
               </section>
 
+                </TabsContent>
+
+                <TabsContent value="checklist" className="mt-0 h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 sm:px-6 sm:py-5">
               {/* Checklist */}
-              <section className="rounded-lg border p-4">
-                <div className="flex items-center gap-2 mb-1.5">
+              <section className="rounded-lg border bg-card p-4">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2 mb-1.5">
                   <ListChecks className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">Checklist</span>
 
                   {checklistAutores.length ? (
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground sm:ml-auto">
                       Realizado por: <b>{checklistAutores.join(", ")}</b>
                     </span>
                   ) : null}
@@ -814,7 +877,7 @@ export function OSDetalhesDialog({
                       <Fragment key={c.id}>
                         {idx > 0 && <Separator className="my-0" />}
                         <li className="py-4">
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0">
                               <div className="font-medium truncate">{c.item}</div>
                               <div className="text-xs text-muted-foreground">
@@ -862,8 +925,11 @@ export function OSDetalhesDialog({
               </section>
 
               {/* Links de aprovação */}
+                </TabsContent>
+
+                <TabsContent value="aprovacao" className="mt-0 h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 sm:px-6 sm:py-5">
               {Array.isArray(data.aprovacoes) && (
-                <section className="rounded-lg border p-4">
+                <section className="rounded-lg border bg-card p-4">
                   <div className="text-sm font-medium mb-1.5">Links de aprovação</div>
                   {data.aprovacoes.length === 0 ? (
                     <div className="text-sm text-muted-foreground">—</div>
@@ -872,7 +938,7 @@ export function OSDetalhesDialog({
                       {data.aprovacoes.map((a) => {
                         const url = approvalUrlFromToken(a.token);
                         return (
-                          <li key={a.id} className="flex items-start justify-between gap-2">
+                          <li key={a.id} className="flex flex-col gap-3 rounded-md border bg-muted/20 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                               <div className="truncate">
                                 <a
@@ -889,7 +955,7 @@ export function OSDetalhesDialog({
                                 criado: {fmtDate(a.created_at)} • expira: {fmtDate(a.expira_em)} • usado: {fmtDate(a.usado_em)}
                               </div>
                             </div>
-                            <div className="shrink-0 flex gap-2">
+                            <div className="flex shrink-0 gap-2">
                               <Button
                                 variant="outline"
                                 size="icon"
@@ -921,6 +987,8 @@ export function OSDetalhesDialog({
                   )}
                 </section>
               )}
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </div>
