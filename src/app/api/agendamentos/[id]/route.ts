@@ -5,16 +5,9 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireAgendamentosDelete, requireAgendamentosEdit } from "@/app/api/_authz/perms";
 import type { StatusAgendamento } from "@/types/agendamento";
+import { AGENDAMENTO_STATUS_SET } from "@/lib/agendamentos";
 
 type RouteContext = { params: Promise<{ id: string }> };
-
-const STATUS = new Set<StatusAgendamento>([
-  "AGENDADO",
-  "CONFIRMADO",
-  "EM_ATENDIMENTO",
-  "CONCLUIDO",
-  "CANCELADO",
-]);
 
 const SELECT = `
   id,
@@ -26,6 +19,13 @@ const SELECT = `
   inicio,
   fim,
   status,
+  origem,
+  motivorecusa,
+  mensagemnotificacao,
+  canalnotificacao,
+  notificadoat,
+  decisaoat,
+  decisorusuarioid,
   createdat,
   updatedat,
   cliente:clienteid ( id, nomerazaosocial, telefone, email ),
@@ -81,7 +81,7 @@ async function buildPatch(body: any, currentId: number, usuarioid?: string | nul
   if ("fim" in body) patch.fim = parseOptionalDate(body.fim, "fim");
   if ("status" in body) {
     const status = String(body.status ?? "").toUpperCase() as StatusAgendamento;
-    if (!STATUS.has(status)) {
+    if (!AGENDAMENTO_STATUS_SET.has(status)) {
       const error = new Error("status invalido");
       (error as any).statusCode = 400;
       throw error;
@@ -107,6 +107,7 @@ async function buildPatch(body: any, currentId: number, usuarioid?: string | nul
       .select("id")
       .eq("inicio", patch.inicio)
       .neq("id", currentId)
+      .not("status", "in", "(RECUSADO,CANCELADO)")
       .maybeSingle();
 
     if (existenteError) throw existenteError;

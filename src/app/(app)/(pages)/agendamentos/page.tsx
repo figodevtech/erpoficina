@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   CalendarDays,
@@ -75,6 +75,10 @@ type AgendamentoItem = {
   inicio: string;
   fim?: string | null;
   status: StatusAgendamento;
+  origem?: "ERP" | "SITE" | null;
+  motivorecusa?: string | null;
+  mensagemnotificacao?: string | null;
+  canalnotificacao?: string | null;
   cliente?: { id: number; nomerazaosocial: string; telefone?: string | null; email?: string | null } | null;
   veiculo?: { id: number; placa: string; modelo?: string | null; marca?: string | null } | null;
 };
@@ -99,10 +103,9 @@ type AgendamentoConfig = {
 };
 
 const STATUS_LABEL: Record<StatusAgendamento, string> = {
+  PENDENTE_APROVACAO: "Pendente",
   AGENDADO: "Agendado",
-  CONFIRMADO: "Confirmado",
-  EM_ATENDIMENTO: "Em atendimento",
-  CONCLUIDO: "Concluido",
+  RECUSADO: "Recusado",
   CANCELADO: "Cancelado",
 };
 
@@ -383,10 +386,32 @@ function hasFutureConfiguredSlot(date: Date, config: AgendamentoConfig) {
 }
 
 function statusBadge(status: StatusAgendamento) {
-  if (status === "CANCELADO") return "destructive";
-  if (status === "CONCLUIDO") return "secondary";
-  if (status === "CONFIRMADO" || status === "EM_ATENDIMENTO") return "default";
-  return "outline";
+  if (status === "RECUSADO" || status === "CANCELADO") return "destructive";
+  if (status === "PENDENTE_APROVACAO") return "outline";
+  return "default";
+}
+
+function statusEventClass(status: StatusAgendamento) {
+  if (status === "PENDENTE_APROVACAO") {
+    return "border-l-amber-500 bg-amber-50 text-amber-950 hover:bg-amber-100 dark:bg-amber-950/25 dark:text-amber-100";
+  }
+  if (status === "RECUSADO") {
+    return "border-l-rose-500 bg-rose-50 text-rose-950 hover:bg-rose-100 dark:bg-rose-950/25 dark:text-rose-100";
+  }
+  if (status === "CANCELADO") {
+    return "border-l-slate-400 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-slate-900/40 dark:text-slate-200";
+  }
+  return "border-l-emerald-500 bg-emerald-50 text-emerald-950 hover:bg-emerald-100 dark:bg-emerald-950/25 dark:text-emerald-100";
+}
+
+function emailResultMessage(result: any) {
+  if (result?.sent) return "E-mail enviado para o cliente.";
+  if (result?.reason === "missing-recipient") return "E-mail nao enviado: cliente sem e-mail cadastrado.";
+  if (result?.reason === "missing-api-key") return "E-mail nao enviado: chave do Resend ausente no ERP.";
+  if (result?.reason === "resend-error") {
+    return `E-mail nao enviado: erro ${result.status ?? ""} retornado pelo Resend.`;
+  }
+  return "E-mail nao enviado.";
 }
 
 export default function AgendamentosPage() {
@@ -396,7 +421,11 @@ export default function AgendamentosPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deciding, setDeciding] = useState(false);
   const [agendamentoParaExcluir, setAgendamentoParaExcluir] = useState<AgendamentoItem | null>(null);
+  const [agendamentoParaAprovar, setAgendamentoParaAprovar] = useState<AgendamentoItem | null>(null);
+  const [agendamentoParaReprovar, setAgendamentoParaReprovar] = useState<AgendamentoItem | null>(null);
+  const [motivoReprovacao, setMotivoReprovacao] = useState("");
   const [agendaConfig, setAgendaConfig] = useState<AgendamentoConfig>({
     intervalo: 60,
     horaInicio: "08:00",
@@ -430,12 +459,15 @@ export default function AgendamentosPage() {
       diasTrabalho: [1, 2, 3, 4, 5],
     })
   );
+  const calendarPanelRef = useRef<HTMLDivElement | null>(null);
+  const [calendarPanelHeight, setCalendarPanelHeight] = useState<number | null>(null);
 
   const stats = useMemo(() => {
     return {
       total: items.length,
-      confirmados: items.filter((item) => item.status === "CONFIRMADO").length,
-      emAtendimento: items.filter((item) => item.status === "EM_ATENDIMENTO").length,
+      pendentes: items.filter((item) => item.status === "PENDENTE_APROVACAO").length,
+      agendados: items.filter((item) => item.status === "AGENDADO").length,
+      recusados: items.filter((item) => item.status === "RECUSADO").length,
       cancelados: items.filter((item) => item.status === "CANCELADO").length,
     };
   }, [items]);
@@ -495,6 +527,7 @@ export default function AgendamentosPage() {
   function isSlotOccupied(date: Date, slot: number, ignoreId?: number) {
     return (itemsByDay.get(toDateKey(date)) ?? []).some((item) => {
       if (ignoreId && item.id === ignoreId) return false;
+      if (item.status === "RECUSADO" || item.status === "CANCELADO") return false;
       const inicio = new Date(item.inicio);
       return inicio.getHours() * 60 + inicio.getMinutes() === slot;
     });
@@ -587,6 +620,26 @@ export default function AgendamentosPage() {
     loadItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, currentMonth, selectedDate, view]);
+
+  useEffect(() => {
+    if (view === "AGENDA" || !calendarPanelRef.current) {
+      setCalendarPanelHeight(null);
+      return;
+    }
+
+    const element = calendarPanelRef.current;
+    const updateHeight = () => setCalendarPanelHeight(Math.ceil(element.getBoundingClientRect().height));
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+    window.addEventListener("resize", updateHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [view, currentMonth, selectedDate, slots.length, items.length]);
 
   function openCreate(dateBase = selectedDate) {
     if (!canCreate) {
@@ -704,6 +757,46 @@ export default function AgendamentosPage() {
       toast.error(error?.message ?? "Erro ao excluir agendamento");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function decideAgendamento(item: AgendamentoItem, action: "aprovar" | "reprovar", motivo?: string) {
+    if (!canEdit) {
+      toast.error("Sem permissao para editar agendamento.");
+      return;
+    }
+
+    setDeciding(true);
+    try {
+      const response = await fetch(`/api/agendamentos/${item.id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action === "reprovar" ? { motivo } : {}),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error ?? "Erro ao atualizar agendamento");
+
+      toast.success(action === "aprovar" ? "Agendamento aprovado" : "Agendamento recusado");
+      const emailResult = data?.notificacao?.emailResult;
+      if (emailResult?.sent) {
+        toast.success("E-mail enviado ao cliente.");
+      } else if (emailResult) {
+        toast.warning(emailResultMessage(emailResult));
+      }
+
+      if (!emailResult?.sent && data?.notificacao?.whatsappUrl) {
+        window.open(data.notificacao.whatsappUrl, "_blank", "noopener,noreferrer");
+      } else if (data?.notificacao?.message) {
+        toast.message("Mensagem para o cliente", { description: data.notificacao.message });
+      }
+      setAgendamentoParaAprovar(null);
+      setAgendamentoParaReprovar(null);
+      setMotivoReprovacao("");
+      await loadItems();
+    } catch (error: any) {
+      toast.error(error?.message ?? "Erro ao atualizar agendamento");
+    } finally {
+      setDeciding(false);
     }
   }
 
@@ -828,7 +921,7 @@ export default function AgendamentosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <Card className="rounded-lg py-4">
           <CardHeader className="px-4">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -841,25 +934,34 @@ export default function AgendamentosPage() {
         <Card className="rounded-lg py-4">
           <CardHeader className="px-4">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <CheckCircle2 className="size-4" />
-              Confirmados
+              <Clock className="size-4" />
+              Pendentes
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 text-2xl font-semibold">{stats.confirmados}</CardContent>
+          <CardContent className="px-4 text-2xl font-semibold">{stats.pendentes}</CardContent>
         </Card>
         <Card className="rounded-lg py-4">
           <CardHeader className="px-4">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Clock className="size-4" />
-              Em atendimento
+              <CheckCircle2 className="size-4" />
+              Agendados
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 text-2xl font-semibold">{stats.emAtendimento}</CardContent>
+          <CardContent className="px-4 text-2xl font-semibold">{stats.agendados}</CardContent>
         </Card>
         <Card className="rounded-lg py-4">
           <CardHeader className="px-4">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
               <XCircle className="size-4" />
+              Recusados
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 text-2xl font-semibold">{stats.recusados}</CardContent>
+        </Card>
+        <Card className="rounded-lg py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Trash2 className="size-4" />
               Cancelados
             </CardTitle>
           </CardHeader>
@@ -955,8 +1057,8 @@ export default function AgendamentosPage() {
         </CardHeader>
         <CardContent className="space-y-4 px-4 pt-4 md:px-6">
 
-          <div className={view === "AGENDA" ? "space-y-4" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"}>
-            <div className="overflow-hidden rounded-lg border">
+          <div className={view === "AGENDA" ? "space-y-4" : "grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"}>
+            <div ref={calendarPanelRef} className="overflow-hidden rounded-lg border">
               <div className="flex flex-col gap-3 border-b bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
@@ -1074,7 +1176,10 @@ export default function AgendamentosPage() {
                                     openEdit(item);
                                   }
                                 }}
-                                className="truncate rounded-md border bg-card px-2 py-1 text-[11px] shadow-sm hover:border-primary/50"
+                                className={[
+                                  "truncate rounded-md border border-l-4 px-2 py-1 text-[11px] shadow-sm",
+                                  statusEventClass(item.status),
+                                ].join(" ")}
                                 title={`${formatTime(item.inicio)} - ${item.titulo}`}
                               >
                                 <span className="font-medium">{formatTime(item.inicio)}</span>{" "}
@@ -1179,7 +1284,10 @@ export default function AgendamentosPage() {
                                       openEdit(item);
                                     }
                                   }}
-                                  className="rounded-md border-l-4 border-l-primary bg-primary/10 px-2 py-1 text-xs hover:bg-primary/15"
+                                  className={[
+                                    "rounded-md border-l-4 px-2 py-1 text-xs",
+                                    statusEventClass(item.status),
+                                  ].join(" ")}
                                 >
                                   <div className="font-medium">{formatTime(item.inicio)} {item.titulo}</div>
                                   <div className="truncate text-muted-foreground">{item.cliente?.nomerazaosocial ?? "-"}</div>
@@ -1202,7 +1310,13 @@ export default function AgendamentosPage() {
                     <div className="py-12 text-center text-sm text-muted-foreground">Nenhum agendamento no periodo.</div>
                   ) : (
                     agendaItems.map((item) => (
-                      <div key={item.id} className="grid gap-3 p-4 md:grid-cols-[180px_1fr_auto] md:items-center">
+                      <div
+                        key={item.id}
+                        className={[
+                          "grid gap-3 border-l-4 p-4 md:grid-cols-[180px_1fr_auto] md:items-center",
+                          statusEventClass(item.status),
+                        ].join(" ")}
+                      >
                         <div>
                           <div className="text-sm font-medium capitalize">{formatDateTime(item.inicio)}</div>
                           <div className="text-xs text-muted-foreground">{item.fim ? `Ate ${formatTime(item.fim)}` : ""}</div>
@@ -1212,10 +1326,31 @@ export default function AgendamentosPage() {
                           <div className="truncate text-sm text-muted-foreground">
                             {item.cliente?.nomerazaosocial ?? "-"}
                             {item.veiculo ? ` · ${item.veiculo.placa}` : ""}
+                            {item.origem === "SITE" ? " · Site" : ""}
                           </div>
                         </div>
                         <div className="flex items-center justify-end gap-2">
                           <Badge variant={statusBadge(item.status) as any}>{STATUS_LABEL[item.status]}</Badge>
+                          {canEdit && item.status === "PENDENTE_APROVACAO" ? (
+                            <>
+                              <Button size="sm" variant="default" onClick={() => setAgendamentoParaAprovar(item)} disabled={deciding}>
+                                <CheckCircle2 className="size-4" />
+                                Aprovar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setAgendamentoParaReprovar(item);
+                                  setMotivoReprovacao("");
+                                }}
+                                disabled={deciding}
+                              >
+                                <XCircle className="size-4" />
+                                Recusar
+                              </Button>
+                            </>
+                          ) : null}
                           {canEdit ? (
                             <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
                               <Pencil className="size-4" />
@@ -1235,7 +1370,10 @@ export default function AgendamentosPage() {
             </div>
 
             {view !== "AGENDA" ? (
-              <div className="rounded-lg border">
+              <div
+                className="flex min-h-0 flex-col overflow-hidden rounded-lg border"
+                style={calendarPanelHeight ? { height: calendarPanelHeight } : undefined}
+              >
                 <div className="flex items-start justify-between gap-3 border-b p-4">
                   <div>
                     <div className="text-sm font-semibold capitalize">{formatDateTitle(selectedDate)}</div>
@@ -1250,7 +1388,7 @@ export default function AgendamentosPage() {
                   ) : null}
                 </div>
 
-                <div className="max-h-[420px] space-y-3 overflow-y-auto p-4">
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin]">
                   {loading ? (
                     <div className="py-12 text-center text-sm text-muted-foreground">Carregando agendamentos...</div>
                   ) : selectedDayItems.length === 0 ? (
@@ -1259,7 +1397,13 @@ export default function AgendamentosPage() {
                     </div>
                   ) : (
                     selectedDayItems.map((item) => (
-                      <div key={item.id} className="rounded-lg border p-3">
+                      <div
+                        key={item.id}
+                        className={[
+                          "rounded-lg border border-l-4 p-3",
+                          statusEventClass(item.status),
+                        ].join(" ")}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="text-sm font-semibold">{item.titulo}</div>
@@ -1273,16 +1417,38 @@ export default function AgendamentosPage() {
 
                         <div className="mt-3 space-y-1 text-xs">
                           <div className="font-medium">{item.cliente?.nomerazaosocial ?? "-"}</div>
+                          {item.origem === "SITE" ? <div className="text-muted-foreground">Solicitado pelo site</div> : null}
                           {item.veiculo ? (
                             <div className="text-muted-foreground">
                               {item.veiculo.placa} - {item.veiculo.marca ?? ""} {item.veiculo.modelo ?? ""}
                             </div>
                           ) : null}
+                          {item.motivorecusa ? <div className="text-muted-foreground">Motivo: {item.motivorecusa}</div> : null}
                           {item.descricao ? <div className="text-muted-foreground">{item.descricao}</div> : null}
                         </div>
 
                         {canEdit || canDelete ? (
                           <div className="mt-3 flex justify-end gap-1">
+                            {canEdit && item.status === "PENDENTE_APROVACAO" ? (
+                              <>
+                                <Button size="sm" variant="default" onClick={() => setAgendamentoParaAprovar(item)} disabled={deciding}>
+                                  <CheckCircle2 className="size-4" />
+                                  Aprovar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setAgendamentoParaReprovar(item);
+                                    setMotivoReprovacao("");
+                                  }}
+                                  disabled={deciding}
+                                >
+                                  <XCircle className="size-4" />
+                                  Recusar
+                                </Button>
+                              </>
+                            ) : null}
                             {canEdit ? (
                               <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
                                 <Pencil className="size-4" />
@@ -1463,6 +1629,91 @@ export default function AgendamentosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!agendamentoParaReprovar}
+        onOpenChange={(open) => {
+          if (!open && !deciding) {
+            setAgendamentoParaReprovar(null);
+            setMotivoReprovacao("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Recusar agendamento</DialogTitle>
+            <DialogDescription>
+              Informe o motivo que sera usado na mensagem sugerida para o cliente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label>Motivo</Label>
+            <Textarea
+              value={motivoReprovacao}
+              onChange={(event) => setMotivoReprovacao(event.target.value)}
+              placeholder="Ex.: Horario indisponivel. Podemos remarcar para outro periodo."
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAgendamentoParaReprovar(null);
+                setMotivoReprovacao("");
+              }}
+              disabled={deciding}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deciding}
+              onClick={() => {
+                if (agendamentoParaReprovar) {
+                  void decideAgendamento(agendamentoParaReprovar, "reprovar", motivoReprovacao);
+                }
+              }}
+            >
+              {deciding ? "Recusando..." : "Recusar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!agendamentoParaAprovar}
+        onOpenChange={(open) => {
+          if (!open && !deciding) setAgendamentoParaAprovar(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aprovar agendamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirme a aprovacao do agendamento
+              {agendamentoParaAprovar?.cliente?.nomerazaosocial
+                ? ` de ${agendamentoParaAprovar.cliente.nomerazaosocial}`
+                : ""}
+              {agendamentoParaAprovar?.inicio ? ` para ${formatDateTime(agendamentoParaAprovar.inicio)}` : ""}.
+              O cliente sera notificado quando houver e-mail cadastrado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deciding}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deciding}
+              onClick={(event) => {
+                event.preventDefault();
+                if (agendamentoParaAprovar) void decideAgendamento(agendamentoParaAprovar, "aprovar");
+              }}
+            >
+              {deciding ? "Aprovando..." : "Aprovar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={!!agendamentoParaExcluir}

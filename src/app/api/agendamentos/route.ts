@@ -5,14 +5,8 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireAgendamentosAccess, requireAgendamentosCreate } from "@/app/api/_authz/perms";
 import type { StatusAgendamento } from "@/types/agendamento";
-
-const STATUS = new Set<StatusAgendamento>([
-  "AGENDADO",
-  "CONFIRMADO",
-  "EM_ATENDIMENTO",
-  "CONCLUIDO",
-  "CANCELADO",
-]);
+import { AGENDAMENTO_STATUS_SET, asStatusAgendamento, formatAgendamentoMessage } from "@/lib/agendamentos";
+import { buildAppointmentEmailHtml, sendEmail } from "@/lib/email";
 
 const SELECT = `
   id,
@@ -24,6 +18,13 @@ const SELECT = `
   inicio,
   fim,
   status,
+  origem,
+  motivorecusa,
+  mensagemnotificacao,
+  canalnotificacao,
+  notificadoat,
+  decisaoat,
+  decisorusuarioid,
   createdat,
   updatedat,
   cliente:clienteid ( id, nomerazaosocial, telefone, email ),
@@ -32,8 +33,7 @@ const SELECT = `
 `;
 
 function asStatus(value: unknown): StatusAgendamento {
-  const status = String(value ?? "AGENDADO").toUpperCase() as StatusAgendamento;
-  return STATUS.has(status) ? status : "AGENDADO";
+  return asStatusAgendamento(value, "AGENDADO");
 }
 
 function nullableNumber(value: unknown) {
@@ -82,6 +82,7 @@ async function buildPayload(body: any, usuarioid?: string | null) {
     .from("agendamento")
     .select("id")
     .eq("inicio", inicio)
+    .not("status", "in", "(RECUSADO,CANCELADO)")
     .maybeSingle();
 
   if (existenteError) throw existenteError;
@@ -107,6 +108,7 @@ async function buildPayload(body: any, usuarioid?: string | null) {
     inicio,
     fim,
     status: asStatus(body?.status),
+    origem: body?.origem === "SITE" ? "SITE" : "ERP",
   };
 }
 
@@ -130,7 +132,7 @@ export async function GET(req: Request) {
       .order("inicio", { ascending: true })
       .range(from, to);
 
-    if (status && status !== "TODOS" && STATUS.has(status as StatusAgendamento)) {
+    if (status && status !== "TODOS" && AGENDAMENTO_STATUS_SET.has(status as StatusAgendamento)) {
       query = query.eq("status", status);
     }
 
@@ -184,7 +186,44 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ data }, { status: 201 });
+    const cliente = Array.isArray(data.cliente) ? data.cliente[0] : data.cliente;
+    let emailResult = null;
+
+    if (data.status === "AGENDADO") {
+      const message = formatAgendamentoMessage({
+        status: "APROVADO",
+        clienteNome: cliente?.nomerazaosocial,
+        inicio: data.inicio,
+      });
+
+      emailResult = await sendEmail({
+        to: cliente?.email,
+        subject: "Agendamento confirmado",
+        text: message,
+        html: buildAppointmentEmailHtml({
+          title: "Agendamento confirmado",
+          statusLabel: "Confirmado",
+          statusTone: "approved",
+          customerName: cliente?.nomerazaosocial,
+          appointmentDate: data.inicio,
+          summary: data.descricao,
+          footerNote: "Aguardamos voce na Alpha Garage PB no horario agendado.",
+        }),
+      });
+
+      if (emailResult.sent) {
+        await supabaseAdmin
+          .from("agendamento")
+          .update({
+            mensagemnotificacao: message,
+            canalnotificacao: "EMAIL",
+            notificadoat: new Date().toISOString(),
+          })
+          .eq("id", data.id);
+      }
+    }
+
+    return NextResponse.json({ data, emailResult }, { status: 201 });
   } catch (e: any) {
     const status = e?.statusCode ?? (/autenticado|permiss/i.test(e?.message) ? 403 : 500);
     return NextResponse.json({ error: e?.message ?? "Erro ao criar agendamento" }, { status });

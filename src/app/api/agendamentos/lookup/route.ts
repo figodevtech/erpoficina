@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireAgendamentosAccess } from "@/app/api/_authz/perms";
+import { AGENDAMENTO_STATUS } from "@/lib/agendamentos";
 
 export async function GET() {
   try {
@@ -35,7 +36,7 @@ export async function GET() {
       clientes: clientesRes.data ?? [],
       veiculos: veiculosRes.data ?? [],
       ordens: ordensRes.data ?? [],
-      statuses: ["AGENDADO", "CONFIRMADO", "EM_ATENDIMENTO", "CONCLUIDO", "CANCELADO"],
+      statuses: AGENDAMENTO_STATUS,
     });
   } catch (e: any) {
     const status = e?.statusCode ?? (/autenticado|permiss/i.test(e?.message) ? 403 : 500);

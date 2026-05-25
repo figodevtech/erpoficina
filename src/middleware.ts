@@ -24,6 +24,7 @@ const PUBLIC_API_PREFIXES = [
   // ex: "/api/public",
 
   "/api/ordens/aprovacao",
+  "/api/site/agendamentos",
   "/api/nfse/test-jp",
   "/api/webhooks/focus",
 ];
