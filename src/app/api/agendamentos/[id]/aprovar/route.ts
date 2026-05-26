@@ -26,6 +26,10 @@ const SELECT = `
   notificadoat,
   decisaoat,
   decisorusuarioid,
+  solicitante_nome,
+  solicitante_cpfcnpj,
+  solicitante_telefone,
+  solicitante_email,
   createdat,
   updatedat,
   cliente:clienteid ( id, nomerazaosocial, telefone, email ),
@@ -42,7 +46,7 @@ export async function POST(_req: Request, context: RouteContext) {
 
     const { data: atual, error: atualError } = await supabaseAdmin
       .from("agendamento")
-      .select("id, inicio, cliente:clienteid ( nomerazaosocial, telefone, email )")
+      .select("id, inicio, solicitante_nome, solicitante_telefone, solicitante_email, cliente:clienteid ( nomerazaosocial, telefone, email )")
       .eq("id", agendamentoId)
       .single();
 
@@ -62,9 +66,12 @@ export async function POST(_req: Request, context: RouteContext) {
     }
 
     const cliente = Array.isArray(atual.cliente) ? atual.cliente[0] : atual.cliente;
+    const clienteNome = cliente?.nomerazaosocial ?? atual.solicitante_nome ?? undefined;
+    const clienteTelefone = cliente?.telefone ?? atual.solicitante_telefone ?? null;
+    const clienteEmail = cliente?.email ?? atual.solicitante_email ?? null;
     const message = formatAgendamentoMessage({
       status: "APROVADO",
-      clienteNome: cliente?.nomerazaosocial,
+      clienteNome,
       inicio: atual.inicio,
     });
 
@@ -74,7 +81,7 @@ export async function POST(_req: Request, context: RouteContext) {
         status: "AGENDADO",
         motivorecusa: null,
         mensagemnotificacao: message,
-        canalnotificacao: cliente?.telefone ? "WHATSAPP" : cliente?.email ? "EMAIL" : null,
+        canalnotificacao: clienteTelefone ? "WHATSAPP" : clienteEmail ? "EMAIL" : null,
         notificadoat: null,
         decisaoat: new Date().toISOString(),
         decisorusuarioid: (session?.user as any)?.id ?? null,
@@ -86,14 +93,14 @@ export async function POST(_req: Request, context: RouteContext) {
     if (error) throw error;
 
     const emailResult = await sendEmail({
-      to: cliente?.email,
+      to: clienteEmail,
       subject: "Agendamento aprovado",
       text: message,
       html: buildAppointmentEmailHtml({
         title: "Agendamento aprovado",
         statusLabel: "Aprovado",
         statusTone: "approved",
-        customerName: cliente?.nomerazaosocial,
+        customerName: clienteNome,
         appointmentDate: atual.inicio,
         footerNote: "Aguardamos voce na Alpha Garage PB no horario agendado.",
       }),
@@ -107,9 +114,9 @@ export async function POST(_req: Request, context: RouteContext) {
       data,
       notificacao: {
         message,
-        email: cliente?.email ?? null,
-        telefone: cliente?.telefone ?? null,
-        whatsappUrl: buildWhatsappUrl(cliente?.telefone, message),
+        email: clienteEmail,
+        telefone: clienteTelefone,
+        whatsappUrl: buildWhatsappUrl(clienteTelefone, message),
         emailResult,
       },
     });

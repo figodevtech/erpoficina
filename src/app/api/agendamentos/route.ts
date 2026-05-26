@@ -25,6 +25,10 @@ const SELECT = `
   notificadoat,
   decisaoat,
   decisorusuarioid,
+  solicitante_nome,
+  solicitante_cpfcnpj,
+  solicitante_telefone,
+  solicitante_email,
   createdat,
   updatedat,
   cliente:clienteid ( id, nomerazaosocial, telefone, email ),
@@ -65,8 +69,9 @@ function parseDate(value: unknown, field: string) {
 
 async function buildPayload(body: any, usuarioid?: string | null) {
   const clienteid = nullableNumber(body?.clienteid);
-  if (!clienteid) {
-    const error = new Error("clienteid e obrigatorio");
+  const solicitanteNome = String(body?.solicitante_nome ?? "").trim();
+  if (!clienteid && !solicitanteNome) {
+    const error = new Error("Informe um cliente ou o nome do solicitante");
     (error as any).statusCode = 400;
     throw error;
   }
@@ -109,6 +114,10 @@ async function buildPayload(body: any, usuarioid?: string | null) {
     fim,
     status: asStatus(body?.status),
     origem: body?.origem === "SITE" ? "SITE" : "ERP",
+    solicitante_nome: clienteid ? null : solicitanteNome,
+    solicitante_cpfcnpj: clienteid ? null : String(body?.solicitante_cpfcnpj ?? "").trim() || null,
+    solicitante_telefone: clienteid ? null : String(body?.solicitante_telefone ?? "").trim() || null,
+    solicitante_email: clienteid ? null : String(body?.solicitante_email ?? "").trim() || null,
   };
 }
 
@@ -150,7 +159,14 @@ export async function GET(req: Request) {
       if (clientesError) throw clientesError;
 
       const clienteIds = (clientes ?? []).map((cliente) => cliente.id).filter(Boolean);
-      const filters = [`titulo.ilike.${like}`, `descricao.ilike.${like}`];
+      const filters = [
+        `titulo.ilike.${like}`,
+        `descricao.ilike.${like}`,
+        `solicitante_nome.ilike.${like}`,
+        `solicitante_cpfcnpj.ilike.${like}`,
+        `solicitante_telefone.ilike.${like}`,
+        `solicitante_email.ilike.${like}`,
+      ];
       if (clienteIds.length) filters.push(`clienteid.in.(${clienteIds.join(",")})`);
       query = query.or(filters.join(","));
     }
@@ -187,24 +203,26 @@ export async function POST(req: Request) {
     if (error) throw error;
 
     const cliente = Array.isArray(data.cliente) ? data.cliente[0] : data.cliente;
+    const clienteNome = cliente?.nomerazaosocial ?? data.solicitante_nome ?? undefined;
+    const clienteEmail = cliente?.email ?? data.solicitante_email ?? null;
     let emailResult = null;
 
     if (data.status === "AGENDADO") {
       const message = formatAgendamentoMessage({
         status: "APROVADO",
-        clienteNome: cliente?.nomerazaosocial,
+        clienteNome,
         inicio: data.inicio,
       });
 
       emailResult = await sendEmail({
-        to: cliente?.email,
+        to: clienteEmail,
         subject: "Agendamento confirmado",
         text: message,
         html: buildAppointmentEmailHtml({
           title: "Agendamento confirmado",
           statusLabel: "Confirmado",
           statusTone: "approved",
-          customerName: cliente?.nomerazaosocial,
+          customerName: clienteNome,
           appointmentDate: data.inicio,
           summary: data.descricao,
           footerNote: "Aguardamos voce na Alpha Garage PB no horario agendado.",

@@ -26,6 +26,10 @@ const SELECT = `
   notificadoat,
   decisaoat,
   decisorusuarioid,
+  solicitante_nome,
+  solicitante_cpfcnpj,
+  solicitante_telefone,
+  solicitante_email,
   createdat,
   updatedat,
   cliente:clienteid ( id, nomerazaosocial, telefone, email ),
@@ -54,13 +58,17 @@ async function buildPatch(body: any, currentId: number, usuarioid?: string | nul
   const patch: Record<string, any> = {};
 
   if ("clienteid" in body) {
-    const clienteid = nullableNumber(body.clienteid);
-    if (!clienteid) {
-      const error = new Error("clienteid e obrigatorio");
-      (error as any).statusCode = 400;
-      throw error;
+    if (body.clienteid === null || body.clienteid === undefined || body.clienteid === "") {
+      patch.clienteid = null;
+    } else {
+      const clienteid = Number(body.clienteid);
+      if (!Number.isFinite(clienteid) || clienteid <= 0) {
+        const error = new Error("clienteid e obrigatorio");
+        (error as any).statusCode = 400;
+        throw error;
+      }
+      patch.clienteid = clienteid;
     }
-    patch.clienteid = clienteid;
   }
 
   if ("veiculoid" in body) patch.veiculoid = nullableNumber(body.veiculoid);

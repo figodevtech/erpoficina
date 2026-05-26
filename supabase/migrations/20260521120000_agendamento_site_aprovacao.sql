@@ -25,7 +25,11 @@ add column if not exists mensagemnotificacao text,
 add column if not exists canalnotificacao text,
 add column if not exists notificadoat timestamp with time zone,
 add column if not exists decisaoat timestamp with time zone,
-add column if not exists decisorusuarioid uuid references public.usuario(id) on delete set null;
+add column if not exists decisorusuarioid uuid references public.usuario(id) on delete set null,
+add column if not exists solicitante_nome text,
+add column if not exists solicitante_cpfcnpj text,
+add column if not exists solicitante_telefone text,
+add column if not exists solicitante_email text;
 
 alter table public.agendamento
 drop constraint if exists agendamento_origem_check;

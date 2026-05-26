@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   CalendarDays,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -41,6 +42,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -64,12 +73,18 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { StatusAgendamento } from "@/types/agendamento";
 import type { Customer } from "../clientes/types";
 import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
+import { cn } from "@/lib/utils";
 
 type VeiculoOption = { id: number; clienteid: number; placa: string; modelo?: string | null; marca?: string | null };
+type ServicoOption = { id: number; codigo?: string | null; descricao: string; permite_agendamento?: boolean | null };
+
+function isSchedulingService(value: ServicoOption["permite_agendamento"] | string | number | undefined) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
 
 type AgendamentoItem = {
   id: number;
-  clienteid: number;
+  clienteid?: number | null;
   veiculoid?: number | null;
   titulo: string;
   descricao?: string | null;
@@ -80,6 +95,10 @@ type AgendamentoItem = {
   motivorecusa?: string | null;
   mensagemnotificacao?: string | null;
   canalnotificacao?: string | null;
+  solicitante_nome?: string | null;
+  solicitante_cpfcnpj?: string | null;
+  solicitante_telefone?: string | null;
+  solicitante_email?: string | null;
   cliente?: { id: number; nomerazaosocial: string; telefone?: string | null; email?: string | null } | null;
   veiculo?: { id: number; placa: string; modelo?: string | null; marca?: string | null } | null;
 };
@@ -93,6 +112,11 @@ type FormState = {
   inicio: string;
   fim: string;
   status: StatusAgendamento;
+  origem?: "ERP" | "SITE" | null;
+  solicitante_nome?: string | null;
+  solicitante_cpfcnpj?: string | null;
+  solicitante_telefone?: string | null;
+  solicitante_email?: string | null;
 };
 
 type CalendarView = "MES" | "SEMANA" | "DIA" | "AGENDA";
@@ -118,6 +142,11 @@ const EMPTY_FORM: FormState = {
   inicio: "",
   fim: "",
   status: "AGENDADO",
+  origem: "ERP",
+  solicitante_nome: null,
+  solicitante_cpfcnpj: null,
+  solicitante_telefone: null,
+  solicitante_email: null,
 };
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
@@ -415,6 +444,36 @@ function emailResultMessage(result: any) {
   return "E-mail nao enviado.";
 }
 
+function getClienteNome(item: AgendamentoItem) {
+  return item.cliente?.nomerazaosocial ?? item.solicitante_nome ?? "-";
+}
+
+function getClienteContato(item: AgendamentoItem) {
+  return [item.cliente?.telefone ?? item.solicitante_telefone, item.cliente?.email ?? item.solicitante_email]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function hasFormSolicitante(form: FormState) {
+  return Boolean(form.solicitante_nome || form.solicitante_cpfcnpj || form.solicitante_telefone || form.solicitante_email);
+}
+
+function getFormClienteNome(form: FormState, cliente: Customer | null) {
+  return cliente?.nomerazaosocial ?? form.solicitante_nome ?? "";
+}
+
+function getFormClienteCpfCnpj(form: FormState, cliente: Customer | null) {
+  return cliente?.cpfcnpj ?? form.solicitante_cpfcnpj ?? "";
+}
+
+function getFormClienteTelefone(form: FormState, cliente: Customer | null) {
+  return cliente?.telefone ?? form.solicitante_telefone ?? "";
+}
+
+function getFormClienteEmail(form: FormState, cliente: Customer | null) {
+  return cliente?.email ?? form.solicitante_email ?? "";
+}
+
 function CalendarLoadingSkeleton({
   view,
   slots,
@@ -538,6 +597,9 @@ export default function AgendamentosPage() {
   const { data: session } = useSession();
   const [items, setItems] = useState<AgendamentoItem[]>([]);
   const [veiculos, setVeiculos] = useState<VeiculoOption[]>([]);
+  const [servicosAgendamento, setServicosAgendamento] = useState<ServicoOption[]>([]);
+  const [servicosPopoverOpen, setServicosPopoverOpen] = useState(false);
+  const [selectedServicoIds, setSelectedServicoIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -562,6 +624,7 @@ export default function AgendamentosPage() {
   const [draftQ, setDraftQ] = useState("");
   const [draftStatus, setDraftStatus] = useState<"TODOS" | StatusAgendamento>("TODOS");
   const [view, setView] = useState<CalendarView>("SEMANA");
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const today = nextSchedulableDay(new Date(), {
       intervalo: 60,
@@ -596,6 +659,10 @@ export default function AgendamentosPage() {
     () => veiculos.filter((veiculo) => String(veiculo.clienteid) === form.clienteid),
     [form.clienteid, veiculos]
   );
+  const selectedServicos = useMemo(
+    () => servicosAgendamento.filter((servico) => selectedServicoIds.includes(servico.id)),
+    [selectedServicoIds, servicosAgendamento]
+  );
 
   const days = useMemo(() => calendarDays(currentMonth), [currentMonth]);
   const weekDays = useMemo(() => {
@@ -606,6 +673,10 @@ export default function AgendamentosPage() {
   const canCreate = permissionSetHas((session?.user as any)?.permissoes, PERMS.AGENDAMENTOS_CRIAR);
   const canEdit = permissionSetHas((session?.user as any)?.permissoes, PERMS.AGENDAMENTOS_EDITAR);
   const canDelete = permissionSetHas((session?.user as any)?.permissoes, PERMS.AGENDAMENTOS_EXCLUIR);
+  const activeRange = useMemo(
+    () => visibleRange(view, currentMonth, selectedDate),
+    [view, currentMonth, selectedDate]
+  );
 
   const itemsByDay = useMemo(() => {
     const map = new Map<string, AgendamentoItem[]>();
@@ -709,8 +780,8 @@ export default function AgendamentosPage() {
         page: "1",
         limit: view === "AGENDA" ? "300" : "150",
         status,
-        dateFrom: visibleRange(view, currentMonth, selectedDate).start,
-        dateTo: visibleRange(view, currentMonth, selectedDate).end,
+        dateFrom: activeRange.start,
+        dateTo: activeRange.end,
       });
       if (q.trim()) params.set("q", q.trim());
 
@@ -725,14 +796,35 @@ export default function AgendamentosPage() {
     }
   }
 
+  async function loadServicosAgendamento() {
+    try {
+      const response = await fetch("/api/tipos/servicos", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error ?? "Erro ao carregar servicos");
+
+      const items = ((data.items ?? []) as ServicoOption[]).filter((servico) =>
+        isSchedulingService(servico.permite_agendamento)
+      );
+      setServicosAgendamento(items);
+    } catch (error: any) {
+      toast.error(error?.message ?? "Erro ao carregar servicos para agendamento");
+      setServicosAgendamento([]);
+    }
+  }
+
   useEffect(() => {
     loadLookup().catch((error) => toast.error(error?.message ?? "Erro ao carregar dados auxiliares"));
+    loadServicosAgendamento();
   }, []);
 
   useEffect(() => {
     loadItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, currentMonth, selectedDate, view]);
+  }, [status, activeRange.start, activeRange.end, view]);
+
+  useEffect(() => {
+    if (!loading) setCalendarLoading(false);
+  }, [loading]);
 
   useEffect(() => {
     if (view === "AGENDA" || !calendarPanelRef.current) {
@@ -781,6 +873,8 @@ export default function AgendamentosPage() {
       inicio,
       fim: addMinutesFromInput(inicio, agendaConfig.intervalo),
     });
+    setSelectedServicoIds([]);
+    setServicosPopoverOpen(false);
     setClienteSelecionado(null);
     setOpen(true);
   }
@@ -795,14 +889,21 @@ export default function AgendamentosPage() {
     const fim = toInputFromIso(item.fim);
     setForm({
       id: item.id,
-      clienteid: String(item.clienteid),
+      clienteid: item.clienteid ? String(item.clienteid) : "",
       veiculoid: item.veiculoid ? String(item.veiculoid) : "none",
       titulo: item.titulo,
       descricao: item.descricao ?? "",
       inicio,
       fim,
       status: item.status,
+      origem: item.origem ?? null,
+      solicitante_nome: item.solicitante_nome ?? null,
+      solicitante_cpfcnpj: item.solicitante_cpfcnpj ?? null,
+      solicitante_telefone: item.solicitante_telefone ?? null,
+      solicitante_email: item.solicitante_email ?? null,
     });
+    setSelectedServicoIds([]);
+    setServicosPopoverOpen(false);
     setClienteSelecionado(
       item.cliente
         ? ({
@@ -822,10 +923,14 @@ export default function AgendamentosPage() {
       return;
     }
 
+    if (!form.clienteid && !String(form.solicitante_nome ?? "").trim()) {
+      toast.error("Selecione um cliente ou informe o nome do solicitante.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const payload = {
-        clienteid: Number(form.clienteid),
+      const payload: Record<string, any> = {
         veiculoid: form.veiculoid === "none" ? null : Number(form.veiculoid),
         titulo: form.titulo,
         descricao: form.descricao || null,
@@ -833,6 +938,17 @@ export default function AgendamentosPage() {
         fim: form.inicio ? new Date(addMinutesFromInput(form.inicio, agendaConfig.intervalo)).toISOString() : null,
         status: form.status,
       };
+
+      if (form.clienteid) {
+        payload.clienteid = Number(form.clienteid);
+      } else if (hasFormSolicitante(form)) {
+        payload.clienteid = null;
+      }
+
+      payload.solicitante_nome = form.clienteid ? null : form.solicitante_nome?.trim() || null;
+      payload.solicitante_cpfcnpj = form.clienteid ? null : form.solicitante_cpfcnpj?.trim() || null;
+      payload.solicitante_telefone = form.clienteid ? null : form.solicitante_telefone?.trim() || null;
+      payload.solicitante_email = form.clienteid ? null : form.solicitante_email?.trim() || null;
 
       const response = await fetch(form.id ? `/api/agendamentos/${form.id}` : "/api/agendamentos", {
         method: form.id ? "PATCH" : "POST",
@@ -926,6 +1042,16 @@ export default function AgendamentosPage() {
     });
   }
 
+  function toggleServico(servico: ServicoOption) {
+    setSelectedServicoIds((current) => {
+      const exists = current.includes(servico.id);
+      const nextIds = exists ? current.filter((id) => id !== servico.id) : [...current, servico.id];
+      const nextServicos = servicosAgendamento.filter((item) => nextIds.includes(item.id));
+      setField("titulo", nextServicos.map((item) => item.descricao).join(", "));
+      return nextIds;
+    });
+  }
+
   function setInicioDate(date?: Date) {
     if (!date) return;
     if (isDayUnavailable(date)) {
@@ -973,6 +1099,7 @@ export default function AgendamentosPage() {
   }
 
   function goPrevious() {
+    setCalendarLoading(true);
     if (view === "MES") {
       setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1));
       return;
@@ -984,6 +1111,7 @@ export default function AgendamentosPage() {
   }
 
   function goNext() {
+    setCalendarLoading(true);
     if (view === "MES") {
       setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1));
       return;
@@ -997,6 +1125,7 @@ export default function AgendamentosPage() {
   }
 
   function goToday() {
+    setCalendarLoading(true);
     const next = nextWorkingDay(new Date(), agendaConfig.diasTrabalho);
     setCurrentMonth(new Date(next.getFullYear(), next.getMonth(), 1));
     setSelectedDate(next);
@@ -1194,7 +1323,13 @@ export default function AgendamentosPage() {
                   </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)}>
+                  <Tabs
+                    value={view}
+                    onValueChange={(value) => {
+                      setCalendarLoading(true);
+                      setView(value as CalendarView);
+                    }}
+                  >
                     <div className="max-w-full overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
                       <TabsList className="h-auto min-w-max justify-start gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
                         {(Object.keys(VIEW_LABEL) as CalendarView[]).map((item) => (
@@ -1216,10 +1351,10 @@ export default function AgendamentosPage() {
               </div>
 
               <div
-                key={`${view}-${visibleRange(view, currentMonth, selectedDate).start}-${visibleRange(view, currentMonth, selectedDate).end}`}
+                key={`${view}-${activeRange.start}-${activeRange.end}`}
                 className="transition-opacity duration-200 motion-safe:animate-in motion-safe:fade-in-0"
               >
-              {loading ? (
+              {loading && calendarLoading ? (
                 <CalendarLoadingSkeleton
                   view={view}
                   slots={slots}
@@ -1415,7 +1550,7 @@ export default function AgendamentosPage() {
                                   >
                                     <div className="font-medium flex flex-row items-center gap-2">{formatTime(item.inicio)} {item.origem === "SITE" && 
                                       <Badge className={`text-[9px] py-0 px-1.5 ${item.origem === "SITE" ? "bg-yellow-100 text-yellow-900" : "bg-gray-100 text-gray-800" }`}>{item.origem}</Badge>}</div>
-                                  <div className="truncate text-muted-foreground">{item.cliente?.nomerazaosocial ?? "-"}</div>
+                                  <div className="truncate text-muted-foreground">{getClienteNome(item)}</div>
                                 </div>
                               ))}
                             </div>
@@ -1447,7 +1582,7 @@ export default function AgendamentosPage() {
                         <div className="min-w-0">
                           <div className="font-medium">{item.titulo}</div>
                           <div className="truncate text-sm text-muted-foreground">
-                            {item.cliente?.nomerazaosocial ?? "-"}
+                            {getClienteNome(item)}
                             {item.veiculo ? ` · ${item.veiculo.placa}` : ""}
                             {item.origem === "SITE" ? " · Site" : ""}
                           </div>
@@ -1515,7 +1650,7 @@ export default function AgendamentosPage() {
                 </div>
 
                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin]">
-                  {loading ? (
+                  {loading && calendarLoading ? (
                     <DayDetailsLoadingSkeleton />
                   ) : selectedDayItems.length === 0 ? (
                     <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
@@ -1542,7 +1677,8 @@ export default function AgendamentosPage() {
                         </div>
 
                         <div className="mt-3 space-y-1 text-xs">
-                          <div className="font-medium">{item.cliente?.nomerazaosocial ?? "-"}</div>
+                          <div className="font-medium">{getClienteNome(item)}</div>
+                          {getClienteContato(item) ? <div className="text-muted-foreground">{getClienteContato(item)}</div> : null}
                           {item.origem === "SITE" ? <div className="text-muted-foreground">Solicitado pelo site</div> : null}
                           {item.veiculo ? (
                             <div className="text-muted-foreground">
@@ -1605,10 +1741,11 @@ export default function AgendamentosPage() {
           </DialogHeader>
 
           <div className="space-y-5">
-            <div className="space-y-2">
+            {!form.id ? (
+            <div className="hidden">
               <Label>Cliente</Label>
-              <div className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
+              <div className="flex flex-wrap gap-2">
+                <div className="hidden" aria-hidden="true">
                   {clienteSelecionado ? (
                     <>
                       <div className="truncate text-sm font-medium">{clienteSelecionado.nomerazaosocial}</div>
@@ -1616,16 +1753,19 @@ export default function AgendamentosPage() {
                         {[clienteSelecionado.telefone, clienteSelecionado.email].filter(Boolean).join(" · ")}
                       </div>
                     </>
+                  ) : form.solicitante_nome ? (
+                    <div className="text-sm text-muted-foreground">Nenhum cliente do ERP vinculado</div>
                   ) : (
                     <div className="text-sm text-muted-foreground">Nenhum cliente selecionado</div>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {clienteSelecionado ? (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8"
                       onClick={() => {
                         setClienteSelecionado(null);
                         setField("clienteid", "");
@@ -1644,19 +1784,174 @@ export default function AgendamentosPage() {
                       setVeiculos((cliente?.veiculos ?? []) as VeiculoOption[]);
                     }}
                   >
-                    <Button type="button" variant="outline">
+                    <Button type="button" variant="outline" size="sm" className="h-8">
                       <Search className="size-4" />
-                      Selecionar cliente
+                      Cliente
                     </Button>
                   </CustomerSelect>
                 </div>
               </div>
             </div>
+            ) : null}
+
+            {hasFormSolicitante(form) || clienteSelecionado || !form.id ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>{clienteSelecionado ? "Dados do cliente" : "Dados do solicitante"}</Label>
+                  <div className="flex items-center gap-1.5">
+                    {!clienteSelecionado && hasFormSolicitante(form) ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        Site
+                      </Badge>
+                    ) : null}
+                    {!form.id ? (
+                      <>
+                        {clienteSelecionado ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setClienteSelecionado(null);
+                              setField("clienteid", "");
+                            }}
+                            title="Remover cliente"
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        ) : null}
+                        <CustomerSelect
+                          open={openCustomerSelect}
+                          setOpen={setOpenCustomerSelect}
+                          OnSelect={(cliente) => {
+                            setClienteSelecionado(cliente ?? null);
+                            setField("clienteid", cliente ? String(cliente.id) : "");
+                            setVeiculos((cliente?.veiculos ?? []) as VeiculoOption[]);
+                          }}
+                        >
+                          <Button type="button" variant="outline" size="sm" className="h-8">
+                            <Search className="size-4" />
+                            Cliente
+                          </Button>
+                        </CustomerSelect>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="solicitante_nome">Nome</Label>
+                    <Input
+                      id="solicitante_nome"
+                      value={getFormClienteNome(form, clienteSelecionado)}
+                      disabled={Boolean(clienteSelecionado || form.id)}
+                      onChange={(event) => setField("solicitante_nome", event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="solicitante_cpfcnpj">CPF/CNPJ</Label>
+                    <Input
+                      id="solicitante_cpfcnpj"
+                      value={getFormClienteCpfCnpj(form, clienteSelecionado)}
+                      disabled={Boolean(clienteSelecionado || form.id)}
+                      onChange={(event) => setField("solicitante_cpfcnpj", event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="solicitante_telefone">Telefone</Label>
+                    <Input
+                      id="solicitante_telefone"
+                      value={getFormClienteTelefone(form, clienteSelecionado)}
+                      disabled={Boolean(clienteSelecionado || form.id)}
+                      onChange={(event) => setField("solicitante_telefone", event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="solicitante_email">E-mail</Label>
+                    <Input
+                      id="solicitante_email"
+                      value={getFormClienteEmail(form, clienteSelecionado)}
+                      disabled={Boolean(clienteSelecionado || form.id)}
+                      onChange={(event) => setField("solicitante_email", event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Titulo</Label>
-                <Input value={form.titulo} onChange={(event) => setField("titulo", event.target.value)} />
+                <Label>Serviços</Label>
+                {!form.id ? (
+                  <Popover modal open={servicosPopoverOpen} onOpenChange={setServicosPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" className="min-h-10 w-full justify-between">
+                        <span className="truncate text-left">
+                          {selectedServicos.length
+                            ? `${selectedServicos.length} servico${selectedServicos.length === 1 ? "" : "s"} selecionado${selectedServicos.length === 1 ? "" : "s"}`
+                            : "Selecionar servicos"}
+                        </span>
+                        <Search className="size-4 shrink-0 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar servico..." />
+                        <CommandList
+                          className="max-h-64 overscroll-contain"
+                          onWheelCapture={(event) => event.stopPropagation()}
+                        >
+                          <CommandEmpty>Nenhum servico encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {servicosAgendamento.map((servico) => {
+                              const selected = selectedServicoIds.includes(servico.id);
+                              return (
+                                <CommandItem
+                                  key={servico.id}
+                                  value={`${servico.codigo ?? ""} ${servico.descricao}`}
+                                  onSelect={() => toggleServico(servico)}
+                                >
+                                  <Check className={cn("size-4", selected ? "opacity-100" : "opacity-0")} />
+                                  <div className="min-w-0">
+                                    <div className="truncate">{servico.descricao}</div>
+                                    {servico.codigo ? (
+                                      <div className="truncate text-xs text-muted-foreground">{servico.codigo}</div>
+                                    ) : null}
+                                  </div>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Input value={form.titulo} onChange={(event) => setField("titulo", event.target.value)} />
+                )}
+                {!form.id && selectedServicos.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedServicos.map((servico) => (
+                      <Badge key={servico.id} variant="secondary" className="gap-1 pr-1">
+                        <span className="max-w-[180px] truncate">{servico.descricao}</span>
+                        <button
+                          type="button"
+                          className="rounded-sm p-0.5 hover:bg-muted"
+                          onClick={() => toggleServico(servico)}
+                          title="Remover servico"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+                {!form.id && servicosAgendamento.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum servico esta habilitado para agendamento.
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -1748,7 +2043,13 @@ export default function AgendamentosPage() {
             </Button>
             <Button
               onClick={save}
-              disabled={saving || !form.clienteid || !form.titulo || !form.inicio || (form.id ? !canEdit : !canCreate)}
+              disabled={
+                saving ||
+                (!form.clienteid && !String(form.solicitante_nome ?? "").trim()) ||
+                !form.titulo ||
+                !form.inicio ||
+                (form.id ? !canEdit : !canCreate)
+              }
             >
               {saving ? "Salvando..." : "Salvar"}
             </Button>
@@ -1819,8 +2120,8 @@ export default function AgendamentosPage() {
             <AlertDialogTitle>Aprovar agendamento</AlertDialogTitle>
             <AlertDialogDescription>
               Confirme a aprovacao do agendamento
-              {agendamentoParaAprovar?.cliente?.nomerazaosocial
-                ? ` de ${agendamentoParaAprovar.cliente.nomerazaosocial}`
+              {agendamentoParaAprovar
+                ? ` de ${getClienteNome(agendamentoParaAprovar)}`
                 : ""}
               {agendamentoParaAprovar?.inicio ? ` para ${formatDateTime(agendamentoParaAprovar.inicio)}` : ""}.
               O cliente sera notificado quando houver e-mail cadastrado.

@@ -41,12 +41,7 @@ function validEmail(value?: string | null) {
   return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value);
 }
 
-function validPlaca(value?: string | null) {
-  if (!value) return false;
-  return /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(value);
-}
-
-async function getOrCreateCliente(body: any) {
+function getSolicitantePayload(body: any) {
   const cpfcnpj = onlyDigits(requiredString(body?.cpfcnpj, "cpfcnpj"));
   const telefone = optionalString(body?.telefone);
   const email = optionalString(body?.email);
@@ -70,100 +65,24 @@ async function getOrCreateCliente(body: any) {
     throw error;
   }
 
-  const matchFilters = [`cpfcnpj.eq.${cpfcnpj}`, `telefone.eq.${telefone}`];
-  if (email) matchFilters.push(`email.eq.${email}`);
-
-  const { data: existing, error: existingError } = await supabaseAdmin
-    .from("cliente")
-    .select("id, nomerazaosocial, telefone, email")
-    .or(matchFilters.join(","))
-    .limit(1);
-
-  if (existingError) throw existingError;
-  if (existing?.[0]) return existing[0];
-
-  const payload = {
-    tipopessoa: cpfcnpj.length > 11 ? "JURIDICA" : "FISICA",
-    cpfcnpj,
-    nomerazaosocial: nome,
-    telefone,
-    email,
-    cidade: optionalString(body?.cidade) ?? "Nao informado",
-    estado: (optionalString(body?.estado) ?? "PB").slice(0, 2).toUpperCase(),
-    endereco: optionalString(body?.endereco),
-    bairro: optionalString(body?.bairro),
-    cep: onlyDigits(optionalString(body?.cep)) || null,
-    status: "PENDENTE",
+  return {
+    solicitante_nome: nome,
+    solicitante_cpfcnpj: cpfcnpj,
+    solicitante_telefone: telefone,
+    solicitante_email: email,
   };
-
-  const { data, error } = await supabaseAdmin
-    .from("cliente")
-    .insert(payload)
-    .select("id, nomerazaosocial, telefone, email")
-    .single();
-
-  if (error) {
-    if ((error as any).code === "23505") {
-      const { data: fallback, error: fallbackError } = await supabaseAdmin
-        .from("cliente")
-        .select("id, nomerazaosocial, telefone, email")
-        .or(`cpfcnpj.eq.${cpfcnpj},telefone.eq.${telefone},nomerazaosocial.eq.${nome}`)
-        .limit(1);
-
-      if (fallbackError) throw fallbackError;
-      if (fallback?.[0]) return fallback[0];
-    }
-
-    throw error;
-  }
-  return data;
 }
 
-async function getOrCreateVeiculo(clienteid: number, body: any) {
+function formatVeiculoDescricao(body: any) {
   const placa = optionalString(body?.placa)?.toUpperCase().replace(/[^A-Z0-9]/g, "") ?? null;
-  if (!placa) return null;
-
-  if (!validPlaca(placa)) {
-    const error = new Error("placa invalida");
-    (error as any).statusCode = 400;
-    throw error;
-  }
-
-  const { data: existing, error: existingError } = await supabaseAdmin
-    .from("veiculo")
-    .select("id")
-    .or(`placa.eq.${placa},placa_formatada.eq.${placa}`)
-    .limit(1);
-
-  if (existingError) throw existingError;
-  if (existing?.[0]) return existing[0].id;
-
-  const { data, error } = await supabaseAdmin
-    .from("veiculo")
-    .insert({
-      clienteid,
-      placa,
-      marca: optionalString(body?.marca) ?? "Nao informado",
-      modelo: optionalString(body?.modelo) ?? "Nao informado",
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    if ((error as any).code === "23505") {
-      const { data: fallback, error: fallbackError } = await supabaseAdmin
-        .from("veiculo")
-        .select("id")
-        .or(`placa.eq.${placa},placa_formatada.eq.${placa}`)
-        .limit(1);
-
-      if (fallbackError) throw fallbackError;
-      if (fallback?.[0]) return fallback[0].id;
-    }
-
-    throw error;
-  }
-  return data.id as number;
+  const marca = optionalString(body?.marca);
+  const modelo = optionalString(body?.modelo);
+  const parts = [
+    placa ? `Placa: ${placa}` : null,
+    marca ? `Marca: ${marca}` : null,
+    modelo ? `Modelo: ${modelo}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" | ") : null;
 }
 
 export async function GET(req: Request) {
@@ -210,8 +129,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const cliente = await getOrCreateCliente(body?.cliente ?? body);
-    const veiculoid = await getOrCreateVeiculo(cliente.id, body?.veiculo ?? body);
+    const clienteBody = body?.cliente ?? body;
+    const veiculoBody = body?.veiculo ?? body;
+    const solicitante = getSolicitantePayload(clienteBody);
+    const veiculoDescricao = formatVeiculoDescricao(veiculoBody);
     const inicio = parseDate(body?.inicio, "inicio");
 
     if (new Date(inicio).getTime() < Date.now()) {
@@ -244,16 +165,17 @@ export async function POST(req: Request) {
     const { data, error } = await supabaseAdmin
       .from("agendamento")
       .insert({
-        clienteid: cliente.id,
-        veiculoid,
+        clienteid: null,
+        veiculoid: null,
         titulo: optionalString(body?.titulo) ?? "Solicitacao pelo site",
-        descricao: optionalString(body?.descricao),
+        descricao: [optionalString(body?.descricao), veiculoDescricao].filter(Boolean).join("\n") || null,
         inicio,
         fim,
         status: "PENDENTE_APROVACAO",
         origem: "SITE",
+        ...solicitante,
       })
-      .select("id, status, origem, inicio, fim")
+      .select("id, status, origem, inicio, fim, solicitante_nome, solicitante_telefone, solicitante_email")
       .single();
 
     if (error) throw error;
