@@ -1183,6 +1183,7 @@ export default function AgendamentosPage() {
                                 title={`${formatTime(item.inicio)} - ${item.titulo}`}
                               >
                                 <span className="font-medium">{formatTime(item.inicio)}</span>{" "}
+                                
                                 <span>{item.titulo}</span>
                               </div>
                             ))}
@@ -1288,8 +1289,9 @@ export default function AgendamentosPage() {
                                     "rounded-md border-l-4 px-2 py-1 text-xs",
                                     statusEventClass(item.status),
                                   ].join(" ")}
-                                >
-                                  <div className="font-medium">{formatTime(item.inicio)} {item.titulo}</div>
+                                  >
+                                    <div className="font-medium flex flex-row items-center gap-2">{formatTime(item.inicio)} {item.origem === "SITE" && 
+                                      <Badge className={`text-[9px] py-0 px-1.5 ${item.origem === "SITE" ? "bg-yellow-100 text-yellow-900" : "bg-gray-100 text-gray-800" }`}>{item.origem}</Badge>}</div>
                                   <div className="truncate text-muted-foreground">{item.cliente?.nomerazaosocial ?? "-"}</div>
                                 </div>
                               ))}
