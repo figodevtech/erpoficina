@@ -32,7 +32,8 @@ export async function GET() {
         cnae,
         itemlistaservico,
         tiposervicoid,
-        ativo
+        ativo,
+        permite_agendamento
       `)
       .order("descricao", { ascending: true });
 
@@ -52,6 +53,7 @@ export async function GET() {
       itemlistaservico: s.itemlistaservico as string,
       tiposervicoid: (s.tiposervicoid as number | null) ?? null,
       ativo: typeof s.ativo === "boolean" ? s.ativo : true,
+      permite_agendamento: typeof s.permite_agendamento === "boolean" ? s.permite_agendamento : false,
     }));
 
     return NextResponse.json({ items });
@@ -78,6 +80,7 @@ export async function POST(req: Request) {
       descricao,
       precohora,
       ativo,
+      permite_agendamento,
     } = body ?? {};
 
     if (!codigo?.trim() || !descricao?.trim()) {
@@ -106,6 +109,7 @@ export async function POST(req: Request) {
       descricao: descricao.trim(),
       precohora: preco,
       ativo: typeof ativo === "boolean" ? ativo : true,
+      permite_agendamento: typeof permite_agendamento === "boolean" ? permite_agendamento : false,
       createdat: now,
       updatedat: now,
     };
@@ -123,7 +127,8 @@ export async function POST(req: Request) {
         cnae,
         itemlistaservico,
         tiposervicoid,
-        ativo
+        ativo,
+        permite_agendamento
       `)
       .maybeSingle();
 
@@ -149,6 +154,7 @@ export async function POST(req: Request) {
       itemlistaservico: data.itemlistaservico as string,
       tiposervicoid: (data.tiposervicoid as number | null) ?? null,
       ativo: typeof data.ativo === "boolean" ? data.ativo : true,
+      permite_agendamento: typeof data.permite_agendamento === "boolean" ? data.permite_agendamento : false,
     };
 
     return NextResponse.json({ item }, { status: 201 });

@@ -54,6 +54,7 @@ type ServicoForm = {
   descricao: string;
   precohora: string;
   ativo: boolean;
+  permite_agendamento: boolean;
 };
 
 const emptyForm: ServicoForm = {
@@ -61,6 +62,7 @@ const emptyForm: ServicoForm = {
   descricao: "",
   precohora: "",
   ativo: true,
+  permite_agendamento: false,
 };
 export default function ServiceSelect({
   children,

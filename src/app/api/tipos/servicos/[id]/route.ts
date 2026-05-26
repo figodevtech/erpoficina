@@ -41,6 +41,7 @@ export async function PUT(
       descricao,
       precohora,
       ativo,
+      permite_agendamento,
     } = body ?? {};
 
     if (!codigo?.trim() || !descricao?.trim()) {
@@ -73,6 +74,10 @@ export async function PUT(
       payload.ativo = ativo;
     }
 
+    if (typeof permite_agendamento === "boolean") {
+      payload.permite_agendamento = permite_agendamento;
+    }
+
     const { data, error } = await supabaseAdmin
       .from("servico")
       .update(payload)
@@ -87,7 +92,8 @@ export async function PUT(
         cnae,
         itemlistaservico,
         tiposervicoid,
-        ativo
+        ativo,
+        permite_agendamento
       `)
       .maybeSingle();
 
@@ -113,6 +119,7 @@ export async function PUT(
       itemlistaservico: data.itemlistaservico as string,
       tiposervicoid: (data.tiposervicoid as number | null) ?? null,
       ativo: typeof data.ativo === "boolean" ? data.ativo : true,
+      permite_agendamento: typeof data.permite_agendamento === "boolean" ? data.permite_agendamento : false,
     };
 
     return NextResponse.json({ item });
@@ -173,7 +180,8 @@ export async function PATCH(
         cnae,
         itemlistaservico,
         tiposervicoid,
-        ativo
+        ativo,
+        permite_agendamento
       `)
       .maybeSingle();
 
@@ -199,6 +207,7 @@ export async function PATCH(
       itemlistaservico: data.itemlistaservico as string,
       tiposervicoid: (data.tiposervicoid as number | null) ?? null,
       ativo: typeof data.ativo === "boolean" ? data.ativo : ativo,
+      permite_agendamento: typeof data.permite_agendamento === "boolean" ? data.permite_agendamento : false,
     };
 
     return NextResponse.json({ item });

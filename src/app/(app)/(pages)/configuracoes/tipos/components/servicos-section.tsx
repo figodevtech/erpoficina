@@ -37,6 +37,7 @@ type Servico = {
   itemlistaservico: string;
   tiposervicoid?: number | null;
   ativo?: boolean | null;
+  permite_agendamento?: boolean | null;
 };
 
 type ServicoForm = {
@@ -44,6 +45,7 @@ type ServicoForm = {
   descricao: string;
   precohora: string;
   ativo: boolean;
+  permite_agendamento: boolean;
 };
 
 const emptyForm: ServicoForm = {
@@ -51,6 +53,7 @@ const emptyForm: ServicoForm = {
   descricao: "",
   precohora: "",
   ativo: true,
+  permite_agendamento: false,
 };
 
 const DEFAULT_LIMIT = 10;
@@ -121,6 +124,7 @@ export default function ServicosSection() {
       const items: Servico[] = (j.items ?? j.data ?? []).map((s: Servico) => ({
         ...s,
         ativo: s.ativo ?? true,
+        permite_agendamento: s.permite_agendamento ?? false,
       }));
 
       setServicos(items);
@@ -151,6 +155,7 @@ export default function ServicosSection() {
       descricao: s.descricao ?? "",
       precohora: s.precohora != null ? String(s.precohora) : "",
       ativo: s.ativo ?? true,
+      permite_agendamento: s.permite_agendamento ?? false,
     });
     setOpen(true);
   }
