@@ -44,6 +44,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
@@ -414,6 +415,125 @@ function emailResultMessage(result: any) {
   return "E-mail nao enviado.";
 }
 
+function CalendarLoadingSkeleton({
+  view,
+  slots,
+  selectedDate,
+  weekDays,
+}: {
+  view: CalendarView;
+  slots: number[];
+  selectedDate: Date;
+  weekDays: Date[];
+}) {
+  if (view === "MES") {
+    return (
+      <>
+        <div className="grid grid-cols-7 border-b bg-muted/20">
+          {WEEK_DAYS.map((day) => (
+            <div key={day} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground">
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {Array.from({ length: 42 }).map((_, index) => (
+            <div key={index} className="min-h-[116px] space-y-3 border-b border-r p-2">
+              <Skeleton className="size-7 rounded-full" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-11/12" />
+                {index % 3 === 0 ? <Skeleton className="h-4 w-2/3" /> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  if (view === "AGENDA") {
+    return (
+      <div className="divide-y">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="grid gap-3 p-4 md:grid-cols-[180px_1fr_auto] md:items-center">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-56 max-w-full" />
+              <Skeleton className="h-3 w-72 max-w-full" />
+            </div>
+            <Skeleton className="h-8 w-24" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const columnCount = view === "DIA" ? 1 : 7;
+  const visibleDays = view === "DIA" ? [selectedDate] : weekDays;
+
+  return (
+    <div className="overflow-x-auto">
+      <div
+        className="relative grid min-w-[760px]"
+        style={{ gridTemplateColumns: `72px repeat(${columnCount}, minmax(130px, 1fr))` }}
+      >
+        <div className="border-b border-r bg-muted/20 p-2 text-xs font-medium text-muted-foreground">
+          Hora
+        </div>
+        {visibleDays.map((day) => (
+          <div key={toDateKey(day)} className="border-b border-r bg-muted/20 p-2 text-center text-xs font-medium text-muted-foreground">
+            <div>{WEEK_DAYS[day.getDay()]}</div>
+            <div className="text-sm">{day.getDate()}</div>
+          </div>
+        ))}
+
+        <div className="pointer-events-none absolute bottom-0 left-[72px] right-0 top-[49px] z-10 flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-md bg-background/80 px-4 py-3">
+            <div className="size-8 animate-spin rounded-t-full border-t-2 border-primary" />
+            <span className="text-sm text-primary">Carregando</span>
+          </div>
+        </div>
+
+        {slots.map((slot) => (
+          <div key={slot} className="contents">
+            <div className="min-h-[86px] border-b border-r bg-muted/10 p-2">
+              <span className="text-xs text-muted-foreground">{minutesToTime(slot)}</span>
+            </div>
+            {visibleDays.map((day) => (
+              <div key={`${toDateKey(day)}-${slot}`} className="min-h-[86px] border-b border-r p-1.5" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DayDetailsLoadingSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div key={index} className="rounded-lg border p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-3 w-48" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AgendamentosPage() {
   const { data: session } = useSession();
   const [items, setItems] = useState<AgendamentoItem[]>([]);
@@ -535,13 +655,6 @@ export default function AgendamentosPage() {
 
   function isSlotUnavailable(date: Date, slot: number, ignoreId?: number) {
     return isDayUnavailable(date) || isSlotInPast(date, slot) || isSlotOccupied(date, slot, ignoreId);
-  }
-
-  function weekHasAvailableSlot(date: Date) {
-    const start = startOfWeek(date);
-    return Array.from({ length: 7 }, (_, index) => addDays(start, index)).some((day) =>
-      slots.some((slot) => !isSlotUnavailable(day, slot))
-    );
   }
 
   function firstAvailableSlot(date: Date, preferredSlot?: number, ignoreId?: number) {
@@ -866,10 +979,7 @@ export default function AgendamentosPage() {
     }
 
     setSelectedDate((date) => {
-      const next = addDays(date, view === "SEMANA" ? -7 : view === "AGENDA" ? -30 : -1);
-      if (view === "SEMANA" && !weekHasAvailableSlot(next)) return date;
-      if (view !== "SEMANA" && isDayUnavailable(next)) return date;
-      return next;
+      return addDays(date, view === "SEMANA" ? -7 : view === "AGENDA" ? -30 : -1);
     });
   }
 
@@ -1058,7 +1168,7 @@ export default function AgendamentosPage() {
         <CardContent className="space-y-4 px-4 pt-4 md:px-6">
 
           <div className={view === "AGENDA" ? "space-y-4" : "grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"}>
-            <div ref={calendarPanelRef} className="overflow-hidden rounded-lg border">
+            <div ref={calendarPanelRef} className="relative overflow-hidden rounded-lg border">
               <div className="flex flex-col gap-3 border-b bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
@@ -1105,6 +1215,19 @@ export default function AgendamentosPage() {
                 </div>
               </div>
 
+              <div
+                key={`${view}-${visibleRange(view, currentMonth, selectedDate).start}-${visibleRange(view, currentMonth, selectedDate).end}`}
+                className="transition-opacity duration-200 motion-safe:animate-in motion-safe:fade-in-0"
+              >
+              {loading ? (
+                <CalendarLoadingSkeleton
+                  view={view}
+                  slots={slots}
+                  selectedDate={selectedDate}
+                  weekDays={weekDays}
+                />
+              ) : (
+                <>
               {view === "MES" ? (
                 <>
                   <div className="grid grid-cols-7 border-b bg-muted/20">
@@ -1306,9 +1429,7 @@ export default function AgendamentosPage() {
 
               {view === "AGENDA" ? (
                 <div className="divide-y">
-                  {loading ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">Carregando agendamentos...</div>
-                  ) : agendaItems.length === 0 ? (
+                  {agendaItems.length === 0 ? (
                     <div className="py-12 text-center text-sm text-muted-foreground">Nenhum agendamento no periodo.</div>
                   ) : (
                     agendaItems.map((item) => (
@@ -1369,6 +1490,9 @@ export default function AgendamentosPage() {
                   )}
                 </div>
               ) : null}
+                </>
+              )}
+              </div>
             </div>
 
             {view !== "AGENDA" ? (
@@ -1392,7 +1516,7 @@ export default function AgendamentosPage() {
 
                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin]">
                   {loading ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">Carregando agendamentos...</div>
+                    <DayDetailsLoadingSkeleton />
                   ) : selectedDayItems.length === 0 ? (
                     <div className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
                       Nenhum agendamento para este dia.
