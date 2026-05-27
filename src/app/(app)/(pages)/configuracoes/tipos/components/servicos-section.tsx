@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ServicoDialog from "./servicoDialog/servico-dialog";
+import { formatCurrencyBRL } from "../../../dashboard/components/dashboard-ordemservico/lib/format";
 
 type Servico = {
   id: number;
@@ -239,7 +240,7 @@ export default function ServicosSection() {
                 <TableRow key={s.id} className="hover:cursor-default">
                   <TableCell className="font-mono text-xs">{s.codigo}</TableCell>
                   <TableCell>{s.descricao}</TableCell>
-                  <TableCell>{s.precohora != null ? Number(s.precohora).toFixed(2) : "—"}</TableCell>
+                  <TableCell>{s.precohora != null ? formatCurrencyBRL(s.precohora) : "—"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={s.ativo ? "default" : "outline"}
