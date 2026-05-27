@@ -7,6 +7,7 @@ type SendEmailParams = {
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || "Alpha Garage PB <noreply@alphagaragepb.com.br>";
+const APPOINTMENT_TIME_ZONE = "America/Fortaleza";
 
 function escapeHtml(value?: string | null) {
   return String(value ?? "")
@@ -20,6 +21,7 @@ function escapeHtml(value?: string | null) {
 function formatAppointmentDate(value?: string | null) {
   if (!value) return "";
   return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: APPOINTMENT_TIME_ZONE,
     dateStyle: "full",
     timeStyle: "short",
   }).format(new Date(value));

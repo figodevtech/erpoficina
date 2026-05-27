@@ -8,6 +8,7 @@ export const AGENDAMENTO_STATUS: StatusAgendamento[] = [
 ];
 
 export const AGENDAMENTO_STATUS_SET = new Set<StatusAgendamento>(AGENDAMENTO_STATUS);
+const AGENDAMENTO_TIME_ZONE = "America/Fortaleza";
 
 export function asStatusAgendamento(value: unknown, fallback: StatusAgendamento = "AGENDADO") {
   const status = String(value ?? fallback).toUpperCase() as StatusAgendamento;
@@ -26,7 +27,11 @@ export function formatAgendamentoMessage(params: {
 }) {
   const nome = params.clienteNome?.trim() || "cliente";
   const quando = params.inicio
-    ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(params.inicio))
+    ? new Intl.DateTimeFormat("pt-BR", {
+        timeZone: AGENDAMENTO_TIME_ZONE,
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(params.inicio))
     : "";
 
   if (params.status === "APROVADO") {
