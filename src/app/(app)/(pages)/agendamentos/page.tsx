@@ -15,6 +15,8 @@ import {
   Search,
   SlidersHorizontal,
   Trash2,
+  User,
+  Wrench,
   X,
   XCircle,
 } from "lucide-react";
@@ -907,11 +909,11 @@ export default function AgendamentosPage() {
     setClienteSelecionado(
       item.cliente
         ? ({
-            id: item.cliente.id,
-            nomerazaosocial: item.cliente.nomerazaosocial,
-            telefone: item.cliente.telefone ?? "",
-            email: item.cliente.email ?? "",
-          } as Customer)
+          id: item.cliente.id,
+          nomerazaosocial: item.cliente.nomerazaosocial,
+          telefone: item.cliente.telefone ?? "",
+          email: item.cliente.email ?? "",
+        } as Customer)
         : null
     );
     setOpen(true);
@@ -1354,279 +1356,286 @@ export default function AgendamentosPage() {
                 key={`${view}-${activeRange.start}-${activeRange.end}`}
                 className="transition-opacity duration-200 motion-safe:animate-in motion-safe:fade-in-0"
               >
-              {loading && calendarLoading ? (
-                <CalendarLoadingSkeleton
-                  view={view}
-                  slots={slots}
-                  selectedDate={selectedDate}
-                  weekDays={weekDays}
-                />
-              ) : (
-                <>
-              {view === "MES" ? (
-                <>
-                  <div className="grid grid-cols-7 border-b bg-muted/20">
-                    {WEEK_DAYS.map((day) => (
-                      <div key={day} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground">
-                        {day}
-                      </div>
-                    ))}
-                  </div>
+                {loading && calendarLoading ? (
+                  <CalendarLoadingSkeleton
+                    view={view}
+                    slots={slots}
+                    selectedDate={selectedDate}
+                    weekDays={weekDays}
+                  />
+                ) : (
+                  <>
+                    {view === "MES" ? (
+                      <>
+                        <div className="grid grid-cols-7 border-b bg-muted/20">
+                          {WEEK_DAYS.map((day) => (
+                            <div key={day} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground">
+                              {day}
+                            </div>
+                          ))}
+                        </div>
 
-                  <div className="grid grid-cols-7">
-                    {days.map((day) => {
-                      const key = toDateKey(day);
-                      const dayItems = itemsByDay.get(key) ?? [];
-                      const selected = key === toDateKey(selectedDate);
-                      const today = key === toDateKey(new Date());
-                      const unavailableDay = isDayUnavailable(day);
+                        <div className="grid grid-cols-7">
+                          {days.map((day) => {
+                            const key = toDateKey(day);
+                            const dayItems = itemsByDay.get(key) ?? [];
+                            const selected = key === toDateKey(selectedDate);
+                            const today = key === toDateKey(new Date());
+                            const unavailableDay = isDayUnavailable(day);
 
-                      return (
-                        <div
-                          key={key}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => selectDay(day)}
-                          onDoubleClick={() => {
-                            if (!unavailableDay) openCreate(day);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              selectDay(day);
-                            }
-                          }}
-                          className={[
-                            "min-h-[116px] border-b border-r p-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring",
-                            !isSameMonth(day, currentMonth) || unavailableDay ? "bg-muted/20 text-muted-foreground" : "bg-background",
-                            selected ? "ring-2 ring-inset ring-primary" : "",
-                          ].join(" ")}
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-1">
-                            <span
-                              className={[
-                                "flex size-7 items-center justify-center rounded-full text-xs font-medium",
-                                today ? "bg-primary text-primary-foreground" : "",
-                              ].join(" ")}
-                            >
-                              {day.getDate()}
-                            </span>
-                            {dayItems.length > 0 ? (
-                              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                                {dayItems.length}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="space-y-1">
-                            {dayItems.slice(0, 3).map((item) => (
+                            return (
                               <div
-                                key={item.id}
+                                key={key}
                                 role="button"
                                 tabIndex={0}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  openEdit(item);
+                                onClick={() => selectDay(day)}
+                                onDoubleClick={() => {
+                                  if (!unavailableDay) openCreate(day);
                                 }}
                                 onKeyDown={(event) => {
                                   if (event.key === "Enter" || event.key === " ") {
                                     event.preventDefault();
-                                    event.stopPropagation();
-                                    openEdit(item);
+                                    selectDay(day);
                                   }
                                 }}
                                 className={[
-                                  "truncate rounded-md border border-l-4 px-2 py-1 text-[11px] shadow-sm",
-                                  statusEventClass(item.status),
+                                  "min-h-[116px] border-b border-r p-2 text-left transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring",
+                                  !isSameMonth(day, currentMonth) || unavailableDay ? "bg-muted/20 text-muted-foreground" : "bg-background",
+                                  selected ? "ring-2 ring-inset ring-primary" : "",
                                 ].join(" ")}
-                                title={`${formatTime(item.inicio)} - ${item.titulo}`}
                               >
-                                <span className="font-medium">{formatTime(item.inicio)}</span>{" "}
-                                
-                                <span>{item.titulo}</span>
+                                <div className="mb-2 flex items-center justify-between gap-1">
+                                  <span
+                                    className={[
+                                      "flex size-7 items-center justify-center rounded-full text-xs font-medium",
+                                      today ? "bg-primary text-primary-foreground" : "",
+                                    ].join(" ")}
+                                  >
+                                    {day.getDate()}
+                                  </span>
+                                  {dayItems.length > 0 ? (
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                                      {dayItems.length}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="space-y-1">
+                                  {dayItems.slice(0, 3).map((item) => (
+                                    <div
+                                      key={item.id}
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        openEdit(item);
+                                      }}
+                                      onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          openEdit(item);
+                                        }
+                                      }}
+                                      className={[
+                                        "truncate rounded-md border border-l-4 px-2 py-1 text-[11px] shadow-sm",
+                                        statusEventClass(item.status),
+                                      ].join(" ")}
+                                      title={`${formatTime(item.inicio)} - ${item.titulo}`}
+                                    >
+                                      <span className="font-medium">{formatTime(item.inicio)}</span>{" "}
+
+                                      <span>{item.titulo}</span>
+                                    </div>
+                                  ))}
+                                  {dayItems.length > 3 ? (
+                                    <div className="px-2 text-[11px] text-muted-foreground">+{dayItems.length - 3} mais</div>
+                                  ) : null}
+                                </div>
                               </div>
-                            ))}
-                            {dayItems.length > 3 ? (
-                              <div className="px-2 text-[11px] text-muted-foreground">+{dayItems.length - 3} mais</div>
-                            ) : null}
-                          </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : null}
+                      </>
+                    ) : null}
 
-              {view === "SEMANA" || view === "DIA" ? (
-                <div className="overflow-x-auto">
-                  <div
-                    className="min-w-[760px] grid"
-                    style={{ gridTemplateColumns: `72px repeat(${view === "DIA" ? 1 : 7}, minmax(130px, 1fr))` }}
-                  >
-                    <div className="border-b border-r bg-muted/20 p-2 text-xs font-medium text-muted-foreground">
-                      Hora
-                    </div>
-                    {(view === "DIA" ? [selectedDate] : weekDays).map((day) => {
-                      const selected = toDateKey(day) === toDateKey(selectedDate);
-                      const unavailableDay = isDayUnavailable(day);
-                      return (
-                        <button
-                          key={toDateKey(day)}
-                          type="button"
-                          onClick={() => setSelectedDate(day)}
-                          className={[
-                            "border-b border-r bg-muted/20 p-2 text-center text-xs font-medium hover:bg-muted",
-                            selected ? "text-primary" : "text-muted-foreground",
-                            unavailableDay ? "bg-muted/40" : "",
-                          ].join(" ")}
+                    {view === "SEMANA" || view === "DIA" ? (
+                      <div className="overflow-x-auto">
+                        <div
+                          className="min-w-[760px] grid"
+                          style={{ gridTemplateColumns: `72px repeat(${view === "DIA" ? 1 : 7}, minmax(130px, 1fr))` }}
                         >
-                          <div>{WEEK_DAYS[day.getDay()]}</div>
-                          <div className="text-sm">{day.getDate()}</div>
-                        </button>
-                      );
-                    })}
+                          <div className="border-b border-r bg-muted/20 p-2 text-xs font-medium text-muted-foreground">
+                            Hora
+                          </div>
+                          {(view === "DIA" ? [selectedDate] : weekDays).map((day) => {
+                            const selected = toDateKey(day) === toDateKey(selectedDate);
+                            const unavailableDay = isDayUnavailable(day);
+                            return (
+                              <button
+                                key={toDateKey(day)}
+                                type="button"
+                                onClick={() => setSelectedDate(day)}
+                                className={[
+                                  "border-b border-r bg-muted/20 p-2 text-center text-xs font-medium hover:bg-muted",
+                                  selected ? "text-primary" : "text-muted-foreground",
+                                  unavailableDay ? "bg-muted/40" : "",
+                                ].join(" ")}
+                              >
+                                <div>{WEEK_DAYS[day.getDay()]}</div>
+                                <div className="text-sm">{day.getDate()}</div>
+                              </button>
+                            );
+                          })}
 
-                    {slots.map((slot) => (
-                      <div key={slot} className="contents">
-                        <div className="min-h-[86px] border-b border-r bg-muted/10 p-2 text-xs text-muted-foreground">
-                          {minutesToTime(slot)}
+                          {slots.map((slot) => (
+                            <div key={slot} className="contents">
+                              <div className="min-h-[86px] border-b border-r bg-muted/10 p-2 text-xs text-muted-foreground">
+                                {minutesToTime(slot)}
+                              </div>
+                              {(view === "DIA" ? [selectedDate] : weekDays).map((day) => {
+                                const slotItems = (itemsByDay.get(toDateKey(day)) ?? []).filter(
+                                  (item) => {
+                                    const date = new Date(item.inicio);
+                                    const minutes = date.getHours() * 60 + date.getMinutes();
+                                    return minutes >= slot && minutes < slot + agendaConfig.intervalo;
+                                  }
+                                );
+                                const unavailableSlot = isSlotUnavailable(day, slot);
+
+                                return (
+                                  <div
+                                    key={`${toDateKey(day)}-${slot}`}
+                                    role="button"
+                                    tabIndex={0}
+                                    onDoubleClick={() => {
+                                      if (unavailableSlot) return;
+                                      const date = new Date(day);
+                                      date.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
+                                      openCreate(date);
+                                    }}
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter") {
+                                        if (unavailableSlot) return;
+                                        const date = new Date(day);
+                                        date.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
+                                        openCreate(date);
+                                      }
+                                    }}
+                                    className={[
+                                      "min-h-[86px] space-y-1 border-b border-r p-1.5 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring",
+                                      unavailableSlot ? "bg-muted/20 opacity-70" : "",
+                                    ].join(" ")}
+                                  >
+                                    {unavailableSlot && slotItems.length === 0 ? (
+                                      <div className="text-[11px] text-muted-foreground">Indisponivel</div>
+                                    ) : null}
+                                    {slotItems.map((item) => (
+                                      <div
+                                        key={item.id}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          openEdit(item);
+                                        }}
+                                        onKeyDown={(event) => {
+                                          if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            openEdit(item);
+                                          }
+                                        }}
+                                        className={[
+                                          "rounded-md border-l-4 px-2 py-1 text-xs",
+                                          statusEventClass(item.status),
+                                        ].join(" ")}
+                                      >
+                                        <div className="font-medium flex flex-row items-center gap-2">{formatTime(item.inicio)} {item.origem === "SITE" &&
+                                          <Badge className={`text-[9px] py-0 px-1.5 ${item.origem === "SITE" ? "bg-yellow-100 text-yellow-900" : "bg-gray-100 text-gray-800"}`}>{item.origem}</Badge>}</div>
+                                        <div className="flex flex-row items-center gap-1">
+                                          <Wrench className="size-3" />
+                                          <div className="truncate text-muted-foreground">{item.titulo}</div>
+                                        </div>
+                                        <div className="flex flex-row items-center gap-1">
+                                          <User className="size-3" />
+                                          <div className="truncate text-muted-foreground">{getClienteNome(item)}</div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
                         </div>
-                        {(view === "DIA" ? [selectedDate] : weekDays).map((day) => {
-                          const slotItems = (itemsByDay.get(toDateKey(day)) ?? []).filter(
-                            (item) => {
-                              const date = new Date(item.inicio);
-                              const minutes = date.getHours() * 60 + date.getMinutes();
-                              return minutes >= slot && minutes < slot + agendaConfig.intervalo;
-                            }
-                          );
-                          const unavailableSlot = isSlotUnavailable(day, slot);
+                      </div>
+                    ) : null}
 
-                          return (
+                    {view === "AGENDA" ? (
+                      <div className="divide-y">
+                        {agendaItems.length === 0 ? (
+                          <div className="py-12 text-center text-sm text-muted-foreground">Nenhum agendamento no periodo.</div>
+                        ) : (
+                          agendaItems.map((item) => (
                             <div
-                              key={`${toDateKey(day)}-${slot}`}
-                              role="button"
-                              tabIndex={0}
-                              onDoubleClick={() => {
-                                if (unavailableSlot) return;
-                                const date = new Date(day);
-                                date.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
-                                openCreate(date);
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  if (unavailableSlot) return;
-                                  const date = new Date(day);
-                                  date.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
-                                  openCreate(date);
-                                }
-                              }}
+                              key={item.id}
                               className={[
-                                "min-h-[86px] space-y-1 border-b border-r p-1.5 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring",
-                                unavailableSlot ? "bg-muted/20 opacity-70" : "",
+                                "grid gap-3 border-l-4 p-4 md:grid-cols-[180px_1fr_auto] md:items-center",
+                                statusEventClass(item.status),
                               ].join(" ")}
                             >
-                              {unavailableSlot && slotItems.length === 0 ? (
-                                <div className="text-[11px] text-muted-foreground">Indisponivel</div>
-                              ) : null}
-                              {slotItems.map((item) => (
-                                <div
-                                  key={item.id}
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    openEdit(item);
-                                  }}
-                                  onKeyDown={(event) => {
-                                    if (event.key === "Enter" || event.key === " ") {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      openEdit(item);
-                                    }
-                                  }}
-                                  className={[
-                                    "rounded-md border-l-4 px-2 py-1 text-xs",
-                                    statusEventClass(item.status),
-                                  ].join(" ")}
-                                  >
-                                    <div className="font-medium flex flex-row items-center gap-2">{formatTime(item.inicio)} {item.origem === "SITE" && 
-                                      <Badge className={`text-[9px] py-0 px-1.5 ${item.origem === "SITE" ? "bg-yellow-100 text-yellow-900" : "bg-gray-100 text-gray-800" }`}>{item.origem}</Badge>}</div>
-                                  <div className="truncate text-muted-foreground">{getClienteNome(item)}</div>
+                              <div>
+                                <div className="text-sm font-medium capitalize">{formatDateTime(item.inicio)}</div>
+                                <div className="text-xs text-muted-foreground">{item.fim ? `Ate ${formatTime(item.fim)}` : ""}</div>
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-medium">{item.titulo}</div>
+                                <div className="truncate text-sm text-muted-foreground">
+                                  {getClienteNome(item)}
+                                  {item.veiculo ? ` · ${item.veiculo.placa}` : ""}
+                                  {item.origem === "SITE" ? " · Site" : ""}
                                 </div>
-                              ))}
+                              </div>
+                              <div className="flex items-center justify-end gap-2">
+                                <Badge variant={statusBadge(item.status) as any}>{STATUS_LABEL[item.status]}</Badge>
+                                {canEdit && item.status === "PENDENTE_APROVACAO" ? (
+                                  <>
+                                    <Button size="sm" variant="default" onClick={() => setAgendamentoParaAprovar(item)} disabled={deciding}>
+                                      <CheckCircle2 className="size-4" />
+                                      Aprovar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setAgendamentoParaReprovar(item);
+                                        setMotivoReprovacao("");
+                                      }}
+                                      disabled={deciding}
+                                    >
+                                      <XCircle className="size-4" />
+                                      Recusar
+                                    </Button>
+                                  </>
+                                ) : null}
+                                {canEdit ? (
+                                  <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
+                                    <Pencil className="size-4" />
+                                  </Button>
+                                ) : null}
+                                {canDelete ? (
+                                  <Button size="icon" variant="ghost" onClick={() => setAgendamentoParaExcluir(item)} title="Excluir">
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                ) : null}
+                              </div>
                             </div>
-                          );
-                        })}
+                          ))
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {view === "AGENDA" ? (
-                <div className="divide-y">
-                  {agendaItems.length === 0 ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">Nenhum agendamento no periodo.</div>
-                  ) : (
-                    agendaItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className={[
-                          "grid gap-3 border-l-4 p-4 md:grid-cols-[180px_1fr_auto] md:items-center",
-                          statusEventClass(item.status),
-                        ].join(" ")}
-                      >
-                        <div>
-                          <div className="text-sm font-medium capitalize">{formatDateTime(item.inicio)}</div>
-                          <div className="text-xs text-muted-foreground">{item.fim ? `Ate ${formatTime(item.fim)}` : ""}</div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-medium">{item.titulo}</div>
-                          <div className="truncate text-sm text-muted-foreground">
-                            {getClienteNome(item)}
-                            {item.veiculo ? ` · ${item.veiculo.placa}` : ""}
-                            {item.origem === "SITE" ? " · Site" : ""}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-2">
-                          <Badge variant={statusBadge(item.status) as any}>{STATUS_LABEL[item.status]}</Badge>
-                          {canEdit && item.status === "PENDENTE_APROVACAO" ? (
-                            <>
-                              <Button size="sm" variant="default" onClick={() => setAgendamentoParaAprovar(item)} disabled={deciding}>
-                                <CheckCircle2 className="size-4" />
-                                Aprovar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setAgendamentoParaReprovar(item);
-                                  setMotivoReprovacao("");
-                                }}
-                                disabled={deciding}
-                              >
-                                <XCircle className="size-4" />
-                                Recusar
-                              </Button>
-                            </>
-                          ) : null}
-                          {canEdit ? (
-                            <Button size="icon" variant="ghost" onClick={() => openEdit(item)} title="Editar">
-                              <Pencil className="size-4" />
-                            </Button>
-                          ) : null}
-                          {canDelete ? (
-                            <Button size="icon" variant="ghost" onClick={() => setAgendamentoParaExcluir(item)} title="Excluir">
-                              <Trash2 className="size-4" />
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              ) : null}
-                </>
-              )}
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
 
@@ -1742,56 +1751,56 @@ export default function AgendamentosPage() {
 
           <div className="space-y-5">
             {!form.id ? (
-            <div className="hidden">
-              <Label>Cliente</Label>
-              <div className="flex flex-wrap gap-2">
-                <div className="hidden" aria-hidden="true">
-                  {clienteSelecionado ? (
-                    <>
-                      <div className="truncate text-sm font-medium">{clienteSelecionado.nomerazaosocial}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {[clienteSelecionado.telefone, clienteSelecionado.email].filter(Boolean).join(" · ")}
-                      </div>
-                    </>
-                  ) : form.solicitante_nome ? (
-                    <div className="text-sm text-muted-foreground">Nenhum cliente do ERP vinculado</div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">Nenhum cliente selecionado</div>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {clienteSelecionado ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => {
-                        setClienteSelecionado(null);
-                        setField("clienteid", "");
+              <div className="hidden">
+                <Label>Cliente</Label>
+                <div className="flex flex-wrap gap-2">
+                  <div className="hidden" aria-hidden="true">
+                    {clienteSelecionado ? (
+                      <>
+                        <div className="truncate text-sm font-medium">{clienteSelecionado.nomerazaosocial}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {[clienteSelecionado.telefone, clienteSelecionado.email].filter(Boolean).join(" · ")}
+                        </div>
+                      </>
+                    ) : form.solicitante_nome ? (
+                      <div className="text-sm text-muted-foreground">Nenhum cliente do ERP vinculado</div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">Nenhum cliente selecionado</div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {clienteSelecionado ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setClienteSelecionado(null);
+                          setField("clienteid", "");
+                        }}
+                        title="Remover cliente"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    ) : null}
+                    <CustomerSelect
+                      open={openCustomerSelect}
+                      setOpen={setOpenCustomerSelect}
+                      OnSelect={(cliente) => {
+                        setClienteSelecionado(cliente ?? null);
+                        setField("clienteid", cliente ? String(cliente.id) : "");
+                        setVeiculos((cliente?.veiculos ?? []) as VeiculoOption[]);
                       }}
-                      title="Remover cliente"
                     >
-                      <X className="size-4" />
-                    </Button>
-                  ) : null}
-                  <CustomerSelect
-                    open={openCustomerSelect}
-                    setOpen={setOpenCustomerSelect}
-                    OnSelect={(cliente) => {
-                      setClienteSelecionado(cliente ?? null);
-                      setField("clienteid", cliente ? String(cliente.id) : "");
-                      setVeiculos((cliente?.veiculos ?? []) as VeiculoOption[]);
-                    }}
-                  >
-                    <Button type="button" variant="outline" size="sm" className="h-8">
-                      <Search className="size-4" />
-                      Cliente
-                    </Button>
-                  </CustomerSelect>
+                      <Button type="button" variant="outline" size="sm" className="h-8">
+                        <Search className="size-4" />
+                        Cliente
+                      </Button>
+                    </CustomerSelect>
+                  </div>
                 </div>
               </div>
-            </div>
             ) : null}
 
             {hasFormSolicitante(form) || clienteSelecionado || !form.id ? (
@@ -2000,15 +2009,15 @@ export default function AgendamentosPage() {
                     <SelectValue placeholder="Selecionar horario" />
                   </SelectTrigger>
                   <SelectContent>
-                  {slots.map((slot) => (
-                    <SelectItem
-                      key={slot}
-                      value={minutesToTime(slot)}
-                      disabled={isSlotUnavailable(getDateFromInput(form.inicio) ?? selectedDate, slot, form.id)}
-                    >
-                      {minutesToTime(slot)}
-                    </SelectItem>
-                  ))}
+                    {slots.map((slot) => (
+                      <SelectItem
+                        key={slot}
+                        value={minutesToTime(slot)}
+                        disabled={isSlotUnavailable(getDateFromInput(form.inicio) ?? selectedDate, slot, form.id)}
+                      >
+                        {minutesToTime(slot)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
