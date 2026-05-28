@@ -24,6 +24,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Loader2,
   User2,
   Wrench,
@@ -141,6 +151,7 @@ export function OrdemEditForm({
 
   const [initialLoading, setInitialLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmSemVeiculoOpen, setConfirmSemVeiculoOpen] = useState(false);
 
   const applySelectedCustomer = (c?: Customer | null) => {
     setCliente(c ?? null);
@@ -337,9 +348,6 @@ export function OrdemEditForm({
   function validar(): string | null {
     if (!osId) return "OS inválida.";
     if (!setor) return "Selecione o setor responsável.";
-    if (modoAtendimento === "cadastrado" && !cliente)
-      return "Dados do cliente não carregados.";
-
     if (modoAtendimento === "avulso") {
       if (!avulsoNome || !avulsoDoc)
         return "Preencha Nome/Razão Social e CPF/CNPJ no atendimento avulso.";
@@ -347,10 +355,10 @@ export function OrdemEditForm({
         return "Para atendimento avulso, telefone e e-mail são obrigatórios.";
     }
 
-    if (alvoTipo === "VEICULO") {
+    if (false && alvoTipo === "VEICULO") {
       if (!veiculoSelecionadoId && !vModelo.trim() && !vPlaca.trim())
         return "Informe Modelo ou Placa do veículo, ou vincule um veículo existente.";
-    } else if (!pNome.trim()) {
+    } else if (alvoTipo === "PECA" && !pNome.trim()) {
       return "Informe o nome da peça.";
     }
     return null;
@@ -379,7 +387,9 @@ export function OrdemEditForm({
 
     base.cliente =
       modoAtendimento === "cadastrado"
-        ? { id: cliente!.id }
+        ? cliente
+          ? { id: cliente.id }
+          : null
         : {
             nome: avulsoNome?.trim(),
             documento: avulsoDoc?.trim(),
@@ -409,11 +419,7 @@ export function OrdemEditForm({
     return base;
   };
 
-  const salvar = async () => {
-    if (initialLoading || saving) return;
-    const err = validar();
-    if (err) return toast.error(err);
-
+  const salvarOS = async () => {
     const payload = buildPayload();
 
     setSaving(true);
@@ -434,6 +440,19 @@ export function OrdemEditForm({
     } finally {
       setSaving(false);
     }
+  };
+
+  const salvar = async () => {
+    if (initialLoading || saving) return;
+    const err = validar();
+    if (err) return toast.error(err);
+
+    if (alvoTipo === "VEICULO" && !veiculoSelecionadoId && !vModelo.trim() && !vPlaca.trim()) {
+      setConfirmSemVeiculoOpen(true);
+      return;
+    }
+
+    await salvarOS();
   };
 
   useEffect(() => {
@@ -470,6 +489,34 @@ export function OrdemEditForm({
     return <div className="text-sm text-red-600">OS inválida para edição.</div>;
 
   return (
+    <>
+      <AlertDialog
+        open={confirmSemVeiculoOpen}
+        onOpenChange={setConfirmSemVeiculoOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar OS sem veículo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja salvar a ordem de serviço sem veículo vinculado?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(event) => {
+                event.preventDefault();
+                setConfirmSemVeiculoOpen(false);
+                void salvarOS();
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     <div className={initialLoading ? "min-h-[55vh]" : "space-y-6"}>
       {initialLoading ? (
         <div className="flex h-full min-h-[55vh] flex-col items-center justify-center gap-3">
@@ -564,7 +611,7 @@ export function OrdemEditForm({
                 </Button>
               </div>
 
-              {modoAtendimento === "cadastrado" ? (
+              {modoAtendimento === "cadastrado" && (
                 cliente ? (
                   <ClienteInfoCard customer={cliente} />
                 ) : (
@@ -572,46 +619,47 @@ export function OrdemEditForm({
                     Nenhum cliente selecionado.
                   </div>
                 )
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Nome/Razão Social</Label>
-                    <Input
-                      value={avulsoNome}
-                      onChange={(e) => setAvulsoNome(e.target.value)}
-                      placeholder="Nome completo"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>CPF/CNPJ</Label>
-                    <Input
-                      value={avulsoDoc}
-                      onChange={(e) => setAvulsoDoc(e.target.value)}
-                      placeholder="000.000.000-00"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Telefone</Label>
-                    <Input
-                      value={avulsoTelefone}
-                      onChange={(e) => setAvulsoTelefone(e.target.value)}
-                      placeholder="(99) 99999-9999"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>E-mail</Label>
-                    <Input
-                      value={avulsoEmail}
-                      onChange={(e) => setAvulsoEmail(e.target.value)}
-                      placeholder="email@dominio.com"
-                      disabled={saving}
-                    />
-                  </div>
-                </div>
-              )}
+              )
+              //   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              //     <div className="space-y-1.5">
+              //       <Label>Nome/Razão Social</Label>
+              //       <Input
+              //         value={avulsoNome}
+              //         onChange={(e) => setAvulsoNome(e.target.value)}
+              //         placeholder="Nome completo"
+              //         disabled={saving}
+              //       />
+              //     </div>
+              //     <div className="space-y-1.5">
+              //       <Label>CPF/CNPJ</Label>
+              //       <Input
+              //         value={avulsoDoc}
+              //         onChange={(e) => setAvulsoDoc(e.target.value)}
+              //         placeholder="000.000.000-00"
+              //         disabled={saving}
+              //       />
+              //     </div>
+              //     <div className="space-y-1.5">
+              //       <Label>Telefone</Label>
+              //       <Input
+              //         value={avulsoTelefone}
+              //         onChange={(e) => setAvulsoTelefone(e.target.value)}
+              //         placeholder="(99) 99999-9999"
+              //         disabled={saving}
+              //       />
+              //     </div>
+              //     <div className="space-y-1.5">
+              //       <Label>E-mail</Label>
+              //       <Input
+              //         value={avulsoEmail}
+              //         onChange={(e) => setAvulsoEmail(e.target.value)}
+              //         placeholder="email@dominio.com"
+              //         disabled={saving}
+              //       />
+              //     </div>
+              //   </div>
+              // )
+              }
             </CardContent>
           </Card>
 
@@ -954,5 +1002,6 @@ export function OrdemEditForm({
         </>
       )}
     </div>
+    </>
   );
 }

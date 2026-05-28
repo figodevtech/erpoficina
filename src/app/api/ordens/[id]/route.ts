@@ -72,7 +72,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
     type OrdemRow = {
       id: number;
-      clienteid: number;
+      clienteid: number | null;
       veiculoid: number | null;
       usuariocriadorid: string;
       setorid: number | null;
@@ -121,42 +121,46 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         : null;
 
     // Cliente
-    const cli_res = await supabase
-      .from("cliente")
-      .select(
-        "id, tipopessoa, nomerazaosocial, cpfcnpj, email, telefone, endereco, endereconumero, enderecocomplemento, bairro, cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio, createdat, updatedat, status, rank"
-      )
-      .eq("id", osRow.clienteid)
-      .maybeSingle();
-    if (cli_res.error) throw cli_res.error;
+    type ClienteRow = {
+      id: number;
+      tipopessoa: string | null;
+      nomerazaosocial: string;
+      cpfcnpj: string;
+      email: string | null;
+      telefone: string | null;
+      endereco: string | null;
+      endereconumero: string | null;
+      enderecocomplemento: string | null;
+      bairro: string | null;
+      cidade: string | null;
+      estado: string | null;
+      cep: string | null;
+      inscricaoestadual: string | null;
+      inscricaomunicipal: string | null;
+      codigomunicipio: string | null;
+      createdat: string | null;
+      updatedat: string | null;
+      status: string | null;
+      rank: string | null;
+    };
 
-    const clienteRow =
-      (cli_res.data as {
-        id: number;
-        tipopessoa: string | null;
-        nomerazaosocial: string;
-        cpfcnpj: string;
-        email: string | null;
-        telefone: string | null;
-        endereco: string | null;
-        endereconumero: string | null;
-        enderecocomplemento: string | null;
-        bairro: string | null;
-        cidade: string | null;
-        estado: string | null;
-        cep: string | null;
-        inscricaoestadual: string | null;
-        inscricaomunicipal: string | null;
-        codigomunicipio: string | null;
-        createdat: string | null;
-        updatedat: string | null;
-        status: string | null;
-        rank: string | null;
-      } | null) ?? null;
+    let clienteRow: ClienteRow | null = null;
 
-    const cliente =
-      clienteRow &&
-      ({
+    if (osRow.clienteid !== null) {
+      const cli_res = await supabase
+        .from("cliente")
+        .select(
+          "id, tipopessoa, nomerazaosocial, cpfcnpj, email, telefone, endereco, endereconumero, enderecocomplemento, bairro, cidade, estado, cep, inscricaoestadual, inscricaomunicipal, codigomunicipio, createdat, updatedat, status, rank"
+        )
+        .eq("id", osRow.clienteid)
+        .maybeSingle();
+      if (cli_res.error) throw cli_res.error;
+
+      clienteRow = cli_res.data as ClienteRow | null;
+    }
+
+    const cliente: ClienteRow | null = clienteRow
+      ? {
         id: clienteRow.id,
         tipopessoa: clienteRow.tipopessoa,
         nomerazaosocial: clienteRow.nomerazaosocial,
@@ -177,7 +181,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         updatedat: clienteRow.updatedat,
         status: clienteRow.status,
         rank: clienteRow.rank,
-      } as const);
+      }
+      : null;
 
     // Veículo
     let veiculo:
@@ -421,7 +426,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       datasaida: osRow.datasaida ?? null,
       alvo_tipo: (osRow.alvo_tipo ?? "VEICULO") as AlvoTipo,
       setor: setor ? { id: setor.id, nome: setor.nome } : null,
-      cliente: cliente ? { ...cliente } : null,
+      cliente,
       veiculo,
       peca,
     };
@@ -502,8 +507,28 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
       return up === "VEICULO" || up === "PECA" ? (up as AlvoTipo) : undefined;
     })();
     const pecaid = pickNum("pecaid", "pecaId");
+    const clienteid =
+      body?.cliente === null
+        ? null
+        : body?.cliente && typeof body.cliente?.id === "number"
+          ? Number(body.cliente.id)
+          : undefined;
+
+    if (typeof clienteid === "number") {
+      const clienteRes = await supabase
+        .from("cliente")
+        .select("id")
+        .eq("id", clienteid)
+        .maybeSingle();
+
+      if (clienteRes.error) throw clienteRes.error;
+      if (!clienteRes.data?.id) {
+        return NextResponse.json({ error: "Cliente não encontrado." }, { status: 400 });
+      }
+    }
 
     const patch: Record<string, unknown> = {};
+    if (clienteid !== undefined) patch.clienteid = clienteid;
     if (setorid !== undefined) patch.setorid = setorid;
     if (prioridade !== undefined) patch.prioridade = prioridade || "NORMAL";
     if (descricao !== undefined) patch.descricao = descricao;

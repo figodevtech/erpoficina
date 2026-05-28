@@ -25,7 +25,7 @@ type Payload = {
   status?: DBStatusOS | null;
   checklistTemplateId?: string | null;
   prioridade?: DBPrioridade;
-  cliente: { id: number };
+  cliente?: { id?: number | null } | null;
   alvo?: {
     tipo: DBAlvo;
     veiculo?: {
@@ -86,9 +86,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "setorid é obrigatório" }, { status: 400 });
     }
 
-    if (!body?.cliente || typeof body.cliente?.id !== "number") {
+    if (
+      body?.cliente != null &&
+      (typeof body.cliente !== "object" || typeof body.cliente?.id !== "number")
+    ) {
       return NextResponse.json(
-        { error: "Cliente deve ser cadastrado (cliente.id é obrigatório)." },
+        { error: "Cliente inválido. Envie cliente.id numérico ou cliente null." },
         { status: 400 }
       );
     }
@@ -98,17 +101,20 @@ export async function POST(req: NextRequest) {
     const prioridade = normPrioridade(payload.prioridade);
     const status: DBStatusOS =
       payload.status === "ORCAMENTO" ? "ORCAMENTO" : "AGUARDANDO_CHECKLIST";
-    const clienteid = Number(payload.cliente.id);
+    const clienteid =
+      typeof payload.cliente?.id === "number" ? Number(payload.cliente.id) : null;
 
-    const { data: cRow, error: cErr } = await supabaseAdmin
-      .from("cliente")
-      .select("id")
-      .eq("id", clienteid)
-      .maybeSingle();
+    if (clienteid !== null) {
+      const { data: cRow, error: cErr } = await supabaseAdmin
+        .from("cliente")
+        .select("id")
+        .eq("id", clienteid)
+        .maybeSingle();
 
-    if (cErr) throw cErr;
-    if (!cRow?.id) {
-      return NextResponse.json({ error: "Cliente não encontrado." }, { status: 400 });
+      if (cErr) throw cErr;
+      if (!cRow?.id) {
+        return NextResponse.json({ error: "Cliente não encontrado." }, { status: 400 });
+      }
     }
 
     let alvo_tipo: DBAlvo = "VEICULO";
@@ -137,6 +143,13 @@ export async function POST(req: NextRequest) {
         const ano = alvo.veiculo?.ano ?? null;
         const cor = (alvo.veiculo?.cor || "").trim() || null;
         const kmatual = alvo.veiculo?.kmatual ?? null;
+
+        if (placa && clienteid === null) {
+          return NextResponse.json(
+            { error: "Para cadastrar veículo novo, selecione um cliente." },
+            { status: 400 }
+          );
+        }
 
         if (placa) {
           const { data: vNew, error: eVNew } = await supabaseAdmin

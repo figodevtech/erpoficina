@@ -52,6 +52,7 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
   const [obsByItem, setObsByItem] = useState<Record<string, string>>({});
   const [imagesByItem, setImagesByItem] = useState<Record<string, File[]>>({});
+  const [previewUrlsByItem, setPreviewUrlsByItem] = useState<Record<string, string[]>>({});
   const [existingImagesByItem, setExistingImagesByItem] = useState<Record<string, ExistingImage[]>>({});
 
   const initialSnapshotRef = useRef<string>("");
@@ -108,6 +109,10 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
     setChecklist({});
     setObsByItem({});
     setImagesByItem({});
+    setPreviewUrlsByItem((prev) => {
+      Object.values(prev).flat().forEach((url) => URL.revokeObjectURL(url));
+      return {};
+    });
     setExistingImagesByItem({});
     setExistingError(null);
     setPendingApply(false);
@@ -178,6 +183,10 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
       setChecklist(novoChecklist);
       setObsByItem(novoObs);
       setImagesByItem(novoImgs);
+      setPreviewUrlsByItem((prev) => {
+        Object.values(prev).flat().forEach((url) => URL.revokeObjectURL(url));
+        return {};
+      });
 
       initialSnapshotRef.current = computeSnapshot({
         templateId: id,
@@ -268,6 +277,7 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
           setChecklist(statusByItem);
           setObsByItem(obsMap);
           setImagesByItem(Object.fromEntries(itens.map((it: any) => [it.titulo, []])));
+          setPreviewUrlsByItem({});
           setExistingImagesByItem(imgsByItem);
           checklistIdByItemRef.current = ckIdByItem;
 
@@ -329,9 +339,14 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
 
   const onPickFiles = (itemTitle: string, files: FileList | null) => {
     if (!files?.length) return;
+    const picked = Array.from(files);
     setImagesByItem((prev) => ({
       ...prev,
-      [itemTitle]: [...(prev[itemTitle] ?? []), ...Array.from(files)],
+      [itemTitle]: [...(prev[itemTitle] ?? []), ...picked],
+    }));
+    setPreviewUrlsByItem((prev) => ({
+      ...prev,
+      [itemTitle]: [...(prev[itemTitle] ?? []), ...picked.map((file) => URL.createObjectURL(file))],
     }));
   };
 
@@ -339,6 +354,12 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
     setImagesByItem((prev) => {
       const list = [...(prev[itemTitle] ?? [])];
       list.splice(idx, 1);
+      return { ...prev, [itemTitle]: list };
+    });
+    setPreviewUrlsByItem((prev) => {
+      const list = [...(prev[itemTitle] ?? [])];
+      const [removed] = list.splice(idx, 1);
+      if (removed) URL.revokeObjectURL(removed);
       return { ...prev, [itemTitle]: list };
     });
   };
@@ -537,6 +558,7 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
               const key = it.titulo ?? "";
               const marcado = checklist[key] ?? "";
               const files = imagesByItem[key] ?? [];
+              const previewUrls = previewUrlsByItem[key] ?? [];
               const existingImgs = existingImagesByItem[key] ?? [];
               const obs = obsByItem[key] ?? "";
 
@@ -599,24 +621,57 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
                   <div className="mt-3 space-y-2">
                     <Label className="text-xs text-muted-foreground">Imagens do item (opcional)</Label>
 
-                    {existingImgs.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                    {(existingImgs.length > 0 || files.length > 0) && (
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                         {existingImgs.map((im) => (
-                          <div key={im.id} className="relative h-16 w-16">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={im.url}
-                              alt={im.descricao ?? "Imagem"}
-                              className="h-16 w-16 rounded-md border object-cover"
-                            />
+                          <div key={im.id} className="relative overflow-hidden rounded-md border bg-muted/20">
+                            <div className="aspect-square w-full overflow-hidden bg-muted">
+                              <img
+                                src={im.url}
+                                alt={im.descricao ?? "Imagem"}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <div className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">
+                              {im.descricao || "Imagem salva"}
+                            </div>
                             <button
                               type="button"
-                              className="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-muted"
+                              className="absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background/90 shadow-sm hover:bg-background"
                               onClick={() => removeExistingImage(key, im.id)}
                               title="Remover imagem"
                               disabled={saving}
                             >
-                              <X className="h-3.5 w-3.5" />
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                        {files.map((f, idx) => (
+                          <div
+                            key={`${f.name}-${idx}`}
+                            className="relative overflow-hidden rounded-md border border-primary/70 bg-primary/5 ring-1 ring-primary/25"
+                          >
+                            <Badge className="absolute left-1.5 top-1.5 z-10 bg-primary text-primary-foreground text-[10px]">
+                              Nova
+                            </Badge>
+                            <div className="aspect-square w-full overflow-hidden bg-muted">
+                              {previewUrls[idx] ? (
+                                <img
+                                  src={previewUrls[idx]}
+                                  alt={f.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </div>
+                            <div className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">{f.name}</div>
+                            <button
+                              type="button"
+                              className="absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background/90 shadow-sm hover:bg-background"
+                              onClick={() => removeFile(key, idx)}
+                              title="Remover"
+                              disabled={saving}
+                            >
+                              <X className="h-4 w-4" />
                             </button>
                           </div>
                         ))}
@@ -638,31 +693,9 @@ export function ChecklistEditDialog({ open, onOpenChange, osId }: Props) {
                       </label>
 
                       {files.length > 0 && (
-                        <span className="text-xs text-muted-foreground">{files.length} arquivo(s) selecionado(s)</span>
+                        <span className="text-xs text-muted-foreground">{files.length} nova(s) imagem(ns)</span>
                       )}
                     </div>
-
-                    {files.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {files.map((f, idx) => (
-                          <div
-                            key={`${f.name}-${idx}`}
-                            className="inline-flex items-center gap-2 border rounded px-2 py-1 text-xs"
-                          >
-                            <span className="max-w-[180px] truncate">{f.name}</span>
-                            <button
-                              type="button"
-                              className="opacity-70 hover:opacity-100"
-                              onClick={() => removeFile(key, idx)}
-                              title="Remover"
-                              disabled={saving}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               );

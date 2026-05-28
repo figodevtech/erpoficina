@@ -3,7 +3,7 @@ import type { EnumStatusOS, EnumStatusAprovacao, EnumTipoOS } from './enum';
 
 export interface OrdemServico {
   id: number;
-  clienteid: number;                 // FK -> cliente(id)
+  clienteid?: number | null;         // FK -> cliente(id)
   veiculoid?: number | null;         // FK -> veiculo(id)
   tipoos: EnumTipoOS;                // USER-DEFINED
   usuariocriadorid?: string | null;  // uuid FK -> usuario(id)

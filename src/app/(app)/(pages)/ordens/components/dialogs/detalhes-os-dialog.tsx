@@ -19,6 +19,7 @@ Calculator,
 Car,
 CheckSquare,
 Copy,
+Download,
 ExternalLink,
 FileText,
 ImageIcon,
@@ -539,6 +540,26 @@ export function OSDetalhesDialog({
     }
   }
 
+  async function baixarImagem(url: string, filename: string) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Falha ao baixar imagem");
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename || "imagem";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+      toast.error("Não foi possível baixar automaticamente. A imagem foi aberta em nova aba.");
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -897,21 +918,44 @@ export function OSDetalhesDialog({
                                 <ImageIcon className="h-3.5 w-3.5" />
                                 Imagens anexadas
                               </div>
-                              <div className="flex flex-wrap gap-2">
+                              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                                 {c.imagens.map((img) => {
                                   const name = fileNameFromUrl(img.url);
                                   return (
-                                    <a
+                                    <div
                                       key={img.id}
-                                      href={img.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs underline hover:bg-muted break-all"
-                                      title={img.descricao || name}
+                                      className="group relative overflow-hidden rounded-md border bg-muted/20 transition-colors hover:bg-muted"
                                     >
-                                      {name}
-                                      <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-                                    </a>
+                                      <a
+                                        href={img.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="block focus:outline-none focus:ring-2 focus:ring-primary"
+                                        title={img.descricao || name}
+                                      >
+                                      <span className="block aspect-square w-full overflow-hidden bg-muted">
+                                        <img
+                                          src={img.url}
+                                          alt={img.descricao || name}
+                                          loading="lazy"
+                                          className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                                        />
+                                      </span>
+                                      <span className="flex min-w-0 items-center gap-1 px-2 py-1.5 text-[11px] text-muted-foreground">
+                                        <span className="truncate">{img.descricao || name}</span>
+                                        <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
+                                      </span>
+                                      </a>
+                                      <button
+                                        type="button"
+                                        className="absolute hover:cursor-pointer right-2 bottom-8 inline-flex h-8 w-8 items-center justify-center rounded-full border bg-background/90 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                                        title="Baixar imagem"
+                                        aria-label="Baixar imagem"
+                                        onClick={() => void baixarImagem(img.url, name)}
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </button>
+                                    </div>
                                   );
                                 })}
                               </div>

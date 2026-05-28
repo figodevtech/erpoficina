@@ -42,6 +42,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
     }
 
     // define statusaprovacao em função do novo status
+    if (status === "APROVACAO_ORCAMENTO") {
+      const osRes = await supabaseAdmin
+        .from("ordemservico")
+        .select("id, clienteid")
+        .eq("id", osId)
+        .maybeSingle();
+
+      if (osRes.error) throw osRes.error;
+      if (!osRes.data?.id) {
+        return NextResponse.json({ error: "OS não encontrada." }, { status: 404 });
+      }
+      if (osRes.data.clienteid == null) {
+        return NextResponse.json(
+          { error: "Selecione um cliente antes de enviar a OS para aprovação." },
+          { status: 400 }
+        );
+      }
+    }
+
     let statusaprovacao: DBAprovacao | null = null;
 
     if (status === "ORCAMENTO_APROVADO") {

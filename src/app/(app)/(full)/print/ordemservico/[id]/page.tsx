@@ -820,9 +820,12 @@ export default async function OSFullPage({ params }: PageProps) {
                   <User className="w-4 h-4" />
                   Cliente
                 </div>
-                <div className="h2">
+                {os.cliente ? (
+                  <>
+                  <div className="h2">
                   {fmtText(os.cliente?.nomerazaosocial).toUpperCase()}
                 </div>
+                
                 <div style={{ marginTop: 8 }}>
                   <div className="kv">
                     <span className="k">Documento</span>
@@ -845,6 +848,9 @@ export default async function OSFullPage({ params }: PageProps) {
                     {clienteLocal && <div>{clienteLocal}</div>}
                   </div>
                 )}
+                  </>
+                ): <span className="text-xs font-mono text-gray-700">CLIENTE AVULSO</span>}
+                
               </div>
 
               <div className="cartao cartao-destaque col-span-2">
@@ -864,6 +870,8 @@ export default async function OSFullPage({ params }: PageProps) {
                   </div>
                 ) : (
                   <>
+                  {os.veiculo ? (
+                    <>
                     <div className="h2">{fmtText(veiculoNome)}</div>
                     <div style={{ marginTop: 8 }}>
                       <div className="kv">
@@ -878,7 +886,11 @@ export default async function OSFullPage({ params }: PageProps) {
                         <span className="k">KM</span>
                         <span className="v">{fmtText(os.veiculo?.km)}</span>
                       </div>
-                    </div>
+                    </div></>
+                  ):
+                  
+                  (<span className="text-xs font-mono text-gray-700">NÃO DEFINIDO</span>)}
+                    
                   </>
                 )}
               </div>

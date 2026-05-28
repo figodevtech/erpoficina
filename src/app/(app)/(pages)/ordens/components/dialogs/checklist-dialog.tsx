@@ -44,6 +44,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
   const [checklist, setChecklist] = useState<Record<string, Marcacao>>({});
   const [obsByItem, setObsByItem] = useState<Record<string, string>>({});
   const [imagesByItem, setImagesByItem] = useState<Record<string, File[]>>({});
+  const [previewUrlsByItem, setPreviewUrlsByItem] = useState<Record<string, string[]>>({});
 
   const submitDoneRef = useRef(false);
 
@@ -65,6 +66,10 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
     setChecklist({});
     setObsByItem({});
     setImagesByItem({});
+    setPreviewUrlsByItem((prev) => {
+      Object.values(prev).flat().forEach((url) => URL.revokeObjectURL(url));
+      return {};
+    });
     submitDoneRef.current = false;
   }, []);
 
@@ -123,6 +128,10 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
       setChecklist(novoChecklist);
       setObsByItem(novoObs);
       setImagesByItem(novoImgs);
+      setPreviewUrlsByItem((prev) => {
+        Object.values(prev).flat().forEach((url) => URL.revokeObjectURL(url));
+        return {};
+      });
     },
     [templates]
   );
@@ -155,9 +164,14 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
 
   const onPickFiles = (itemTitle: string, files: FileList | null) => {
     if (!files?.length) return;
+    const picked = Array.from(files);
     setImagesByItem((prev) => ({
       ...prev,
-      [itemTitle]: [...(prev[itemTitle] ?? []), ...Array.from(files)],
+      [itemTitle]: [...(prev[itemTitle] ?? []), ...picked],
+    }));
+    setPreviewUrlsByItem((prev) => ({
+      ...prev,
+      [itemTitle]: [...(prev[itemTitle] ?? []), ...picked.map((file) => URL.createObjectURL(file))],
     }));
   };
 
@@ -165,6 +179,12 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
     setImagesByItem((prev) => {
       const list = [...(prev[itemTitle] ?? [])];
       list.splice(idx, 1);
+      return { ...prev, [itemTitle]: list };
+    });
+    setPreviewUrlsByItem((prev) => {
+      const list = [...(prev[itemTitle] ?? [])];
+      const [removed] = list.splice(idx, 1);
+      if (removed) URL.revokeObjectURL(removed);
       return { ...prev, [itemTitle]: list };
     });
   };
@@ -320,6 +340,7 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
               const key = it.titulo ?? "";
               const marcado = checklist[key] ?? "";
               const files = imagesByItem[key] ?? [];
+              const previewUrls = previewUrlsByItem[key] ?? [];
               const obs = obsByItem[key] ?? "";
 
               return (
@@ -401,21 +422,30 @@ export function ChecklistDialog({ open, onOpenChange, osId }: Props) {
                     </div>
 
                     {files.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                         {files.map((f, idx) => (
                           <div
                             key={`${f.name}-${idx}`}
-                            className="inline-flex items-center gap-2 border rounded px-2 py-1 text-xs"
+                            className="relative overflow-hidden rounded-md border bg-muted/20"
                           >
-                            <span className="max-w-[180px] truncate">{f.name}</span>
+                            <div className="aspect-square w-full overflow-hidden bg-muted">
+                              {previewUrls[idx] ? (
+                                <img
+                                  src={previewUrls[idx]}
+                                  alt={f.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </div>
+                            <div className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">{f.name}</div>
                             <button
                               type="button"
-                              className="opacity-70 hover:opacity-100"
+                              className="absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full border bg-background/90 shadow-sm hover:bg-background"
                               onClick={() => removeFile(key, idx)}
                               title="Remover"
                               disabled={saving}
                             >
-                              <X className="h-3.5 w-3.5" />
+                              <X className="h-4 w-4" />
                             </button>
                           </div>
                         ))}

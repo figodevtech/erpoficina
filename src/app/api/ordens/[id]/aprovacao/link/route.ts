@@ -31,6 +31,21 @@ export async function GET(
     if (!osId) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
 
     // já existe token válido?
+    const { data: os, error: osErr } = await supabase
+      .from("ordemservico")
+      .select("id, clienteid")
+      .eq("id", osId)
+      .maybeSingle();
+
+    if (osErr) throw osErr;
+    if (!os?.id) return NextResponse.json({ error: "OS não encontrada." }, { status: 404 });
+    if (os.clienteid == null) {
+      return NextResponse.json(
+        { error: "Selecione um cliente antes de gerar o link de aprovação." },
+        { status: 400 }
+      );
+    }
+
     const agora = new Date();
     const { data: existente, error: e1 } = await supabase
       .from("osaprovacao")

@@ -245,8 +245,6 @@ export function FormularioNovaOS({
 
   const validateAll = (): string | null => {
     if (!setor) return "Selecione o setor responsável.";
-    if (!cliente) return "Selecione um cliente cadastrado.";
-
     if (alvoTipo === "VEICULO") {
       const placaNorm = vPlaca.trim().toUpperCase();
       if (!veiculoVinculado && placaNorm && veiculosDoCliente.length > 0) {
@@ -279,7 +277,7 @@ export function FormularioNovaOS({
         observacoes_fiscais: (observacoesFiscais || "").trim() || null,
         prioridade,
         status: mode === "ORCAMENTO" ? "ORCAMENTO" : "AGUARDANDO_CHECKLIST",
-        cliente: { id: cliente!.id },
+        cliente: cliente ? { id: cliente.id } : null,
         veiculoid: veiculoSelecionadoId,
         alvo:
           alvoTipo === "VEICULO"
@@ -393,7 +391,7 @@ export function FormularioNovaOS({
               </CardTitle>
             </div>
             <CardDescription>
-              Selecione um cliente já cadastrado para abrir a OS.
+              Selecione um cliente cadastrado ou deixe sem cliente.
             </CardDescription>
           </CardHeader>
 
@@ -417,7 +415,7 @@ export function FormularioNovaOS({
                 </CustomerSelect>
                 {cliente && (
                   <div
-                    onClick={() => setCliente(null)}
+                    onClick={() => applySelectedCustomer(null)}
                     className="p-1.5 rounded-full hover:cursor-pointer bg-muted"
                   >
                     <X className="w-3 h-3 text-red-500" />
