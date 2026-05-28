@@ -15,9 +15,10 @@ type Props = {
 };
 
 const REGIME_TRIBUTARIO_OPTIONS = [
-  { value: "1", label: "Simples Nacional" },
-  { value: "2", label: "Lucro Presumido" },
-  { value: "3", label: "Lucro Real" },
+  { value: "1", label: "1 - Simples Nacional" },
+  { value: "2", label: "2 - Simples Nacional (excesso de sublimite)" },
+  { value: "3", label: "3 - Regime Normal (Lucro Presumido/Real)" },
+  { value: "4", label: "4 - Simples Nacional MEI" },
 ];
 
 const UF_OPTIONS = [
@@ -189,7 +190,9 @@ export function EmpresaTab({ register, setValue, watch }: Props) {
               <Label className="mb-2 block text-sm font-medium">Regime Tributario *</Label>
               <Select
                 value={regTrib}
-                onValueChange={(v) => setValue("empresa.regimetributario", v as "1" | "2" | "3", { shouldDirty: true })}
+                onValueChange={(v) =>
+                  setValue("empresa.regimetributario", v as "1" | "2" | "3" | "4", { shouldDirty: true })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />

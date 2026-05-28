@@ -19,7 +19,7 @@ export type Empresa = {
   nomepais?: string;
   telefone?: string;
   cnae?: string;
-  regimetributario: "1" | "2" | "3";
+  regimetributario: "1" | "2" | "3" | "4";
   ambiente: "HOMOLOGACAO" | "PRODUCAO";
   certificadocaminho?: string;
   certificadosenha?: string;

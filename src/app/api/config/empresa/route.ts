@@ -10,6 +10,16 @@ const supabase = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
+function normalizarRegimeTributario(valor: unknown): "1" | "2" | "3" | "4" {
+  const regime = String(valor || "1").trim();
+
+  if (regime === "1" || regime === "2" || regime === "3" || regime === "4") {
+    return regime;
+  }
+
+  throw new Error("Regime tributário (CRT) deve ser 1, 2, 3 ou 4.");
+}
+
 // GET: retorna a primeira empresa cadastrada
 export async function GET() {
   try {
@@ -76,7 +86,7 @@ export async function GET() {
       nomepais: data.nomepais || "BRASIL",
       telefone: data.telefone || "",
       cnae: data.cnae || "",
-      regimetributario: (data.regimetributario || "1") as "1" | "2" | "3",
+      regimetributario: (data.regimetributario || "1") as "1" | "2" | "3" | "4",
       ambiente: (data.ambiente || "HOMOLOGACAO") as "HOMOLOGACAO" | "PRODUCAO",
       certificadocaminho: data.certificadocaminho || "",
       certificadosenha: data.certificadosenha || "",
@@ -121,7 +131,7 @@ export async function PUT(request: Request) {
       nomepais: v.nomepais ? String(v.nomepais) : "BRASIL",
       telefone: v.telefone ? onlyDigits(v.telefone) : null,
       cnae: v.cnae ? String(v.cnae) : null,
-      regimetributario: String(v.regimetributario || "1"),
+      regimetributario: normalizarRegimeTributario(v.regimetributario),
       ambiente: String(v.ambiente || "HOMOLOGACAO"),
       certificadocaminho: v.certificadocaminho ? String(v.certificadocaminho) : null,
       certificadosenha: v.certificadosenha ? String(v.certificadosenha) : null,

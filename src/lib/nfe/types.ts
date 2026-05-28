@@ -32,6 +32,8 @@ export type EmpresaRow = {
   certificadosenha: string | null;
 };
 
+export type CrtNFe = "1" | "2" | "3" | "4";
+
 // =====================
 // Tabela CLIENTE (Supabase)
 // =====================
@@ -80,7 +82,7 @@ export type NFeEmitente = {
   inscricaoEstadualST?: string;
   inscricaoMunicipal?: string;
   cnae?: string;
-  crt: "1" | "2" | "3" | string;
+  crt: CrtNFe;
   endereco: NFeEndereco;
 };
 

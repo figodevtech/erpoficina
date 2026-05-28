@@ -81,10 +81,10 @@ export function validarEmitenteEmpresa(empresa: EmpresaRow): ErroValidacao[] {
   // Regime tributário (CRT)
   if (vazio(empresa.regimetributario)) {
     erros.push({ campo: 'regimetributario', mensagem: 'Regime tributário (CRT) é obrigatório.' });
-  } else if (!['1', '2', '3'].includes(empresa.regimetributario)) {
+  } else if (!['1', '2', '3', '4'].includes(empresa.regimetributario)) {
     erros.push({
       campo: 'regimetributario',
-      mensagem: 'Regime tributário (CRT) deve ser 1, 2 ou 3.',
+      mensagem: 'Regime tributário (CRT) deve ser 1, 2, 3 ou 4.',
     });
   }
 

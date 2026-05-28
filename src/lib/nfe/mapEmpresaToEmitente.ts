@@ -1,9 +1,21 @@
 // src/lib/nfe/mapEmpresaToEmitente.ts
-import type { EmpresaRow, NFeEmitente } from './types';
+import type { CrtNFe, EmpresaRow, NFeEmitente } from './types';
 
 function soNumeros(valor: string | null | undefined): string {
   if (!valor) return '';
   return valor.replace(/\D/g, '');
+}
+
+function normalizarCrtNFe(valor: string | null | undefined): CrtNFe {
+  const crt = String(valor || '').trim();
+
+  if (crt === '1' || crt === '2' || crt === '3' || crt === '4') {
+    return crt;
+  }
+
+  throw new Error(
+    `Regime tributário (CRT) inválido para NF-e: ${crt || 'não informado'}. Use 1, 2, 3 ou 4.`
+  );
 }
 
 /**
@@ -22,7 +34,7 @@ export function mapEmpresaToEmitente(
     inscricaoEstadualST: soNumeros(empresa.inscricaoestadualst),
     inscricaoMunicipal: soNumeros(empresa.inscricaomunicipal),
     cnae: empresa.cnae || undefined,
-    crt: empresa.regimetributario as '1' | '2' | '3',
+    crt: normalizarCrtNFe(empresa.regimetributario),
     endereco: {
       logradouro: empresa.endereco,
       numero: empresa.numero || 'S/N',

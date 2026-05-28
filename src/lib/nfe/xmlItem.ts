@@ -8,7 +8,7 @@ function formatNumber(value: number, decimals: number): string {
 
 /**
  * crt:
- *  "1" ou "2" -> Simples Nacional (usa CSOSN)
+ *  "1", "2" ou "4" -> Simples Nacional (usa CSOSN)
  *  "3"        -> Regime Normal (Lucro Presumido / Real) – usa CST
  */
 export function buildDetXml(item: NFeItem, crt: string): string {
@@ -62,7 +62,7 @@ export function buildDetXml(item: NFeItem, crt: string): string {
   partes.push('<ICMS>');
 
   const crtStr = (crt || '').toString();
-  const isSimplesNacional = crtStr === '1' || crtStr === '2';
+  const isSimplesNacional = crtStr === '1' || crtStr === '2' || crtStr === '4';
 
   const cst = (item.cst || '').trim();
   const csosn = (item.csosn || '').trim();
@@ -71,7 +71,7 @@ export function buildDetXml(item: NFeItem, crt: string): string {
   const vIcmsNumber = (vBCIcmsNumber * aliqIcms) / 100;
 
   if (isSimplesNacional) {
-    // ---------- Simples Nacional (CRT 1 ou 2) ----------
+    // ---------- Simples Nacional (CRT 1, 2 ou 4) ----------
     const csosnTag = csosn || '102';
 
     partes.push('<ICMSSN102>');
