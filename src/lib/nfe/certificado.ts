@@ -3,34 +3,83 @@
 import fs from 'fs';
 import path from 'path';
 import forge from 'node-forge';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { EmpresaRow } from './types';
 
+const CERT_BUCKET = 'empresa';
+const CERT_PREFIX = 'certificado';
+
+async function carregarPfxDoStorage(): Promise<Buffer | null> {
+  const { data: arquivos, error: listError } = await supabaseAdmin.storage
+    .from(CERT_BUCKET)
+    .list(CERT_PREFIX, {
+      limit: 100,
+      offset: 0,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+
+  if (listError) {
+    throw new Error(
+      `Falha ao listar certificados no bucket ${CERT_BUCKET}/${CERT_PREFIX}: ${listError.message}`
+    );
+  }
+
+  const primeiroArquivo = (arquivos ?? []).find((arquivo) => {
+    return arquivo.name && arquivo.name !== '.emptyFolderPlaceholder';
+  });
+
+  if (!primeiroArquivo) return null;
+
+  const storagePath = `${CERT_PREFIX}/${primeiroArquivo.name}`;
+  const { data, error: downloadError } = await supabaseAdmin.storage
+    .from(CERT_BUCKET)
+    .download(storagePath);
+
+  if (downloadError) {
+    throw new Error(
+      `Falha ao baixar certificado do bucket ${CERT_BUCKET}/${storagePath}: ${downloadError.message}`
+    );
+  }
+
+  return Buffer.from(await data.arrayBuffer());
+}
+
+function carregarPfxDoDisco(empresa: EmpresaRow): Buffer | null {
+  const pfxPathRaw = empresa.certificadocaminho || process.env.NFE_CERT_PFX_PATH || '';
+
+  if (!pfxPathRaw) return null;
+
+  const pfxPath = path.resolve(pfxPathRaw);
+
+  if (!fs.existsSync(pfxPath)) {
+    throw new Error(`Arquivo PFX nao encontrado em: ${pfxPath}`);
+  }
+
+  return fs.readFileSync(pfxPath);
+}
+
 /**
- * Lê o PFX do disco e extrai:
+ * Le o PFX do Supabase Storage e extrai:
  *  - chave privada em PEM (privateKeyPem)
  *  - certificado em PEM (certificatePem)
+ *
+ * Fonte principal: bucket "empresa", pasta "certificado", primeiro arquivo.
+ * Fallback local: empresa.certificadocaminho ou NFE_CERT_PFX_PATH.
  */
 export async function carregarCertificadoA1(empresa: EmpresaRow): Promise<{
   privateKeyPem: string;
   certificatePem: string;
 }> {
-  // 1) Caminho do .pfx
-  const pfxPathRaw =
-    empresa.certificadocaminho ||
-    process.env.NFE_CERT_PFX_PATH ||
-    'C:\\certs\\certificado.pfx';
+  const pfxBuffer = (await carregarPfxDoStorage()) ?? carregarPfxDoDisco(empresa);
 
-  const pfxPath = path.resolve(pfxPathRaw);
-
-  if (!fs.existsSync(pfxPath)) {
-    throw new Error(`Arquivo PFX não encontrado em: ${pfxPath}`);
+  if (!pfxBuffer) {
+    throw new Error(
+      `Nenhum arquivo PFX encontrado no bucket ${CERT_BUCKET}/${CERT_PREFIX}.`
+    );
   }
 
-  const pfxBuffer = fs.readFileSync(pfxPath);
-
-  // 2) Converte PFX (DER) para ASN.1
   const p12Asn1 = forge.asn1.fromDer(
-    forge.util.createBuffer(pfxBuffer).getBytes()
+    forge.util.createBuffer(pfxBuffer.toString('binary')).getBytes()
   );
 
   const senha = empresa.certificadosenha ?? '';
@@ -46,7 +95,6 @@ export async function carregarCertificadoA1(empresa: EmpresaRow): Promise<{
     );
   }
 
-  // 3) Tenta pegar chave privada (pkcs8ShroudedKeyBag > keyBag)
   const pkcs8Bags =
     p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[
       forge.pki.oids.pkcs8ShroudedKeyBag
@@ -62,12 +110,11 @@ export async function carregarCertificadoA1(empresa: EmpresaRow): Promise<{
   const keyObj = keyBags && keyBags.length > 0 ? keyBags[0].key : undefined;
 
   if (!keyObj) {
-    throw new Error('Não foi possível localizar a chave privada dentro do PFX.');
+    throw new Error('Nao foi possivel localizar a chave privada dentro do PFX.');
   }
 
   const privateKeyPem = forge.pki.privateKeyToPem(keyObj);
 
-  // 4) Pega o certificado X.509
   const certBags =
     p12.getBags({ bagType: forge.pki.oids.certBag })[
       forge.pki.oids.certBag
@@ -76,17 +123,15 @@ export async function carregarCertificadoA1(empresa: EmpresaRow): Promise<{
     certBags && certBags.length > 0 ? certBags[0].cert : undefined;
 
   if (!certObj) {
-    throw new Error('Não foi possível localizar o certificado dentro do PFX.');
+    throw new Error('Nao foi possivel localizar o certificado dentro do PFX.');
   }
 
   const certificatePem = forge.pki.certificateToPem(certObj);
 
-  // 5) Sanidade extra (pra evitar exatamente esse erro que você recebeu)
   if (!privateKeyPem || !privateKeyPem.trim()) {
-    throw new Error('Chave privada PEM extraída do PFX está vazia.');
+    throw new Error('Chave privada PEM extraida do PFX esta vazia.');
   }
 
-  // (Opcional) debug leve – não loga chave, só tamanho
   console.log(
     '[certificadoA1] privateKeyPem length =',
     privateKeyPem.length,
