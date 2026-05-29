@@ -82,14 +82,14 @@ export async function GET(
       serie
     );
 
-    // 4) Checar se tem caminho e senha do certificado
-    if (!empresa.certificadocaminho || !empresa.certificadosenha) {
+    // 4) Checar se tem senha do certificado. O PFX vem do bucket empresa/certificado.
+    if (!empresa.certificadosenha) {
       return NextResponse.json(
         {
           ok: false,
           tipo: 'CERTIFICADO_INCOMPLETO',
           mensagem:
-            'certificadocaminho e certificadosenha precisam estar preenchidos na tabela empresa.',
+            'certificadosenha precisa estar preenchida na tabela empresa.',
         },
         { status: 400 }
       );

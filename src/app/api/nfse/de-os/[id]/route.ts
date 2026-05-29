@@ -104,7 +104,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     };
 
     const missingFields = Object.entries(requiredFields)
-      .filter(([_, value]) => !value || value.trim() === "")
+      .filter((entry) => {
+        const value = entry[1];
+        return !value || value.trim() === "";
+      })
       .map(([key]) => key);
 
     if (missingFields.length > 0) {
@@ -126,7 +129,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const result = await nfseService.emitir(emitirParams);
 
 
-    require('fs').writeFileSync('focus_request_log.json', JSON.stringify({ params: emitirParams, result }, null, 2));
+    console.info("[POST /api/nfse/de-os] Focus retorno", {
+      referencia: emitirParams.referencia,
+      ok: result.ok,
+      status: result.status,
+    });
 
     // 5. Store in our Database
     const insercao = {
