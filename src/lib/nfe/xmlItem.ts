@@ -40,7 +40,7 @@ export function buildDetXml(item: NFeItem, crt: string | number): string {
   partes.push(`<cEAN>${cEAN}</cEAN>`);
   partes.push(`<xProd>${escapeXml(item.descricao)}</xProd>`);
   partes.push(`<NCM>${escapeXml(item.ncm)}</NCM>`);
-  partes.push(getCestXml(item, crtNormalizado));
+  partes.push(getCestXml(item));
   partes.push(`<CFOP>${escapeXml(item.cfop)}</CFOP>`);
   partes.push(`<uCom>${escapeXml(item.unidade)}</uCom>`);
   partes.push(`<qCom>${qCom}</qCom>`);

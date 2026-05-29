@@ -2,26 +2,14 @@
 import type { EmpresaRow, NFeEmitente } from './types';
 import { normalizarCRT } from './fiscal';
 
-function soNumeros(valor: string | null | undefined): string {
+function soNumeros(valor: string | number | null | undefined): string {
   if (!valor) return '';
-  return valor.replace(/\D/g, '');
-}
-
-function normalizarCrtNFe(valor: string | null | undefined): CrtNFe {
-  const crt = String(valor || '').trim();
-
-  if (crt === '1' || crt === '2' || crt === '3' || crt === '4') {
-    return crt;
-  }
-
-  throw new Error(
-    `Regime tributário (CRT) inválido para NF-e: ${crt || 'não informado'}. Use 1, 2, 3 ou 4.`
-  );
+  return String(valor).replace(/\D/g, '');
 }
 
 /**
  * Converte o registro da tabela "empresa" em um objeto NFeEmitente
- * pronto pra ser usado na geração do XML.
+ * pronto para ser usado na geracao do XML.
  */
 export function mapEmpresaToEmitente(
   empresa: EmpresaRow,

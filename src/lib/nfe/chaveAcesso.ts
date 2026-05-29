@@ -5,6 +5,7 @@
  * Por regra é 8 dígitos. Aqui usamos um aleatório para testes.
  */
 export function gerarCNF(_numeroNota: number): string {
+  void _numeroNota;
   const rand = Math.floor(Math.random() * 100000000); // 0..99.999.999
   return String(rand).padStart(8, '0');
 }

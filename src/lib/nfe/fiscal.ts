@@ -145,14 +145,14 @@ function validateCest(item: NFeItem, hasST: boolean): string {
   return cest;
 }
 
-function hasIcmsST(item: NFeItem, crt: CRT): boolean {
+function hasIcmsST(item: NFeItem): boolean {
   const csosn = clean(item.csosn);
   const cst = normalizarCSTICMS(item.cstIcms || item.cst);
   return [201, 202, 203].map(String).includes(csosn) || ['10', '30', '70'].includes(cst) || Boolean(item.vBCST || item.vICMSST);
 }
 
-export function getCestXml(item: NFeItem, crt: CRT): string {
-  const cest = validateCest(item, hasIcmsST(item, crt));
+export function getCestXml(item: NFeItem): string {
+  const cest = validateCest(item, hasIcmsST(item));
   return cest ? tag('CEST', cest) : '';
 }
 
@@ -180,7 +180,7 @@ export function validarItemFiscal(item: NFeItem, crt: CRT): void {
     }
   }
 
-  validateCest(item, hasIcmsST(item, crt));
+  validateCest(item, hasIcmsST(item));
 }
 
 export function buildIcmsXmlPorCRT(item: NFeItem, crt: CRT): string {

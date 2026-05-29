@@ -6,7 +6,7 @@ export function sanitizeString(value: string | null | undefined): string {
     if (!value) return '';
 
     // Normaliza para NFD (separa acentos) e remove diacríticos
-    let str = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const str = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
     // Remove caracteres não imprimíveis (exceto os básicos) se necessário
     // Mas geralmente apenas remover acentos já resolve 99% dos problemas de "caracteres especiais"

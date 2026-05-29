@@ -330,7 +330,7 @@ async function autorizarHandler(req: Request, nfeIdParam: string) {
       if (extraida.id) idNFeXml = extraida.id;
     }
 
-    let xmlSemAssinatura = xmlRascunhoSalvo;
+    const xmlSemAssinatura = xmlRascunhoSalvo;
 
     // Se não houver XML salvo, retorna erro ou poderia gerar um novo (descomente se desejar)
     if (!xmlSemAssinatura) {
