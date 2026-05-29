@@ -1,6 +1,6 @@
 {
   "params": {
-    "referencia": "OS_25_SRV_5_1775273368293",
+    "referencia": "OS_32_SRV_18_1780027168009",
     "natureza_operacao": 1,
     "optante_simples_nacional": false,
     "prestador": {
@@ -9,30 +9,30 @@
       "codigo_municipio": "2507507"
     },
     "tomador": {
-      "cpf": "70303429410",
-      "razao_social": "Lucas Rawlison de Souza Gomes",
-      "email": "luc1497@gmail.com",
+      "cpf": "06816375440",
+      "razao_social": "LEANDRO DE SOUSA SILVA",
+      "email": "truck@cliente.com.br",
       "endereco": {
-        "logradouro": "Rua José Rodrigues Matos",
-        "numero": "37",
-        "bairro": "Planalto Boa Esperança",
-        "codigo_municipio": "2507507",
+        "logradouro": "Rua Cosma Lopes Dias",
+        "numero": "12",
+        "bairro": "Popular",
+        "codigo_municipio": "2513703",
         "uf": "PB",
-        "cep": "58065198"
+        "cep": "58304500"
       }
     },
     "servico": {
       "aliquota": 3,
-      "discriminacao": "1x Mão de obra - OS #25",
+      "discriminacao": "1x SERVIÇO DE PROGRAMAÇÃO - OS #32",
       "iss_retido": false,
       "item_lista_servico": "14.01",
       "codigo_cnae": "452000100",
-      "valor_servicos": 1
+      "valor_servicos": 800
     }
   },
   "result": {
     "ok": true,
     "status": "processando_autorizacao",
-    "referencia": "OS_25_SRV_5_1775273368293"
+    "referencia": "OS_32_SRV_18_1780027168009"
   }
 }
