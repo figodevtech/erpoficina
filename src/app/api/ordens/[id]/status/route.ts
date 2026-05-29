@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  buscarModoBaixaEstoqueOS,
+  consumirEstoqueOS,
+  mensagemEstoqueInsuficienteOS,
+} from "@/lib/ordens/estoque-os";
 
 type DBStatusOS =
   | "AGUARDANDO_CHECKLIST"
@@ -75,6 +80,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Params
 
     if (statusaprovacao !== null) {
       updateData.statusaprovacao = statusaprovacao;
+    }
+
+    if (status === "EM_ANDAMENTO") {
+      const modoBaixa = await buscarModoBaixaEstoqueOS();
+      if (modoBaixa === "EXECUCAO") {
+        const baixa = await consumirEstoqueOS(osId);
+        if (!baixa.ok) {
+          return NextResponse.json(
+            {
+              error: mensagemEstoqueInsuficienteOS(baixa.faltantes),
+              itens: baixa.faltantes,
+            },
+            { status: 409 }
+          );
+        }
+      }
     }
 
     // 👉 datasaida: quando a OS é concluída (com ou sem cobrança)

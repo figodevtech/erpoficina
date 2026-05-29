@@ -14,6 +14,9 @@ export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
 const CONFIG_SELECT_BASE =
+  "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, modo_baixa_estoque_os, created_at, habilitar_drawers";
+
+const CONFIG_SELECT_BASE_SEM_MODO_BAIXA =
   "id, aviso_pagamento, checklist_obrigatorio, alerta_estoque_pdv, habilitar_emissao_nfe, emissao_nf_no_modulo_ordens, emissao_nf_no_modulo_vendas, emissao_nf_ordens_nao_pagas, emissao_nf_vendas_nao_pagas, created_at, habilitar_drawers";
 
 const CONFIG_SELECT_AGENDAMENTO =
@@ -23,6 +26,7 @@ const CONFIG_SELECT_IMPRESSAO =
   "impressao_cor_primaria, impressao_cor_secundaria";
 
 const CONFIG_SELECT_SEM_IMPRESSAO = `${CONFIG_SELECT_BASE}, ${CONFIG_SELECT_AGENDAMENTO}`;
+const CONFIG_SELECT_SEM_MODO_BAIXA = `${CONFIG_SELECT_BASE_SEM_MODO_BAIXA}, ${CONFIG_SELECT_AGENDAMENTO}, ${CONFIG_SELECT_IMPRESSAO}`;
 const CONFIG_SELECT_COMPLETO = `${CONFIG_SELECT_BASE}, ${CONFIG_SELECT_AGENDAMENTO}, ${CONFIG_SELECT_IMPRESSAO}`;
 
 function colunaNaoExiste(error: any) {
@@ -61,6 +65,11 @@ function corHexValida(v: any) {
   return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : undefined;
 }
 
+function modoBaixaEstoqueOSValido(v: any) {
+  const s = String(v ?? "").trim().toUpperCase();
+  return s === "ORCAMENTO" || s === "EXECUCAO" ? s : undefined;
+}
+
 function comPadroesAgendamento(config: any) {
   if (!config) return null;
 
@@ -74,6 +83,7 @@ function comPadroesAgendamento(config: any) {
       : [1, 2, 3, 4, 5],
     impressao_cor_primaria: corHexValida(config.impressao_cor_primaria) ?? "#2563eb",
     impressao_cor_secundaria: corHexValida(config.impressao_cor_secundaria) ?? "#0891b2",
+    modo_baixa_estoque_os: modoBaixaEstoqueOSValido(config.modo_baixa_estoque_os) ?? "ORCAMENTO",
   };
 }
 
@@ -89,6 +99,16 @@ async function buscarConfigAtual() {
   if (!error) return comPadroesAgendamento(data);
   if (!colunaNaoExiste(error)) throw error;
 
+  const semModoBaixa = await supabase
+    .from("config_geral")
+    .select(CONFIG_SELECT_SEM_MODO_BAIXA)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!semModoBaixa.error) return comPadroesAgendamento(semModoBaixa.data);
+  if (!colunaNaoExiste(semModoBaixa.error)) throw semModoBaixa.error;
+
   const semImpressao = await supabase
     .from("config_geral")
     .select(CONFIG_SELECT_SEM_IMPRESSAO)
@@ -101,7 +121,7 @@ async function buscarConfigAtual() {
 
   const fallback = await supabase
     .from("config_geral")
-    .select(CONFIG_SELECT_BASE)
+    .select(CONFIG_SELECT_BASE_SEM_MODO_BAIXA)
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -123,6 +143,16 @@ async function criarConfigPadraoSeNaoExistir() {
   if (!error) return comPadroesAgendamento(data);
   if (!colunaNaoExiste(error)) throw error;
 
+  const semModoBaixa = await supabase
+    .from("config_geral")
+    .select(CONFIG_SELECT_SEM_MODO_BAIXA)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!semModoBaixa.error) return comPadroesAgendamento(semModoBaixa.data);
+  if (!colunaNaoExiste(semModoBaixa.error)) throw semModoBaixa.error;
+
   const semImpressao = await supabase
     .from("config_geral")
     .select(CONFIG_SELECT_SEM_IMPRESSAO)
@@ -135,7 +165,7 @@ async function criarConfigPadraoSeNaoExistir() {
 
   const fallback = await supabase
     .from("config_geral")
-    .select(CONFIG_SELECT_BASE)
+    .select(CONFIG_SELECT_BASE_SEM_MODO_BAIXA)
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -218,6 +248,14 @@ export async function PUT(request: Request) {
       const val = corHexValida(body.impressao_cor_secundaria);
       if (val === undefined) return respostaJSON({ error: "Cor secundaria de impressao invalida." }, 400);
       patch.impressao_cor_secundaria = val;
+    }
+
+    if (body.modo_baixa_estoque_os !== undefined) {
+      const val = modoBaixaEstoqueOSValido(body.modo_baixa_estoque_os);
+      if (val === undefined) {
+        return respostaJSON({ error: "Modo de baixa de estoque da OS invalido." }, 400);
+      }
+      patch.modo_baixa_estoque_os = val;
     }
 
     if (Object.keys(patch).length === 0) {

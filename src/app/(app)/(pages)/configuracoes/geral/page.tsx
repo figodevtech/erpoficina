@@ -16,6 +16,7 @@ import {
   Search,
   CalendarDays,
   Palette,
+  Boxes,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ export default function ConfigGeralPage() {
       agendamento_dias_trabalho: [1, 2, 3, 4, 5],
       impressao_cor_primaria: "#2563eb",
       impressao_cor_secundaria: "#0891b2",
+      modo_baixa_estoque_os: "ORCAMENTO",
     },
   });
 
@@ -459,6 +461,36 @@ export default function ConfigGeralPage() {
         </Card>
 
         <Card className="border-primary/10 shadow-sm lg:col-span-7">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Boxes className="h-5 w-5 text-primary" />
+              <CardTitle>Estoque em Ordens de Serviço</CardTitle>
+            </div>
+            <CardDescription>Defina quando os produtos da OS saem do estoque.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label>Modo de baixa no estoque</Label>
+            <Select
+              value={watch("modo_baixa_estoque_os") ?? "ORCAMENTO"}
+              onValueChange={(value) =>
+                setValue("modo_baixa_estoque_os", value as Config["modo_baixa_estoque_os"], { shouldDirty: true })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ORCAMENTO">Baixa no Orçamento</SelectItem>
+                <SelectItem value="EXECUCAO">Baixa na Execução</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Na execução, o estoque é validado quando a OS é iniciada.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/10 shadow-sm lg:col-span-12">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-primary" />

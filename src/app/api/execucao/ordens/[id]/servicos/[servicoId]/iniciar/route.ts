@@ -9,6 +9,11 @@ import {
   isNextResponse,
   STATUS_EXECUTAVEIS,
 } from "../../../../../_helpers";
+import {
+  buscarModoBaixaEstoqueOS,
+  consumirEstoqueOS,
+  mensagemEstoqueInsuficienteOS,
+} from "@/lib/ordens/estoque-os";
 
 type Params = { id: string; servicoId: string };
 
@@ -70,6 +75,20 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
     const now = new Date().toISOString();
 
     if (osStatus === "ORCAMENTO_APROVADO") {
+      const modoBaixa = await buscarModoBaixaEstoqueOS();
+      if (modoBaixa === "EXECUCAO") {
+        const baixa = await consumirEstoqueOS(ordemservicoid);
+        if (!baixa.ok) {
+          return NextResponse.json(
+            {
+              error: mensagemEstoqueInsuficienteOS(baixa.faltantes),
+              itens: baixa.faltantes,
+            },
+            { status: 409 }
+          );
+        }
+      }
+
       const osUpdate = await supabaseAdmin
         .from("ordemservico")
         .update({ status: "EM_ANDAMENTO", execucao_inicio_em: (osRes.data as any).execucao_inicio_em ?? now })

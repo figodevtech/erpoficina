@@ -93,6 +93,19 @@ type AssumirTarget = {
   ordem: OrdemExecucao;
 };
 
+type EstoqueInsuficienteItem = {
+  id: number;
+  titulo: string;
+  disponivel: number;
+  solicitado: number;
+};
+
+type EstoqueInsuficienteDialog = {
+  osId: number;
+  message: string;
+  itens: EstoqueInsuficienteItem[];
+};
+
 const execLabel: Record<string, string> = {
   PENDENTE: "Pendente",
   EM_EXECUCAO: "Em execucao",
@@ -192,6 +205,7 @@ export default function ExecucaoOrdensClient() {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [hasSetDefaultSetor, setHasSetDefaultSetor] = React.useState(false);
   const [setoresDisponiveis, setSetoresDisponiveis] = React.useState<SetorOption[]>([]);
+  const [estoqueDialog, setEstoqueDialog] = React.useState<EstoqueInsuficienteDialog | null>(null);
   const realtimeTimerRef = React.useRef<number | null>(null);
 
   // Tick para cronometros
@@ -398,6 +412,19 @@ export default function ExecucaoOrdensClient() {
           method: "POST",
         });
         const json = await res.json().catch(() => ({}));
+        if (res.status === 409 && Array.isArray(json?.itens)) {
+          setEstoqueDialog({
+            osId: ordem.id,
+            message: json?.error || "Produtos do orçamento sem estoque suficiente.",
+            itens: json.itens.map((item: any) => ({
+              id: Number(item.id),
+              titulo: String(item.titulo ?? `Produto #${item.id}`),
+              disponivel: Number(item.disponivel ?? 0),
+              solicitado: Number(item.solicitado ?? 0),
+            })),
+          });
+          return;
+        }
         if (!res.ok) throw new Error(json?.error || `Falha ao iniciar ${servico.descricao}`);
       }
 
@@ -980,6 +1007,46 @@ export default function ExecucaoOrdensClient() {
               </div>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!estoqueDialog} onOpenChange={(open) => !open && setEstoqueDialog(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Estoque insuficiente para iniciar a OS</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                A OS <b>#{estoqueDialog?.osId}</b> não pode ser iniciada porque existem produtos do orçamento sem
+                estoque suficiente.
+              </p>
+              {estoqueDialog?.message ? <p>{estoqueDialog.message}</p> : null}
+            </div>
+
+            <div className="max-h-72 overflow-y-auto rounded-md border">
+              <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-3 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem]">
+                <span>Produto</span>
+                <span className="text-right">Disponível</span>
+                <span className="text-right">Necessário</span>
+              </div>
+              {(estoqueDialog?.itens ?? []).map((item) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-3 border-b px-3 py-2 text-sm last:border-b-0 sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem]"
+                >
+                  <span className="min-w-0 truncate font-medium">{item.titulo}</span>
+                  <span className="text-right tabular-nums text-muted-foreground">{item.disponivel}</span>
+                  <span className="text-right tabular-nums font-semibold">{item.solicitado}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setEstoqueDialog(null)}>Entendi</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

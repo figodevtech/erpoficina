@@ -1,34 +1,38 @@
 // src/app/api/ordens/[id]/estoque/baixa/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  buscarModoBaixaEstoqueOS,
+  consumirEstoqueOS,
+  mensagemEstoqueInsuficienteOS,
+} from "@/lib/ordens/estoque-os";
 
 type Params = { id: string };
 
-export async function POST(
-  req: NextRequest,
-  context: { params: Promise<Params> } // Next 15: params é Promise
-) {
+export async function POST(_req: NextRequest, context: { params: Promise<Params> }) {
   try {
     const { id } = await context.params;
 
     const osId = Number(id);
     if (!Number.isFinite(osId)) {
-      return NextResponse.json({ error: "OS inválida" }, { status: 400 });
+      return NextResponse.json({ error: "OS invalida" }, { status: 400 });
     }
 
-    // Se quiser auditar quem executou a baixa, leia do body (opcional):
-    // const { usuarioId }: { usuarioId?: string } = await req.json().catch(() => ({}));
-
-    // Chamada transacional via função SQL
-    const { error } = await supabaseAdmin.rpc("consumir_estoque_os", {
-      p_os_id: osId,
-      // p_usuario: usuarioId ?? null,
-    });
-
-    if (error) {
+    const modoBaixa = await buscarModoBaixaEstoqueOS();
+    if (modoBaixa !== "EXECUCAO") {
       return NextResponse.json(
-        { error: error.message ?? "Falha ao dar baixa no estoque" },
-        { status: 400 }
+        { error: "A baixa manual de estoque da OS so esta disponivel no modo Baixa na Execucao." },
+        { status: 409 }
+      );
+    }
+
+    const baixa = await consumirEstoqueOS(osId);
+    if (!baixa.ok) {
+      return NextResponse.json(
+        {
+          error: mensagemEstoqueInsuficienteOS(baixa.faltantes),
+          itens: baixa.faltantes,
+        },
+        { status: 409 }
       );
     }
 

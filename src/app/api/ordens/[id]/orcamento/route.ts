@@ -5,6 +5,7 @@ export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buscarModoBaixaEstoqueOS } from "@/lib/ordens/estoque-os";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -129,6 +130,8 @@ export async function PUT(
       subtotal?: Num;
     }> = Array.isArray(body?.servicos) ? body.servicos : [];
 
+    const modoBaixaEstoqueOS = await buscarModoBaixaEstoqueOS();
+
     // Normaliza (não aceitaremos números negativos)
     const desejados = produtosBody
       .map((p) => ({
@@ -188,10 +191,12 @@ export async function PUT(
 
     // Busca estoques/títulos dos produtos envolvidos
     const { data: prodInfos, error: prodInfoErr } = allProdIds.length
-      ? await supabase
-          .from("produto")
-          .select("id, estoque, titulo")
-          .in("id", allProdIds)
+      ? modoBaixaEstoqueOS === "ORCAMENTO"
+        ? await supabase
+            .from("produto")
+            .select("id, estoque, titulo")
+            .in("id", allProdIds)
+        : { data: [], error: null }
       : { data: [], error: null };
 
     if (prodInfoErr) throw prodInfoErr;
@@ -209,7 +214,8 @@ export async function PUT(
     // Mas como a baixa final == quantidade desejada, a reserva nova é (desejada - baixadaAtual). Se negativa, é estorno (ok).
     const faltantes: Array<{ id: number; titulo: string; disponivel: number; solicitado: number }> = [];
 
-    allProdIds.forEach((pid) => {
+    if (modoBaixaEstoqueOS === "ORCAMENTO") {
+      allProdIds.forEach((pid) => {
       const desejada = desejadosMap.get(pid)?.quantidade ?? 0;
       const baixadaAtual = baixaMap.get(pid) ?? 0;
       const deltaReserva = desejada - baixadaAtual; // o que precisa aumentar (se > 0)
@@ -225,7 +231,8 @@ export async function PUT(
           });
         }
       }
-    });
+      });
+    }
 
     if (faltantes.length) {
       return NextResponse.json(
@@ -273,7 +280,8 @@ export async function PUT(
     }
 
     // 2) Ajusta osproduto_baixa e produto.estoque conforme deltas
-    for (const pid of allProdIds) {
+    if (modoBaixaEstoqueOS === "ORCAMENTO") {
+      for (const pid of allProdIds) {
       const desejada = desejadosMap.get(pid)?.quantidade ?? 0;
       const baixadaAtual = baixaMap.get(pid) ?? 0;
       const delta = desejada - baixadaAtual; // + => consumir estoque; - => devolver
@@ -326,6 +334,7 @@ export async function PUT(
       // Atualiza cache local p/ próximo loop (evita inconsistências se mesmo id repetir)
       estoqueMap.set(pid, novoEstoque);
       baixaMap.set(pid, desejada);
+      }
     }
 
     // 3) Serviços: estratégia simples — limpar e inserir (não afetam estoque)

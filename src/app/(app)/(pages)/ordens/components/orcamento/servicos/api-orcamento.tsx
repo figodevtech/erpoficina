@@ -129,7 +129,7 @@ export async function salvarOrcamentoAPI(
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
     // estoque insuficiente tratado especialmente
-    if (r.status === 400 && Array.isArray(j?.itens)) {
+    if ((r.status === 400 || r.status === 409) && Array.isArray(j?.itens)) {
       const itens: EstoqueInsuficienteItem[] = j.itens.map((it: any) => ({
         id: Number(it.id),
         titulo: String(it.titulo ?? `Produto #${it.id}`),

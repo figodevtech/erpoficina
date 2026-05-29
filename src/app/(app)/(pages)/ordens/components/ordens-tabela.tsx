@@ -69,6 +69,19 @@ import { PERMS, permissionSetHas } from "@/app/api/_authz/permission-constants";
 
 const MAX_ALVO_CHARS = 48;
 
+type EstoqueInsuficienteItem = {
+  id: number;
+  titulo: string;
+  disponivel: number;
+  solicitado: number;
+};
+
+type EstoqueInsuficienteDialog = {
+  osId: number;
+  message: string;
+  itens: EstoqueInsuficienteItem[];
+};
+
 // ------------------ COMPONENTE PRINCIPAL ------------------
 export function OrdensTabela({
   statuses = [],
@@ -314,6 +327,7 @@ export function OrdensTabela({
 
   const [realizadoresOpen, setRealizadoresOpen] = useState(false);
   const [realizadoresOsId, setRealizadoresOsId] = useState<number | null>(null);
+  const [estoqueDialog, setEstoqueDialog] = useState<EstoqueInsuficienteDialog | null>(null);
 
   // ✅ Reset (confirm)
   const [resetOpen, setResetOpen] = useState(false);
@@ -399,6 +413,19 @@ export function OrdensTabela({
       if (!r.ok) {
         const j = await r.json().catch(() => ({} as any));
         closeLoading();
+        if (r.status === 409 && Array.isArray(j?.itens)) {
+          setEstoqueDialog({
+            osId: id,
+            message: j?.error || "Produtos do orçamento sem estoque suficiente.",
+            itens: j.itens.map((item: any) => ({
+              id: Number(item.id),
+              titulo: String(item.titulo ?? `Produto #${item.id}`),
+              disponivel: Number(item.disponivel ?? 0),
+              solicitado: Number(item.solicitado ?? 0),
+            })),
+          });
+          return;
+        }
         toast.error(j?.error || "Falha ao atualizar status");
         return;
       }
@@ -1211,6 +1238,45 @@ export function OrdensTabela({
           }}
           osId={realizadoresOsId}
         />
+
+        <AlertDialog open={!!estoqueDialog} onOpenChange={(open) => !open && setEstoqueDialog(null)}>
+          <AlertDialogContent className="sm:max-w-xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Estoque insuficiente para iniciar a OS</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3">
+                  <p>
+                    A OS <b>#{estoqueDialog?.osId}</b> não pode ser iniciada porque existem produtos do orçamento sem
+                    estoque suficiente.
+                  </p>
+                  {estoqueDialog?.message ? <p>{estoqueDialog.message}</p> : null}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="max-h-72 overflow-y-auto rounded-md border">
+              <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-3 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem]">
+                <span>Produto</span>
+                <span className="text-right">Disponível</span>
+                <span className="text-right">Necessário</span>
+              </div>
+              {(estoqueDialog?.itens ?? []).map((item) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-3 border-b px-3 py-2 text-sm last:border-b-0 sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem]"
+                >
+                  <span className="min-w-0 truncate font-medium">{item.titulo}</span>
+                  <span className="text-right tabular-nums text-muted-foreground">{item.disponivel}</span>
+                  <span className="text-right tabular-nums font-semibold">{item.solicitado}</span>
+                </div>
+              ))}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setEstoqueDialog(null)}>Entendi</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {String(checklistRow?.status ?? "")
           .trim()

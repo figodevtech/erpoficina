@@ -94,15 +94,15 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
       window.dispatchEvent(new Event("os:refresh"));
     } catch (e: any) {
       if (e instanceof EstoqueInsuficienteError || e?.name === "EstoqueInsuficienteError") {
-        const faltas = (e.faltas ?? []) as Array<{
-          produtoid: number;
+        const faltas = (e.itens ?? []) as Array<{
+          id: number;
           disponivel: number;
           solicitado: number;
         }>;
 
         const map: Record<number, { disponivel: number; solicitado: number }> = {};
         for (const f of faltas) {
-          map[f.produtoid] = {
+          map[f.id] = {
             disponivel: f.disponivel,
             solicitado: f.solicitado,
           };
