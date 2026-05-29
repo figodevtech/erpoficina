@@ -42,6 +42,8 @@ export type EmpresaRow = {
   certificadosenha: string | null;
 };
 
+export type CrtNFe = "1" | "2" | "3" | "4";
+
 // =====================
 // Tabela CLIENTE (Supabase)
 // =====================

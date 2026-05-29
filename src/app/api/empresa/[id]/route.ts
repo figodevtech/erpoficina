@@ -32,6 +32,10 @@ const CAMPOS_EMPRESA = [
 
 type CampoEmpresa = (typeof CAMPOS_EMPRESA)[number];
 
+function regimeTributarioValido(valor: unknown): boolean {
+  return ['1', '2', '3', '4'].includes(String(valor || '').trim());
+}
+
 function filtrarCampos(body: any): Partial<Record<CampoEmpresa, any>> {
   const dados: Partial<Record<CampoEmpresa, any>> = {};
   for (const campo of CAMPOS_EMPRESA) {
@@ -102,6 +106,14 @@ export async function PUT(req: Request, { params }: Contexto) {
     }
 
     const body = await req.json();
+
+    if (body.regimetributario !== undefined && !regimeTributarioValido(body.regimetributario)) {
+      return NextResponse.json(
+        { ok: false, mensagem: 'Regime tributário (CRT) deve ser 1, 2, 3 ou 4.' },
+        { status: 400 }
+      );
+    }
+
     const dados = filtrarCampos(body);
 
     if (Object.keys(dados).length === 0) {
