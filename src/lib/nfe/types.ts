@@ -3,6 +3,16 @@
 // =====================
 // Tabela EMPRESA (Supabase)
 // =====================
+export type CRT = 1 | 2 | 3 | 4;
+export type OrigemMercadoria = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8';
+export type CSOSN = '101' | '102' | '103' | '201' | '202' | '203' | '300' | '400' | '500' | '900';
+export type CSTICMS = '00' | '10' | '20' | '30' | '40' | '41' | '50' | '51' | '60' | '70' | '90';
+export type CSTPisCofins =
+  | '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08' | '09'
+  | '49' | '50' | '51' | '52' | '53' | '54' | '55' | '56' | '60'
+  | '61' | '62' | '63' | '64' | '65' | '66' | '67' | '70' | '71'
+  | '72' | '73' | '74' | '75' | '98' | '99';
+
 export type EmpresaRow = {
   id: number;
   cnpj: string;
@@ -12,7 +22,7 @@ export type EmpresaRow = {
   inscricaomunicipal: string | null;
   endereco: string;
   codigomunicipio: string;
-  regimetributario: "1" | "2" | "3" | string;
+  regimetributario: CRT | `${CRT}` | string | number | null;
   certificadocaminho: string | null;
   cschomologacao: string | null;
   cscproducao: string | null;
@@ -80,7 +90,7 @@ export type NFeEmitente = {
   inscricaoEstadualST?: string;
   inscricaoMunicipal?: string;
   cnae?: string;
-  crt: "1" | "2" | "3" | string;
+  crt: CRT | `${CRT}`;
   endereco: NFeEndereco;
 };
 
@@ -126,32 +136,42 @@ export interface NFeItem {
   valorUnitario: number;
   valorTotal: number;
   codigoBarras?: string | null;
-  cest?: string | null; // Adicionado para Phase 1
+  cest?: string | null;
 
 
   // ---------- ICMS ----------
   /**
+   * Origem da mercadoria. Default controlado: "0" (nacional), quando o item
+   * legado ainda nao informa esse campo.
+   */
+  orig?: OrigemMercadoria | string | number | null;
+
+  /**
    * CST genérico de ICMS (espelha coluna `cst` da tabela produto/nfe_item).
    * Ex.: "00", "20", "10"...
    */
-  cst?: string | null;
+  cst?: CSTICMS | string | null;
 
   /**
    * CST de ICMS (nome mais explícito, se você quiser usar também).
    * Pode espelhar o mesmo valor de `cst`.
    */
-  cstIcms?: string | null;
+  cstIcms?: CSTICMS | string | null;
 
   /**
    * CSOSN (para Simples Nacional)
    * Ex.: "101", "102", "103"...
    */
-  csosn?: string | null;
+  csosn?: CSOSN | string | null;
 
   /**
    * Alíquota de ICMS em percentual (ex.: 18 => 18%)
    */
   aliquotaIcms?: number;
+  pICMS?: number;
+  modBC?: 0 | 1 | 2 | 3 | string | number | null;
+  vBC?: number;
+  vICMS?: number;
 
   /**
    * Base de cálculo de ICMS (vBC) – opcional, hoje calculamos em cima do valorTotal.
@@ -163,11 +183,25 @@ export interface NFeItem {
    */
   valorIcms?: number;
 
+  pRedBC?: number;
+  modBCST?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | string | number | null;
+  pMVAST?: number;
+  pRedBCST?: number;
+  vBCST?: number;
+  pICMSST?: number;
+  vICMSST?: number;
+  vBCSTRet?: number;
+  pST?: number;
+  vICMSSubstituto?: number;
+  vICMSSTRet?: number;
+  pCredSN?: number;
+  vCredICMSSN?: number;
+
   // ---------- PIS ----------
   /**
    * CST de PIS (ex.: "01", "07", "99"...)
    */
-  cstPis?: string | null;
+  cstPis?: CSTPisCofins | string | null;
 
   /**
    * Alíquota de PIS em percentual (ex.: 0.65 => 0,65%)
@@ -183,7 +217,7 @@ export interface NFeItem {
   /**
    * CST de COFINS (ex.: "01", "07", "99"...)
    */
-  cstCofins?: string | null;
+  cstCofins?: CSTPisCofins | string | null;
 
   /**
    * Alíquota de COFINS em percentual (ex.: 3 => 3%)

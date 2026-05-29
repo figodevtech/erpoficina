@@ -146,17 +146,17 @@ export async function POST(req: Request) {
       contato?: string | null;
     } = body ?? {};
 
-    if (!cpfcnpj?.trim() || !nomerazaosocial?.trim()) {
-      return NextResponse.json(
-        { error: "CNPJ e Razão Social são obrigatórios." },
-        { status: 400 }
-      );
-    }
+      if (!nomerazaosocial?.trim()) {
+        return NextResponse.json(
+          { error: "Razão Social ou Nome é obrigatória." },
+          { status: 400 }
+        );
+      }
 
     const now = new Date().toISOString();
 
     const payload = {
-      cpfcnpj: cpfcnpj.trim(),
+      cpfcnpj: cpfcnpj?.trim(),
       nomerazaosocial: nomerazaosocial.trim(),
       nomefantasia: nomefantasia?.trim() || null,
       endereco: endereco?.trim() || null,

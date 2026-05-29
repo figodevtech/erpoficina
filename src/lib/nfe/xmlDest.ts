@@ -1,15 +1,6 @@
 // src/lib/nfe/xmlDest.ts
 import type { NFeDestinatario } from './types';
-
-function escapeXml(value: string | undefined): string {
-  if (!value) return '';
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+import { escapeXml } from './xmlUtils';
 
 export function buildDestXml(dest: NFeDestinatario): string {
   const p: string[] = [];

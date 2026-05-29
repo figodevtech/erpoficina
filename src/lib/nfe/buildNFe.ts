@@ -13,6 +13,8 @@ import { buildDetXml } from './xmlItem';
 import { gerarCNF, gerarChaveAcesso } from './chaveAcesso';
 import { mapEmpresaToEmitente } from './mapEmpresaToEmitente';
 import { getCodigoUF } from './ufUtils';
+import { calcularTotaisNFe, normalizarCRT } from './fiscal';
+import { escapeXml } from './xmlUtils';
 
 /**
  * Formata data/hora para o padrão da NF-e 4.00:
@@ -110,11 +112,6 @@ export function criarIdeParaEmpresa(
   return { ide, cNF, chave, id };
 }
 
-function isPisCofinsTributado(cst?: string | number | null): boolean {
-  const value = String(cst ?? '').padStart(2, '0');
-  return ['01', '02'].includes(value);
-}
-
 /**
  * Monta o XML completo da NFe (sem assinatura).
  *
@@ -142,6 +139,7 @@ export function buildNFePreviewXml(
   );
 
   const emitente = mapEmpresaToEmitente(empresa, 'JOAO PESSOA');
+  const crt = normalizarCRT(emitente.crt);
 
   const dest: NFeDestinatario =
     destinatario ??
@@ -177,6 +175,11 @@ export function buildNFePreviewXml(
 
 
   // Se itensOverride não for passado, usa o item de teste (compatibilidade)
+  const itemTesteFiscal =
+    crt === 3
+      ? { cst: '00', aliquotaIcms: 18, cstPis: '01', aliquotaPis: 1.65, cstCofins: '01', aliquotaCofins: 7.6 }
+      : { csosn: '102', cstPis: crt === 4 ? '08' : '07', aliquotaPis: 0, cstCofins: crt === 4 ? '08' : '07', aliquotaCofins: 0 };
+
   const itensBase: NFeItem[] =
     itensOverride && itensOverride.length > 0
       ? itensOverride
@@ -191,6 +194,8 @@ export function buildNFePreviewXml(
           quantidade: 1,
           valorUnitario: 100.0,
           valorTotal: 100.0,
+          orig: '0',
+          ...itemTesteFiscal,
         },
       ];
 
@@ -204,38 +209,13 @@ export function buildNFePreviewXml(
   const emitXml = buildEmitXml(emitente);
   const destXml = buildDestXml(dest);
   const detXml = itens
-    .map((item) => buildDetXml(item, emitente.crt))
+    .map((item) => buildDetXml(item, crt))
     .join('');
 
   // =========================
   // Totais (ICMSTot)
   // =========================
-  const soma = itens.reduce(
-    (acc, item) => {
-      const vProd = Number(item.valorTotal ?? 0);
-
-      const aliqIcms = Number(item.aliquotaIcms ?? 0);
-      const vBCIcms = vProd; // por enquanto, base = valor do produto
-      const vICMS = (vBCIcms * aliqIcms) / 100;
-
-      const aliqPis = Number(item.aliquotaPis ?? 0);
-      const vBCPis = vProd;
-      const vPIS = isPisCofinsTributado(item.cstPis) ? (vBCPis * aliqPis) / 100 : 0;
-
-      const aliqCofins = Number(item.aliquotaCofins ?? 0);
-      const vBCCofins = vProd;
-      const vCOFINS = isPisCofinsTributado(item.cstCofins) ? (vBCCofins * aliqCofins) / 100 : 0;
-
-      acc.vProd += vProd;
-      acc.vBC += vBCIcms;
-      acc.vICMS += vICMS;
-      acc.vPIS += vPIS;
-      acc.vCOFINS += vCOFINS;
-
-      return acc;
-    },
-    { vProd: 0, vBC: 0, vICMS: 0, vPIS: 0, vCOFINS: 0 }
-  );
+  const soma = calcularTotaisNFe(itens, crt);
 
   const vProd = soma.vProd.toFixed(2);
   const vBC = soma.vBC.toFixed(2);
@@ -289,12 +269,7 @@ export function buildNFePreviewXml(
   const obsRaw = (options?.observacoesFiscais ?? '')
     .replace(/[\r\n\t]+/g, ' ')
     .trim();
-  const obsSanitized = obsRaw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .slice(0, 500);
+  const obsSanitized = obsRaw.slice(0, 500);
 
   const infCplText = obsSanitized
     ? `${natOpText} ${obsSanitized}`
@@ -302,7 +277,7 @@ export function buildNFePreviewXml(
 
   const infAdicXml =
     '<infAdic>' +
-    `<infCpl>${infCplText}</infCpl>` +
+    `<infCpl>${escapeXml(infCplText)}</infCpl>` +
     '</infAdic>';
 
   const infRespTec =

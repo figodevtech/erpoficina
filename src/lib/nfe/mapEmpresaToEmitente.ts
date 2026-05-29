@@ -1,5 +1,6 @@
 // src/lib/nfe/mapEmpresaToEmitente.ts
 import type { EmpresaRow, NFeEmitente } from './types';
+import { normalizarCRT } from './fiscal';
 
 function soNumeros(valor: string | null | undefined): string {
   if (!valor) return '';
@@ -22,7 +23,7 @@ export function mapEmpresaToEmitente(
     inscricaoEstadualST: soNumeros(empresa.inscricaoestadualst),
     inscricaoMunicipal: soNumeros(empresa.inscricaomunicipal),
     cnae: empresa.cnae || undefined,
-    crt: empresa.regimetributario as '1' | '2' | '3',
+    crt: normalizarCRT(empresa.regimetributario),
     endereco: {
       logradouro: empresa.endereco,
       numero: empresa.numero || 'S/N',

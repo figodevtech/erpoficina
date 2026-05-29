@@ -1,15 +1,6 @@
 // src/lib/nfe/xmlEmitente.ts
 import type { NFeEmitente } from './types';
-
-function escapeXml(value: string | undefined): string {
-  if (!value) return '';
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+import { escapeXml } from './xmlUtils';
 
 /**
  * Gera o bloco <emit> da NF-e a partir do NFeEmitente.

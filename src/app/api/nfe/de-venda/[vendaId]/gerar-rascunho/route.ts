@@ -31,11 +31,86 @@ function toNumberOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function isPisCofinsTributado(cst: unknown): boolean {
+  const value = String(cst ?? "").trim().padStart(2, "0");
+  return value === "01" || value === "02";
+}
+
+function calcularTributoPercentual(
+  valorInformado: number | null,
+  base: number,
+  aliquota: number | null
+): number | null {
+  if (aliquota === null) return valorInformado;
+  if (valorInformado !== null && valorInformado > 0) return valorInformado;
+  return Number((base * (aliquota / 100)).toFixed(2));
+}
+
 type VendaRow = {
   id: number;
   clienteid: number;
   observacoes_fiscais?: string | null;
 };
+
+async function criarRascunhoNFeDeVenda(venda: VendaRow): Promise<number> {
+  const { data: config, error: configError } = await supabaseAdmin
+    .from("nfe_config")
+    .select("id, empresaid, modelo, serie, ultimo_numero, ambiente")
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (configError) {
+    throw new Error(`Erro ao buscar configuracao de NF-e: ${configError.message}`);
+  }
+
+  if (!config) {
+    throw new Error("Configuracao de NF-e (nfe_config) nao encontrada.");
+  }
+
+  const numero = Number(config.ultimo_numero ?? 0) + 1;
+
+  const { data: nfe, error: insertError } = await supabaseAdmin
+    .from("nfe")
+    .insert({
+      modelo: config.modelo ?? "NFE",
+      serie: Number(config.serie ?? 1),
+      numero,
+      chave_acesso: "0".repeat(44),
+      ambiente: config.ambiente ?? "HOMOLOGACAO",
+      status: "RASCUNHO",
+      ordemservicoid: null,
+      vendaid: venda.id,
+      clienteid: venda.clienteid,
+      empresaid: config.empresaid,
+      dataemissao: new Date().toISOString(),
+      total_produtos: 0,
+      total_servicos: 0,
+      total_nfe: 0,
+      xml_assinado: null,
+      xml_autorizado: null,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !nfe) {
+    throw new Error(`Erro ao criar rascunho de NF-e: ${insertError?.message ?? "id nao retornado"}`);
+  }
+
+  const { error: updateConfigError } = await supabaseAdmin
+    .from("nfe_config")
+    .update({
+      ultimo_numero: numero,
+      updatedat: new Date().toISOString(),
+    })
+    .eq("id", config.id);
+
+  if (updateConfigError) {
+    throw new Error(`Erro ao atualizar numero da NF-e: ${updateConfigError.message}`);
+  }
+
+  return Number(nfe.id);
+}
 
 export async function POST(req: Request) {
   try {
@@ -95,21 +170,7 @@ export async function POST(req: Request) {
     }
 
     // 1) Criar cabeçalho da NF-e (tabela nfe) a partir da VENDA
-    const { data: criarData, error: criarError } = await supabaseAdmin.rpc(
-      "criar_nfe_de_venda",
-      { p_vendaid: vendaId }
-    );
-
-    if (criarError) {
-      console.error("[criar_nfe_de_venda] erro:", criarError);
-      return NextResponse.json(
-        { ok: false, message: "Erro ao criar NF-e a partir da venda", detalhe: criarError.message },
-        { status: 500 }
-      );
-    }
-
-    const nfeId: number | null =
-      Array.isArray(criarData) ? (criarData[0] as number) : (criarData as number | null);
+    const nfeId = await criarRascunhoNFeDeVenda(venda);
 
     if (!nfeId) {
       return NextResponse.json(
@@ -328,14 +389,18 @@ export async function POST(req: Request) {
       // PIS
       const aliquotaPis = toNumberOrNull(row.aliquota_pis);
       let valorPis = toNumberOrNull(row.valor_pis);
-      if (aliquotaPis !== null && valorPis === null) {
+      if (isPisCofinsTributado(row.cst_pis)) {
+        valorPis = calcularTributoPercentual(valorPis, valorTotal, aliquotaPis);
+      } else if (aliquotaPis !== null && valorPis === null) {
         valorPis = Number((valorTotal * (aliquotaPis / 100)).toFixed(2));
       }
 
       // COFINS
       const aliquotaCofins = toNumberOrNull(row.aliquota_cofins);
       let valorCofins = toNumberOrNull(row.valor_cofins);
-      if (aliquotaCofins !== null && valorCofins === null) {
+      if (isPisCofinsTributado(row.cst_cofins)) {
+        valorCofins = calcularTributoPercentual(valorCofins, valorTotal, aliquotaCofins);
+      } else if (aliquotaCofins !== null && valorCofins === null) {
         valorCofins = Number((valorTotal * (aliquotaCofins / 100)).toFixed(2));
       }
 

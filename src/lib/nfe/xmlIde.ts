@@ -1,15 +1,7 @@
 // src/lib/nfe/xmlIde.ts
 
 import type { NFeIde } from './types';
-
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+import { escapeXml } from './xmlUtils';
 
 /**
  * Monta o XML do bloco <ide> na ORDEM exigida pelo schema da NF-e 4.00.

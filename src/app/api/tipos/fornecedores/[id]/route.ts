@@ -64,9 +64,9 @@ export async function PUT(
       ativo?: boolean;
     } = body ?? {};
 
-    if (!cpfcnpj?.trim() || !nomerazaosocial?.trim()) {
+    if (!nomerazaosocial?.trim()) {
       return NextResponse.json(
-        { error: "CNPJ e Razão Social são obrigatórios." },
+        { error: "Razão Social ou Nome é obrigatória." },
         { status: 400 }
       );
     }
@@ -74,7 +74,7 @@ export async function PUT(
     const now = new Date().toISOString();
 
     const payload: Record<string, any> = {
-      cpfcnpj: cpfcnpj.trim(),
+      cpfcnpj: cpfcnpj?.trim(),
       nomerazaosocial: nomerazaosocial.trim(),
       nomefantasia: nomefantasia?.trim() || null,
       endereco: endereco?.trim() || null,
