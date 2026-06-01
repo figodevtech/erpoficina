@@ -14,12 +14,16 @@ export type ServicoBusca = {
   precohora: number;
 };
 
+export type TipoDesconto = "FIXO" | "PORCENTAGEM";
+
 export type ItemProduto = {
   produtoid: number;
   descricao: string;
   quantidade: number;
   precounitario: number;
   subtotal: number;
+  descontoTipo?: TipoDesconto | null;
+  desconto?: number;
 };
 
 export type ItemServico = {
@@ -29,11 +33,19 @@ export type ItemServico = {
   quantidade: number;
   precounitario: number;
   subtotal: number;
+  descontoTipo?: TipoDesconto | null;
+  desconto?: number;
 };
 
 export type OrcamentoFormProps = {
   ordemServico: { id: number; numero?: string; cliente?: string; veiculo?: string };
-  onTotaisChange?: (t: { totalProdutos: number; totalServicos: number }) => void;
+  onTotaisChange?: (t: {
+    subtotal: number;
+    totalProdutos: number;
+    totalServicos: number;
+    desconto: number;
+    totalGeral: number;
+  }) => void;
   onLoadingChange?: (loading: boolean) => void;
 };
 

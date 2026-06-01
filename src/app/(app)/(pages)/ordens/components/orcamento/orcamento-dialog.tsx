@@ -29,7 +29,7 @@ export function OrcamentoDialog({
 
   const [totalProdutos, setTotalProdutos] = useState(0);
   const [totalServicos, setTotalServicos] = useState(0);
-  const totalGeral = totalProdutos + totalServicos;
+  const [totalGeral, setTotalGeral] = useState(0);
 
   const [salvando, setSalvando] = useState(false);
   const [gerandoLink, setGerandoLink] = useState(false);
@@ -173,9 +173,10 @@ export function OrcamentoDialog({
             ref={formRef}
             ordemServico={ordemServico}
             onLoadingChange={setCarregandoDados}
-            onTotaisChange={({ totalProdutos, totalServicos }) => {
+            onTotaisChange={({ totalProdutos, totalServicos, totalGeral }) => {
               setTotalProdutos(totalProdutos || 0);
               setTotalServicos(totalServicos || 0);
+              setTotalGeral(totalGeral || 0);
             }}
           />
         </div>

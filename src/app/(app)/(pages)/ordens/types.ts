@@ -58,6 +58,9 @@ export type Ordem = {
   peca?: Peca | null
   checklistTemplateId?: string | null;
   orcamentototal:number;
+  subtotal?: number | null;
+  desconto_tipo?: "FIXO" | "PORCENTAGEM" | null;
+  desconto?: number | null;
   transacoes: Transaction[] | null
   is_deleted?: boolean
   created_at?: Date

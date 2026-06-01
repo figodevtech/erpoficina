@@ -19,6 +19,28 @@ const toNum = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+type TipoDesconto = "FIXO" | "PORCENTAGEM" | null;
+
+function sanitizeTipoDesconto(value: unknown): TipoDesconto {
+  return value === "FIXO" || value === "PORCENTAGEM" ? value : null;
+}
+
+function arredondarMoeda(valor: number) {
+  return Math.round((Number.isFinite(valor) ? valor : 0) * 100) / 100;
+}
+
+function calcularDescontoAplicado(base: number, tipo: TipoDesconto, desconto: number) {
+  const baseSeguro = Math.max(0, toNum(base));
+  const valor = Math.max(0, toNum(desconto));
+  if (!tipo || valor <= 0 || baseSeguro <= 0) return 0;
+  if (tipo === "PORCENTAGEM") return arredondarMoeda(baseSeguro * (Math.min(valor, 100) / 100));
+  return arredondarMoeda(Math.min(valor, baseSeguro));
+}
+
+function calcularTotalComDesconto(base: number, tipo: TipoDesconto, desconto: number) {
+  return arredondarMoeda(Math.max(0, toNum(base) - calcularDescontoAplicado(base, tipo, desconto)));
+}
+
 /* =========================================================
  * GET — itens do orçamento (produtos + serviços)
  * ========================================================= */
@@ -34,6 +56,14 @@ export async function GET(
     }
 
     // Produtos com descrição
+    const { data: osRow, error: osErr } = await supabase
+      .from("ordemservico")
+      .select("subtotal, desconto_tipo, desconto")
+      .eq("id", osId)
+      .maybeSingle();
+
+    if (osErr) throw osErr;
+
     const { data: prodRows, error: prodErr } = await supabase
       .from("osproduto")
       .select(`
@@ -42,6 +72,8 @@ export async function GET(
         quantidade,
         precounitario,
         subtotal,
+        desconto_tipo,
+        desconto,
         produto:produtoid (descricao, titulo)
       `)
       .eq("ordemservicoid", osId);
@@ -54,6 +86,8 @@ export async function GET(
       quantidade: toNum(r.quantidade ?? 1),
       precounitario: toNum(r.precounitario ?? 0),
       subtotal: toNum(r.subtotal ?? 0),
+      descontoTipo: r.desconto_tipo ?? null,
+      desconto: toNum(r.desconto ?? 0),
     }));
 
     // Serviços com descrição
@@ -66,6 +100,8 @@ export async function GET(
         quantidade,
         precounitario,
         subtotal,
+        desconto_tipo,
+        desconto,
         servico:servicoid (descricao)
       `)
       .eq("ordemservicoid", osId);
@@ -79,10 +115,18 @@ export async function GET(
       quantidade: toNum(r.quantidade ?? 1),
       precounitario: toNum(r.precounitario ?? 0),
       subtotal: toNum(r.subtotal ?? 0),
+      descontoTipo: r.desconto_tipo ?? null,
+      desconto: toNum(r.desconto ?? 0),
     }));
 
     return NextResponse.json(
-      { produtos, servicos },
+      {
+        produtos,
+        servicos,
+        subtotal: toNum((osRow as any)?.subtotal ?? 0),
+        descontoTipo: (osRow as any)?.desconto_tipo ?? null,
+        desconto: toNum((osRow as any)?.desconto ?? 0),
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (err: any) {
@@ -120,6 +164,8 @@ export async function PUT(
       quantidade: Num;
       precounitario: Num;
       subtotal?: Num;
+      descontoTipo?: string | null;
+      desconto?: Num;
     }> = Array.isArray(body?.produtos) ? body.produtos : [];
 
     const servicosBody: Array<{
@@ -128,7 +174,11 @@ export async function PUT(
       quantidade: Num;
       precounitario: Num;
       subtotal?: Num;
+      descontoTipo?: string | null;
+      desconto?: Num;
     }> = Array.isArray(body?.servicos) ? body.servicos : [];
+    const descontoTipo = sanitizeTipoDesconto(body?.descontoTipo);
+    const desconto = Math.max(0, toNum(body?.desconto ?? 0));
 
     const modoBaixaEstoqueOS = await buscarModoBaixaEstoqueOS();
 
@@ -138,10 +188,12 @@ export async function PUT(
         produtoid: toNum(p.produtoid),
         quantidade: Math.max(0, toNum(p.quantidade)),
         precounitario: toNum(p.precounitario),
-        subtotal:
-          p.subtotal !== undefined
-            ? toNum(p.subtotal)
-            : toNum(p.quantidade) * toNum(p.precounitario),
+        descontoTipo: sanitizeTipoDesconto(p.descontoTipo),
+        desconto: Math.max(0, toNum(p.desconto ?? 0)),
+      }))
+      .map((p) => ({
+        ...p,
+        subtotal: calcularTotalComDesconto(p.quantidade * p.precounitario, p.descontoTipo, p.desconto),
       }))
       // se veio quantidade 0, tratamos como remoção (não insere)
       .filter((p) => p.quantidade > 0);
@@ -172,12 +224,17 @@ export async function PUT(
       baixaMap.set(toNum(r.produtoid), toNum(r.quantidade));
     });
 
-    const desejadosMap = new Map<number, { quantidade: number; precounitario: number; subtotal: number }>();
+    const desejadosMap = new Map<
+      number,
+      { quantidade: number; precounitario: number; subtotal: number; descontoTipo: TipoDesconto; desconto: number }
+    >();
     desejados.forEach((d) => {
       desejadosMap.set(d.produtoid, {
         quantidade: d.quantidade,
         precounitario: d.precounitario,
         subtotal: d.subtotal!,
+        descontoTipo: d.descontoTipo,
+        desconto: d.desconto,
       });
     });
 
@@ -271,6 +328,8 @@ export async function PUT(
         quantidade: d.quantidade,
         precounitario: d.precounitario,
         subtotal: d.subtotal,
+        desconto_tipo: d.descontoTipo,
+        desconto: d.desconto,
       }));
       const up = await supabase.from("osproduto").upsert(payload, {
         onConflict: "ordemservicoid,produtoid",
@@ -339,26 +398,53 @@ export async function PUT(
 
     // 3) Serviços: estratégia simples — limpar e inserir (não afetam estoque)
     {
-      const delS = await supabase
+      const { data: atuaisServicosRows, error: atuaisServicosErr } = await supabase
         .from("osservico")
-        .delete()
+        .select("servicoid")
         .eq("ordemservicoid", osId);
-      if (delS.error) throw delS.error;
 
-      if (servicosBody.length) {
-        const rowsS = servicosBody.map((s) => ({
-          ordemservicoid: osId,
-          servicoid: toNum(s.servicoid),
-          descricao: s.descricao ? String(s.descricao).trim() : null,
-          quantidade: Math.max(0, toNum(s.quantidade) || 1),
-          precounitario: toNum(s.precounitario ?? 0),
-          subtotal:
-            s.subtotal !== undefined
-              ? toNum(s.subtotal)
-              : toNum(s.quantidade) * toNum(s.precounitario),
-        }));
-        const insS = await supabase.from("osservico").insert(rowsS);
-        if (insS.error) throw insS.error;
+      if (atuaisServicosErr) throw atuaisServicosErr;
+
+      const servicosNormalizados = servicosBody
+        .map((s) => {
+          const quantidade = Math.max(0, toNum(s.quantidade) || 1);
+          const precounitario = toNum(s.precounitario ?? 0);
+          const itemDescontoTipo = sanitizeTipoDesconto(s.descontoTipo);
+          const itemDesconto = Math.max(0, toNum(s.desconto ?? 0));
+
+          return {
+            ordemservicoid: osId,
+            servicoid: toNum(s.servicoid),
+            descricao: s.descricao ? String(s.descricao).trim() : null,
+            quantidade,
+            precounitario,
+            desconto_tipo: itemDescontoTipo,
+            desconto: itemDesconto,
+            subtotal: calcularTotalComDesconto(quantidade * precounitario, itemDescontoTipo, itemDesconto),
+          };
+        })
+        .filter((s) => s.servicoid > 0 && s.quantidade > 0);
+
+      const idsServicosParaManter = new Set(servicosNormalizados.map((s) => s.servicoid));
+      const idsServicosParaRemover = (atuaisServicosRows ?? [])
+        .map((s: any) => toNum(s.servicoid))
+        .filter((servicoid) => !idsServicosParaManter.has(servicoid));
+
+      if (idsServicosParaRemover.length) {
+        const delS = await supabase
+          .from("osservico")
+          .delete()
+          .eq("ordemservicoid", osId)
+          .in("servicoid", idsServicosParaRemover);
+        if (delS.error) throw delS.error;
+      }
+
+      if (servicosNormalizados.length) {
+        const upS = await supabase.from("osservico").upsert(servicosNormalizados, {
+          onConflict: "ordemservicoid,servicoid",
+          ignoreDuplicates: false,
+        });
+        if (upS.error) throw upS.error;
       }
     }
 
@@ -367,21 +453,44 @@ export async function PUT(
       (acc, p) => acc + (Number(p.subtotal) || 0),
       0
     );
-    const totalServicos = servicosBody.reduce<number>(
-      (acc, s) =>
-        acc +
-        (Number(
-          s.subtotal !== undefined
-            ? s.subtotal
-            : toNum(s.quantidade) * toNum(s.precounitario)
-        ) || 0),
-      0
-    );
-    const totalGeral = totalProdutos + totalServicos;
+    const totalServicos = servicosBody.reduce<number>((acc, s) => {
+      const quantidade = Math.max(0, toNum(s.quantidade) || 1);
+      const bruto = quantidade * toNum(s.precounitario ?? 0);
+      return acc + calcularTotalComDesconto(
+        bruto,
+        sanitizeTipoDesconto(s.descontoTipo),
+        Math.max(0, toNum(s.desconto ?? 0))
+      );
+    }, 0);
+    const subtotal = arredondarMoeda(totalProdutos + totalServicos);
+    const totalGeral = calcularTotalComDesconto(subtotal, descontoTipo, desconto);
+
+    const { data: transacoes, error: transacoesErr } = await supabase
+      .from("transacao")
+      .select("valor")
+      .eq("ordemservicoid", osId)
+      .eq("tipo", "RECEITA");
+
+    if (transacoesErr) throw transacoesErr;
+
+    const totalPago = (transacoes ?? []).reduce((acc: number, row: any) => acc + toNum(row.valor), 0);
+    if (totalGeral < totalPago) {
+      return NextResponse.json(
+        {
+          error: `O total com desconto nÃ£o pode ficar menor que o total jÃ¡ pago (${totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}).`,
+        },
+        { status: 409 }
+      );
+    }
 
     const updOS = await supabase
       .from("ordemservico")
-      .update({ orcamentototal: totalGeral })
+      .update({
+        subtotal,
+        desconto_tipo: descontoTipo,
+        desconto,
+        orcamentototal: totalGeral,
+      })
       .eq("id", osId);
     if (updOS.error) throw updOS.error;
 

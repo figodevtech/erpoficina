@@ -1,29 +1,50 @@
 // src/app/(app)/(pages)/ordens/components/orcamento/ganchos/use-carrinho-orcamento.ts
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ItemProduto, ItemServico, ProdutoBusca, ServicoBusca } from "../tipos";
+import { ItemProduto, ItemServico, ProdutoBusca, ServicoBusca, TipoDesconto } from "../tipos";
 import { carregarItensDaOSAPI } from "../servicos/api-orcamento";
+import { calcularDescontoAplicado, calcularTotalComDesconto } from "../util";
 
 const toNum = (v: any) => (v === null || v === undefined || isNaN(+v) ? 0 : +v);
 
 export function useCarrinhoOrcamento(
   osId: number | undefined,
-  onTotaisChange?: (tot: { totalProdutos: number; totalServicos: number }) => void
+  onTotaisChange?: (tot: {
+    subtotal: number;
+    totalProdutos: number;
+    totalServicos: number;
+    desconto: number;
+    totalGeral: number;
+  }) => void
 ) {
   const [itensProduto, setItensProduto] = useState<ItemProduto[]>([]);
   const [itensServico, setItensServico] = useState<ItemServico[]>([]);
+  const [descontoTipo, setDescontoTipo] = useState<TipoDesconto | null>(null);
+  const [desconto, setDesconto] = useState(0);
 
   const totalProdutos = useMemo(() => itensProduto.reduce((acc, it) => acc + toNum(it.subtotal), 0), [itensProduto]);
   const totalServicos = useMemo(() => itensServico.reduce((acc, it) => acc + toNum(it.subtotal), 0), [itensServico]);
+  const subtotal = totalProdutos + totalServicos;
+  const descontoAplicado = useMemo(
+    () => calcularDescontoAplicado(subtotal, descontoTipo, desconto),
+    [subtotal, descontoTipo, desconto],
+  );
+  const totalGeral = useMemo(
+    () => calcularTotalComDesconto(subtotal, descontoTipo, desconto),
+    [subtotal, descontoTipo, desconto],
+  );
 
   useEffect(() => {
-    onTotaisChange?.({ totalProdutos, totalServicos });
-  }, [totalProdutos, totalServicos, onTotaisChange]);
+    onTotaisChange?.({ subtotal, totalProdutos, totalServicos, desconto: descontoAplicado, totalGeral });
+  }, [descontoAplicado, onTotaisChange, subtotal, totalGeral, totalProdutos, totalServicos]);
 
   const carregarItensDaOS = useCallback(async () => {
     if (!osId) return;
-    const { produtos, servicos } = await carregarItensDaOSAPI(osId);
+    const data = await carregarItensDaOSAPI(osId);
+    const { produtos, servicos } = data;
     setItensProduto(produtos);
     setItensServico(servicos);
+    setDescontoTipo(data.descontoTipo);
+    setDesconto(data.desconto);
   }, [osId]);
 
   const adicionarProduto = (p: ProdutoBusca) => {
@@ -33,11 +54,17 @@ export function useCarrinhoOrcamento(
         const novo = [...prev];
         const q = novo[idx].quantidade + 1;
         const pu = novo[idx].precounitario || p.precounitario || 0;
-        novo[idx] = { ...novo[idx], quantidade: q, precounitario: pu, subtotal: q * pu };
+        const bruto = q * pu;
+        novo[idx] = {
+          ...novo[idx],
+          quantidade: q,
+          precounitario: pu,
+          subtotal: calcularTotalComDesconto(bruto, novo[idx].descontoTipo, novo[idx].desconto),
+        };
         return novo;
       }
       const pu = toNum(p.precounitario || 0);
-      return [...prev, { produtoid: p.id, descricao: p.descricao, quantidade: 1, precounitario: pu, subtotal: pu }];
+      return [...prev, { produtoid: p.id, descricao: p.descricao, quantidade: 1, precounitario: pu, subtotal: pu, descontoTipo: null, desconto: 0 }];
     });
   };
 
@@ -48,7 +75,13 @@ export function useCarrinhoOrcamento(
         const novo = [...prev];
         const q = novo[idx].quantidade + 1;
         const pu = novo[idx].precounitario || s.precohora || 0;
-        novo[idx] = { ...novo[idx], quantidade: q, precounitario: pu, subtotal: q * pu };
+        const bruto = q * pu;
+        novo[idx] = {
+          ...novo[idx],
+          quantidade: q,
+          precounitario: pu,
+          subtotal: calcularTotalComDesconto(bruto, novo[idx].descontoTipo, novo[idx].desconto),
+        };
         return novo;
       }
       const pu = toNum(s.precohora || 0);
@@ -61,6 +94,8 @@ export function useCarrinhoOrcamento(
           quantidade: 1,
           precounitario: pu,
           subtotal: pu,
+          descontoTipo: null,
+          desconto: 0,
         },
       ];
     });
@@ -74,7 +109,8 @@ export function useCarrinhoOrcamento(
       const pu = toNum(base.precounitario || 0);
       base.quantidade = q;
       base.precounitario = pu;
-      base.subtotal = q * pu;
+      base.desconto = toNum(base.desconto ?? 0);
+      base.subtotal = calcularTotalComDesconto(q * pu, base.descontoTipo, base.desconto);
       novo[i] = base;
       return novo;
     });
@@ -88,7 +124,8 @@ export function useCarrinhoOrcamento(
       const pu = toNum(base.precounitario || 0);
       base.quantidade = q;
       base.precounitario = pu;
-      base.subtotal = q * pu;
+      base.desconto = toNum(base.desconto ?? 0);
+      base.subtotal = calcularTotalComDesconto(q * pu, base.descontoTipo, base.desconto);
       novo[i] = base;
       return novo;
     });
@@ -102,6 +139,13 @@ export function useCarrinhoOrcamento(
     itensServico,
     totalProdutos,
     totalServicos,
+    subtotal,
+    descontoAplicado,
+    totalGeral,
+    descontoTipo,
+    desconto,
+    setDescontoTipo,
+    setDesconto,
     carregarItensDaOS,
     adicionarProduto,
     adicionarServico,

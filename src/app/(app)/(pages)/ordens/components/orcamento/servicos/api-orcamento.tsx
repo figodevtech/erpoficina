@@ -1,5 +1,5 @@
 // src/app/(app)/(pages)/ordens/components/orcamento/servicos/api-orcamento.ts
-import { ItemProduto, ItemServico, ProdutoBusca, ServicoBusca } from "../tipos";
+import { ItemProduto, ItemServico, ProdutoBusca, ServicoBusca, TipoDesconto } from "../tipos";
 
 /** Util */
 const toNum = (v: unknown): number => {
@@ -80,6 +80,8 @@ export async function carregarItensDaOSAPI(osId: number) {
     quantidade: toNum(p.quantidade ?? 1),
     precounitario: toNum(p.precounitario ?? 0),
     subtotal: toNum(p.subtotal ?? toNum(p.quantidade ?? 1) * toNum(p.precounitario ?? 0)),
+    descontoTipo: (p.descontoTipo ?? null) as TipoDesconto | null,
+    desconto: toNum(p.desconto ?? 0),
   }));
 
   const servicos: ItemServico[] = (j?.servicos ?? []).map((s: any) => ({
@@ -89,9 +91,16 @@ export async function carregarItensDaOSAPI(osId: number) {
     quantidade: toNum(s.quantidade ?? 1),
     precounitario: toNum(s.precounitario ?? 0),
     subtotal: toNum(s.subtotal ?? toNum(s.quantidade ?? 1) * toNum(s.precounitario ?? 0)),
+    descontoTipo: (s.descontoTipo ?? null) as TipoDesconto | null,
+    desconto: toNum(s.desconto ?? 0),
   }));
 
-  return { produtos, servicos };
+  return {
+    produtos,
+    servicos,
+    descontoTipo: (j?.descontoTipo ?? null) as TipoDesconto | null,
+    desconto: toNum(j?.desconto ?? 0),
+  };
 }
 
 /* =========================
@@ -102,7 +111,9 @@ export async function carregarItensDaOSAPI(osId: number) {
 export async function salvarOrcamentoAPI(
   osId: number,
   itensProduto: ItemProduto[],
-  itensServico: ItemServico[]
+  itensServico: ItemServico[],
+  descontoTipo?: TipoDesconto | null,
+  desconto?: number
 ) {
   const body = {
     produtos: itensProduto.map((p) => ({
@@ -110,6 +121,8 @@ export async function salvarOrcamentoAPI(
       quantidade: p.quantidade,
       precounitario: p.precounitario,
       subtotal: p.subtotal,
+      descontoTipo: p.descontoTipo ?? null,
+      desconto: p.desconto ?? 0,
     })),
     servicos: itensServico.map((s) => ({
       servicoid: s.servicoid,
@@ -117,7 +130,11 @@ export async function salvarOrcamentoAPI(
       quantidade: s.quantidade,
       precounitario: s.precounitario,
       subtotal: s.subtotal,
+      descontoTipo: s.descontoTipo ?? null,
+      desconto: s.desconto ?? 0,
     })),
+    descontoTipo: descontoTipo ?? null,
+    desconto: desconto ?? 0,
   };
 
   const r = await fetch(`/api/ordens/${osId}/orcamento`, {

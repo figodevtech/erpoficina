@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ItemServico } from "../tipos";
 import { CampoPreco } from "./campo-preco";
 import { CampoQuantidade } from "./campo-quantidade";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -37,6 +38,7 @@ export function TabelaItensServico({
               <TableHead className="w-[48%]">Descrição</TableHead>
               <TableHead className="w-[20%] text-center">Quantidade</TableHead>
               <TableHead className="w-[16%] text-right">Preço unit.</TableHead>
+              <TableHead className="w-[24%]">Desconto</TableHead>
               <TableHead className="w-[12%] text-right">Subtotal</TableHead>
               <TableHead className="w-[4%] text-center">Ação</TableHead>
             </TableRow>
@@ -45,7 +47,7 @@ export function TabelaItensServico({
           <TableBody>
             {itens.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                   Nenhum serviço adicionado.
                 </TableCell>
               </TableRow>
@@ -91,6 +93,39 @@ export function TabelaItensServico({
                         })
                       }
                     />
+                  </TableCell>
+
+                  <TableCell>
+                    <div className="grid grid-cols-[1fr_90px] gap-2">
+                      <Select
+                        value={it.descontoTipo ?? "NONE"}
+                        onValueChange={(value) =>
+                          onAtualizar(i, {
+                            descontoTipo: value === "NONE" ? null : (value as "FIXO" | "PORCENTAGEM"),
+                            desconto: value === "NONE" ? 0 : it.desconto ?? 0,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Sem desconto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NONE">Sem</SelectItem>
+                          <SelectItem value="FIXO">Fixo</SelectItem>
+                          <SelectItem value="PORCENTAGEM">%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={it.descontoTipo === "PORCENTAGEM" ? 100 : undefined}
+                        step="0.01"
+                        disabled={!it.descontoTipo}
+                        value={it.desconto ?? 0}
+                        onChange={(event) => onAtualizar(i, { desconto: Number(event.target.value || 0) })}
+                        className="h-8"
+                      />
+                    </div>
                   </TableCell>
 
                   <TableCell className="text-right tabular-nums">{money(it.subtotal)}</TableCell>

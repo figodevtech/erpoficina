@@ -8,8 +8,11 @@ import { useEffect, useState } from "react";
 import axios, { isAxiosError } from "axios";
 import TransactionDialog from "../../../fluxodecaixa/components/transactionDialog/transactionDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Loader, Loader2, Trash2Icon } from "lucide-react";
+import { ChevronDown, FileText, Loader, Loader2, Package, Percent, ReceiptText, Trash2Icon } from "lucide-react";
 import DeleteAlert from "./deleteAlert";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatDate";
@@ -25,6 +28,8 @@ type OsProdutoItem = {
   quantidade: number;
   precounitario: number;
   subtotal: number;
+  descontoTipo?: "FIXO" | "PORCENTAGEM" | null;
+  desconto?: number;
   produto?: {
     id: number;
     codigo?: string | null;
@@ -40,6 +45,9 @@ type OsServicoItem = {
   quantidade: number;
   precounitario: number;
   subtotal: number;
+  descontoTipo?: "FIXO" | "PORCENTAGEM" | null;
+  desconto?: number;
+  descricaoServico?: string | null;
   servico?: {
     id: number;
     codigo?: string | null;
@@ -48,6 +56,27 @@ type OsServicoItem = {
 };
 
 // Ajuste conforme a sua estrutura real
+
+const toNum = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const arredondarMoeda = (value: number) => Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+
+const calcularDescontoAplicado = (base: number, tipo?: "FIXO" | "PORCENTAGEM" | null, desconto?: number | null) => {
+  const baseSeguro = Math.max(0, toNum(base));
+  const valor = Math.max(0, toNum(desconto));
+  if (!tipo || valor <= 0 || baseSeguro <= 0) return 0;
+  if (tipo === "PORCENTAGEM") return arredondarMoeda(baseSeguro * (Math.min(valor, 100) / 100));
+  return arredondarMoeda(Math.min(valor, baseSeguro));
+};
+
+const calcularTotalComDesconto = (base: number, tipo?: "FIXO" | "PORCENTAGEM" | null, desconto?: number | null) =>
+  arredondarMoeda(Math.max(0, toNum(base) - calcularDescontoAplicado(base, tipo, desconto)));
+
+const tabTriggerClass =
+  "group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
 export default function OsContent({ osId, IsOpen }: OsContentProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -63,12 +92,19 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
   const [ordem, setOrdem] = useState<Ordem | undefined>(undefined);
   const [itensProduto, setItensProduto] = useState<OsProdutoItem[]>([]);
   const [itensServico, setItensServico] = useState<OsServicoItem[]>([]);
+  const [descontoTipo, setDescontoTipo] = useState<"FIXO" | "PORCENTAGEM" | null>(null);
+  const [desconto, setDesconto] = useState(0);
+  const [isSavingDiscount, setIsSavingDiscount] = useState(false);
   const [, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [open, setOpen] = useState(false);
 
   const totalPago = transactions?.reduce((acc, t) => acc + Number(t?.valor ?? 0), 0) ?? 0;
-  const saldoDevedor = (ordem?.orcamentototal || 0) - totalPago;
+  const subtotalItens = [...itensProduto, ...itensServico].reduce((acc, item) => acc + toNum(item.subtotal), 0);
+  const subtotalOrdem = subtotalItens > 0 ? subtotalItens : ordem?.subtotal ?? ordem?.orcamentototal ?? 0;
+  const descontoAplicado = calcularDescontoAplicado(subtotalOrdem, descontoTipo, desconto);
+  const totalComDesconto = calcularTotalComDesconto(subtotalOrdem, descontoTipo, desconto);
+  const saldoDevedor = totalComDesconto - totalPago;
   const alvoDescricao =
     ordem?.alvo_tipo === "PECA"
       ? ordem?.peca?.titulo || ordem?.peca?.descricao || "Peça"
@@ -85,6 +121,8 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         setOrdem(response.data.os);
         setItensProduto(response.data.itensProduto ?? []);
         setItensServico(response.data.itensServico ?? []);
+        setDescontoTipo(response.data.os?.desconto_tipo ?? null);
+        setDesconto(toNum(response.data.os?.desconto ?? 0));
       }
     } catch {
       toast.error("Não foi possível carregar a OS");
@@ -124,6 +162,8 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       setOrdem(undefined);
       setItensProduto([]);
       setItensServico([]);
+      setDescontoTipo(null);
+      setDesconto(0);
       setHasLoadedOnce(false);
     }
   }, [IsOpen]);
@@ -164,7 +204,69 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       handleGetOrdem(osId);
       handleGetTransactions(undefined, osId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [osId]);
+
+  const handleProdutoDiscountChange = (index: number, patch: Partial<OsProdutoItem>) => {
+    setItensProduto((prev) => {
+      const next = [...prev];
+      const item = { ...next[index], ...patch };
+      item.desconto = toNum(item.desconto ?? 0);
+      item.subtotal = calcularTotalComDesconto(item.quantidade * item.precounitario, item.descontoTipo, item.desconto);
+      next[index] = item;
+      return next;
+    });
+  };
+
+  const handleServicoDiscountChange = (index: number, patch: Partial<OsServicoItem>) => {
+    setItensServico((prev) => {
+      const next = [...prev];
+      const item = { ...next[index], ...patch };
+      item.desconto = toNum(item.desconto ?? 0);
+      item.subtotal = calcularTotalComDesconto(item.quantidade * item.precounitario, item.descontoTipo, item.desconto);
+      next[index] = item;
+      return next;
+    });
+  };
+
+  const handleSaveDiscounts = async () => {
+    if (!ordem?.id) return;
+    setIsSavingDiscount(true);
+    try {
+      await axios.put(`/api/ordens/${ordem.id}/orcamento`, {
+        produtos: itensProduto.map((item) => ({
+          produtoid: item.produtoid,
+          quantidade: item.quantidade,
+          precounitario: item.precounitario,
+          descontoTipo: item.descontoTipo ?? null,
+          desconto: item.desconto ?? 0,
+        })),
+        servicos: itensServico.map((item) => ({
+          servicoid: item.servicoid,
+          descricao: item.descricaoServico ?? null,
+          quantidade: item.quantidade,
+          precounitario: item.precounitario,
+          descontoTipo: item.descontoTipo ?? null,
+          desconto: item.desconto ?? 0,
+        })),
+        descontoTipo,
+        desconto,
+      });
+      toast.success("Desconto salvo.");
+      await handleGetOrdem(ordem.id);
+      await handleGetTransactions(pagination.page, ordem.id);
+    } catch (error) {
+      if (isAxiosError(error)) {
+        toast.error("Erro ao salvar desconto", {
+          description: error.response?.data?.error || "Tente novamente.",
+        });
+      } else {
+        toast.error("Erro ao salvar desconto");
+      }
+    } finally {
+      setIsSavingDiscount(false);
+    }
+  };
 
   // ====== RENDER
   if (isLoadingOs) {
@@ -200,7 +302,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       <DialogContent className="h-dvh w-[100svw] max-w-[100svw] p-0 overflow-hidden rounded-none sm:max-w-[1100px] sm:max-h-[850px] sm:w-[95vw] sm:rounded-2xl">
         <div className="flex h-full min-h-0 flex-col justify-center items-center">
           <div className="max-w-sm space-y-3 text-center">
-            <p className="text-sm font-medium">NÃ£o foi possÃ­vel carregar a OS.</p>
+            <p className="text-sm font-medium">Não foi possível carregar a OS.</p>
             <Button variant="outline" onClick={() => osId && handleGetOrdem(osId)}>
               Tentar novamente
             </Button>
@@ -234,60 +336,257 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         </div>
 
         <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-4 space-y-2">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
-            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
-              <p className="mt-1 text-sm font-medium">{ordem.cliente?.nome || ordem.cliente?.nomerazaosocial || "—"}</p>
-              <p className="text-xs text-muted-foreground">
-                {ordem.cliente?.telefone || ordem.cliente?.email || "Sem contato"}
-              </p>
+          <Tabs defaultValue="detalhes" className="space-y-3">
+            <div className="pb-1">
+              <TabsList className="grid h-auto w-full grid-cols-4 gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
+                <TabsTrigger value="detalhes" className={tabTriggerClass}>
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                    Detalhes
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="itens" className={tabTriggerClass}>
+                  <span className="flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                    Itens
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="descontos" className={tabTriggerClass}>
+                  <span className="flex items-center gap-2">
+                    <Percent className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                    Descontos
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="transacoes" className={tabTriggerClass}>
+                  <span className="flex items-center gap-2">
+                    <ReceiptText className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                    Transações
+                  </span>
+                </TabsTrigger>
+              </TabsList>
             </div>
-            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">OS</span>
-              <p className="mt-1 text-sm font-medium">{ordem.status || "—"}</p>
-              <p className="text-xs text-muted-foreground">{ordem.setor?.nome || "Sem setor"}</p>
-            </div>
-            <div className="rounded-lg border bg-background px-4 py-3 xl:col-span-4">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Criador da OS</span>
-              <p className="mt-1 text-sm font-medium">{ordem.criador?.nome || ordem.usuariocriadorid || "—"}</p>
-              <p className="text-xs text-muted-foreground">Usuário responsável pela abertura</p>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <div className="rounded-lg border bg-background px-4 py-3">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Alvo</span>
-              <p className="mt-1 text-sm font-medium">{ordem.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</p>
-              <p className="text-xs text-muted-foreground line-clamp-2">{alvoDescricao}</p>
-            </div>
-            
-            <div className="rounded-lg border bg-background px-4 py-3">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobrança</span>
-              <p className="mt-1 text-sm font-medium">{formatarEmReal(ordem.orcamentototal || 0)}</p>
-              <p className="text-xs text-muted-foreground">Aberto: {formatarEmReal(saldoDevedor)}</p>
-            </div>
-          </div>
+            <TabsContent value="detalhes" className="mt-0 space-y-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
+                <div className="rounded-lg border bg-card p-4 xl:col-span-4">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cliente</span>
+                  <p className="mt-1 text-sm font-medium">{ordem.cliente?.nome || ordem.cliente?.nomerazaosocial || "-"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ordem.cliente?.telefone || ordem.cliente?.email || "Sem contato"}
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-card p-4 xl:col-span-4">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">OS</span>
+                  <p className="mt-1 text-sm font-medium">{ordem.status || "-"}</p>
+                  <p className="text-xs text-muted-foreground">{ordem.setor?.nome || "Sem setor"}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-4 xl:col-span-4">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Criador da OS</span>
+                  <p className="mt-1 text-sm font-medium">{ordem.criador?.nome || ordem.usuariocriadorid || "-"}</p>
+                  <p className="text-xs text-muted-foreground">Usuário responsável pela abertura</p>
+                </div>
+              </div>
 
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="rounded-lg border bg-card p-4">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Alvo</span>
+                  <p className="mt-1 text-sm font-medium">{ordem.alvo_tipo === "PECA" ? "Peça" : "Veículo"}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{alvoDescricao}</p>
+                </div>
+
+                <div className="rounded-lg border bg-card p-4">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Cobrança</span>
+                  <p className="mt-1 text-sm font-medium">{formatarEmReal(totalComDesconto)}</p>
+                  <p className="text-xs text-muted-foreground">Aberto: {formatarEmReal(saldoDevedor)}</p>
+                </div>
+              </div>
           {ordem.descricao || ordem.observacoes || ordem.observacoes_fiscais ? (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <div className="rounded-lg border bg-background px-4 py-3">
+              <div className="rounded-lg border bg-card p-4">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Descrição</span>
-                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.descricao || "—"}</p>
+                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.descricao || "-"}</p>
               </div>
-              <div className="rounded-lg border bg-background px-4 py-3">
+              <div className="rounded-lg border bg-card p-4">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Observações</span>
-                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.observacoes || "—"}</p>
+                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.observacoes || "-"}</p>
               </div>
-              <div className="rounded-lg border bg-background px-4 py-3">
+              <div className="rounded-lg border bg-card p-4">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Observações fiscais</span>
-                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.observacoes_fiscais || "—"}</p>
+                <p className="mt-1 text-sm whitespace-pre-wrap">{ordem.observacoes_fiscais || "-"}</p>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="rounded-lg border border-dashed bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+              Nenhuma observação informada.
+            </div>
+          )}
+            </TabsContent>
 
+            <TabsContent value="descontos" className="mt-0 space-y-3">
+              <div className="rounded-lg border bg-card p-4">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_200px_150px_auto] lg:items-end">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Desconto total</span>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Aplicado depois dos descontos individuais.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Tipo</span>
+                    <Select
+                      value={descontoTipo ?? "NONE"}
+                      onValueChange={(value) => {
+                        setDescontoTipo(value === "NONE" ? null : (value as "FIXO" | "PORCENTAGEM"));
+                        if (value === "NONE") setDesconto(0);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sem desconto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">Sem desconto</SelectItem>
+                        <SelectItem value="FIXO">Fixo</SelectItem>
+                        <SelectItem value="PORCENTAGEM">Porcentagem</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">
+                      {descontoTipo === "PORCENTAGEM" ? "Percentual (%)" : "Valor"}
+                    </span>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={descontoTipo === "PORCENTAGEM" ? 100 : undefined}
+                        step="0.01"
+                        value={desconto}
+                        disabled={!descontoTipo}
+                        onChange={(event) => setDesconto(Number(event.target.value || 0))}
+                        className={descontoTipo === "PORCENTAGEM" ? "pr-8" : undefined}
+                      />
+                      {descontoTipo === "PORCENTAGEM" ? (
+                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                          %
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <Button type="button" onClick={handleSaveDiscounts} disabled={isSavingDiscount || ordem.status === "CONCLUIDO"}>
+                    {isSavingDiscount ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <div className="rounded-lg border bg-card p-4">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Produtos</span>
+                  <div className="mt-2 space-y-2">
+                    {itensProduto.length > 0 ? itensProduto.map((item, index) => (
+                      <div key={`${item.produtoid}-desconto-${index}`} className="grid gap-2 rounded-md border px-3 py-2 sm:grid-cols-[minmax(0,1fr)_170px_110px] sm:items-center">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{item.produto?.titulo || item.produto?.descricao || `Produto #${item.produtoid}`}</p>
+                          <p className="text-xs text-muted-foreground">{formatarEmReal(item.subtotal)}</p>
+                        </div>
+                        <Select
+                          value={item.descontoTipo ?? "NONE"}
+                          onValueChange={(value) =>
+                            handleProdutoDiscountChange(index, {
+                              descontoTipo: value === "NONE" ? null : (value as "FIXO" | "PORCENTAGEM"),
+                              desconto: value === "NONE" ? 0 : item.desconto ?? 0,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Sem desconto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NONE">Sem desconto</SelectItem>
+                            <SelectItem value="FIXO">Fixo</SelectItem>
+                            <SelectItem value="PORCENTAGEM">Porcentagem</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.descontoTipo === "PORCENTAGEM" ? 100 : undefined}
+                            step="0.01"
+                            disabled={!item.descontoTipo}
+                            value={item.desconto ?? 0}
+                            onChange={(event) => handleProdutoDiscountChange(index, { desconto: Number(event.target.value || 0) })}
+                            className={`h-8 ${item.descontoTipo === "PORCENTAGEM" ? "pr-7" : ""}`}
+                          />
+                          {item.descontoTipo === "PORCENTAGEM" ? (
+                            <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
+                              %
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    )) : (
+                      <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">Nenhum produto.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-card p-4">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Serviços</span>
+                  <div className="mt-2 space-y-2">
+                    {itensServico.length > 0 ? itensServico.map((item, index) => (
+                      <div key={`${item.servicoid}-desconto-${index}`} className="grid gap-2 rounded-md border px-3 py-2 sm:grid-cols-[minmax(0,1fr)_170px_110px] sm:items-center">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{item.servico?.descricao || item.servico?.codigo || `Serviço #${item.servicoid}`}</p>
+                          <p className="text-xs text-muted-foreground">{formatarEmReal(item.subtotal)}</p>
+                        </div>
+                        <Select
+                          value={item.descontoTipo ?? "NONE"}
+                          onValueChange={(value) =>
+                            handleServicoDiscountChange(index, {
+                              descontoTipo: value === "NONE" ? null : (value as "FIXO" | "PORCENTAGEM"),
+                              desconto: value === "NONE" ? 0 : item.desconto ?? 0,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Sem desconto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NONE">Sem desconto</SelectItem>
+                            <SelectItem value="FIXO">Fixo</SelectItem>
+                            <SelectItem value="PORCENTAGEM">Porcentagem</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.descontoTipo === "PORCENTAGEM" ? 100 : undefined}
+                            step="0.01"
+                            disabled={!item.descontoTipo}
+                            value={item.desconto ?? 0}
+                            onChange={(event) => handleServicoDiscountChange(index, { desconto: Number(event.target.value || 0) })}
+                            className={`h-8 ${item.descontoTipo === "PORCENTAGEM" ? "pr-7" : ""}`}
+                          />
+                          {item.descontoTipo === "PORCENTAGEM" ? (
+                            <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
+                              %
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    )) : (
+                      <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">Nenhum serviço.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="itens" className="mt-0">
           {itensProduto.length > 0 || itensServico.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-              <div className="rounded-lg border bg-background px-4 py-3">
+              <div className="rounded-lg border bg-card p-4">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Produtos da cobrança</span>
                 {itensProduto.length > 0 ? (
                   <div className="mt-2 space-y-2">
@@ -313,7 +612,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                 )}
               </div>
 
-              <div className="rounded-lg border bg-background px-4 py-3">
+              <div className="rounded-lg border bg-card p-4">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Serviços da cobrança</span>
                 {itensServico.length > 0 ? (
                   <div className="mt-2 space-y-2">
@@ -339,8 +638,14 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                 )}
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="rounded-lg border border-dashed bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+              Nenhum item na cobrança.
+            </div>
+          )}
+            </TabsContent>
 
+            <TabsContent value="transacoes" className="mt-0 space-y-3">
           <div className="flex flex-row justify-end">
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
@@ -438,6 +743,8 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
               </TableBody>
             </Table>
           </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <DialogFooter className="px-6 py-4 border-t">
@@ -445,9 +752,19 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             <span className="text-sm">Resumo:</span>
             <Separator />
             <div className="flex flex-row items-center space-x-1 w-full">
+              <span className="text-nowrap">Subtotal:</span>
+              <div className="w-full border-b h-full border-dashed"></div>
+              <h1>{formatarEmReal(subtotalOrdem)}</h1>
+            </div>
+            <div className="flex flex-row items-center space-x-1 w-full">
+              <span className="text-nowrap">Desconto:</span>
+              <div className="w-full border-b h-full border-dashed"></div>
+              <h1>- {formatarEmReal(descontoAplicado)}</h1>
+            </div>
+            <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Total a Pagar:</span>
               <div className="w-full border-b h-full border-dashed"></div>
-              <h1>{formatarEmReal(ordem.orcamentototal || 0)}</h1>
+              <h1>{formatarEmReal(totalComDesconto)}</h1>
             </div>
             <div className="flex flex-row items-center space-x-1 w-full">
               <span className="text-nowrap">Total Pago:</span>
@@ -466,4 +783,5 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     </DialogContent>
   );
 }
+
 

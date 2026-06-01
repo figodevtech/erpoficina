@@ -51,6 +51,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           "dataentrada",
           "datasaida",
           "orcamentototal",
+          "subtotal",
+          "desconto_tipo",
+          "desconto",
           "observacoes",
           "observacoes_fiscais",
           "motivo_cancelamento",
@@ -83,6 +86,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       dataentrada: string | null;
       datasaida: string | null;
       orcamentototal: number | null;
+      subtotal?: number | null;
+      desconto_tipo?: string | null;
+      desconto?: number | null;
       observacoes: string | null;
       observacoes_fiscais: string | null;
       createdat: string | null;
@@ -311,7 +317,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     // Itens — produtos
     const prod_res = await supabase
       .from("osproduto")
-      .select("ordemservicoid, produtoid, quantidade, precounitario, subtotal, produto:produtoid (id, titulo, descricao, referencia, codigobarras, precovenda, unidade)")
+      .select("ordemservicoid, produtoid, quantidade, precounitario, subtotal, desconto_tipo, desconto, produto:produtoid (id, titulo, descricao, referencia, codigobarras, precovenda, unidade)")
       .eq("ordemservicoid", osId);
     if (prod_res.error) throw prod_res.error;
 
@@ -321,6 +327,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       quantidade: toNum(r.quantidade),
       precounitario: toNum(r.precounitario),
       subtotal: toNum(r.subtotal),
+      descontoTipo: r.desconto_tipo ?? null,
+      desconto: toNum(r.desconto ?? 0),
       produto: r.produto
         ? {
             id: Number(r.produto.id),
@@ -344,6 +352,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           quantidade,
           precounitario,
           subtotal,
+          desconto_tipo,
+          desconto,
           servico:servicoid (id, codigo, descricao, precohora)
         `
       )
@@ -389,6 +399,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       quantidade: toNum(r.quantidade),
       precounitario: toNum(r.precounitario),
       subtotal: toNum(r.subtotal),
+      descontoTipo: r.desconto_tipo ?? null,
+      desconto: toNum(r.desconto ?? 0),
       realizadores: realizadoresByServico.get(Number(r.servicoid)) ?? [],
       servico: r.servico
         ? {
@@ -413,6 +425,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       usuariocriadorid: osRow.usuariocriadorid,
       criador,
       orcamentototal: osRow.orcamentototal,
+      subtotal: osRow.subtotal ?? osRow.orcamentototal,
+      desconto_tipo: osRow.desconto_tipo ?? null,
+      desconto: osRow.desconto ?? 0,
       descricao: osRow.descricao ?? null,
       observacoes: osRow.observacoes ?? null,
       observacoes_fiscais: osRow.observacoes_fiscais ?? null,
