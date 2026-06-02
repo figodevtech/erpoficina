@@ -651,7 +651,7 @@ export default async function OSFullPage({ params }: PageProps) {
   html[data-os-observacoes="1"] .os-observacoes { display: block; }
 
 
-  .obs-titulo{ font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--brand-primary); margin-bottom: 6px; } .obs-texto{ font-size: 9px; line-height: 1.4; color: var(--muted); max-height: 60px; overflow: hidden; }
+  .obs-titulo{ font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--brand-primary); margin-bottom: 6px; } .obs-texto{ font-size: 10px; line-height: 1.4; color: var(--muted); max-height: 60px; overflow: hidden; }
   .totais-box{
     border: 1px solid var(--brand-primary);
     background: linear-gradient(135deg, var(--primary-soft), white);
@@ -954,8 +954,8 @@ export default async function OSFullPage({ params }: PageProps) {
                 {(os.observacoes || os.defeitorelatado) && (
                   <div className="observacoes-box os-observacoes">
                     {" "}
-                    <div className="obs-titulo">Observações</div>{" "}
-                    <div className="obs-texto clamp-3">
+                    <div className="obs-titulo">Observações:</div>{" "}
+                    <div className="obs-texto text-sm font-bold clamp-3">
                       {os.observacoes || os.defeitorelatado || EMPTY}
                     </div>{" "}
                   </div>
