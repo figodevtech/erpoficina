@@ -76,7 +76,7 @@ const calcularTotalComDesconto = (base: number, tipo?: "FIXO" | "PORCENTAGEM" | 
   arredondarMoeda(Math.max(0, toNum(base) - calcularDescontoAplicado(base, tipo, desconto)));
 
 const tabTriggerClass =
-  "group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
+  "group h-8 rounded-xl border border-transparent px-3 text-xs font-medium text-muted-foreground transition-all hover:cursor-pointer hover:text-foreground data-[state=active]:bg-primary dark:data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
 export default function OsContent({ osId, IsOpen }: OsContentProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -113,8 +113,8 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         : "Não vinculado";
 
   // ====== DATA LOADERS
-  const handleGetOrdem = async (osId: number) => {
-    setIsLoadingOs(true);
+  const handleGetOrdem = async (osId: number, options?: { silent?: boolean }) => {
+    if (!options?.silent) setIsLoadingOs(true);
     try {
       const response = await axios.get(`/api/ordens/${osId}`);
       if (response.status === 200) {
@@ -128,7 +128,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       toast.error("Não foi possível carregar a OS");
     } finally {
       setHasLoadedOnce(true);
-      setIsLoadingOs(false);
+      if (!options?.silent) setIsLoadingOs(false);
     }
   };
 
@@ -253,8 +253,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         desconto,
       });
       toast.success("Desconto salvo.");
-      await handleGetOrdem(ordem.id);
-      await handleGetTransactions(pagination.page, ordem.id);
+      await handleGetOrdem(ordem.id, { silent: true });
     } catch (error) {
       if (isAxiosError(error)) {
         toast.error("Erro ao salvar desconto", {
@@ -460,11 +459,16 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                         min={0}
                         max={descontoTipo === "PORCENTAGEM" ? 100 : undefined}
                         step="0.01"
-                        value={desconto}
+                        value={desconto > 0 ? desconto : ""}
                         disabled={!descontoTipo}
                         onChange={(event) => setDesconto(Number(event.target.value || 0))}
-                        className={descontoTipo === "PORCENTAGEM" ? "pr-8" : undefined}
+                        className={descontoTipo === "PORCENTAGEM" ? "pr-8" : descontoTipo === "FIXO" ? "pl-9" : undefined}
                       />
+                      {descontoTipo === "FIXO" ? (
+                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-muted-foreground">
+                          R$
+                        </span>
+                      ) : null}
                       {descontoTipo === "PORCENTAGEM" ? (
                         <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
                           %
@@ -513,10 +517,15 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                             max={item.descontoTipo === "PORCENTAGEM" ? 100 : undefined}
                             step="0.01"
                             disabled={!item.descontoTipo}
-                            value={item.desconto ?? 0}
+                            value={(item.desconto ?? 0) > 0 ? item.desconto : ""}
                             onChange={(event) => handleProdutoDiscountChange(index, { desconto: Number(event.target.value || 0) })}
-                            className={`h-8 ${item.descontoTipo === "PORCENTAGEM" ? "pr-7" : ""}`}
+                            className={`h-8 ${item.descontoTipo === "PORCENTAGEM" ? "pr-7" : item.descontoTipo === "FIXO" ? "pl-8" : ""}`}
                           />
+                          {item.descontoTipo === "FIXO" ? (
+                            <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-muted-foreground">
+                              R$
+                            </span>
+                          ) : null}
                           {item.descontoTipo === "PORCENTAGEM" ? (
                             <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
                               %
@@ -564,10 +573,15 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                             max={item.descontoTipo === "PORCENTAGEM" ? 100 : undefined}
                             step="0.01"
                             disabled={!item.descontoTipo}
-                            value={item.desconto ?? 0}
+                            value={(item.desconto ?? 0) > 0 ? item.desconto : ""}
                             onChange={(event) => handleServicoDiscountChange(index, { desconto: Number(event.target.value || 0) })}
-                            className={`h-8 ${item.descontoTipo === "PORCENTAGEM" ? "pr-7" : ""}`}
+                            className={`h-8 ${item.descontoTipo === "PORCENTAGEM" ? "pr-7" : item.descontoTipo === "FIXO" ? "pl-8" : ""}`}
                           />
+                          {item.descontoTipo === "FIXO" ? (
+                            <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-muted-foreground">
+                              R$
+                            </span>
+                          ) : null}
                           {item.descontoTipo === "PORCENTAGEM" ? (
                             <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
                               %
@@ -646,7 +660,19 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
             </TabsContent>
 
             <TabsContent value="transacoes" className="mt-0 space-y-3">
-          <div className="flex flex-row justify-end">
+          <div className="flex flex-row items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <h1 className="m-0 text-base font-semibold">Transações: {transactions.length}</h1>
+
+              <button
+                type="button"
+                className="flex w-fit flex-row items-center gap-1 text-xs text-muted-foreground transition-colors hover:cursor-pointer hover:text-foreground"
+                onClick={() => handleGetTransactions()}
+              >
+                <span>Recarregar</span>
+                <Loader2 className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
             <TransactionDialog
               handleGetTransactions={handleGetTransactions}
               osId={ordem.id}
@@ -657,16 +683,6 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                 Novo pagamento
               </Button>
             </TransactionDialog>
-          </div>
-
-          <h1 className="m-0">Transações: {transactions.length}</h1>
-
-          <div
-            className="flex w-fit flex-row text-[12px] items-center space-x-1 hover:cursor-pointer"
-            onClick={() => handleGetTransactions()}
-          >
-            <span>Recarregar</span>
-            <Loader2 className="w-[12px]" />
           </div>
 
           <Separator />
@@ -748,33 +764,58 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         </div>
 
         <DialogFooter className="px-6 py-4 border-t">
-          <div className="flex flex-col w-full justify-start text-xs gap-2">
-            <span className="text-sm">Resumo:</span>
+          <div className="flex w-full flex-col justify-start gap-2.5 text-xs">
+            <span className="text-sm font-medium">Resumo:</span>
             <Separator />
-            <div className="flex flex-row items-center space-x-1 w-full">
+            <div className="grid w-full grid-cols-[max-content_minmax(24px,1fr)_max-content] items-center gap-2">
               <span className="text-nowrap">Subtotal:</span>
-              <div className="w-full border-b h-full border-dashed"></div>
-              <h1>{formatarEmReal(subtotalOrdem)}</h1>
+              <div className="h-full w-full border-b border-dashed"></div>
+              <h1 className="text-left tabular-nums">
+                <span className="inline-grid grid-cols-[0.75rem_auto]">
+                  <span></span>
+                  <span>{formatarEmReal(subtotalOrdem)}</span>
+                </span>
+              </h1>
             </div>
-            <div className="flex flex-row items-center space-x-1 w-full">
+            <div className="grid w-full grid-cols-[max-content_minmax(24px,1fr)_max-content] items-center gap-2">
               <span className="text-nowrap">Desconto:</span>
-              <div className="w-full border-b h-full border-dashed"></div>
-              <h1>- {formatarEmReal(descontoAplicado)}</h1>
+              <div className="h-full w-full border-b border-dashed"></div>
+              <h1 className="text-left tabular-nums">
+                <span className="inline-grid grid-cols-[0.75rem_auto]">
+                  <span>-</span>
+                  <span>{formatarEmReal(descontoAplicado)}</span>
+                </span>
+              </h1>
             </div>
-            <div className="flex flex-row items-center space-x-1 w-full">
+            <div className="grid w-full grid-cols-[max-content_minmax(24px,1fr)_max-content] items-center gap-2">
               <span className="text-nowrap">Total a Pagar:</span>
-              <div className="w-full border-b h-full border-dashed"></div>
-              <h1>{formatarEmReal(totalComDesconto)}</h1>
+              <div className="h-full w-full border-b border-dashed"></div>
+              <h1 className="text-left tabular-nums">
+                <span className="inline-grid grid-cols-[0.75rem_auto]">
+                  <span></span>
+                  <span>{formatarEmReal(totalComDesconto)}</span>
+                </span>
+              </h1>
             </div>
-            <div className="flex flex-row items-center space-x-1 w-full">
+            <div className="grid w-full grid-cols-[max-content_minmax(24px,1fr)_max-content] items-center gap-2">
               <span className="text-nowrap">Total Pago:</span>
-              <div className="w-full border-b h-full border-dashed"></div>
-              <h1 className="text-blue-500 font-bold">{formatarEmReal(totalPago)}</h1>
+              <div className="h-full w-full border-b border-dashed"></div>
+              <h1 className="text-left font-bold tabular-nums text-blue-500">
+                <span className="inline-grid grid-cols-[0.75rem_auto]">
+                  <span></span>
+                  <span>{formatarEmReal(totalPago)}</span>
+                </span>
+              </h1>
             </div>
-            <div className="flex flex-row items-center space-x-1 w-full">
+            <div className="grid w-full grid-cols-[max-content_minmax(24px,1fr)_max-content] items-center gap-2">
               <span className="text-nowrap">Saldo Devedor:</span>
-              <div className="w-full border-b h-full border-dashed"></div>
-              <h1 className="font-bold text-gray-400">{formatarEmReal(saldoDevedor)}</h1>
+              <div className="h-full w-full border-b border-dashed"></div>
+              <h1 className="text-left font-bold tabular-nums text-gray-400">
+                <span className="inline-grid grid-cols-[0.75rem_auto]">
+                  <span></span>
+                  <span>{formatarEmReal(saldoDevedor)}</span>
+                </span>
+              </h1>
             </div>
             <div className="w-full flex flex-col space-y-1"></div>
           </div>
