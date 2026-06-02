@@ -90,7 +90,18 @@ export async function consumirEstoqueOS(osId: number) {
     p_os_id: osId,
   });
 
-  if (error) throw error;
+  if (error) {
+    const missingFunction =
+      error.code === "PGRST202" || error.message?.includes("consumir_estoque_os");
+
+    if (!missingFunction) throw error;
+
+    const fallback = await supabaseAdmin.rpc("reaplicar_baixa_estoque_os", {
+      p_os_id: osId,
+    });
+
+    if (fallback.error) throw fallback.error;
+  }
 
   return { ok: true as const };
 }

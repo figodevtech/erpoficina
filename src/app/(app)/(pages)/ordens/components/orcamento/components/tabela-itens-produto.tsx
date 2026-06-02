@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Trash2, AlertTriangle } from "lucide-react";
 import type { ItemProduto } from "../tipos";
 import { CampoQuantidade } from "./campo-quantidade";
 import { CampoPreco } from "./campo-preco";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CampoDesconto } from "./campo-desconto";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -60,10 +60,19 @@ export function TabelaItensProduto({ itens, onAtualizar, onRemover, errosEstoque
                     className={falta ? "bg-destructive/5" : undefined}
                     title={falta ? `Disponível: ${falta.disponivel} • Solicitado: ${falta.solicitado}` : undefined}
                   >
-                    <TableCell className="pr-4">
-                      <div className="flex items-center gap-2">
+                    <TableCell className="max-w-[320px] pr-4">
+                      <div className="flex min-w-0 items-center gap-2">
                         {falta && <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />}
-                        <span>{it.descricao}</span>
+                        <TooltipProvider delayDuration={300}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block max-w-[260px] truncate font-medium">{it.descricao}</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs text-xs">
+                              {it.descricao}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
 
                       {falta && (
@@ -99,37 +108,18 @@ export function TabelaItensProduto({ itens, onAtualizar, onRemover, errosEstoque
                       />
                     </TableCell>
 
-                    <TableCell>
-                      <div className="grid grid-cols-[1fr_90px] gap-2">
-                        <Select
-                          value={it.descontoTipo ?? "NONE"}
-                          onValueChange={(value) =>
-                            onAtualizar(i, {
-                              descontoTipo: value === "NONE" ? null : (value as "FIXO" | "PORCENTAGEM"),
-                              desconto: value === "NONE" ? 0 : it.desconto ?? 0,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Sem desconto" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="NONE">Sem</SelectItem>
-                            <SelectItem value="FIXO">Fixo</SelectItem>
-                            <SelectItem value="PORCENTAGEM">%</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={it.descontoTipo === "PORCENTAGEM" ? 100 : undefined}
-                          step="0.01"
-                          disabled={!it.descontoTipo}
-                          value={it.desconto ?? 0}
-                          onChange={(event) => onAtualizar(i, { desconto: Number(event.target.value || 0) })}
-                          className="h-8"
-                        />
-                      </div>
+                    <TableCell className="min-w-[240px]">
+                      <CampoDesconto
+                        tipo={it.descontoTipo}
+                        valor={it.desconto}
+                        onTipoChange={(descontoTipo) =>
+                          onAtualizar(i, {
+                            descontoTipo,
+                            desconto: descontoTipo ? it.desconto ?? 0 : 0,
+                          })
+                        }
+                        onValorChange={(desconto) => onAtualizar(i, { desconto })}
+                      />
                     </TableCell>
 
                     <TableCell className="text-right tabular-nums">{money(it.subtotal)}</TableCell>

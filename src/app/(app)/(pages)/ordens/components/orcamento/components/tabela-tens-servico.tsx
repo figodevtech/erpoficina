@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ItemServico } from "../tipos";
 import { CampoPreco } from "./campo-preco";
 import { CampoQuantidade } from "./campo-quantidade";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CampoDesconto } from "./campo-desconto";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -54,9 +55,18 @@ export function TabelaItensServico({
             ) : (
               itens.map((it, i) => (
                 <TableRow key={`${it.servicoid}-${i}`}>
-                  <TableCell className="pr-4">
+                  <TableCell className="max-w-[340px] pr-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="min-w-0 flex-1 font-medium">{it.descricao}</p>
+                      <TooltipProvider delayDuration={300}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <p className="min-w-[140px] max-w-[260px] flex-1 truncate font-medium">{it.descricao}</p>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-xs text-xs">
+                            {it.descricao}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       <Input
                         value={it.descricaoServico ?? ""}
                         onChange={(e) =>
@@ -95,37 +105,18 @@ export function TabelaItensServico({
                     />
                   </TableCell>
 
-                  <TableCell>
-                    <div className="grid grid-cols-[1fr_90px] gap-2">
-                      <Select
-                        value={it.descontoTipo ?? "NONE"}
-                        onValueChange={(value) =>
-                          onAtualizar(i, {
-                            descontoTipo: value === "NONE" ? null : (value as "FIXO" | "PORCENTAGEM"),
-                            desconto: value === "NONE" ? 0 : it.desconto ?? 0,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Sem desconto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NONE">Sem</SelectItem>
-                          <SelectItem value="FIXO">Fixo</SelectItem>
-                          <SelectItem value="PORCENTAGEM">%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={it.descontoTipo === "PORCENTAGEM" ? 100 : undefined}
-                        step="0.01"
-                        disabled={!it.descontoTipo}
-                        value={it.desconto ?? 0}
-                        onChange={(event) => onAtualizar(i, { desconto: Number(event.target.value || 0) })}
-                        className="h-8"
-                      />
-                    </div>
+                  <TableCell className="min-w-[240px]">
+                    <CampoDesconto
+                      tipo={it.descontoTipo}
+                      valor={it.desconto}
+                      onTipoChange={(descontoTipo) =>
+                        onAtualizar(i, {
+                          descontoTipo,
+                          desconto: descontoTipo ? it.desconto ?? 0 : 0,
+                        })
+                      }
+                      onValorChange={(desconto) => onAtualizar(i, { desconto })}
+                    />
                   </TableCell>
 
                   <TableCell className="text-right tabular-nums">{money(it.subtotal)}</TableCell>

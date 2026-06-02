@@ -25,13 +25,17 @@ FileText,
 ImageIcon,
 Link2,
 ListChecks,
+Loader2,
 Package,
+Paperclip,
 StickyNote,
+Trash2,
+Upload,
 User2,
 Users,
 Wrench
 } from "lucide-react";
-import { Fragment,useEffect,useMemo,useState } from "react";
+import { Fragment,useCallback,useEffect,useMemo,useRef,useState,type ChangeEvent } from "react";
 import { toast } from "sonner";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -82,6 +86,14 @@ function fmtMoney(v: number | null | undefined) {
     style: "currency",
     currency: "BRL",
   });
+}
+
+function fmtFileSize(value?: number | null) {
+  const size = Number(value ?? 0);
+  if (!Number.isFinite(size) || size <= 0) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1).replace(".", ",")} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 }
 
 function fileNameFromUrl(url: string) {
@@ -185,6 +197,16 @@ type Aprovacao = {
   expira_em?: string | null;
   usado_em?: string | null;
   created_at?: string | null;
+};
+
+type OsAnexo = {
+  id: number;
+  nome: string;
+  tipo?: string | null;
+  tamanho?: number | null;
+  url: string;
+  descricao?: string | null;
+  createdat?: string | null;
 };
 
 type OSDetalhesResponse = {
@@ -362,8 +384,14 @@ export function OSDetalhesDialog({
   const [loadingResponsaveis, setLoadingResponsaveis] = useState(false);
   const [savingResponsavelKey, setSavingResponsavelKey] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState("resumo");
+  const [anexos, setAnexos] = useState<OsAnexo[]>([]);
+  const [loadingAnexos, setLoadingAnexos] = useState(false);
+  const [uploadingAnexo, setUploadingAnexo] = useState(false);
+  const [deletingAnexoId, setDeletingAnexoId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const canFetch = open && !!osId;
+  const maxAnexosPorOs = 10;
 
   const statusUpper = (data?.os?.status || "").toUpperCase();
 
@@ -401,6 +429,35 @@ export function OSDetalhesDialog({
 
     return () => ac.abort();
   }, [canFetch, osId]);
+
+  const carregarAnexos = useCallback(async () => {
+    if (!osId) {
+      setAnexos([]);
+      return;
+    }
+
+    setLoadingAnexos(true);
+    try {
+      const response = await fetch(`/api/ordens/${osId}/anexos`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Erro ao carregar anexos");
+      setAnexos(Array.isArray(payload?.items) ? payload.items : []);
+    } catch (error: any) {
+      setAnexos([]);
+      toast.error(error?.message || "Não foi possível carregar os anexos da OS");
+    } finally {
+      setLoadingAnexos(false);
+    }
+  }, [osId]);
+
+  useEffect(() => {
+    if (!canFetch) {
+      setAnexos([]);
+      return;
+    }
+
+    void carregarAnexos();
+  }, [canFetch, carregarAnexos]);
 
   useEffect(() => {
     if (!open) return;
@@ -541,6 +598,58 @@ export function OSDetalhesDialog({
     }
   }
 
+  async function handleAnexoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !osId) return;
+
+    if (anexos.length >= maxAnexosPorOs) {
+      toast.error(`Limite de ${maxAnexosPorOs} anexos por OS atingido.`);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setUploadingAnexo(true);
+    try {
+      const response = await fetch(`/api/ordens/${osId}/anexos`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Erro ao anexar arquivo");
+
+      toast.success("Anexo adicionado");
+      await carregarAnexos();
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível anexar o arquivo");
+    } finally {
+      setUploadingAnexo(false);
+    }
+  }
+
+  async function handleDeleteAnexo(anexoId: number) {
+    if (!osId) return;
+
+    setDeletingAnexoId(anexoId);
+    try {
+      const response = await fetch(`/api/ordens/${osId}/anexos/${anexoId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Erro ao remover anexo");
+
+      setAnexos((prev) => prev.filter((anexo) => anexo.id !== anexoId));
+      toast.success("Anexo removido");
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível remover o anexo");
+    } finally {
+      setDeletingAnexoId(null);
+    }
+  }
+
   async function baixarImagem(url: string, filename: string) {
     try {
       const response = await fetch(url);
@@ -617,8 +726,9 @@ export function OSDetalhesDialog({
                 <DialogTitle>{titulo}</DialogTitle>
                 <DialogDescription>Carregando detalhes da OS</DialogDescription>
               </div>
-              <div className="flex h-full items-center justify-center">
+              <div className="flex h-full flex-col items-center justify-center gap-2">
                 <div className="size-8 animate-spin rounded-full border-t-2 border-primary" />
+                <span className="text-sm font-medium text-primary">Carregando</span>
               </div>
             </>
           ) : !data ? (
@@ -645,6 +755,12 @@ export function OSDetalhesDialog({
                       <span className="flex items-center gap-2">
                         <ListChecks className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
                         Checklist
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="anexos" className={tabTriggerClass}>
+                      <span className="flex items-center gap-2">
+                        <Paperclip className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                        Anexos
                       </span>
                     </TabsTrigger>
                     <TabsTrigger value="aprovacao" className={tabTriggerClass}>
@@ -935,11 +1051,10 @@ export function OSDetalhesDialog({
                                         title={img.descricao || name}
                                       >
                                       <span className="block aspect-square w-full overflow-hidden bg-muted">
-                                        <img
-                                          src={img.url}
-                                          alt={img.descricao || name}
-                                          loading="lazy"
-                                          className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                                        <span
+                                          aria-label={img.descricao || name}
+                                          className="block h-full w-full bg-cover bg-center transition-transform group-hover:scale-[1.02]"
+                                          style={{ backgroundImage: `url(${img.url})` }}
                                         />
                                       </span>
                                       <span className="flex min-w-0 items-center gap-1 px-2 py-1.5 text-[11px] text-muted-foreground">
@@ -970,6 +1085,127 @@ export function OSDetalhesDialog({
               </section>
 
               {/* Links de aprovação */}
+                </TabsContent>
+
+                <TabsContent value="anexos" className="mt-0 h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 space-y-4 sm:px-6 sm:py-5">
+                  <section className="rounded-lg border bg-card p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Paperclip className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-medium">Anexos da OS</span>
+                          <Badge variant="outline">{anexos.length}/{maxAnexosPorOs}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Envie imagens ou PDFs relacionados a esta ordem de serviço.
+                        </div>
+                      </div>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={handleAnexoChange}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2"
+                        disabled={uploadingAnexo || loadingAnexos || anexos.length >= maxAnexosPorOs}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {uploadingAnexo ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        {uploadingAnexo
+                          ? "Enviando..."
+                          : anexos.length >= maxAnexosPorOs
+                            ? "Limite atingido"
+                            : "Adicionar anexo"}
+                      </Button>
+                    </div>
+                  </section>
+
+                  <section className="rounded-lg border bg-card p-4">
+                    {loadingAnexos ? (
+                      <div className="flex min-h-[180px] items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando anexos...
+                      </div>
+                    ) : anexos.length === 0 ? (
+                      <div className="flex min-h-[180px] items-center justify-center rounded-md border border-dashed bg-muted/20 px-4 text-center text-sm text-muted-foreground">
+                        Nenhum anexo adicionado nesta OS.
+                      </div>
+                    ) : (
+                      <div className="divide-y rounded-md border">
+                        {anexos.map((anexo) => {
+                          const isImage = String(anexo.tipo ?? "").startsWith("image/");
+                          const fileSize = fmtFileSize(anexo.tamanho);
+                          const deleting = deletingAnexoId === anexo.id;
+
+                          return (
+                            <div key={anexo.id} className="flex min-w-0 flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center">
+                              <a
+                                href={anexo.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus:ring-2 focus:ring-primary"
+                                title={anexo.nome}
+                              >
+                                <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40">
+                                  {isImage ? (
+                                    <span
+                                      aria-label={anexo.nome}
+                                      className="block h-full w-full bg-cover bg-center"
+                                      style={{ backgroundImage: `url(${anexo.url})` }}
+                                    />
+                                  ) : (
+                                    <FileText className="h-5 w-5 text-primary" />
+                                  )}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-medium">{anexo.nome}</span>
+                                  <span className="block truncate text-xs text-muted-foreground">
+                                    {[fileSize, fmtDate(anexo.createdat)].filter(Boolean).join(" • ")}
+                                  </span>
+                                  {anexo.descricao ? (
+                                    <span className="block truncate text-xs text-muted-foreground">{anexo.descricao}</span>
+                                  ) : null}
+                                </span>
+                              </a>
+
+                              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                                <Button variant="outline" size="sm" asChild className="gap-2">
+                                  <a href={anexo.url} target="_blank" rel="noreferrer">
+                                    <ExternalLink className="h-4 w-4" />
+                                    Abrir
+                                  </a>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Remover anexo"
+                                  aria-label="Remover anexo"
+                                  disabled={deleting}
+                                  onClick={() => void handleDeleteAnexo(anexo.id)}
+                                >
+                                  {deleting ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
                 </TabsContent>
 
                 <TabsContent value="aprovacao" className="mt-0 h-full min-h-0 overflow-auto bg-muted-foreground/5 px-4 py-4 sm:px-6 sm:py-5">

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ChevronDown, FileText, Loader, Loader2, Package, Percent, ReceiptText, Trash2Icon } from "lucide-react";
+import { ChevronDown, ExternalLink, FileText, Loader, Loader2, Package, Paperclip, Percent, ReceiptText, Trash2Icon } from "lucide-react";
 import DeleteAlert from "./deleteAlert";
 import { toast } from "sonner";
 import { formatDate } from "@/utils/formatDate";
@@ -55,6 +55,16 @@ type OsServicoItem = {
   } | null;
 };
 
+type OsAnexo = {
+  id: number;
+  nome: string;
+  tipo?: string | null;
+  tamanho?: number | null;
+  url: string;
+  descricao?: string | null;
+  createdat?: string | null;
+};
+
 // Ajuste conforme a sua estrutura real
 
 const toNum = (value: unknown) => {
@@ -92,6 +102,8 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
   const [ordem, setOrdem] = useState<Ordem | undefined>(undefined);
   const [itensProduto, setItensProduto] = useState<OsProdutoItem[]>([]);
   const [itensServico, setItensServico] = useState<OsServicoItem[]>([]);
+  const [anexos, setAnexos] = useState<OsAnexo[]>([]);
+  const [isLoadingAnexos, setIsLoadingAnexos] = useState(false);
   const [descontoTipo, setDescontoTipo] = useState<"FIXO" | "PORCENTAGEM" | null>(null);
   const [desconto, setDesconto] = useState(0);
   const [isSavingDiscount, setIsSavingDiscount] = useState(false);
@@ -111,6 +123,13 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       : ordem?.veiculo
         ? `${ordem.veiculo.marca ?? ""} ${ordem.veiculo.modelo ?? ""} ${ordem.veiculo.placa ? `- ${ordem.veiculo.placa}` : ""}`.trim()
         : "Não vinculado";
+
+  const formatFileSize = (value?: number | null) => {
+    if (!value) return "Tamanho nao informado";
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  };
+  const isImageAnexo = (anexo: OsAnexo) => String(anexo.tipo ?? "").startsWith("image/");
 
   // ====== DATA LOADERS
   const handleGetOrdem = async (osId: number, options?: { silent?: boolean }) => {
@@ -156,12 +175,42 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
     }
   };
 
+  const handleGetAnexos = async (ordemIdArg?: number) => {
+    const targetId = ordemIdArg ?? ordem?.id;
+    if (!targetId) return;
+
+    setIsLoadingAnexos(true);
+    try {
+      const response = await axios.get(`/api/ordens/${targetId}/anexos`);
+      const items = Array.isArray(response.data?.items)
+        ? response.data.items.map((item: any) => ({
+            id: Number(item.id),
+            nome: String(item.nome ?? "Anexo"),
+            tipo: item.tipo ?? null,
+            tamanho:
+              typeof item.tamanho === "number"
+                ? item.tamanho
+                : Number(item.tamanho ?? 0) || null,
+            url: String(item.url ?? ""),
+            descricao: item.descricao ?? null,
+            createdat: item.createdat ?? null,
+          }))
+        : [];
+      setAnexos(items);
+    } catch {
+      toast.error("Não foi possível carregar os anexos");
+    } finally {
+      setIsLoadingAnexos(false);
+    }
+  };
+
   useEffect(() => {
     if (!IsOpen) {
       setTransactions([]);
       setOrdem(undefined);
       setItensProduto([]);
       setItensServico([]);
+      setAnexos([]);
       setDescontoTipo(null);
       setDesconto(0);
       setHasLoadedOnce(false);
@@ -203,6 +252,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
       setHasLoadedOnce(false);
       handleGetOrdem(osId);
       handleGetTransactions(undefined, osId);
+      handleGetAnexos(osId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [osId]);
@@ -337,7 +387,7 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
         <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden min-w-0 dark:bg-muted-foreground/5 px-6 py-4 space-y-2">
           <Tabs defaultValue="detalhes" className="space-y-3">
             <div className="pb-1">
-              <TabsList className="grid h-auto w-full grid-cols-4 gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
+              <TabsList className="grid h-auto w-full grid-cols-5 gap-1.5 rounded-2xl border bg-muted/40 p-1 backdrop-blur-sm">
                 <TabsTrigger value="detalhes" className={tabTriggerClass}>
                   <span className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
@@ -354,6 +404,12 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
                   <span className="flex items-center gap-2">
                     <Percent className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
                     Descontos
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="anexos" className={tabTriggerClass}>
+                  <span className="flex items-center gap-2">
+                    <Paperclip className="h-3.5 w-3.5 transition-transform group-data-[state=active]:scale-105" />
+                    Anexos
                   </span>
                 </TabsTrigger>
                 <TabsTrigger value="transacoes" className={tabTriggerClass}>
@@ -657,6 +713,68 @@ export default function OsContent({ osId, IsOpen }: OsContentProps) {
               Nenhum item na cobrança.
             </div>
           )}
+            </TabsContent>
+
+            <TabsContent value="anexos" className="mt-0">
+              <div className="rounded-lg border bg-card p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Anexos da OS</span>
+                    <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">{anexos.length}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => handleGetAnexos(ordem.id)}
+                  >
+                    Recarregar
+                    <Loader2 className={`h-3 w-3 ${isLoadingAnexos ? "animate-spin" : ""}`} />
+                  </button>
+                </div>
+
+                {isLoadingAnexos ? (
+                  <div className="flex h-16 items-center justify-center gap-2 rounded-md border border-dashed text-sm text-muted-foreground">
+                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
+                    Carregando anexos...
+                  </div>
+                ) : anexos.length === 0 ? (
+                  <div className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+                    Nenhum anexo vinculado.
+                  </div>
+                ) : (
+                  <div className="divide-y rounded-md border">
+                    {anexos.map((anexo) => (
+                      <div key={anexo.id} className="flex min-w-0 items-center gap-2 px-3 py-2">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded bg-muted/50">
+                          {isImageAnexo(anexo) ? (
+                            <div
+                              className="h-full w-full bg-cover bg-center"
+                              style={{ backgroundImage: `url(${anexo.url})` }}
+                              aria-label={anexo.nome}
+                            />
+                          ) : (
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium" title={anexo.nome}>
+                            {anexo.nome}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {formatFileSize(anexo.tamanho)}
+                          </p>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 px-2" asChild>
+                          <a href={anexo.url} target="_blank" rel="noreferrer" aria-label="Abrir anexo">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="transacoes" className="mt-0 space-y-3">

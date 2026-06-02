@@ -18,10 +18,9 @@ import { TabelaItensServico } from "./components/tabela-tens-servico";
 import ProductSelect from "@/app/(app)/components/productSelect";
 import ServiceSelect from "@/app/(app)/components/serviceSelect";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { dinheiro } from "./util";
+import { CampoDesconto } from "./components/campo-desconto";
 
 export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>(function OrcamentoForm(
   { ordemServico, onTotaisChange, onLoadingChange },
@@ -279,60 +278,42 @@ export const OrcamentoForm = forwardRef<OrcamentoFormHandle, OrcamentoFormProps>
           />
           <Separator />
 
-          <div className="grid gap-4 rounded-md border bg-muted/20 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-1">
-              <h3 className="text-sm font-medium">Desconto total</h3>
-              <p className="text-xs text-muted-foreground">
-                Aplicado depois dos descontos individuais dos itens.
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Tipo de desconto</Label>
-                  <Select
-                    value={descontoTipo ?? "NONE"}
-                    onValueChange={(value) => {
-                      setDescontoTipo(value === "NONE" ? null : (value as "FIXO" | "PORCENTAGEM"));
-                      if (value === "NONE") setDesconto(0);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sem desconto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">Sem desconto</SelectItem>
-                      <SelectItem value="FIXO">Fixo</SelectItem>
-                      <SelectItem value="PORCENTAGEM">Porcentagem</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">{descontoTipo === "PORCENTAGEM" ? "Percentual (%)" : "Valor"}</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={descontoTipo === "PORCENTAGEM" ? 100 : undefined}
-                    step="0.01"
-                    value={desconto}
-                    disabled={!descontoTipo}
-                    onChange={(event) => setDesconto(Number(event.target.value || 0))}
-                  />
-                </div>
+          <div className="grid gap-5 rounded-md border bg-muted/20 p-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Desconto total</h3>
+                <p className="text-xs text-muted-foreground">
+                  Aplicado depois dos descontos individuais dos itens.
+                </p>
+              </div>
+
+              <div className="max-w-xl space-y-1.5">
+                <Label className="text-xs">Tipo e valor do desconto</Label>
+                <CampoDesconto
+                  tipo={descontoTipo}
+                  valor={desconto}
+                  onTipoChange={(tipo) => setDescontoTipo(tipo)}
+                  onValorChange={setDesconto}
+                  className="grid gap-2 sm:grid-cols-[180px_160px]"
+                  selectClassName="h-9"
+                  inputClassName="h-9"
+                />
               </div>
             </div>
 
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between gap-3">
+            <div className="space-y-2 rounded-md border bg-background/70 p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">{dinheiro(subtotal)}</span>
+                <span className="min-w-[130px] text-right font-medium tabular-nums">{dinheiro(subtotal)}</span>
               </div>
-              <div className="flex justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">Desconto</span>
-                <span className="font-medium">- {dinheiro(descontoAplicado)}</span>
+                <span className="min-w-[130px] text-right font-medium tabular-nums">- {dinheiro(descontoAplicado)}</span>
               </div>
               <Separator />
-              <div className="flex justify-between gap-3 text-base">
+              <div className="flex items-center justify-between gap-3 text-base">
                 <span className="font-medium">Total</span>
-                <span className="font-bold">{dinheiro(totalGeral)}</span>
+                <span className="min-w-[130px] text-right font-bold tabular-nums">{dinheiro(totalGeral)}</span>
               </div>
             </div>
           </div>

@@ -516,12 +516,22 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     const descricao = pickStr("descricao");
     const observacoes = pickStr("observacoes");
     const observacoes_fiscais = pickStr("observacoes_fiscais", "observacoesFiscais");
-    const alvo_tipoStr = pickStr("alvo_tipo", "alvoTipo");
+    const alvo_tipoStr = pickStr("alvo_tipo", "alvoTipo") ?? (body?.alvo?.tipo != null ? String(body.alvo.tipo) : undefined);
     const alvo_tipo = ((): AlvoTipo | undefined => {
       const up = (alvo_tipoStr || "").toUpperCase();
       return up === "VEICULO" || up === "PECA" ? (up as AlvoTipo) : undefined;
     })();
     const pecaid = pickNum("pecaid", "pecaId");
+    const veiculoid =
+      body?.veiculoid === null || body?.veiculoId === null || body?.alvo?.veiculoid === null
+        ? null
+        : body?.veiculoid !== undefined
+          ? Number(body.veiculoid)
+          : body?.veiculoId !== undefined
+            ? Number(body.veiculoId)
+            : body?.alvo?.veiculoid !== undefined
+              ? Number(body.alvo.veiculoid)
+              : undefined;
     const clienteid =
       body?.cliente === null
         ? null
@@ -542,6 +552,23 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
       }
     }
 
+    if (typeof veiculoid === "number") {
+      if (!Number.isFinite(veiculoid)) {
+        return NextResponse.json({ error: "Veículo inválido." }, { status: 400 });
+      }
+
+      const veiculoRes = await supabase
+        .from("veiculo")
+        .select("id")
+        .eq("id", veiculoid)
+        .maybeSingle();
+
+      if (veiculoRes.error) throw veiculoRes.error;
+      if (!veiculoRes.data?.id) {
+        return NextResponse.json({ error: "Veículo não encontrado." }, { status: 400 });
+      }
+    }
+
     const patch: Record<string, unknown> = {};
     if (clienteid !== undefined) patch.clienteid = clienteid;
     if (setorid !== undefined) patch.setorid = setorid;
@@ -551,6 +578,9 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     if (observacoes_fiscais !== undefined) patch.observacoes_fiscais = observacoes_fiscais;
     if (alvo_tipo !== undefined) patch.alvo_tipo = alvo_tipo;
     if (pecaid !== undefined) patch.pecaid = pecaid;
+    if (veiculoid !== undefined) patch.veiculoid = veiculoid;
+    if (alvo_tipo === "VEICULO") patch.pecaid = null;
+    if (alvo_tipo === "PECA") patch.veiculoid = null;
 
     if (Object.keys(patch).length) {
       const upd_res = await supabase.from("ordemservico").update(patch).eq("id", osId);

@@ -13,6 +13,7 @@ export function DialogShell({
   loading = false,
   maxW = "lg:max-w-5xl xl:max-w-6xl",
   mobileFull = false,
+  fixedHeight = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -24,14 +25,19 @@ export function DialogShell({
   loading?: boolean;
   maxW?: string;
   mobileFull?: boolean;
+  fixedHeight?: boolean;
 }) {
+  const fixedHeightClass = fixedHeight
+    ? "h-[100dvh] max-h-[100dvh] sm:h-[85vh] sm:max-h-[85vh] supports-[height:100svh]:sm:h-[85svh] supports-[height:100svh]:sm:max-h-[85svh]"
+    : "";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={
           mobileFull
             ? `h-svh w-[100dvw] max-w-[100dvw] min-w-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[85vh] sm:w-[95vw] sm:max-w-[95vw] sm:rounded-lg md:max-w-3xl ${maxW}`
-            : `p-0 w-[96vw] sm:max-w-[95vw] md:max-w-3xl ${maxW}`
+            : `p-0 w-[96vw] sm:max-w-[95vw] md:max-w-3xl ${fixedHeightClass} ${maxW}`
         }
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
@@ -39,7 +45,7 @@ export function DialogShell({
       >
         <div
           className={`grid w-full ${
-            mobileFull ? "h-full max-h-svh sm:max-h-[85vh]" : "max-h-[85vh]"
+            mobileFull || fixedHeight ? "h-full max-h-svh sm:max-h-[85vh]" : "max-h-[85vh]"
           } ${loading ? "grid-rows-[1fr]" : "grid-rows-[auto_1fr_auto]"}`}
         >
           {loading ? (

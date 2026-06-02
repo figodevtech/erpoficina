@@ -119,6 +119,7 @@ export function OrcamentoDialog({
       titleSuffix={`OS #${numero}`}
       description={[clienteNome, veiculoStr].filter(Boolean).join(" • ")}
       loading={carregandoDados}
+      fixedHeight
       footer={
         <div className="flex w-full flex-col items-end justify-between gap-3 sm:flex-row sm:items-center">
           <div className="text-right sm:text-left">
@@ -160,9 +161,9 @@ export function OrcamentoDialog({
         </div>
       }
     >
-      <div className="relative min-h-[360px]">
+      <div className="relative h-full min-h-0">
         {carregandoDados ? (
-          <div className="flex min-h-[360px] flex-col items-center justify-center gap-3">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="size-8 animate-spin rounded-full border-t-2 border-primary" />
             <span className="text-sm font-medium text-primary">Carregando</span>
           </div>
